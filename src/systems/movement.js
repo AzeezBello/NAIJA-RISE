@@ -54,8 +54,9 @@ export function moveFoot(dt) {
   } else { G.curSpeed = Math.max(0, G.curSpeed - 16 * dt); setState(G.curSpeed > 0.4 ? 'stop' : 'idle'); }
   bob += dt * G.curSpeed * (G.moveState === 'run' ? 2.6 : 2.1);
   const amp = G.moveState === 'run' ? 0.085 : 0.055;
-  pl.position.y = heightAt(pl.position.x, pl.position.z) + (G.curSpeed > 0.3 ? Math.abs(Math.sin(bob)) * amp : 0);   // bob on the local ground level
-  pl.rotation.x = THREE.MathUtils.lerp(pl.rotation.x, G.moveState === 'run' ? -0.1 : 0, Math.min(1, dt * 6));           // lean into a sprint
+  const rig = !!G.playerChar?.rig;   // a rigged character carries its own bob and lean in the clips
+  pl.position.y = heightAt(pl.position.x, pl.position.z) + (!rig && G.curSpeed > 0.3 ? Math.abs(Math.sin(bob)) * amp : 0);   // bob on the local ground level
+  pl.rotation.x = THREE.MathUtils.lerp(pl.rotation.x, !rig && G.moveState === 'run' ? -0.1 : 0, Math.min(1, dt * 6));           // lean into a sprint
   if (G.curSpeed < 0.05) return;
   const old = _old.copy(pl.position);
   pl.position.addScaledVector(lastDir, G.curSpeed * dt);

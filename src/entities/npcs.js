@@ -4,8 +4,19 @@ import { pick, dist } from '../core/utils.js';
 import { mat } from '../world/builders.js';
 import { BUSSTOPS, SERVICE_NPCS, UNIFORMS, NIGHTLIFE_NPCS, placeOf } from '../data/locations.js';
 import { runAgbero } from '../systems/dialogue.js';
+import { PERF } from '../data/config.js';
+import { createCharacter } from './character.js';
 
+const hex = c => '#' + c.toString(16).padStart(6, '0');
+// A pedestrian: primitives until the shared rig is cloned in (desktop only; low-end keeps primitives). n.userData.c is the character.
 function person(bodyColor, skin, scale = 1, cap) {
+  const placeholder = primitivePerson(bodyColor, skin, scale, cap);
+  const useRig = !PERF.lowEnd && G.state?.settings?.rig !== false;
+  const c = createCharacter({ placeholder, useRig, scale: scale * (0.84 + Math.random() * 0.1), look: { hair: 0, hairColor: 0, bodyType: Math.random() < 0.25 ? 0 : Math.random() < 0.2 ? 2 : 1, accessory: cap !== undefined ? 1 : 0, facialHair: Math.random() < 0.3 ? 1 : 0 }, tint: { top: hex(bodyColor), bottom: hex(bodyColor & 0x7f7f7f), skin: hex(skin), shoes: '#1b1b1b', cap: cap !== undefined ? hex(cap) : null } });
+  c.group.userData.c = c;
+  return c.group;
+}
+function primitivePerson(bodyColor, skin, scale = 1, cap) {
   const n = new THREE.Group();
   const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.32 * scale, 0.75 * scale, 5, 8), mat(bodyColor)); b.position.y = 0.78 * scale; b.castShadow = true; n.add(b);
   const h = new THREE.Mesh(new THREE.SphereGeometry(0.24 * scale, 10, 7), mat(skin)); h.position.y = 1.48 * scale; h.castShadow = true; n.add(h);
@@ -72,6 +83,9 @@ export function updateNpcs(dt) {
     if (!marketHour) n.market = null;
     if (n.market && n.turn <= 0.05 && dist(n.g.position, n.market) > 18) { n.v.set(n.market.x - n.g.position.x, 0, n.market.z - n.g.position.z).normalize().multiplyScalar(1.6); n.turn = 2; }
     n.g.position.addScaledVector(n.v, dt);
+    const sp = n.v.length(), c = n.g.userData.c;
+    if (sp > 0.2) n.g.rotation.y = Math.atan2(n.v.x, n.v.z);
+    c?.setState(sp > 0.2 ? 'walk' : 'idle', sp);
     n.turn -= dt;
     if (n.turn <= 0) { n.turn = 1 + Math.random() * 3; n.v.set((Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2); }
     if (Math.abs(n.g.position.x) > 140 || Math.abs(n.g.position.z) > 140) n.v.multiplyScalar(-1);

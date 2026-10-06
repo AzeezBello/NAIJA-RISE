@@ -36,3 +36,4 @@ web/.vercel/
 # Copied into the Next app at build time (scripts/sync-engine.mjs)
 web/engine/
 web/styles/
+web/public/assets/

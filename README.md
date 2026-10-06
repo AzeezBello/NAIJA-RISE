@@ -1,4 +1,4 @@
-# NAIJA RISE — Lagos · Alpha 0.9
+# NAIJA RISE — Lagos · Alpha 0.10
 
 A browser-playable open-world life simulation set in a living Surulere, Lagos. Original IP: original characters, missions and story, with real Lagos place and street names on a stylised map.
 
@@ -26,7 +26,9 @@ npm run build && npm start
 
 Three.js and fonts load from CDNs in the static build, so an internet connection is required for the first load; a service worker then caches the shell and the page installs as a PWA. Progress saves to the browser (localStorage).
 
-## What is in Alpha 0.9
+## What is in Alpha 0.10
+
+**Character overhaul (0.10)** — the player and every pedestrian are now instances of one character pipeline (`src/entities/character.js`): a rigged GLB with a Mixamo-compatible skeleton is loaded once, cloned per character with `SkeletonUtils`, and driven by an `AnimationMixer` that cross-fades Idle, Walk and Run from the controller states (`G.moveState`), with clip speed matched to movement speed. The three.js `Soldier.glb` streams in as the development placeholder; drop a production rig at `assets/characters/player.glb` and it takes over (see `assets/characters/README.md` for the rig contract and the recommended Ready Player Me / custom Blender pipelines). Every character starts as the old primitive body so the game runs offline and on low-end phones, and swaps in place when the rig arrives. Customisation grew to ten slots — skin, face, body type, hair, hair colour, facial hair, shirt, trousers, shoes, accessory (cap, glasses, chain) — tinting rig materials by slot and attaching accessories to the head bone; the Character app and the HUD portrait reflect all of them. Characters cast real skinned shadows; the procedural walk bob and sprint lean only apply to the primitive fallback. Settings has a "Rigged 3D characters" toggle (on by default on desktop, off on the low-end profile).
 
 **Bridges and corridors (0.9)** — the world now runs from Surulere east over the Costain interchange and Eko Bridge, across the Lagos Lagoon, to a first Lagos Island landing: CMS bus terminal, Broad Street, the Cathedral Church of Christ, Tafawa Balewa Square, a Broad Street tower and RiseBank Marina on the real Marina. The National Theatre stands at Iganmu by the Costain roundabout. Shitta Bridge is a flyover carrying Ogunlana Drive over Bode Thomas. Decks, ramps and pillars are real geometry: vehicles, pedestrians, the GPS line and the camera follow the elevation, deck barriers keep you on the bridge, and traffic understands the bridge with a rush-hour profile (crawling 7–10 and 16–19:30, flying at night).
 

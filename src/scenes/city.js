@@ -2,7 +2,8 @@ import { G } from '../core/context.js';
 import { emit } from '../core/events.js';
 import { $ } from '../core/utils.js';
 import { WORLD, PERF } from '../data/config.js';
-import { createPlayer, applyLook } from '../entities/player.js';
+import { createPlayer, applyLook, updatePlayer } from '../entities/player.js';
+import { updateCharacters } from '../entities/character.js';
 import { spawnNpcs, spawnAgberos, spawnServiceNpcs, spawnExtras, updateNpcs } from '../entities/npcs.js';
 import { spawnAnimals, applyPet, updateAnimals } from '../entities/animals.js';
 import { updateTraffic } from '../entities/vehicles.js';
@@ -61,7 +62,7 @@ export const CityScene = {
   update(dt) {
     updateGamepad(dt);
     updateMovement(dt);
-    updateTraffic(dt); updateNpcs(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
+    updatePlayer(); updateTraffic(dt); updateNpcs(dt); updateCharacters(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
     updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateMissions(dt); updateRace(dt); updateTrafficLights(dt); updateClock(dt); updateAudio();
     routeT += dt; if (routeT > 0.25) { routeT = 0; updateRoute(); }   // GPS re-routes 4× a second
     updateCamera(dt);

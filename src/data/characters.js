@@ -1,8 +1,15 @@
+// Customisation slots. skin/hair/shirt/pants drive the portrait and the primitive fallback; the rest tint the rig.
 export const LOOK = {
   skin: ['#b07a55', '#8a5a3c', '#714835', '#5a3a28', '#3f2619'],
+  face: ['Oval', 'Round', 'Square', 'Long'],
   hair: ['Short', 'Fade', 'Afro', 'Braids', 'Bald'],
+  hairColor: ['#120b08', '#3a2214', '#6b3e1a', '#b0b0b0', '#d62828'],
+  bodyType: ['Slim', 'Average', 'Big'],
   shirt: ['#3d8b5a', '#ffc52f', '#e8e8e8', '#2f5fd0', '#c9342f', '#1b1b1b'],
   pants: ['#26312d', '#1f2a44', '#4a3b2e', '#2b2b2b'],
+  shoes: ['#1b1b1b', '#f0f0f0', '#8a5a3c', '#2f5fd0'],
+  accessory: ['None', 'Cap', 'Glasses', 'Chain'],
+  facialHair: ['None', 'Beard', 'Goatee', 'Moustache'],
 };
 
 export const CONTACTS = [

@@ -8,7 +8,7 @@ export const DEFAULT = {
   job: null, waypoint: null, owned: [], props: [], home: null,
   inv: { water: 2, suya: 1 }, msgs: [], unread: 0, tx: [], payIn: ECON.payCycle,
   clock: TIME.startClock, day: 1,
-  look: { skin: 2, hair: 0, shirt: 0, pants: 0 },
+  look: { skin: 2, face: 0, hair: 0, hairColor: 0, bodyType: 1, shirt: 0, pants: 0, shoes: 0, accessory: 0, facialHair: 0 },
   pet: null, prayedDay: 0, partyDay: 0, rented: null, let: [],
   skills: { driving: 0, business: 0, charisma: 0, fitness: 0 },
   rep: { public: 0, business: 0, street: 0, social: 0 },
@@ -17,13 +17,13 @@ export const DEFAULT = {
   settings: { sens: 1, shadows: !PERF.lowEnd, rotateMap: true, hints: true, touch: 'auto', mature: true },
 };
 
-const LEGACY_KEYS = ['naijarise.alpha08', 'naijarise.alpha07', 'naijarise.alpha06', 'naijarise.alpha05'];
+const LEGACY_KEYS = ['naijarise.alpha09', 'naijarise.alpha08', 'naijarise.alpha07', 'naijarise.alpha06', 'naijarise.alpha05'];
 export function hasSave() { try { return !!(localStorage.getItem(GAME.saveKey) || LEGACY_KEYS.some(k => localStorage.getItem(k))); } catch { return false; } }
 export function freshState() { return structuredClone(DEFAULT); }
 export function loadState() {
   try {
     const s = JSON.parse(localStorage.getItem(GAME.saveKey)) || LEGACY_KEYS.map(k => JSON.parse(localStorage.getItem(k))).find(Boolean);
-    if (s && (s.v === GAME.saveVersion || [8, 7, 6, 5].includes(s.v))) {   // v5 saves migrate: new fields take defaults
+    if (s && (s.v === GAME.saveVersion || [9, 8, 7, 6, 5].includes(s.v))) {   // v5 saves migrate: new fields take defaults
       const st = freshState();
       Object.assign(st, s);
       st.settings = Object.assign({}, DEFAULT.settings, s.settings || {});
