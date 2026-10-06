@@ -17,6 +17,8 @@ export const CONTACTS = [
   { id: 'pos', name: 'POS Agent', role: 'Roadside kiosk', c: '#5db8ff', line: 'Transfer or withdrawal? Network dey.' },
   { id: 'olosho', name: 'Olosho', role: 'Night hustler · clubs', c: '#ff5d9e', line: 'Fine boy, you dey find hook up?' },
   { id: 'imam', name: 'Alfa / Pastor', role: 'Worship', c: '#d9d2c2', line: 'Come and pray. Lagos go better.' },
+  { id: 'agent', name: 'Agent Kunle', role: 'Property agent', c: '#f0a040', line: 'Agent fee na 10%. No agent, no house.' },
+  { id: 'landlord', name: 'Landlord', role: 'Baba Landlord · Surulere', c: '#c9b48a', line: 'Rent na yearly, but for you I go take monthly.' },
   { id: 'bank', name: 'RiseBank', role: 'Alerts', c: '#b7b7ff', line: 'Thank you for banking with RiseBank.' },
 ];
 export const contactOf = id => CONTACTS.find(c => c.id === id);

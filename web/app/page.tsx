@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import Hero from '@/components/Hero';
+import Hero from '@/components/HeroClient';
 
 const FEATURES = [
   ['Surulere, Lagos', 'Ojuelegba, Kilo, Shitta, Yaba Market, the National Stadium, Rita Lori, Forties Bar and more.'],

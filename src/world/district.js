@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { G } from '../core/context.js';
 import { pick } from '../core/utils.js';
-import { box, cyl, building, sign, mat, occluders, colliders, lamps, glows } from './builders.js';
+import { box, cyl, building, compound, sign, mat, occluders, colliders, lamps, glows } from './builders.js';
 import { asphaltTexture, groundTexture, concreteTexture, cloudTexture, glowTexture } from './textures.js';
 import { ROADS, ROAD_NAMES, LANDMARKS, BUSSTOPS, PROPERTIES, KIOSKS, RESERVED, WATER } from '../data/locations.js';
 
@@ -29,6 +29,7 @@ function streetLight(x, z, armDir) {
   cyl(x, z, 0.12, 7, 0x6c7378, 'pole', 0, 8, 0.09);
   const arm = box(x + armDir.x * 1.1, z + armDir.z * 1.1, Math.abs(armDir.x) * 2.2 + 0.18, Math.abs(armDir.z) * 2.2 + 0.18, 0.14, 0x6c7378, 'prop', 6.9);
   const head = box(x + armDir.x * 2.1, z + armDir.z * 2.1, 0.7, 0.7, 0.22, 0xfff1c9, 'prop', 6.75); lamps.push(head.material);
+  const panel = box(x - armDir.x * 0.5, z - armDir.z * 0.5, 1.1, 0.7, 0.06, 0x1a2a4a, 'prop', 7.2); panel.rotation.x = -0.5; panel.material.metalness = 0.6; panel.material.roughness = 0.3; // solar panel
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: streetLight.glow, transparent: true, depthWrite: false, opacity: 0.85 }));
   halo.position.set(x + armDir.x * 2.1, 6.6, z + armDir.z * 2.1); halo.scale.set(9, 9, 1); halo.visible = false;
   G.scene.add(halo); glows.push(halo);
@@ -78,9 +79,12 @@ function buildBlocks() {
   for (let x = -120; x <= 120; x += 24) for (let z = -120; z <= 120; z += 24) {
     if (Math.abs(x) < 16 || Math.abs(z) < 16 || Math.abs(z + 66) < 11 || Math.abs(x - 72) < 11 || Math.abs(x + 72) < 11) continue;
     if (reserved(x, z)) continue;
-    const h = 7 + Math.random() * 25, w = 15 + Math.random() * 5, d = 14 + Math.random() * 5;
-    const b = building(x + (Math.random() - 0.5) * 3, z + (Math.random() - 0.5) * 3, w, d, h, pick(PALETTE));
-    if (Math.random() < 0.6) sign(pick(SHOP_SIGNS), b.position.x, 2.6, b.position.z - d / 2 - 0.1, Math.random() < 0.5 ? '#3dff79' : '#ffc52f', 5, 1.25);
+    // Surulere mix: mostly bungalows and 2–3 storey houses in fenced compounds; a few high-rises by the main roads.
+    const nearMain = Math.abs(z) < 30 || Math.abs(x - 72) < 30;
+    const r = Math.random();
+    const style = r < (nearMain ? 0.22 : 0.06) ? 'highrise' : r < 0.55 ? 'storey' : 'bungalow';
+    const b = compound(x, z, 20, 18, style, pick(PALETTE));
+    if (style !== 'bungalow' && Math.random() < 0.5) sign(pick(SHOP_SIGNS), b.position.x, 2.6, b.position.z - 7.2, Math.random() < 0.5 ? '#3dff79' : '#ffc52f', 5, 1.25);
   }
 }
 
@@ -121,9 +125,9 @@ function buildLandmarks() {
     if (l.kind === 'venue') { const neon = box(l.x, l.z - 7.3, 6, 0.2, 0.5, parseInt(l.sign.slice(1), 16), 'prop', 3.2); lamps.push(neon.material); }
   }
   for (const p of PROPERTIES) {
-    building(p.x, p.z, 16, 12, p.h, parseInt(p.c.slice(1), 16), 'property');
-    sign(p.sign, p.x, p.h + 1.4, p.z + 6.2, '#ffffff', 7, 1.7);
-    box(p.x, p.z + 6.05, 2.2, 0.15, 2.6, 0x1f2a24, 'prop');   // door
+    const house = compound(p.x, p.z, 20, 18, p.style, parseInt(p.c.slice(1), 16), 'property', p.h);
+    p.door = house.userData.door;                                    // street gate; agent waits here
+    sign(p.sign, p.x, p.h + 1.6, p.z - 9.4, '#ffffff', 7, 1.7, 'rgba(120,60,20,.95)');
   }
   for (const b of BUSSTOPS) {
     for (const ox of [-3, 3]) cyl(b.x + ox, b.z, 0.12, 3.1, 0xc9ced3, 'pole');

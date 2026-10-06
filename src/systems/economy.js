@@ -1,10 +1,11 @@
 import { G } from '../core/context.js';
-import { emit } from '../core/events.js';
+import { emit, on } from '../core/events.js';
 import { fmt } from '../core/utils.js';
 import { notify, toast } from '../ui/feedback.js';
 import { contactOf } from '../data/characters.js';
 import { bizIncome } from '../data/businesses.js';
-import { ECON, UNLOCKS } from '../data/config.js';
+import { ECON, UNLOCKS, RENT } from '../data/config.js';
+import { PROPERTIES } from '../data/locations.js';
 
 export function tx(label, amount) {
   G.state.tx.unshift({ label, amount, t: Date.now() });
@@ -59,3 +60,16 @@ export function updateEconomy(dt) {
     }
   }
 }
+
+// New game day: tenants pay, leases run out.
+on('day', day => {
+  const s = G.state;
+  const income = (s.let || []).reduce((sum, id) => { const p = PROPERTIES.find(p => p.id === id); return sum + (p ? Math.round(p.rent * RENT.tenantShare) : 0); }, 0);
+  if (income > 0) { s.bank += income; tx('Rent from tenants', income); notify('RiseBank', `Credit alert · ${fmt(income)} rent from your tenants`); }
+  if (s.rented) {
+    const p = PROPERTIES.find(p => p.id === s.rented.id), left = s.rented.until - day;
+    if (left === 3) msg('landlord', `Oga, your rent for ${p.type} go expire in 3 days. Renew with Agent Kunle.`);
+    if (left <= 0) { if (s.home === s.rented.id) s.home = null; s.rented = null; msg('landlord', `Rent don expire. I don pack your load for outside. See the agent if you wan renew.`); }
+  }
+  emit('hud');
+});

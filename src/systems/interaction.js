@@ -3,10 +3,10 @@ import { G, pos, frozen } from '../core/context.js';
 import { on, emit } from '../core/events.js';
 import { $, dist, fmt } from '../core/utils.js';
 import { saveState } from '../core/state.js';
-import { ECON, TIME, PRICES } from '../data/config.js';
+import { ECON, TIME, PRICES, RENT } from '../data/config.js';
 import { VEH } from '../data/vehicles.js';
 import { jobOf } from '../data/jobs.js';
-import { placeOf, LANDMARKS, KIOSKS } from '../data/locations.js';
+import { placeOf, LANDMARKS, KIOSKS, PROPERTIES } from '../data/locations.js';
 import { vForward } from '../entities/vehicles.js';
 import { applyPet } from '../entities/animals.js';
 import { toast } from '../ui/feedback.js';
@@ -25,6 +25,7 @@ const nearKind = (kind, r) => LANDMARKS.find(l => l.kind === kind && dist(pos(),
 const nearKiosk = () => !G.inCar && KIOSKS.some(([x, z]) => dist(G.player.position, { x, z }) < 4);
 const nearNight = () => !G.inCar && G.state.settings.mature !== false && venueOpen() && (G.nightlife || []).find(n => dist(G.player.position, n) < 3.5);
 export const nearHome = () => { const h = homeProp(); return !!h && !G.inCar && dist(G.player.position, h.door) < 6; };
+const nearGate = () => !G.inCar && PROPERTIES.find(p => p.id !== G.state.home && dist(G.player.position, p.door) < 6);
 const nearPump = () => G.inCar && (dist(pos(), placeOf('ladipo')) < 16 || dist(pos(), placeOf('fuel')) < 16);
 const venueOpen = () => G.state.clock >= TIME.venueOpen || G.state.clock < TIME.venueClose;
 const nearYaba = () => !G.inCar && !missionActive() && dist(pos(), placeOf('yaba')) < 11;
@@ -73,6 +74,34 @@ function hookupDialog(n) {
     { label: 'Not tonight.', reply: 'Your loss, baby.', apply() {} },
   ], ch => { ch.apply(); emit('hud'); });
 }
+// Property agent at the gate: rent for a lease, or buy from the landlord. Exported for the Property app.
+export function rentProperty(p) {
+  const s = G.state, fee = Math.round(p.rent * RENT.agentFeeRate);
+  if (!pay(p.rent + fee, `Rent + agent fee · ${p.name}`)) return toast(`You need ${fmt(p.rent + fee)} (rent + ${fmt(fee)} agent fee)`);
+  if (s.rented && s.home === s.rented.id) s.home = null;
+  s.rented = { id: p.id, until: s.day + RENT.leaseDays }; s.home = p.id;
+  toast(`Lease signed · ${p.type} for ${RENT.leaseDays} days`);
+  msg('landlord', `Welcome. ${p.type} na yours for ${RENT.leaseDays} days. No late rent, no wahala. Agent Kunle don collect him ${fmt(fee)}.`);
+  emit('hud');
+}
+export function buyProperty(p) {
+  const s = G.state;
+  if (!p.buy) return toast('This one na rent only');
+  if (!pay(p.buy, `Bought ${p.name}`)) return toast(`You need ${fmt(p.buy)} across cash and bank`);
+  s.props.push(p.id); if (s.rented?.id === p.id) s.rented = null; if (!s.home) s.home = p.id;
+  toast(`${p.name} is yours`);
+  msg('landlord', `Papers signed. ${p.name} na your own now. Collect rent from tenants if you no wan live there.`);
+  emit('hud');
+}
+function agentDialog(p) {
+  const s = G.state, owned = s.props.includes(p.id), renting = s.rented?.id === p.id, fee = Math.round(p.rent * RENT.agentFeeRate);
+  const lines = [{ s: 'agent', t: owned ? `${p.name} — this one na your own. You wan move in?` : renting ? `Your lease still dey run, ${s.rented.until - s.day} days left.` : `${p.type} for ${fmt(p.rent)} per ${RENT.leaseDays} days${p.buy ? `, or buy am outright for ${fmt(p.buy)}` : ''}. Agent fee na ${fmt(fee)}.` }];
+  const choices = [];
+  if (owned || renting) choices.push({ label: 'Make this my home', apply() { s.home = p.id; s.let = s.let.filter(id => id !== p.id); toast('Home updated'); } });
+  else { choices.push({ label: `Rent · ${fmt(p.rent + fee)}`, apply() { rentProperty(p); } }); if (p.buy) choices.push({ label: `Buy · ${fmt(p.buy)}`, apply() { buyProperty(p); } }); }
+  choices.push({ label: 'Just looking.', apply() {} });
+  startDialog(lines, choices, ch => { ch.apply(); emit('hud'); });
+}
 function fadeOut(then) {
   G.sleeping = true; $('sleepfade').classList.add('on');
   setTimeout(() => { then(); setTimeout(() => { $('sleepfade').classList.remove('on'); G.sleeping = false; }, 400); }, 800);
@@ -87,6 +116,7 @@ export function interact() {
   if (j && dist(p, jobPos(j)) < 9) { G.working = { job: j, t: 0 }; return; }
   if (nearHome()) { sleep(homeProp()); return; }
   if (!G.inCar) {
+    const gate = nearGate(); if (gate) { agentDialog(gate); return; }
     const night = nearNight(); if (night) { hookupDialog(night); return; }
     if (nearKiosk()) { posDialog(); return; }
     if (nearYaba()) { petDialog(); return; }
@@ -140,6 +170,7 @@ export function promptFor() {
   if (j && dist(p, jobPos(j)) < 9) return { key: 'E', text: `Start shift · ${j.title}` };
   if (nearHome()) return { key: 'E', text: 'Sleep · restore and skip to morning' };
   if (!G.inCar) {
+    const gate = nearGate(); if (gate) return { key: 'E', text: `Agent · ${gate.type} ${G.state.props.includes(gate.id) || G.state.rented?.id === gate.id ? '(yours)' : 'to let'}` };
     const night = nearNight(); if (night) return { key: 'E', text: `${night.name} · talk` };
     if (nearKiosk()) return { key: 'E', text: 'POS agent · cash, water, suya' };
     if (nearYaba()) return { key: 'E', text: 'Mama Nkechi · pets and provisions' };

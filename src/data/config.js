@@ -8,3 +8,4 @@ export const LAW = { pursuitHeat: 3, bustSeconds: 2.5, ticketKmh: 90, checkpoint
 export const LEVELS = [[1, 'Newcomer'], [3, 'Hustler'], [6, 'Entrepreneur'], [10, 'Mogul']];
 export const levelTitle = lvl => LEVELS.filter(([n]) => lvl >= n).pop()[1];
 export const UNLOCKS = { 2: 'Businesses and Property unlocked', 3: 'Hustler rank — more respect on the street', 6: 'Entrepreneur rank' };
+export const RENT = { agentFeeRate: 0.1, leaseDays: 30, tenantShare: 1 / 30 };   // tenants pay rent/30 per game day

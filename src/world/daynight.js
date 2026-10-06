@@ -7,14 +7,14 @@ import { TIME } from '../data/config.js';
 
 // Keyframes: [hour, fog, sunColor, sunI, hemiSky, hemiGround, hemiI, fogNear, fogFar, skyTop, skyHorizon]
 const SKY = [
-  [0, 0x0b1424, 0x8fa6ff, 0.12, 0x2a3a66, 0x0b1410, 0.5, 60, 190, 0x050a16, 0x16213a],
-  [5, 0x0b1424, 0x8fa6ff, 0.12, 0x2a3a66, 0x0b1410, 0.5, 60, 190, 0x050a16, 0x16213a],
+  [0, 0x141c30, 0x9fb4ff, 0.9, 0x6a7fb0, 0x24302a, 1.35, 70, 210, 0x070c1a, 0x1c2a4a],
+  [5, 0x141c30, 0x9fb4ff, 0.9, 0x6a7fb0, 0x24302a, 1.35, 70, 210, 0x070c1a, 0x1c2a4a],
   [6.5, 0xe39a6a, 0xffa870, 1.8, 0x9fb0c8, 0x2a2a20, 1.1, 90, 230, 0x5a6ea0, 0xf0a070],
   [8, 0xbcd8e6, 0xffe4ae, 3.4, 0xe7f5ff, 0x4a5a45, 1.6, 110, 260, 0x4f8fc9, 0xbcd8e6],
   [16.5, 0xbcd8e6, 0xffe4ae, 3.2, 0xe7f5ff, 0x4a5a45, 1.5, 110, 260, 0x4f8fc9, 0xbcd8e6],
   [18.5, 0xe0854f, 0xff8f4a, 1.6, 0xc9a08a, 0x2a2420, 1.0, 90, 230, 0x3e3d78, 0xf08a4f],
-  [20, 0x0b1424, 0x8fa6ff, 0.12, 0x2a3a66, 0x0b1410, 0.5, 60, 190, 0x050a16, 0x16213a],
-  [24, 0x0b1424, 0x8fa6ff, 0.12, 0x2a3a66, 0x0b1410, 0.5, 60, 190, 0x050a16, 0x16213a],
+  [20, 0x141c30, 0x9fb4ff, 0.9, 0x6a7fb0, 0x24302a, 1.35, 70, 210, 0x070c1a, 0x1c2a4a],
+  [24, 0x141c30, 0x9fb4ff, 0.9, 0x6a7fb0, 0x24302a, 1.35, 70, 210, 0x070c1a, 0x1c2a4a],
 ];
 const cA = new THREE.Color(), cB = new THREE.Color();
 const lerpC = (a, b, t) => cA.set(a).lerp(cB.set(b), t);
@@ -45,10 +45,10 @@ export function applySky() {
   if (sunDisc) { sunDisc.visible = el > -0.05; sunDisc.position.set(Math.cos(az) * 420, el * 400, 160); sunDisc.material.color.copy(sun.color); }
   const night = isNight(), out = !!G.outage;
   if (clouds) { const cc = night ? 0x2a3550 : 0xffffff; for (const c of clouds) c.material.color.set(cc); }
-  for (const m of lamps) { m.emissive.set(0xffe7ad); m.emissiveIntensity = night && !out ? 1.6 : 0; }
-  for (const m of windows) m.emissiveIntensity = out ? 0.08 : night ? 1.1 : h < 7.5 || h > 17.5 ? 0.45 : 0;
-  for (const s of glows) s.visible = night && !out;
-  if (out) { hemi.intensity *= 0.6; sun.intensity *= 0.7; }
+  for (const m of lamps) { m.emissive.set(0xffe7ad); m.emissiveIntensity = night ? 1.6 : 0; }   // solar street lights: NEPA cannot touch them
+  for (const m of windows) { m.emissive.set(0xffd9a0); m.emissiveIntensity = out ? 0.06 : night ? 0.62 : h < 7.5 || h > 17.5 ? 0.3 : 0; }
+  for (const s of glows) s.visible = night;
+  if (out) hemi.intensity *= 0.75;
   if (water) water.material.color.set(night ? 0x0a2a3a : 0x14758e);
 }
 
@@ -56,7 +56,7 @@ let tick = 0;
 export function updateClock(dt) {
   const s = G.state;
   s.clock += dt * TIME.daySpeed;
-  if (s.clock >= 24) { s.clock -= 24; s.day++; }
+  if (s.clock >= 24) { s.clock -= 24; s.day++; emit('day', s.day); }
   tick += dt;
   if (tick > 0.5) { tick = 0; applySky(); emit('clock'); }
 }

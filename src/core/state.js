@@ -9,7 +9,7 @@ export const DEFAULT = {
   inv: { water: 2, suya: 1 }, msgs: [], unread: 0, tx: [], payIn: ECON.payCycle,
   clock: TIME.startClock, day: 1,
   look: { skin: 2, hair: 0, shirt: 0, pants: 0 },
-  pet: null, prayedDay: 0, partyDay: 0,
+  pet: null, prayedDay: 0, partyDay: 0, rented: null, let: [],
   settings: { sens: 1, shadows: true, rotateMap: true, hints: true, touch: 'auto', mature: true },
 };
 

@@ -51,12 +51,15 @@ export const BUSSTOPS = [
   { id: 'mushinstop', name: 'Mushin Bus Stop', short: 'MUSHIN B/S', x: -30, z: -77, agberos: 1 },
 ];
 
+// Housing (PRD §10): rent through an agent or buy from the landlord; owned homes can be let to tenants.
+// style: bungalow | storey | highrise. rent is per lease (30 game days); buy may be null (rent only).
 export const PROPERTIES = [
-  { id: 'room', name: 'Surulere Room', desc: 'A room in a face-me-I-face-you compound. Somewhere to sleep and save.', price: 250000, x: -96, z: 24, sign: 'ROOM TO LET', c: '#6e5a3a', h: 6 },
-  { id: 'apt', name: 'Lagoon View Apartment', desc: 'One bedroom with a lagoon view. Sleeping here also clears your heat by one.', price: 900000, x: -120, z: 72, sign: 'LAGOON VIEW APTS', c: '#2f5a66', h: 14, perk: 'heat1' },
-  { id: 'house', name: 'Palm Court Townhouse', desc: 'A gated townhouse. Sleeping here clears all heat and fills the tank of your last vehicle.', price: 2400000, x: 96, z: 96, sign: 'PALM COURT', c: '#7a5a4a', h: 8, perk: 'heat0' },
+  { id: 'room', name: 'Room · Face-me-I-face-you', type: 'Room', desc: 'One room in a shared compound off Adelabu Street. Shared bathroom, landlord lives upstairs. Rent only.', rent: 60000, buy: null, x: -96, z: 24, sign: 'ROOM TO LET', c: '#c9b48a', h: 3.6, style: 'bungalow' },
+  { id: 'selfcon', name: 'Self-contain · Ogunlana Drive', type: 'Self-contained', desc: 'Your own room, kitchen corner and bathroom in a fenced compound. Sleeping here clears one heat.', rent: 150000, buy: 900000, x: -120, z: 72, sign: 'SELF-CON TO LET', c: '#a8b0b8', h: 7, style: 'storey', perk: 'heat1' },
+  { id: 'flat', name: '2-Bedroom Flat · Bode Thomas', type: 'Flat', desc: 'Second-floor flat in a three-storey block with a gate man. Sleeping here clears one heat.', rent: 400000, buy: 2400000, x: -24, z: 96, sign: 'FLATS TO LET', c: '#b9a98f', h: 10.5, style: 'storey', perk: 'heat1' },
+  { id: 'duplex', name: 'Duplex · Palm Court, Adeniran Ogunsanya', type: 'Duplex', desc: 'Gated duplex with parking. Sleeping here clears all heat and fills your last vehicle.', rent: 1200000, buy: 6000000, x: 96, z: 96, sign: 'PALM COURT', c: '#d9d2c2', h: 8, style: 'storey', perk: 'heat0' },
 ];
-for (const p of PROPERTIES) p.door = { x: p.x, z: p.z + 8.5 };
+for (const p of PROPERTIES) p.door = { x: p.x, z: p.z - 10.5 };
 
 // Roadside kiosks double as POS agents (cash withdrawal, pure water, suya).
 export const KIOSKS = [[-20, 25], [20, -28], [-56, 20], [88, -22]];
