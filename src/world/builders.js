@@ -24,6 +24,7 @@ export function cyl(x, z, r, h, c, name = 'prop', y = 0, seg = 12, rTop = r) {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(rTop, r, h, seg), mat(c));
   m.position.set(x, y + h / 2, z);
   m.castShadow = true; m.receiveShadow = true; m.userData.name = name;
+  if (name === 'palm' || name === 'pole') colliders.push({ x, z, w: r * 2 + 0.3, d: r * 2 + 0.3 });
   G.scene.add(m);
   return m;
 }

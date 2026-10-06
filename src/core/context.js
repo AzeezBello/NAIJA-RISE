@@ -11,4 +11,5 @@ export const G = {
   debug: location.hash.includes('debug'),
 };
 export const frozen = () => !!(G.working || G.dialog || G.sleeping);
-export const pos = () => (G.inCar ? G.car.position : G.player.position);
+const FAR = { x: 9999, y: 0, z: 9999 };
+export const pos = () => (G.inCar ? G.car.position : G.player ? G.player.position : FAR);

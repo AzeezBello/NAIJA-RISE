@@ -1,6 +1,6 @@
 import { G, pos } from '../core/context.js';
 import { $, clampN } from '../core/utils.js';
-import { ROADS, LANDMARKS, BUSSTOPS, PROPERTIES, WATER } from '../data/locations.js';
+import { ROADS, ROAD_NAMES, LANDMARKS, BUSSTOPS, PROPERTIES, WATER } from '../data/locations.js';
 import { BUSINESSES } from '../data/businesses.js';
 import { VEH } from '../data/vehicles.js';
 import { vForward } from '../entities/vehicles.js';
@@ -78,6 +78,9 @@ export function phoneMapDraw() {
   pctx.fillStyle = '#f5c518'; pctx.font = '700 8px Inter,sans-serif'; for (const b of BUSSTOPS) pctx.fillText(b.short, W / 2 + b.x * s, W / 2 + (b.z + 3) * s);
   pctx.fillStyle = '#bfe8cf'; pctx.font = '700 9px Inter,sans-serif';
   for (const pr of PROPERTIES) if (G.state.props.includes(pr.id)) pctx.fillText(pr.id === G.state.home ? 'HOME' : pr.name.toUpperCase(), W / 2 + pr.x * s, W / 2 + (pr.z + 8) * s);
+  pctx.fillStyle = '#c9d6cf'; pctx.font = '600 8px Inter,sans-serif'; pctx.textBaseline = 'middle';
+  for (const z of ROADS.h) pctx.fillText(ROAD_NAMES.h[z].toUpperCase(), W / 2 + 108 * s, W / 2 + (z - 7) * s);
+  for (const x of ROADS.v) { pctx.save(); pctx.translate(W / 2 + (x + 7) * s, W / 2 + 110 * s); pctx.rotate(-Math.PI / 2); pctx.fillText(ROAD_NAMES.v[x].toUpperCase(), 0, 0); pctx.restore(); }
   pctx.fillStyle = '#9fd8e6'; pctx.font = '700 11px Inter,sans-serif'; pctx.save(); pctx.translate(W / 2 + WATER.x * s + 20, W / 2); pctx.rotate(-Math.PI / 2); pctx.textBaseline = 'middle'; pctx.fillText('LAGOON', 0, 0); pctx.restore();
 }
 export function bindPhoneMap() {

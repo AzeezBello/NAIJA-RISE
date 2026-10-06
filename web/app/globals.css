@@ -1,0 +1,24 @@
+/* Shared game styles live in ../../styles so the static build and the Next.js shell look identical. */
+@import '../../styles/base.css';
+@import '../../styles/hud.css';
+@import '../../styles/phone.css';
+@import '../../styles/title.css';
+@import '../../styles/touch.css';
+
+.site{min-height:100vh;display:flex;flex-direction:column;background:radial-gradient(90% 60% at 50% 0%,#143f2b 0,#07100e 60%);color:var(--text)}
+.site header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;max-width:1100px;width:100%;margin:0 auto}
+.site .logo{font-size:22px;font-weight:950;letter-spacing:-.06em}
+.site .logo b{color:var(--green);font-family:"Permanent Marker",Inter,cursive;font-weight:400;letter-spacing:0}
+.site nav a{color:#dfe8e3;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:.08em;margin-left:18px}
+.hero{display:grid;grid-template-columns:1.1fr 1fr;gap:32px;align-items:center;max-width:1100px;margin:30px auto;padding:0 28px;width:100%}
+.hero h1{font-size:clamp(40px,7vw,76px);line-height:1;letter-spacing:-.06em;margin:0 0 18px}
+.hero h1 b{color:var(--green);font-family:"Permanent Marker",Inter,cursive;font-weight:400;letter-spacing:0}
+.hero p{font-size:16px;color:#c9d6cf;line-height:1.6;max-width:520px}
+.hero .cta{display:flex;gap:12px;margin-top:22px;flex-wrap:wrap}
+.hero .cta a{display:inline-block;text-decoration:none}
+.hero .canvas{height:420px;border-radius:24px;overflow:hidden;border:1px solid var(--line);box-shadow:0 30px 80px #000a;background:#0a1612}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;max-width:1100px;margin:10px auto 60px;padding:0 28px;width:100%}
+.features .card h6{font-size:13px}
+.play{position:fixed;inset:0;background:var(--ink)}
+.play #game,.play #ui{position:absolute;inset:0}
+@media (max-width:860px){.hero{grid-template-columns:1fr}.hero .canvas{height:300px}}

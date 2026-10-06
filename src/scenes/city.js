@@ -28,7 +28,7 @@ let built = false;
 export const CityScene = {
   name: 'city',
   enter() {
-    const root = $('ui');
+    const root = G.uiRoot || $('ui');
     if (!built) {
       built = true;
       createPlayer();

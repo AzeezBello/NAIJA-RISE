@@ -7,7 +7,7 @@ import { toast } from '../feedback.js';
 import { tx, msg } from '../../systems/economy.js';
 
 export default {
-  id: 'businesses', title: 'Business', header: 'Businesses', tint: '#9a4a3c',
+  id: 'businesses', minLevel: 2, title: 'Business', header: 'Businesses', tint: '#9a4a3c',
   icon: '<svg viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M5 11v9h14v-9M10 20v-5h4v5"/></svg>',
   render(body) {
     const s = G.state, total = bizIncome(s);

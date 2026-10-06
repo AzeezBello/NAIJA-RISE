@@ -3,7 +3,7 @@ import { G } from '../core/context.js';
 import { pick } from '../core/utils.js';
 import { box, cyl, building, sign, mat, occluders, colliders, lamps, glows } from './builders.js';
 import { asphaltTexture, groundTexture, concreteTexture, cloudTexture, glowTexture } from './textures.js';
-import { ROADS, LANDMARKS, BUSSTOPS, PROPERTIES, KIOSKS, RESERVED, WATER } from '../data/locations.js';
+import { ROADS, ROAD_NAMES, LANDMARKS, BUSSTOPS, PROPERTIES, KIOSKS, RESERVED, WATER } from '../data/locations.js';
 
 const PALETTE = [0x6f7d84, 0x8a7d6a, 0x9c8f7a, 0x7a8ba0, 0x8f6b63, 0x6e8a8a, 0xa08866, 0xb9a98f];
 const SHOP_SIGNS = ['SHOP', 'PHONE', 'BUKA', 'FASHION', 'MART', 'AUTO', 'POS', 'BET9JA', 'PHARMACY', 'BARBER'];
@@ -26,7 +26,7 @@ function sidewalks(concrete) {
 }
 
 function streetLight(x, z, armDir) {
-  cyl(x, z, 0.12, 7, 0x6c7378, 'prop', 0, 8, 0.09);
+  cyl(x, z, 0.12, 7, 0x6c7378, 'pole', 0, 8, 0.09);
   const arm = box(x + armDir.x * 1.1, z + armDir.z * 1.1, Math.abs(armDir.x) * 2.2 + 0.18, Math.abs(armDir.z) * 2.2 + 0.18, 0.14, 0x6c7378, 'prop', 6.9);
   const head = box(x + armDir.x * 2.1, z + armDir.z * 2.1, 0.7, 0.7, 0.22, 0xfff1c9, 'prop', 6.75); lamps.push(head.material);
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: streetLight.glow, transparent: true, depthWrite: false, opacity: 0.85 }));
@@ -92,7 +92,7 @@ function buildStadium(l) {
   ring.rotation.x = Math.PI / 2; ring.position.set(l.x, 9.6, l.z); ring.castShadow = true;
   G.scene.add(ring);
   for (const [ox, oz] of [[-24, -24], [24, -24], [-24, 24], [24, 24]]) {
-    cyl(l.x + ox, l.z + oz, 0.35, 18, 0x9aa0a6);
+    cyl(l.x + ox, l.z + oz, 0.35, 18, 0x9aa0a6, 'pole');
     lamps.push(box(l.x + ox, l.z + oz, 2.4, 0.6, 1.2, 0xfff2c8, 'prop', 18).material);
   }
   sign(l.name.toUpperCase(), l.x, 13, l.z + 23, l.sign, 16, 4, 'rgba(10,40,30,.95)');
@@ -126,7 +126,7 @@ function buildLandmarks() {
     box(p.x, p.z + 6.05, 2.2, 0.15, 2.6, 0x1f2a24, 'prop');   // door
   }
   for (const b of BUSSTOPS) {
-    for (const ox of [-3, 3]) cyl(b.x + ox, b.z, 0.12, 3.1, 0xc9ced3);
+    for (const ox of [-3, 3]) cyl(b.x + ox, b.z, 0.12, 3.1, 0xc9ced3, 'pole');
     box(b.x, b.z, 7.4, 2.6, 0.18, 0xf5c518, 'prop', 3.1);        // roof
     box(b.x, b.z + 0.6, 6, 0.5, 0.5, 0x6b5a3a, 'prop', 0.5);     // bench
     cyl(b.x + 4.6, b.z - 1, 0.08, 3.6, 0xc9ced3);
@@ -136,7 +136,7 @@ function buildLandmarks() {
   // filling station: canopy on pillars with pumps; church cross and mosque dome/minaret
   { const f = LANDMARKS.find(l => l.id === 'fuel'); for (const ox of [-6, 6]) for (const oz of [-4, 4]) cyl(f.x + ox, f.z + 12 + oz, 0.25, 5, 0xd0d0d0); box(f.x, f.z + 12, 16, 11, 0.5, 0xb32020, 'prop', 5); for (const ox of [-3, 0, 3]) { box(f.x + ox, f.z + 12, 0.8, 0.5, 1.6, 0xe8e8e8, 'prop'); } sign('FUEL · ₦', f.x, 6.4, f.z + 17.6, '#ffffff', 5, 1.2, 'rgba(179,32,32,.95)'); }
   { const c = LANDMARKS.find(l => l.id === 'church'); box(c.x, c.z, 3, 3, 6, 0xd9d2c2, 'prop', c.h); box(c.x, c.z, 0.5, 0.5, 3, 0xffc52f, 'prop', c.h + 6); box(c.x, c.z, 2, 0.5, 0.5, 0xffc52f, 'prop', c.h + 7.6); }
-  { const m = LANDMARKS.find(l => l.id === 'mosque'); const dome = new THREE.Mesh(new THREE.SphereGeometry(5, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x3dd39a)); dome.position.set(m.x, m.h, m.z); dome.castShadow = true; G.scene.add(dome); cyl(m.x + 10, m.z - 5, 1, 18, 0xe8e8e8, 'prop', 0, 10); const cap = new THREE.Mesh(new THREE.ConeGeometry(1.4, 2.4, 10), mat(0x3dd39a)); cap.position.set(m.x + 10, 19.2, m.z - 5); G.scene.add(cap); }
+  { const m = LANDMARKS.find(l => l.id === 'mosque'); const dome = new THREE.Mesh(new THREE.SphereGeometry(5, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x3dd39a)); dome.position.set(m.x, m.h, m.z); dome.castShadow = true; G.scene.add(dome); cyl(m.x + 10, m.z - 5, 1, 18, 0xe8e8e8, 'pole', 0, 10); const cap = new THREE.Mesh(new THREE.ConeGeometry(1.4, 2.4, 10), mat(0x3dd39a)); cap.position.set(m.x + 10, 19.2, m.z - 5); G.scene.add(cap); }
   { const n = LANDMARKS.find(l => l.id === 'nepa'); for (const ox of [-6, 6]) { cyl(n.x + ox, n.z + 10, 0.2, 10, 0x6c7378); box(n.x + ox, n.z + 10, 2.4, 0.3, 0.3, 0x6c7378, 'prop', 9.6); } }
   // Shitta roundabout island at the -72/0 junction
   cyl(-72, 0, 2.6, 0.5, 0x8d9a8a, 'prop', 0, 24); cyl(-72, 0, 0.3, 4, 0x5d402b, 'prop', 0.5);
@@ -159,6 +159,16 @@ function buildPalms() {
   }
 }
 
-export function buildDistrict() { buildSky(); buildGround(); streetLights(); buildBlocks(); buildLandmarks(); buildPalms(); }
+// Street-name signs at every intersection: a pole with the two road names.
+function streetSigns() {
+  for (const z of ROADS.h) for (const x of ROADS.v) {
+    const sx = x + VROAD_W[x] / 2 + 2.5, sz = z - ROAD_W[z] / 2 - 2.5;
+    cyl(sx, sz, 0.08, 3.4, 0x3a8a4a, 'pole');
+    sign(ROAD_NAMES.h[z].toUpperCase(), sx, 3.2, sz, '#ffffff', 6.5, 0.8, 'rgba(20,90,50,.96)');
+    sign(ROAD_NAMES.v[x].toUpperCase(), sx, 2.4, sz, '#ffffff', 6.5, 0.8, 'rgba(20,90,50,.96)');
+  }
+}
+
+export function buildDistrict() { buildSky(); buildGround(); streetLights(); streetSigns(); buildBlocks(); buildLandmarks(); buildPalms(); }
 export function updateClouds(dt) { for (const c of G.clouds || []) { c.position.x += dt * 1.2; if (c.position.x > 280) c.position.x = -280; } }
 export { ROADS };

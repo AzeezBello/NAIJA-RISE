@@ -8,7 +8,7 @@ import { tx, msg } from '../../systems/economy.js';
 import { homeProp } from '../../systems/navigation.js';
 
 export default {
-  id: 'property', title: 'Property', header: 'My Properties', tint: '#3b6f3a',
+  id: 'property', minLevel: 2, title: 'Property', header: 'My Properties', tint: '#3b6f3a',
   icon: '<svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h14V10M10 20v-6h4v6"/></svg>',
   render(body) {
     const s = G.state, h = homeProp();

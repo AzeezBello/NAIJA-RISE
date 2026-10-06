@@ -4,3 +4,7 @@ export const ECON = { payCycle: 60, refuel: 3000, startCash: 50000, startBank: 1
 export const TIME = { daySpeed: 1 / 45, startClock: 8.5, venueOpen: 20, venueClose: 4 };   // 1 game hour per 45 real seconds
 export const WORLD = { bounds: 145, spawn: { x: 0, z: 34 } };
 export const LAW = { pursuitHeat: 3, bustSeconds: 2.5, ticketKmh: 90, checkpointKmh: 60 };
+// Life Level titles (PRD §6). Apps and content can require a level via minLevel.
+export const LEVELS = [[1, 'Newcomer'], [3, 'Hustler'], [6, 'Entrepreneur'], [10, 'Mogul']];
+export const levelTitle = lvl => LEVELS.filter(([n]) => lvl >= n).pop()[1];
+export const UNLOCKS = { 2: 'Businesses and Property unlocked', 3: 'Hustler rank — more respect on the street', 6: 'Entrepreneur rank' };

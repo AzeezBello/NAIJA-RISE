@@ -2,13 +2,12 @@ import * as THREE from 'three';
 import { G } from '../core/context.js';
 import { emit } from '../core/events.js';
 import { rnd, pick } from '../core/utils.js';
-import { ROADS, placeOf } from '../data/locations.js';
+import { ROADS, placeOf, roadName } from '../data/locations.js';
 import { mat } from '../world/builders.js';
 import { notify } from '../ui/feedback.js';
 import { msg } from './economy.js';
 
 // Dynamic city events: NEPA power outages, go-slow traffic jams, Owambe parties.
-const JAM_NAMES = { 'h0': 'Western Avenue', 'h-66': 'Ojuelegba axis', 'v0': 'Bode Thomas', 'v72': 'Adeniran Ogunsanya', 'v-72': 'Shitta road' };
 let outageT = 0, jamT = 0, partyDay = 0, crowd = [];
 
 export const powerOut = () => !!G.outage;
@@ -24,7 +23,7 @@ function endOutage() { G.outage = 0; notify('NEPA', 'Up NEPA! Light don come bac
 function startJam() {
   const axis = pick(['h', 'v']), k = pick(axis === 'h' ? ROADS.h : ROADS.v), from = rnd(-120, 60);
   G.jam = { axis, k, from, to: from + 60, until: rnd(60, 120) };
-  notify('Traffic', `Go-slow on ${JAM_NAMES[axis + k] || 'the main road'} — danfos dey crawl. Find another route.`);
+  notify('Traffic', `Go-slow on ${roadName(axis, k)} — danfos dey crawl. Find another route.`);
 }
 
 function spawnCrowd() {

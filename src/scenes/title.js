@@ -14,7 +14,7 @@ let t = 0;
 export const TitleScene = {
   name: 'title',
   enter() {
-    const root = $('ui');
+    const root = G.uiRoot || $('ui');
     root.insertAdjacentHTML('beforeend', `
     <div id="title" class="title">
       <div class="tcard">

@@ -4,7 +4,7 @@ import { fmt } from '../core/utils.js';
 import { notify, toast } from '../ui/feedback.js';
 import { contactOf } from '../data/characters.js';
 import { bizIncome } from '../data/businesses.js';
-import { ECON } from '../data/config.js';
+import { ECON, UNLOCKS } from '../data/config.js';
 
 export function tx(label, amount) {
   G.state.tx.unshift({ label, amount, t: Date.now() });
@@ -29,8 +29,8 @@ export function xp(n) {
   s.xp += n;
   while (s.xp >= 100) {
     s.xp -= 100; s.level++;
-    toast(`LEVEL UP — Level ${s.level}`);
-    msg('bank', `Congratulations on reaching Level ${s.level}. New opportunities unlocked.`);
+    toast(`LEVEL UP — Level ${s.level}${UNLOCKS[s.level] ? ' · ' + UNLOCKS[s.level] : ''}`);
+    msg('bank', `Congratulations on reaching Level ${s.level}. ${UNLOCKS[s.level] || 'Keep rising.'}`);
   }
   emit('mission:refresh'); emit('hud');
 }

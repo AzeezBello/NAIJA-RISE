@@ -2,7 +2,7 @@ import { G, pos } from '../core/context.js';
 import { on } from '../core/events.js';
 import { $, esc, fmt, dist } from '../core/utils.js';
 import { saveState } from '../core/state.js';
-import { GAME } from '../data/config.js';
+import { GAME, levelTitle } from '../data/config.js';
 import { MISSIONS } from '../data/missions.js';
 import { VEH } from '../data/vehicles.js';
 import { Key, StatBar } from './components.js';
@@ -24,7 +24,7 @@ export function buildHud(root) {
       <canvas id="portrait" class="portrait" width="112" height="112"></canvas>
       <div class="pinfo">
         <div class="pname" id="pName"></div>
-        <div class="plevel"><span>LVL <b id="pLevel">1</b></span><span id="pXpNum">0 / 100 XP</span></div>
+        <div class="plevel"><span>LVL <b id="pLevel">1</b> · <em id="pTitle">Newcomer</em></span><span id="pXpNum">0 / 100 XP</span></div>
         <div class="xpbar"><i id="pXp"></i></div>
       </div>
     </section>
@@ -73,7 +73,7 @@ export function refreshHud() {
   $('cash').textContent = fmt(s.cash); $('bank').textContent = fmt(s.bank);
   $('heat').innerHTML = [0, 1, 2, 3, 4].map(i => `<i class="${i < s.heat ? 'on' : ''}"></i>`).join('');
   $('heat').classList.toggle('hot', wanted()); $('heatLabel').textContent = wanted() ? 'Wanted' : 'Heat';
-  $('pName').textContent = s.name; $('pLevel').textContent = s.level; $('pXpNum').textContent = `${s.xp} / 100 XP`; $('pXp').style.width = s.xp + '%';
+  $('pName').textContent = s.name; $('pLevel').textContent = s.level; $('pTitle').textContent = levelTitle(s.level); $('pXpNum').textContent = `${s.xp} / 100 XP`; $('pXp').style.width = s.xp + '%';
   const m = curMission();
   $('missionTitle').textContent = s.done ? 'Slice complete' : m.title;
   $('objective').textContent = s.done ? 'Lagos is yours. Work, bank, build.' : m.obj();
