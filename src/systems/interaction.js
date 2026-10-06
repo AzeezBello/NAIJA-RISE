@@ -7,6 +7,7 @@ import { ECON, TIME, PRICES, RENT, DEALER } from '../data/config.js';
 import { VEH } from '../data/vehicles.js';
 import { jobOf } from '../data/jobs.js';
 import { placeOf, LANDMARKS, KIOSKS, PROPERTIES } from '../data/locations.js';
+import { contactOf } from '../data/characters.js';
 import { vForward, spawnOwned } from '../entities/vehicles.js';
 import { saveState as persist } from '../core/state.js';
 import { applyPet } from '../entities/animals.js';
@@ -46,7 +47,7 @@ export function toggleCar() {
     toast('Back on foot'); return;
   }
   const c = nearestCar(); if (!c) return;
-  G.inCar = true; G.player.visible = false; G.car = c; G.carSpeed = 0; G.camYaw = c.rotation.y;
+  G.inCar = true; G.player.visible = false; G.car = c; G.carSpeed = 0; G.camBlend = 1;
   if (!c.userData.owned && !c.userData.stolen) { c.userData.stolen = true; addHeat(1, 'Stolen vehicle'); addRep('street', 2); addRep('public', -2); }
   toast(`${VEH[c.userData.type].name}${c.userData.owned ? ' · yours' : ' · not yours'} · W gas · S brake · A/D steer`);
 }
@@ -213,29 +214,29 @@ export function promptFor() {
   if (G.sleeping) return { text: '…' };
   if (G.dialog) return null;
   if (G.working) return { text: `Working · ${G.working.job.title}`, bar: G.working.t / G.working.job.dur };
-  if (G.task && !G.race) { const d = missionPos(); if (d && dist(p, d) < 13 && (G.task.type !== 'steal' || G.inCar)) return { key: 'E', text: G.task.type === 'steal' ? 'Hand over the sedan' : 'Deliver' }; }
-  if (missionAvailable() && !G.task && dist(p, missionPos()) < curMission().r) return { key: 'E', text: s.storyPaused ? 'Resume the story' : 'Talk' };
+  if (G.task && !G.race) { const d = missionPos(); if (d && dist(p, d) < 13 && (G.task.type !== 'steal' || G.inCar)) return { key: 'E', text: G.task.type === 'steal' ? 'Hand over the sedan' : `Deliver ${G.task.item === 'coldbox' ? 'the vaccine box' : G.task.item === 'cargo' ? 'the glassware' : 'the package'}` }; }
+  if (missionAvailable() && !G.task && dist(p, missionPos()) < curMission().r) { const who = contactOf(curMission().lines()[0].s)?.name || 'contact'; return { key: 'E', text: s.storyPaused ? `Resume with ${who}` : `Talk to ${who}` }; }
   const j = jobOf(s.job);
-  if (j && dist(p, jobPos(j)) < 9) return { key: 'E', text: `Start shift · ${j.title}` };
-  if (nearHome()) return { key: 'E', text: 'Sleep · restore and skip to morning' };
+  if (j && dist(p, jobPos(j)) < 9) return { key: 'E', text: `Start shift as ${j.title}` };
+  if (nearHome()) return { key: 'E', text: 'Enter home · sleep' };
   if (!G.inCar) {
-    const gate = nearGate(); if (gate) return { key: 'E', text: `Agent · ${gate.type} ${G.state.props.includes(gate.id) || G.state.rented?.id === gate.id ? '(yours)' : 'to let'}` };
-    const night = nearNight(); if (night) return { key: 'E', text: `${night.name} · talk` };
-    if (nearKiosk()) return { key: 'E', text: 'POS agent · cash, water, suya' };
-    if (nearYaba()) return { key: 'E', text: 'Mama Nkechi · pets and provisions' };
+    const gate = nearGate(); if (gate) return { key: 'E', text: `Talk to Agent Kunle · ${gate.type}${G.state.props.includes(gate.id) || G.state.rented?.id === gate.id ? ' (yours)' : ' to let'}` };
+    const night = nearNight(); if (night) return { key: 'E', text: `Talk to ${night.name}` };
+    if (nearKiosk()) return { key: 'E', text: 'Use POS kiosk' };
+    if (nearYaba()) return { key: 'E', text: 'Talk to Mama Nkechi' };
     const place = nearPlace(); if (place) return { key: 'E', text: placePrompt(place) };
-    if (nearDealer()) return { key: 'E', text: 'Dayo · buy or service a vehicle' };
-    if (nearRacer()) return { key: 'E', text: 'Speedy · street race (₦20,000 wager)' };
-    const bank = nearKind('bank', 11); if (bank) return { key: 'E', text: `${bank.name} · banking` };
-    const venue = nearKind('venue', 11); if (venue) return venueOpen() ? { key: 'E', text: `${venue.name} · ${fmt(venue.cost)}` } : { text: `${venue.name} · opens ${TIME.venueOpen}:00` };
-    const party = nearKind('owambe', 16); if (party) return owambeOn() ? { key: 'E', text: `Owambe · spray ${fmt(party.cost)}` } : { text: 'Owambe · tonight from 19:00' };
-    const worship = nearKind('worship', 12); if (worship) return { key: 'E', text: `${worship.name} · pray` };
-    const hotel = nearKind('hotel', 13); if (hotel) return { key: 'E', text: `Rent a room · ${fmt(hotel.cost)}` };
+    if (nearDealer()) return { key: 'E', text: 'Talk to Dayo · vehicles' };
+    if (nearRacer()) return { key: 'E', text: 'Talk to Speedy · race' };
+    const bank = nearKind('bank', 11); if (bank) return { key: 'E', text: 'Enter bank' };
+    const venue = nearKind('venue', 11); if (venue) return venueOpen() ? { key: 'E', text: `Enter ${venue.name} · ${fmt(venue.cost)}` } : { text: `${venue.name} opens ${TIME.venueOpen}:00` };
+    const party = nearKind('owambe', 16); if (party) return owambeOn() ? { key: 'E', text: `Join the owambe · ${fmt(party.cost)}` } : { text: 'Owambe tonight from 19:00' };
+    const worship = nearKind('worship', 12); if (worship) return { key: 'E', text: 'Enter and pray' };
+    const hotel = nearKind('hotel', 13); if (hotel) return { key: 'E', text: `Check in · ${fmt(hotel.cost)}` };
     const police = nearKind('police', 13); if (police && s.heat > 0) return { key: 'E', text: `Settle fine · ${fmt(s.heat * ECON.fineRate)}` };
-    const nepa = nearKind('nepa', 12); if (nepa) return { key: 'E', text: G.outage ? 'PHCN · pay for diesel ₦5,000' : 'PHCN office' };
+    const nepa = nearKind('nepa', 12); if (nepa) return { key: 'E', text: G.outage ? 'Pay for diesel · ₦5,000' : 'Enter PHCN office' };
   }
   if (nearPump()) return { key: 'E', text: `Refuel · ${fmt(ECON.refuel)}` };
-  if (G.inCar) return { key: 'F', text: 'Exit vehicle' };
+  if (G.inCar) return { key: 'F', text: `Exit ${VEH[G.car.userData.type].name}` };
   const c = nearestCar(); if (c) return { key: 'F', text: `Enter ${VEH[c.userData.type].name}` };
   return null;
 }

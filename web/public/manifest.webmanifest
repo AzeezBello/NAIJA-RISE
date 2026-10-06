@@ -1,0 +1,19 @@
+{
+  "name": "NAIJA RISE \u2014 Lagos",
+  "short_name": "NAIJA RISE",
+  "description": "Build your life. Build your empire. Survive the city.",
+  "start_url": "/play",
+  "scope": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#07100e",
+  "theme_color": "#07100e",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

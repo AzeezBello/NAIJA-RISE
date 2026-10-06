@@ -4,7 +4,7 @@ A browser-playable open-world life simulation set in a living Surulere, Lagos. O
 
 **Build your life. Build your empire. Survive the city.**
 
-See [PLAN.md](PLAN.md) for the product plan, what is done, and the next phase.
+See [PLAN.md](PLAN.md) for the product plan, what is done, and the next phase, and [DEPLOY.md](DEPLOY.md) for Vercel deployment.
 
 ## Play
 
@@ -33,6 +33,10 @@ Three.js and fonts load from CDNs in the static build, so an internet connection
 **Living City · Phase 1, streets** — every road has a class (expressway, highway, main, commercial, residential, market) that sets traffic speed, density and LASTMA speed limits. The Apapa–Oworonshoki Expressway runs along the north edge with a concrete median; Funsho Williams is a divided highway. Traffic lights at every junction cycle green, amber and red; traffic stops for them, and running a red near a LASTMA officer costs ₦5,000 or heat. Roadside vendors line Itire Road and the markets. Random road incidents drop an overturned keke into a lane and cause a go-slow.
 
 **Living City · Phase 2, places** — Surulere Fitness Gym (day pass, monthly membership, trainer, boxing once Fitness reaches 20), Chicken Republic (meals restore energy, a business lunch builds Business reputation), the Adeniran Ogunsanya Shopping Mall (outfits, a laptop, supermarket runs, barber, and a cinema with three Nollywood titles that trigger messages), Surulere Cyber Café (learn web design, graphics or coding, then take freelance gigs that pay double with a laptop), and street football at Teslim Balogun Stadium (friendlies, wagers, a neighbourhood tournament and the Lagos championship, with "Omo, you sabi ball!" opening a sponsor line). Every activity moves money, energy, skills, reputation and the clock.
+
+**The Lagos Experience HUD** — a commercial-game layout: brand, district and street top-left; clock, day/night icon and day counter top-right; the objective card with distance and a direction arrow above the minimap; a money and level card bottom-right with ₦ cash, bank, level title, XP and heat; health and energy bars with the interaction prompt bottom-centre. Prompts are explicit verbs: TALK TO BABA K, ENTER DANFO, ENTER GYM, DELIVER THE PACKAGE, CHECK IN, REFUEL.
+
+**Camera and controller feel** — the camera lags subtly on foot and tightens when driving, the look-at eases so it never swings, the FOV widens when sprinting or driving fast, entering a vehicle swings the camera behind it over a second instead of snapping, and occlusion pulls in quickly but eases back out. The player controller runs explicit states (idle, walk, run, turn, stop) with ease-in acceleration, a pivot on sharp turns, a sprint lean and a stronger run bob; the states are exposed for character animation later.
 
 **Your choice of life** — every story dialogue can be declined with "Not now — I go find another hustle". The story pauses, the objective card points you to jobs, courses, the gym and business, and the mission resumes when you return to the contact or call them from the phone.
 

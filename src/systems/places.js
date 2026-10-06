@@ -16,7 +16,7 @@ const hours = h => { s().clock = Math.min(23.95, s().clock + h); emit('clock'); 
 const done = ch => { ch.apply?.(); emit('hud'); };
 
 export function placePrompt(p) {
-  return { gym: `${p.name} · train`, restaurant: `${p.name} · eat`, mall: `${p.name} · shop, cinema`, cafe: `${p.name} · learn, freelance`, pitch: `${p.name} · street football`, vendor: 'Roadside vendor · pure water, snacks' }[p.kind];
+  return { gym: 'Enter gym', restaurant: `Enter ${p.name}`, mall: 'Enter mall', cafe: 'Enter cyber café', pitch: 'Join the football', vendor: 'Buy from vendor' }[p.kind];
 }
 
 export function openPlace(p) { ({ gym: gymMenu, restaurant: foodMenu, mall: mallMenu, cafe: cafeMenu, pitch: footballMenu, vendor: vendorMenu })[p.kind](p); }

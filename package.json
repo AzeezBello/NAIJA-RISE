@@ -1,8 +1,8 @@
 {
   "name": "naija-rise-lagos",
-  "version": "0.6.0",
+  "version": "0.9.0",
   "private": true,
-  "description": "NAIJA RISE — Lagos: Three.js engine (src/) shared by the static build (index.html) and the Next.js shell (web/)",
+  "description": "NAIJA RISE \u2014 Lagos: Three.js engine (src/) shared by the static build (index.html) and the Next.js shell (web/)",
   "type": "module",
   "scripts": {
     "start": "python3 -m http.server 4173",

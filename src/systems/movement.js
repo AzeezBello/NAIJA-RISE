@@ -14,7 +14,10 @@ const lastDir = new THREE.Vector3(0, 0, -1);
 // Scratch vectors: no per-frame allocations in the hot path.
 const _in = new THREE.Vector3(), _old = new THREE.Vector3(), _target = new THREE.Vector3(), _offset = new THREE.Vector3(), _desired = new THREE.Vector3(), _dir = new THREE.Vector3();
 const _ray = new THREE.Raycaster();
-let bob = 0;
+const _look = new THREE.Vector3();
+let bob = 0, camHit = 0, fovNow = 58;
+// Animation-ready controller states: idle · walk · run · turn · stop (see G.moveState).
+const setState = s => { if (G.moveState !== s) { G.moveState = s; G.stateT = 0; } };
 
 // Buildings, traffic and other parked vehicles block movement.
 export function blockedAt(p, r, self) {
@@ -38,11 +41,21 @@ export function moveFoot(dt) {
   const input = inputVector();
   const mag = Math.min(1, input.length());
   const has = mag > 0 && !frozen();
-  const sprint = k.shift || G.pad?.sprint;
-  const max = (sprint && G.state.stamina > 0 ? 9 : 5) * (G.stick?.active ? mag : 1);
-  if (has) { input.normalize().applyAxisAngle(UP, G.camYaw); lastDir.lerp(input, Math.min(1, dt * 14)).normalize(); G.curSpeed = Math.min(max, G.curSpeed + 28 * dt); }
-  else G.curSpeed = Math.max(0, G.curSpeed - 40 * dt);
-  bob += dt * G.curSpeed * 2.2; pl.position.y = heightAt(pl.position.x, pl.position.z) + (G.curSpeed > 0.3 ? Math.abs(Math.sin(bob)) * 0.06 : 0);   // walk bob on the local ground level
+  const sprint = (k.shift || G.pad?.sprint) && G.state.stamina > 0;
+  const max = (sprint ? 8.5 : 4.6) * (G.stick?.active ? mag : 1);
+  G.stateT = (G.stateT || 0) + dt;
+  if (has) {
+    input.normalize().applyAxisAngle(UP, G.camYaw);
+    const turn = lastDir.angleTo(input);               // sharp turn: pivot first, then move
+    if (turn > 1.9 && G.curSpeed > 2) { setState('turn'); G.curSpeed = Math.max(1.5, G.curSpeed - 30 * dt); }
+    else setState(sprint ? 'run' : 'walk');
+    lastDir.lerp(input, Math.min(1, dt * (G.moveState === 'turn' ? 16 : 9))).normalize();
+    G.curSpeed = Math.min(max, G.curSpeed + (G.curSpeed < 2 ? 14 : 22) * dt);   // ease in, then accelerate
+  } else { G.curSpeed = Math.max(0, G.curSpeed - 16 * dt); setState(G.curSpeed > 0.4 ? 'stop' : 'idle'); }
+  bob += dt * G.curSpeed * (G.moveState === 'run' ? 2.6 : 2.1);
+  const amp = G.moveState === 'run' ? 0.085 : 0.055;
+  pl.position.y = heightAt(pl.position.x, pl.position.z) + (G.curSpeed > 0.3 ? Math.abs(Math.sin(bob)) * amp : 0);   // bob on the local ground level
+  pl.rotation.x = THREE.MathUtils.lerp(pl.rotation.x, G.moveState === 'run' ? -0.1 : 0, Math.min(1, dt * 6));           // lean into a sprint
   if (G.curSpeed < 0.05) return;
   const old = _old.copy(pl.position);
   pl.position.addScaledVector(lastDir, G.curSpeed * dt);
@@ -94,16 +107,25 @@ export function clampWorld(o) {
 let firstFrame = true;
 export function updateCamera(dt) {
   const t = G.inCar ? G.car : G.player, cam = G.camera;
-  if (G.inCar && !G.dragging) G.camYaw = lerpAngle(G.camYaw, G.car.rotation.y, 1 - Math.pow(0.08, dt));
+  if (G.camBlend > 0) G.camBlend = Math.max(0, G.camBlend - dt * 0.8);                 // entering a vehicle: swing behind it over ~1.2 s
+  if (G.inCar && !G.dragging) G.camYaw = lerpAngle(G.camYaw, G.car.rotation.y, 1 - Math.pow(G.camBlend > 0 ? 0.02 : 0.08, dt));
+  const wantDist = G.inCar ? Math.max(G.camDistance, 11.5) : G.camDistance;
+  const sprinting = !G.inCar && G.moveState === 'run', fast = G.inCar && Math.abs(G.carSpeed) > 20;
+  const fovTarget = sprinting ? 66 : fast ? 64 : 58;
+  if (Math.abs(fovNow - fovTarget) > 0.05) { fovNow = THREE.MathUtils.lerp(fovNow, fovTarget, Math.min(1, dt * 3)); cam.fov = fovNow; cam.updateProjectionMatrix(); }
   const target = _target.copy(t.position); target.y += 1.25;
-  const offset = _offset.set(0, Math.sin(G.camPitch) * G.camDistance, Math.cos(G.camPitch) * G.camDistance).applyAxisAngle(UP, G.camYaw);
+  const offset = _offset.set(0, Math.sin(G.camPitch) * wantDist, Math.cos(G.camPitch) * wantDist).applyAxisAngle(UP, G.camYaw);
   const desired = _desired.copy(target).add(offset);
   const dir = _dir.copy(desired).sub(target).normalize();
-  _ray.set(target, dir); _ray.far = G.camDistance; _ray.camera = cam;
+  _ray.set(target, dir); _ray.far = wantDist; _ray.camera = cam;
   const hits = _ray.intersectObjects(occluders, false);
-  if (hits.length) desired.copy(target).addScaledVector(dir, Math.max(3.2, hits[0].distance - 0.5));
-  if (firstFrame) { cam.position.copy(desired); firstFrame = false; } else cam.position.lerp(desired, 1 - Math.pow(0.001, dt));
-  cam.lookAt(target);
+  const hitDist = hits.length ? Math.max(3.2, hits[0].distance - 0.5) : wantDist;
+  camHit = camHit === 0 ? hitDist : THREE.MathUtils.lerp(camHit, hitDist, Math.min(1, dt * (hitDist < camHit ? 10 : 3)));   // pull in fast, ease back out
+  if (camHit < wantDist - 0.05) desired.copy(target).addScaledVector(dir, camHit);
+  // position: subtle lag on foot, tighter when driving; look-at eases so the camera never swings
+  const follow = G.inCar ? 1 - Math.pow(0.0005, dt) : 1 - Math.pow(0.004, dt);
+  if (firstFrame) { cam.position.copy(desired); _look.copy(target); firstFrame = false; } else { cam.position.lerp(desired, follow); _look.lerp(target, 1 - Math.pow(0.0008, dt)); }
+  cam.lookAt(_look);
   if (G.sky) G.sky.position.copy(cam.position);
   // shadow frustum follows the player
   if (G.sun && G.sunDir) { G.sun.target.position.set(t.position.x, 0, t.position.z); G.sun.position.copy(G.sunDir).add(G.sun.target.position); }

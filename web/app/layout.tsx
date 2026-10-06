@@ -4,6 +4,10 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'NAIJA RISE — Lagos',
   description: 'Build your life. Build your empire. Survive the city. An original Lagos open-world life simulation.',
+  manifest: '/manifest.webmanifest',
+  applicationName: 'NAIJA RISE',
+  openGraph: { title: 'NAIJA RISE — Lagos', description: 'Build your life. Build your empire. Survive the city.', type: 'website' },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'NAIJA RISE' },
 };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, maximumScale: 1, viewportFit: 'cover', themeColor: '#07100e' };
 
