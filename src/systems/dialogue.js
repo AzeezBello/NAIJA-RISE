@@ -62,6 +62,6 @@ export function setupDialogue() {
   on('key', k => {
     if (!G.dialog) return;
     if (k === ' ') advanceDialog();
-    if (/^[1-3]$/.test(k)) advanceDialog(+k - 1);
+    if (/^[1-6]$/.test(k)) advanceDialog(+k - 1);
   });
 }

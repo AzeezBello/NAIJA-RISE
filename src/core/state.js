@@ -10,23 +10,30 @@ export const DEFAULT = {
   clock: TIME.startClock, day: 1,
   look: { skin: 2, hair: 0, shirt: 0, pants: 0 },
   pet: null, prayedDay: 0, partyDay: 0, rented: null, let: [],
+  skills: { driving: 0, business: 0, charisma: 0, fitness: 0 },
+  rep: { public: 0, business: 0, street: 0, social: 0 },
+  vehicles: [], biz: {}, lastSeen: 0, awayTotal: 0,
   settings: { sens: 1, shadows: true, rotateMap: true, hints: true, touch: 'auto', mature: true },
 };
 
-export function hasSave() { try { return !!localStorage.getItem(GAME.saveKey); } catch { return false; } }
+const LEGACY_KEYS = ['naijarise.alpha05'];
+export function hasSave() { try { return !!(localStorage.getItem(GAME.saveKey) || LEGACY_KEYS.some(k => localStorage.getItem(k))); } catch { return false; } }
 export function freshState() { return structuredClone(DEFAULT); }
 export function loadState() {
   try {
-    const s = JSON.parse(localStorage.getItem(GAME.saveKey));
-    if (s && s.v === GAME.saveVersion) {
+    const s = JSON.parse(localStorage.getItem(GAME.saveKey)) || LEGACY_KEYS.map(k => JSON.parse(localStorage.getItem(k))).find(Boolean);
+    if (s && (s.v === GAME.saveVersion || s.v === 5)) {   // v5 saves migrate: new fields take defaults
       const st = freshState();
       Object.assign(st, s);
       st.settings = Object.assign({}, DEFAULT.settings, s.settings || {});
       st.look = Object.assign({}, DEFAULT.look, s.look || {});
+      st.skills = Object.assign({}, DEFAULT.skills, s.skills || {});
+      st.rep = Object.assign({}, DEFAULT.rep, s.rep || {});
+      st.v = GAME.saveVersion;
       return st;
     }
   } catch { /* corrupt save → fresh */ }
   return freshState();
 }
-export function saveState(state) { try { localStorage.setItem(GAME.saveKey, JSON.stringify(state)); } catch { /* storage blocked */ } }
-export function clearSave() { try { localStorage.removeItem(GAME.saveKey); } catch { /* ignore */ } }
+export function saveState(state) { try { state.lastSeen = Date.now(); localStorage.setItem(GAME.saveKey, JSON.stringify(state)); } catch { /* storage blocked */ } }
+export function clearSave() { try { localStorage.removeItem(GAME.saveKey); for (const k of LEGACY_KEYS) localStorage.removeItem(k); } catch { /* ignore */ } }

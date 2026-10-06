@@ -6,7 +6,7 @@ import { ECON, LAW } from '../data/config.js';
 import { placeOf } from '../data/locations.js';
 import { rejoinTraffic } from '../entities/vehicles.js';
 import { toast } from '../ui/feedback.js';
-import { tx, msg, pay, addHeat } from './economy.js';
+import { tx, msg, pay, addHeat, addRep, removeItem } from './economy.js';
 
 // Law and order: FRSC speeding tickets, army checkpoint, pedestrian hits, police pursuit and arrest at Heat 3+.
 let ticketT = 0, checkT = 0, bustT = 0, flash = 0;
@@ -21,6 +21,8 @@ function bust() {
   G.player.position.set(st.x, 0, st.z + 12);
   G.camYaw = Math.PI;
   for (const t of G.traffic) if (t.pursuit) rejoinTraffic(t);
+  addRep('public', -10); addRep('street', 3);
+  if (s.chase) { s.chase = false; removeItem('package'); s.mission = Math.max(0, s.mission - 1); msg('amaka', 'Dem catch you with the package? Wahala. Come back when the heat don cool, we go try again.'); emit('mission:refresh'); }
   toast(`Arrested · ${fmt(fine)} fine · released at Area C`);
   msg('police', `You were booked at Area C. Fine of ${fmt(fine)} paid. Next time we no go be so gentle.`);
   emit('hud');

@@ -1,7 +1,7 @@
 // Story missions. Each has dialogue lines, optional branching choices, and an after() hook.
 // `at` is a place id; `requires` gates availability; obj() returns the live objective text.
 import { G } from '../core/context.js';
-import { tx, msg, xp, addItem, removeItem } from '../systems/economy.js';
+import { tx, msg, xp, addItem, removeItem, addRep } from '../systems/economy.js';
 import { toast } from '../ui/feedback.js';
 
 export const MISSIONS = [
@@ -54,6 +54,28 @@ export const MISSIONS = [
     requires: () => G.state.level >= 2,
     obj: () => (G.state.level >= 2 ? 'Return to Baba K at Ojuelegba Junction' : 'Reach Level 2 — work jobs from your phone'),
     lines: () => [{ s: 'babak', t: 'Level 2 already? Lagos dey favour you.' }, { s: 'babak', t: 'This na just the beginning. Buy property, buy business, build your empire.' }],
-    after() { G.state.done = true; toast('VERTICAL SLICE COMPLETE — Alpha 0.5'); msg('babak', 'You don rise small. Property and Businesses dey your phone. Build.'); },
+    after() { msg('babak', 'You don rise small. Property and Businesses dey your phone. Amaka get one hot job for you at Marina — if you get liver.'); addRep('street', 5); xp(20); },
+  },
+  {
+    title: 'Hot Delivery', at: 'marina', r: 10, chase: true,
+    obj: () => (G.state.chase ? 'Lose the police and reach Baba K at Ojuelegba' : 'See Amaka at Marina for the hot job'),
+    lines: () => [
+      { s: 'amaka', t: 'This package na hot one. Police dey watch Marina. The moment you carry am, dem go follow you.' },
+      { s: 'amaka', t: 'Get am to Baba K at Ojuelegba. If dem catch you, na you sabi. ₦60,000 if you deliver.' },
+    ],
+    choices: [
+      { label: 'I go deliver am.', reply: 'Sharp. Go!', apply() { G.state.chase = true; addItem('package'); G.state.heat = Math.max(G.state.heat, 3); } },
+      { label: 'Not today.', reply: 'Come back when you ready.', apply() { G.state.declined = true; } },
+    ],
+    after() { if (!G.state.chase) { G.state.mission--; return; } msg('babak', 'Dem dey follow you? Lose them and come. I dey Ojuelegba.'); },
+  },
+  {
+    title: 'Hot Delivery · Drop', at: 'ojuelegba', r: 9, requires: () => !!G.state.chase,
+    obj: () => 'Reach Baba K at Ojuelegba with the package — don\'t get arrested',
+    lines: () => [{ s: 'babak', t: 'You reach! With police for your back. Na so we dey do am.' }, { s: 'babak', t: '₦60,000. Lagos don hear your name now.' }],
+    after() {
+      const s = G.state; s.chase = false; removeItem('package'); s.cash += 60000; tx('Hot delivery', 60000); s.heat = 0; addRep('street', 15); addRep('public', -5);
+      s.done = true; toast('ALPHA 0.6 STORY COMPLETE — more arcs coming'); msg('babak', 'Story don finish for now. Keep building — jobs, business, property. Lagos no dey sleep.'); xp(40);
+    },
   },
 ];

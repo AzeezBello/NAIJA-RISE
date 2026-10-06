@@ -93,7 +93,16 @@ export function makeVehicle(type, color = 0x172e35) {
 }
 
 export function spawnParked() {
-  G.parked = PARKED.map(p => { const v = makeVehicle(p.type, p.color); v.position.set(p.x, 0, p.z); v.rotation.y = p.rot; return v; });
+  G.parked = PARKED.map(p => { const v = makeVehicle(p.type, p.color); v.position.set(p.x, 0, p.z); v.rotation.y = p.rot; v.userData.cond = 100; return v; });
+}
+// Owned vehicles (PRD §11) park outside the player's home gate, or at Ladipo when there is no home.
+export function spawnOwned(home) {
+  for (const o of G.state.vehicles || []) {
+    if (G.parked.some(v => v.userData.ownedId === o.id)) continue;
+    const v = makeVehicle(o.type, 0x1f3a5a); v.userData.ownedId = o.id; v.userData.owned = true; v.userData.cond = o.cond ?? 100;
+    const base = home ? home.door : { x: -42, z: 62 }; const i = G.parked.filter(v => v.userData.owned).length;
+    v.position.set(base.x + 6 + i * 4, 0, base.z - 3); v.rotation.y = Math.PI / 2; G.parked.push(v);
+  }
 }
 
 /* ---------- traffic AI: lane following on the road grid with random turns ---------- */
@@ -137,6 +146,7 @@ export function updateTraffic(dt) {
     check(pp.x, pp.z, VEH[t.type].len / 2 + 3);
     const jam = G.jam;
     if (jam && jam.axis === t.axis && jam.k === t.k) { const c = t.axis === 'h' ? t.g.position.x : t.g.position.z; if (c > jam.from && c < jam.to) target = Math.min(target, 1.6); }
+    if (G.rain) target *= 0.7;
     t.speed = approach(t.speed, target, (target < t.speed ? 22 : 7) * dt);
     t.g.position.x += fx * t.speed * dt; t.g.position.z += fz * t.speed * dt;
     t.cool -= dt;

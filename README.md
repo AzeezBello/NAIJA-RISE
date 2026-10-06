@@ -1,4 +1,4 @@
-# NAIJA RISE — Lagos · Alpha 0.5
+# NAIJA RISE — Lagos · Alpha 0.6
 
 A browser-playable open-world life simulation set in a living Surulere, Lagos. Original IP: original characters, missions and story, with real Lagos place and street names on a stylised map.
 
@@ -15,18 +15,18 @@ python3 -m http.server 4173
 # open http://localhost:4173
 ```
 
-Next.js shell (landing page, `/play`):
+Next.js 16 shell (landing page, `/play`), Turbopack in dev and build:
 
 ```bash
-cd web
-npm install
-npm run dev      # http://localhost:3000
+npm install          # repo root: the engine's own `three` dependency
+cd web && npm install
+npm run dev          # http://localhost:3000
 npm run build && npm start
 ```
 
 Three.js and fonts load from CDNs in the static build, so an internet connection is required. Progress saves to the browser (localStorage).
 
-## What is in Alpha 0.5
+## What is in Alpha 0.6
 
 **The city** — Surulere grid with Bode Thomas Street, Adeniran Ogunsanya Street, Ogunlana Drive, Funsho Williams Avenue and Itire/Ojuelegba Road, street signs at every junction. Ojuelegba Junction, Kilo, Shitta and Mushin bus stops, Yaba, Shitta and Mushin markets, National Stadium, Ladipo Garage, Marina, Area C Police Station, Fire Service, Army Barracks, LAWMA depot, FRSC checkpoint, LASTMA post, two RiseBank branches, Forties Bar, Lust Club, The Crib, Rita Lori Hotel, a school, Grace Chapel, Surulere Central Mosque, PHCN office, Mobil filling station, Surulere Event Centre, POS kiosks, three properties.
 
@@ -36,11 +36,19 @@ Three.js and fonts load from CDNs in the static build, so an internet connection
 
 **Housing** — Surulere compounds: mostly bungalows with zinc roofs and 2–3 storey houses behind fences and gates, a few high-rises along Bode Thomas and Funsho Williams. Four homes to rent or buy (room, self-contain, flat, duplex). Agent Kunle at every gate takes a 10% fee on a 30-day lease; the landlord sells outright; owned homes you do not live in can be let to tenants who pay every morning. Leases expire with a warning three days out.
 
-**Life** — jobs, bank, businesses, inventory, character customisation, phone with ten apps, branching story missions with dialogue, Level titles (Newcomer → Hustler → Entrepreneur → Mogul) with app unlocks at Level 2.
+**Life** — ten jobs that train four skills (Driving, Business, Charisma, Fitness) and pay more as the skill grows, with skill-gated jobs like POS Agent, Bouncer and Tanker Driver; bank; businesses with staff hiring and price levels; inventory; character customisation; phone with ten apps; five branching story missions including a police-chase delivery; Level titles (Newcomer → Hustler → Entrepreneur → Mogul) with app unlocks at Level 2.
+
+**Reputation** — Public, Business, Street and Social reputations move with what you do (arrests, risk jobs, ownership, owambe, prayer) and show in the Character app.
+
+**Vehicles** — buy okada, keke, korope, danfo or a sedan from Dayo at Ladipo; owned vehicles park at your gate, lose condition in crashes (slower under 30%) and get serviced at Ladipo. Taking a vehicle that is not yours adds heat.
+
+**Lagos Never Sleeps** — businesses and tenants keep earning while you are away (capped at eight hours); a RiseBank summary greets you on return.
 
 **Law and consequences** — heat decays over time, Heat 3+ triggers police pursuit and arrest, FRSC speeding tickets, the army checkpoint, hitting pedestrians, settling fines at Area C, praying to ease heat.
 
-**City events** — moonlit day/night cycle with lit windows and solar street lights (NEPA outages darken homes but not the streets; pay for diesel at the PHCN office), go-slow, Owambe parties (19:00–23:30), nightlife venues after 20:00.
+**City events** — moonlit day/night cycle with lit windows and solar street lights (NEPA outages darken homes but not the streets; pay for diesel at the PHCN office), rain that darkens the sky, slows traffic and cuts grip, go-slow, Owambe parties (19:00–23:30), nightlife venues after 20:00. Pedestrians drift to the markets at midday and thin out late at night.
+
+**Audio** — synthesised engine hum, rain, generator drone during outages, horn on crashes and a cash chime, no audio files; toggle in Settings.
 
 **Graphics** — procedural facade, asphalt, concrete and ground textures, sidewalks and curbs, street lights with halos, gradient sky dome with sun and clouds, ACES tone mapping, soft shadows.
 
@@ -73,7 +81,8 @@ src/                     Three.js engine (ES modules, no bundler needed)
   ui/        hud, minimap, phone, apps/, touch, components, feedback
   scenes/    manager, title, city
   game.js    createGame({ mount, ui }) — used by main.js and the Next shell
-web/                     Next.js 15 / React 19 / TypeScript shell with a React Three Fiber landing hero
+web/                     Next.js 16 / React 19 / TypeScript shell with a React Three Fiber landing hero
+package.json             root: the engine's `three` dependency so web/ can bundle ../src with Turbopack
 ```
 
 Add a new area by creating `src/data/districts/<id>.js` with the same exports as `surulere.js` and registering it in `districts/index.js`; load it with `?district=<id>`.
@@ -82,4 +91,5 @@ Add a new area by creating `src/data/districts/<id>.js` with the same exports as
 
 - `node --check` passes for every module.
 - Headless Chrome (puppeteer-core) runs with zero page errors: title → city, phone apps, jobs, bank, character, mission dialogue with a branching choice, driving, police pursuit, night lighting, mobile viewport with touch controls; the Next build serves `/` and `/play`.
+- Saves from Alpha 0.5 migrate automatically.
 - Append `#debug` to the URL to expose `window.__nr` for manual testing.

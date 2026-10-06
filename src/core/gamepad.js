@@ -4,7 +4,7 @@ import { emit } from './events.js';
 // Standard-mapping gamepad: left stick move/steer, right stick camera, RT gas, LT brake,
 // A interact, B vehicle, Y phone, X sprint (hold), LB handbrake (hold), D-pad dialogue choices, Start hints.
 const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
-const PRESS = { [BTN.A]: 'e', [BTN.B]: 'f', [BTN.Y]: 'j', [BTN.START]: 'h', [BTN.BACK]: 'r', [BTN.UP]: '1', [BTN.RIGHT]: '2', [BTN.DOWN]: '3', [BTN.LEFT]: ' ' };
+const PRESS = { [BTN.A]: 'e', [BTN.B]: 'f', [BTN.Y]: 'j', [BTN.START]: 'h', [BTN.BACK]: 'r', [BTN.UP]: '1', [BTN.RIGHT]: '2', [BTN.DOWN]: '3', [BTN.LEFT]: '4', [BTN.RB]: ' ' };
 const dz = (v, d = 0.18) => (Math.abs(v) < d ? 0 : (v - Math.sign(v) * d) / (1 - d));
 const prev = {};
 let connected = false;

@@ -18,6 +18,7 @@ export default {
       Toggle('Rotate minimap with camera', 'setRotate', st.rotateMap) +
       Toggle('Shadows', 'setShadows', st.shadows) +
       Toggle('Show control hints', 'setHints', st.hints) +
+      Toggle('Sound', 'setAudio', st.audio !== false) +
       Toggle('Mature content (18+)', 'setMature', st.mature !== false) +
       Field('TOUCH CONTROLS', `<select id="setTouch"><option value="auto" ${touch === 'auto' ? 'selected' : ''}>Auto (phones and tablets)</option><option value="on" ${touch === 'on' ? 'selected' : ''}>Always on</option><option value="off" ${touch === 'off' ? 'selected' : ''}>Off</option></select>`) +
       Row(Btn('Reset progress', 'reset', { cls: 'danger sm' })) +
@@ -28,6 +29,7 @@ export default {
     $('setShadows').addEventListener('change', e => { st.shadows = e.target.checked; emit('hud'); });
     $('setHints').addEventListener('change', e => { st.hints = e.target.checked; emit('hud'); });
     $('setMature').addEventListener('change', e => { st.mature = e.target.checked; emit('hud'); });
+    $('setAudio').addEventListener('change', e => { st.audio = e.target.checked; emit('hud'); });
     $('setTouch').addEventListener('change', e => { st.touch = e.target.value; emit('hud'); });
   },
   actions: { reset: () => { if (!confirm('Reset all progress?')) return; clearSave(); location.reload(); } },

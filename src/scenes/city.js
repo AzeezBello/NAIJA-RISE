@@ -16,6 +16,12 @@ import { updateVitals } from '../systems/vitals.js';
 import { updateEconomy, msg } from '../systems/economy.js';
 import { updateLaw } from '../systems/police.js';
 import { updateEvents } from '../systems/events.js';
+import { updateWeather } from '../systems/weather.js';
+import { setupAudio, updateAudio } from '../ui/audio.js';
+import { awayReport } from '../systems/economy.js';
+import { startDialog } from '../systems/dialogue.js';
+import { spawnOwned } from '../entities/vehicles.js';
+import { fmt } from '../core/utils.js';
 import { updateGamepad } from '../core/gamepad.js';
 import { buildHud, hudFrame } from '../ui/hud.js';
 import { buildPhone, phoneOpen } from '../ui/phone.js';
@@ -35,23 +41,25 @@ export const CityScene = {
       createMarkers();
       spawnNpcs(); spawnAgberos(); spawnServiceNpcs(); spawnExtras(); spawnAnimals();
       buildHud(root); buildPhone(root); buildTouch(root);
-      setupDialogue(); setupInteraction(); setupMovement();
+      setupDialogue(); setupInteraction(); setupMovement(); setupAudio();
     }
     const h = homeProp();
     if (h) G.player.position.set(h.door.x, 0, h.door.z + 2); else G.player.position.set(WORLD.spawn.x, 0, WORLD.spawn.z);
     G.camYaw = 0; G.camPitch = 0.38;
     if (!G.state.msgs.length) msg('babak', 'Oya, come meet me at Ojuelegba Junction. I get work for you.', true);
-    applyLook(); applyPet(); applySky();
+    applyLook(); applyPet(); applySky(); spawnOwned(h);
+    const away = awayReport();
+    if (away) setTimeout(() => startDialog([{ s: 'bank', t: `While you were away (${away.minutes} min): ${away.biz ? `business income ${fmt(away.biz)}` : 'no business income'}${away.rent ? `, rent ${fmt(away.rent)}` : ''}${away.upkeep ? `, maintenance −${fmt(away.upkeep)}` : ''}. Net ${fmt(away.net)} to your account. Lagos no dey sleep.` }], null, null), 600);
     $('hud').classList.add('show');
     emit('mission:refresh'); emit('hud'); emit('clock');
-    if (G.debug) window.__nr = { G, get state() { return G.state; } };
+    if (G.debug) import('../systems/weather.js').then(w => { window.__nr = { G, get state() { return G.state; }, startRain: w.startRain, awayReport }; });
   },
   exit() { $('hud')?.classList.remove('show'); },
   update(dt) {
     updateGamepad(dt);
     updateMovement(dt);
     updateTraffic(dt); updateNpcs(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
-    updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateClock(dt);
+    updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateClock(dt); updateAudio();
     updateRoute(); updateCamera(dt);
     hudFrame(); mapDraw(); updateTouch();
     if (G.app === 'map' && phoneOpen()) phoneMapDraw();

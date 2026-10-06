@@ -3,15 +3,16 @@ import { G, pos, frozen } from '../core/context.js';
 import { on, emit } from '../core/events.js';
 import { $, dist, fmt } from '../core/utils.js';
 import { saveState } from '../core/state.js';
-import { ECON, TIME, PRICES, RENT } from '../data/config.js';
+import { ECON, TIME, PRICES, RENT, DEALER } from '../data/config.js';
 import { VEH } from '../data/vehicles.js';
 import { jobOf } from '../data/jobs.js';
 import { placeOf, LANDMARKS, KIOSKS, PROPERTIES } from '../data/locations.js';
-import { vForward } from '../entities/vehicles.js';
+import { vForward, spawnOwned } from '../entities/vehicles.js';
+import { saveState as persist } from '../core/state.js';
 import { applyPet } from '../entities/animals.js';
 import { toast } from '../ui/feedback.js';
 import { applySky } from '../world/daynight.js';
-import { tx, pay, xp, addItem, msg, addHeat } from './economy.js';
+import { tx, pay, xp, addItem, msg, addHeat, addRep, gainSkill } from './economy.js';
 import { missionActive, curMission, missionPos, jobPos, homeProp } from './navigation.js';
 import { runMission, advanceDialog, startDialog } from './dialogue.js';
 import { owambeOn } from './events.js';
@@ -29,6 +30,7 @@ const nearGate = () => !G.inCar && PROPERTIES.find(p => p.id !== G.state.home &&
 const nearPump = () => G.inCar && (dist(pos(), placeOf('ladipo')) < 16 || dist(pos(), placeOf('fuel')) < 16);
 const venueOpen = () => G.state.clock >= TIME.venueOpen || G.state.clock < TIME.venueClose;
 const nearYaba = () => !G.inCar && !missionActive() && dist(pos(), placeOf('yaba')) < 11;
+const nearDealer = () => !G.inCar && dist(pos(), placeOf('ladipo')) < 16;
 
 export function toggleCar() {
   if (frozen()) return;
@@ -40,7 +42,8 @@ export function toggleCar() {
   }
   const c = nearestCar(); if (!c) return;
   G.inCar = true; G.player.visible = false; G.car = c; G.carSpeed = 0; G.camYaw = c.rotation.y;
-  toast(`${VEH[c.userData.type].name} · W gas · S brake · A/D steer`);
+  if (!c.userData.owned && !c.userData.stolen) { c.userData.stolen = true; addHeat(1, 'Stolen vehicle'); addRep('street', 2); addRep('public', -2); }
+  toast(`${VEH[c.userData.type].name}${c.userData.owned ? ' · yours' : ' · not yours'} · W gas · S brake · A/D steer`);
 }
 
 /* ---------- small vendor dialogues reuse the mission dialogue box ---------- */
@@ -102,6 +105,18 @@ function agentDialog(p) {
   choices.push({ label: 'Just looking.', apply() {} });
   startDialog(lines, choices, ch => { ch.apply(); emit('hud'); });
 }
+function dealerDialog() {
+  const s = G.state, mine = G.parked.filter(v => v.userData.owned);
+  const worst = mine.filter(v => (v.userData.cond ?? 100) < 100);
+  const choices = DEALER.map(([type, price]) => ({ label: `${VEH[type].name} · ${fmt(price)}`, apply() {
+    if (!pay(price, `Bought ${VEH[type].name}`)) return toast(`You need ${fmt(price)} across cash and bank`);
+    s.vehicles = [...(s.vehicles || []), { id: Date.now().toString(36), type, cond: 100 }]; spawnOwned(homeProp());
+    addRep('business', 2); toast(`${VEH[type].name} is yours — parked at ${homeProp() ? 'your gate' : 'Ladipo'}`); msg('dayo', `${VEH[type].name} don ready. Papers dey inside. Bring am back when e need service.`);
+  } }));
+  if (worst.length) { const cost = worst.reduce((t, v) => t + Math.round((100 - v.userData.cond) * 500), 0); choices.unshift({ label: `Service my vehicles · ${fmt(cost)}`, apply() { if (!pay(cost, 'Vehicle service · Ladipo')) return toast('Not enough money'); for (const v of worst) v.userData.cond = 100; for (const o of s.vehicles) o.cond = 100; toast('Vehicles serviced'); } }); }
+  choices.push({ label: 'Just looking.', apply() {} });
+  startDialog([{ s: 'dayo', t: mine.length ? `Welcome back. Wetin you need — service or another motor?` : `Ladipo get everything. Okada, keke, korope, danfo, tokunbo car. Which one?` }], choices, ch => { ch.apply(); emit('hud'); });
+}
 function fadeOut(then) {
   G.sleeping = true; $('sleepfade').classList.add('on');
   setTimeout(() => { then(); setTimeout(() => { $('sleepfade').classList.remove('on'); G.sleeping = false; }, 400); }, 800);
@@ -120,6 +135,7 @@ export function interact() {
     const night = nearNight(); if (night) { hookupDialog(night); return; }
     if (nearKiosk()) { posDialog(); return; }
     if (nearYaba()) { petDialog(); return; }
+    if (nearDealer()) { dealerDialog(); return; }
     const bank = nearKind('bank', 11); if (bank) { emit('phone:open', 'bank'); return; }
     const venue = nearKind('venue', 11);
     if (venue) {
@@ -133,13 +149,13 @@ export function interact() {
       if (!owambeOn()) return toast('Owambe starts at 19:00');
       if (s.partyDay === s.day) return toast('You don spray enough for tonight');
       if (!pay(party.cost, 'Owambe · spraying')) return toast('Not enough money to spray');
-      s.partyDay = s.day; s.stamina = 100; xp(15);
+      s.partyDay = s.day; s.stamina = 100; xp(15); addRep('social', 8); gainSkill('charisma', 3);
       toast('You spray, you dance, you network · +15 XP'); msg('amaka', 'Saw you at the owambe. You sabi dance! Call me when you need work.'); return;
     }
     const worship = nearKind('worship', 12);
     if (worship) {
       if (s.prayedDay === s.day) return toast('You already prayed today');
-      s.prayedDay = s.day; s.stamina = Math.min(100, s.stamina + 30); if (s.heat > 0) s.heat--; xp(5);
+      s.prayedDay = s.day; s.stamina = Math.min(100, s.stamina + 30); if (s.heat > 0) s.heat--; xp(5); addRep('public', 3);
       toast(`${worship.name} · peace of mind, heat eased`); emit('hud'); return;
     }
     const hotel = nearKind('hotel', 13);
@@ -174,6 +190,7 @@ export function promptFor() {
     const night = nearNight(); if (night) return { key: 'E', text: `${night.name} · talk` };
     if (nearKiosk()) return { key: 'E', text: 'POS agent · cash, water, suya' };
     if (nearYaba()) return { key: 'E', text: 'Mama Nkechi · pets and provisions' };
+    if (nearDealer()) return { key: 'E', text: 'Dayo · buy or service a vehicle' };
     const bank = nearKind('bank', 11); if (bank) return { key: 'E', text: `${bank.name} · banking` };
     const venue = nearKind('venue', 11); if (venue) return venueOpen() ? { key: 'E', text: `${venue.name} · ${fmt(venue.cost)}` } : { text: `${venue.name} · opens ${TIME.venueOpen}:00` };
     const party = nearKind('owambe', 16); if (party) return owambeOn() ? { key: 'E', text: `Owambe · spray ${fmt(party.cost)}` } : { text: 'Owambe · tonight from 19:00' };

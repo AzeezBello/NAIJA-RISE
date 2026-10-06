@@ -57,7 +57,7 @@ export function buildHud(root) {
         <svg viewBox="0 0 100 100"><circle class="sbg" cx="50" cy="50" r="40"/><circle id="speedArc" cx="50" cy="50" r="40"/></svg>
         <div class="speednum"><b id="speed">0</b><span>KM/H</span></div>
       </div>
-      <div class="fuel"><div class="row"><span class="vname" id="vname">DANFO</span><b id="gear">P</b></div><div class="row"><span>FUEL</span><b id="fuelNum">100%</b></div><div class="track"><i id="fuel" class="fuelfill"></i></div></div>
+      <div class="fuel"><div class="row"><span class="vname" id="vname">DANFO</span><b id="gear">P</b></div><div class="row"><span>FUEL</span><b id="fuelNum">100%</b></div><div class="row"><span>COND</span><b id="condNum">100%</b></div><div class="track"><i id="fuel" class="fuelfill"></i></div></div>
     </section>
     <div id="toast" class="toast"></div>
     <div id="notif" class="notif glass"></div>
@@ -109,6 +109,6 @@ export function hudFrame() {
     $('speedArc').style.strokeDasharray = `${Math.min(1, kmh / 130) * 188.5} 251.3`;
     $('fuel').style.width = s.fuel + '%'; $('fuelNum').textContent = Math.round(s.fuel) + '%';
     $('gear').textContent = G.carSpeed < -0.5 ? 'R' : kmh < 2 ? 'P' : kmh < 30 ? '1' : kmh < 60 ? '2' : kmh < 90 ? '3' : '4';
-    $('vname').textContent = VEH[G.car.userData.type].name.toUpperCase();
+    $('vname').textContent = VEH[G.car.userData.type].name.toUpperCase() + (G.car.userData.owned ? '' : ' ·⚠'); $('condNum').textContent = Math.round(G.car.userData.cond ?? 100) + '%';
   }
 }

@@ -4,7 +4,7 @@ import { fmt } from '../core/utils.js';
 import { notify, toast } from '../ui/feedback.js';
 import { contactOf } from '../data/characters.js';
 import { bizIncome } from '../data/businesses.js';
-import { ECON, UNLOCKS, RENT } from '../data/config.js';
+import { ECON, UNLOCKS, RENT, AWAY } from '../data/config.js';
 import { PROPERTIES } from '../data/locations.js';
 
 export function tx(label, amount) {
@@ -54,7 +54,7 @@ export function updateEconomy(dt) {
     if (s.payIn <= 0) {
       s.payIn = ECON.payCycle;
       const total = bizIncome(s);
-      s.bank += total; tx('Business income', total);
+      s.bank += total; tx('Business income', total); emit('cash');
       notify('RiseBank', `Credit alert · ${fmt(total)} business income`);
       emit('hud');
     }
@@ -73,3 +73,35 @@ on('day', day => {
   }
   emit('hud');
 });
+
+// Four reputations (PRD §15), −100..100.
+export function addRep(kind, n) { const r = G.state.rep; r[kind] = Math.max(-100, Math.min(100, (r[kind] || 0) + n)); }
+// Skills (PRD §5) rise with use, 0..100; a point lands every so often so growth feels earned.
+export function gainSkill(kind, n) {
+  const sk = G.state.skills, before = Math.floor(sk[kind] || 0);
+  sk[kind] = Math.min(100, (sk[kind] || 0) + n);
+  if (Math.floor(sk[kind]) > before && Math.floor(sk[kind]) % 5 === 0) { toast(`${kind[0].toUpperCase() + kind.slice(1)} skill ${Math.floor(sk[kind])}`); emit('hud'); }
+}
+
+// Property upkeep each morning: owned homes cost rent/60 per day.
+on('day', () => {
+  const s = G.state;
+  const upkeep = s.props.reduce((t, id) => { const p = PROPERTIES.find(p => p.id === id); return t + (p ? Math.round(p.rent / 60) : 0); }, 0);
+  if (upkeep > 0) { s.bank -= upkeep; tx('Property maintenance', -upkeep); }
+});
+
+// "Lagos Never Sleeps" (PRD §32): businesses and tenants keep earning while the player is away.
+export function awayReport() {
+  const s = G.state;
+  if (!s.lastSeen) return null;
+  const minutes = Math.min(AWAY.capMinutes, (Date.now() - s.lastSeen) / 60000);
+  if (minutes < AWAY.minMinutes) return null;
+  const biz = Math.round(bizIncome(s) * minutes);                       // income is per real minute
+  const days = Math.floor(minutes / 18);                                 // one game day is 18 real minutes
+  const rent = Math.round((s.let || []).reduce((t, id) => t + PROPERTIES.find(p => p.id === id).rent * RENT.tenantShare, 0) * days);
+  const upkeep = Math.round(s.props.reduce((t, id) => t + PROPERTIES.find(p => p.id === id).rent / 60, 0) * days);
+  const net = biz + rent - upkeep;
+  if (biz) tx('Business income while away', biz); if (rent) tx('Rent while away', rent); if (upkeep) tx('Maintenance while away', -upkeep);
+  s.bank += net; s.awayTotal = (s.awayTotal || 0) + net;
+  return { minutes: Math.round(minutes), biz, rent, upkeep, net, days };
+}
