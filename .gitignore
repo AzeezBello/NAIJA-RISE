@@ -1,0 +1,23 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies / tooling
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Local QA output
+_wrap.html
+qa_*.png
+shot_*.png
+qa/
+
+# Environment
+.env
+.env.*
