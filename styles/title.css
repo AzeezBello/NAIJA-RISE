@@ -1,0 +1,10 @@
+.title{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(80% 60% at 50% 40%,#0b1a14cc,#07100ef2);pointer-events:auto;z-index:20}
+.tcard{text-align:center;padding:36px 40px;max-width:640px;width:calc(100vw - 32px)}
+.tlogo{font-size:clamp(44px,9vw,84px);font-weight:950;letter-spacing:-.07em;line-height:1;text-shadow:0 10px 40px #000}
+.tlogo b{color:var(--green);font-family:"Permanent Marker",Inter,cursive;font-weight:400;letter-spacing:0}
+.tlogo small{display:block;font-size:10px;letter-spacing:.4em;color:#aeb9b4;margin-top:10px;font-weight:700}
+.ttag{font-size:14px;color:#dfe8e3;margin:18px 0 26px;font-weight:600}
+.tbtns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.tctrl{font-size:10px;color:#ffffff90;margin-top:26px;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;align-items:center;line-height:2}
+.tctrl .key{background:#ffffff22;color:#fff;box-shadow:none}
+.tfine{font-size:9px;color:var(--muted);margin-top:14px;line-height:1.5}
