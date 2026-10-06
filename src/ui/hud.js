@@ -11,7 +11,7 @@ import { missionActive, curMission, missionPos, gpsTarget } from '../systems/nav
 import { promptFor } from '../systems/interaction.js';
 import { wanted } from '../systems/police.js';
 import { timeStr } from '../world/daynight.js';
-import { LANDMARKS, BUSSTOPS, ROADS, ROAD_NAMES, META } from '../data/locations.js';
+import { LANDMARKS, BUSSTOPS, ROADS, META, roadExtent, roadNameAt, regionAt } from '../data/locations.js';
 
 // Builds the in-game HUD once. Layout: player card + objective (top-left), wallet (top-right),
 // minimap + GPS (bottom-left), prompt + hints + dialogue (bottom-centre), vitals / vehicle (bottom-right).
@@ -77,8 +77,9 @@ export function refreshHud() {
   $('heat').classList.toggle('hot', wanted()); $('heatLabel').textContent = wanted() ? 'Wanted' : 'Heat';
   $('pName').textContent = s.name; $('pLevel').textContent = s.level; $('pTitle').textContent = levelTitle(s.level); $('pXpNum').textContent = `${s.xp} / 100 XP`; $('pXp').style.width = s.xp + '%';
   const m = curMission();
-  $('missionTitle').textContent = s.done ? 'Slice complete' : m.title;
-  $('objective').textContent = s.done ? 'Lagos is yours. Work, bank, build.' : m.obj();
+  const paused = s.storyPaused && !s.done;
+  $('missionTitle').textContent = s.done ? 'Slice complete' : paused ? 'Free hustle' : m.title;
+  $('objective').textContent = s.done ? 'Lagos is yours. Work, bank, build.' : paused ? `Jobs on your phone, courses at the cyber café, the gym, football. ${m.at === 'marina' ? 'Amaka' : 'Baba K'} go wait.` : m.obj();
   $('objPips').innerHTML = MISSIONS.map((_, i) => `<i class="${i < s.mission || s.done ? 'done' : ''}"></i>`).join('');
   const b = s.unread ? String(s.unread) : '';
   $('hintBadge').textContent = b; const mb = $('msgBadge'); if (mb) mb.textContent = b;
@@ -88,14 +89,14 @@ export function refreshHud() {
   saveState(s);
 }
 
-let lastPrompt = '', lastLocale = '', localeT = 0;
+let lastPrompt = '', lastLocale = '', localeT = 0, localeAt = 0;
 // Nearest named place, else the street you are on, else the district.
 function localeName(p) {
   for (const l of [...LANDMARKS, ...BUSSTOPS]) if (dist(p, l) < (l.stadium ? 32 : 16)) return l.name;
   let best = null, bd = 14;
-  for (const z of ROADS.h) { const d = Math.abs(p.z - z); if (d < bd) { bd = d; best = ROAD_NAMES.h[z]; } }
-  for (const x of ROADS.v) { const d = Math.abs(p.x - x); if (d < bd) { bd = d; best = ROAD_NAMES.v[x]; } }
-  return best || META.name;
+  for (const z of ROADS.h) { const [a, b] = roadExtent('h', z); if (p.x < a || p.x > b) continue; const d = Math.abs(p.z - z); if (d < bd) { bd = d; best = roadNameAt('h', z, p.x); } }
+  for (const x of ROADS.v) { const [a, b] = roadExtent('v', x); if (p.z < a || p.z > b) continue; const d = Math.abs(p.x - x); if (d < bd) { bd = d; best = roadNameAt('v', x, p.z); } }
+  return best || regionAt(p.x).name;
 }
 // Per-frame HUD updates: prompt, distances, bars, speedometer.
 export function hudFrame() {
@@ -109,7 +110,8 @@ export function hudFrame() {
   }
   if (pr && pr.bar !== undefined) { const i = e.querySelector('.bar i'); if (i) i.style.width = (pr.bar * 100) + '%'; }
   $('objDist').textContent = missionActive() ? Math.round(dist(p, missionPos())) + ' m' : '';
-  localeT -= 1 / 60; if (localeT <= 0) { localeT = 0.5; const n = localeName(p); if (n !== lastLocale) { lastLocale = n; const e = $('locale'); e.querySelector('b').textContent = n; e.querySelector('span').textContent = n === META.name ? META.state : META.name; e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); } }
+  if (G.race && !G.race.finished && G.race.obj) $('objective').textContent = G.race.obj;
+  if (performance.now() - localeAt > 500) { localeAt = performance.now(); const n = localeName(p); if (n !== lastLocale) { lastLocale = n; const e = $('locale'); e.querySelector('b').textContent = n; e.querySelector('span').textContent = regionAt(p.x).name === n ? META.state : regionAt(p.x).name; e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); } }
   const t = gpsTarget();
   $('gpsTarget').textContent = t ? t.label : 'No route'; $('gpsDist').textContent = t ? Math.round(G.routeLen) + ' m' : '';
   $('hp').style.width = s.health + '%'; $('sta').style.width = s.stamina + '%';

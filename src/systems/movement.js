@@ -7,6 +7,7 @@ import { VEH } from '../data/vehicles.js';
 import { WORLD } from '../data/config.js';
 import { vForward } from '../entities/vehicles.js';
 import { toast } from '../ui/feedback.js';
+import { heightAt } from '../world/terrain.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const lastDir = new THREE.Vector3(0, 0, -1);
@@ -17,7 +18,8 @@ let bob = 0;
 
 // Buildings, traffic and other parked vehicles block movement.
 export function blockedAt(p, r, self) {
-  for (const c of colliders) if (Math.abs(p.x - c.x) < c.w / 2 + r && Math.abs(p.z - c.z) < c.d / 2 + r) return true;
+  const y = heightAt(p.x, p.z);
+  for (const c of colliders) { if (c.minY !== undefined && y < c.minY) continue; if (c.maxY !== undefined && y > c.maxY) continue; if (Math.abs(p.x - c.x) < c.w / 2 + r && Math.abs(p.z - c.z) < c.d / 2 + r) return true; }
   for (const t of G.traffic) if (Math.hypot(p.x - t.g.position.x, p.z - t.g.position.z) < r + VEH[t.type].wid * 0.6 + 0.6) return true;
   for (const c of G.parked) if (c !== self && c !== G.car && Math.hypot(p.x - c.position.x, p.z - c.position.z) < r + 1.4) return true;
   return false;
@@ -40,7 +42,7 @@ export function moveFoot(dt) {
   const max = (sprint && G.state.stamina > 0 ? 9 : 5) * (G.stick?.active ? mag : 1);
   if (has) { input.normalize().applyAxisAngle(UP, G.camYaw); lastDir.lerp(input, Math.min(1, dt * 14)).normalize(); G.curSpeed = Math.min(max, G.curSpeed + 28 * dt); }
   else G.curSpeed = Math.max(0, G.curSpeed - 40 * dt);
-  bob += dt * G.curSpeed * 2.2; pl.position.y = G.curSpeed > 0.3 ? Math.abs(Math.sin(bob)) * 0.06 : 0;   // walk bob
+  bob += dt * G.curSpeed * 2.2; pl.position.y = heightAt(pl.position.x, pl.position.z) + (G.curSpeed > 0.3 ? Math.abs(Math.sin(bob)) * 0.06 : 0);   // walk bob on the local ground level
   if (G.curSpeed < 0.05) return;
   const old = _old.copy(pl.position);
   pl.position.addScaledVector(lastDir, G.curSpeed * dt);
@@ -71,9 +73,10 @@ export function driveCar(dt) {
     if (st.active && Math.abs(st.x) > 0.12) steer = -st.x;
     if (Math.abs(G.carSpeed) > 0.3) car.rotation.y += steer * 2.3 * wet * (0.6 + 0.4 * cond / 100) * Math.min(1, Math.abs(G.carSpeed) / 9) * dt * Math.sign(G.carSpeed);
   }
-  if (Math.abs(G.carSpeed) < 0.05) return;
+  if (Math.abs(G.carSpeed) < 0.05) { car.position.y = heightAt(car.position.x, car.position.z); return; }
   const old = _old.copy(car.position);
   car.position.addScaledVector(vForward(car), G.carSpeed * dt);
+  car.position.y = heightAt(car.position.x, car.position.z);
   if (blockedAt(car.position, S.wid * 0.75, car)) {
     car.position.copy(old);
     if (Math.abs(G.carSpeed) > 18) { G.state.health = Math.max(0, G.state.health - 8); car.userData.cond = Math.max(0, (car.userData.cond ?? 100) - (G.state.vehicles.find(o => o.id === car.userData.ownedId)?.insured ? 6 : 12)); emit('crash'); toast(`Crash! −8 HP · vehicle condition ${Math.round(car.userData.cond)}%`); }
@@ -83,8 +86,8 @@ export function driveCar(dt) {
 
 export function clampWorld(o) {
   const b = WORLD.bounds;
-  o.position.x = THREE.MathUtils.clamp(o.position.x, -b, b);
-  o.position.z = THREE.MathUtils.clamp(o.position.z, -b, b);
+  o.position.x = THREE.MathUtils.clamp(o.position.x, b.x[0], b.x[1]);
+  o.position.z = THREE.MathUtils.clamp(o.position.z, b.z[0], b.z[1]);
 }
 
 // Third-person chase camera with occlusion. Auto-follows the car heading when not dragging.

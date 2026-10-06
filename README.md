@@ -1,4 +1,4 @@
-# NAIJA RISE — Lagos · Alpha 0.8
+# NAIJA RISE — Lagos · Alpha 0.9
 
 A browser-playable open-world life simulation set in a living Surulere, Lagos. Original IP: original characters, missions and story, with real Lagos place and street names on a stylised map.
 
@@ -26,7 +26,15 @@ npm run build && npm start
 
 Three.js and fonts load from CDNs in the static build, so an internet connection is required for the first load; a service worker then caches the shell and the page installs as a PWA. Progress saves to the browser (localStorage).
 
-## What is in Alpha 0.8
+## What is in Alpha 0.9
+
+**Bridges and corridors (0.9)** — the world now runs from Surulere east over the Costain interchange and Eko Bridge, across the Lagos Lagoon, to a first Lagos Island landing: CMS bus terminal, Broad Street, the Cathedral Church of Christ, Tafawa Balewa Square, a Broad Street tower and RiseBank Marina on the real Marina. The National Theatre stands at Iganmu by the Costain roundabout. Shitta Bridge is a flyover carrying Ogunlana Drive over Bode Thomas. Decks, ramps and pillars are real geometry: vehicles, pedestrians, the GPS line and the camera follow the elevation, deck barriers keep you on the bridge, and traffic understands the bridge with a rush-hour profile (crawling 7–10 and 16–19:30, flying at night).
+
+**Living City · Phase 1, streets** — every road has a class (expressway, highway, main, commercial, residential, market) that sets traffic speed, density and LASTMA speed limits. The Apapa–Oworonshoki Expressway runs along the north edge with a concrete median; Funsho Williams is a divided highway. Traffic lights at every junction cycle green, amber and red; traffic stops for them, and running a red near a LASTMA officer costs ₦5,000 or heat. Roadside vendors line Itire Road and the markets. Random road incidents drop an overturned keke into a lane and cause a go-slow.
+
+**Living City · Phase 2, places** — Surulere Fitness Gym (day pass, monthly membership, trainer, boxing once Fitness reaches 20), Chicken Republic (meals restore energy, a business lunch builds Business reputation), the Adeniran Ogunsanya Shopping Mall (outfits, a laptop, supermarket runs, barber, and a cinema with three Nollywood titles that trigger messages), Surulere Cyber Café (learn web design, graphics or coding, then take freelance gigs that pay double with a laptop), and street football at Teslim Balogun Stadium (friendlies, wagers, a neighbourhood tournament and the Lagos championship, with "Omo, you sabi ball!" opening a sponsor line). Every activity moves money, energy, skills, reputation and the clock.
+
+**Your choice of life** — every story dialogue can be declined with "Not now — I go find another hustle". The story pauses, the objective card points you to jobs, courses, the gym and business, and the mission resumes when you return to the contact or call them from the phone.
 
 **The city** — Surulere grid with Bode Thomas Street, Adeniran Ogunsanya Street, Ogunlana Drive, Funsho Williams Avenue and Itire/Ojuelegba Road, street signs at every junction. Ojuelegba Junction, Kilo, Shitta and Mushin bus stops, Yaba, Shitta and Mushin markets, National Stadium, Ladipo Garage, Marina, Area C Police Station, Fire Service, Army Barracks, LAWMA depot, FRSC checkpoint, LASTMA post, two RiseBank branches, Forties Bar, Lust Club, The Crib, Rita Lori Hotel, a school, Grace Chapel, Surulere Central Mosque, PHCN office, Mobil filling station, Surulere Event Centre, POS kiosks, three properties.
 
@@ -101,5 +109,5 @@ Add a new area by creating `src/data/districts/<id>.js` with the same exports as
 
 - `node --check` passes for every module.
 - Headless Chrome (puppeteer-core) runs with zero page errors: title → city, phone apps, jobs, bank, character, mission dialogue with a branching choice, driving, police pursuit, night lighting, mobile viewport with touch controls; the Next build serves `/` and `/play`.
-- Saves from Alpha 0.5 to 0.7 migrate automatically.
+- Saves from Alpha 0.5 to 0.8 migrate automatically.
 - Append `#debug` to the URL to expose `window.__nr` for manual testing.

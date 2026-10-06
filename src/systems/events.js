@@ -2,13 +2,13 @@ import * as THREE from 'three';
 import { G } from '../core/context.js';
 import { emit } from '../core/events.js';
 import { rnd, pick } from '../core/utils.js';
-import { ROADS, placeOf, roadName } from '../data/locations.js';
+import { ROADS, placeOf, roadNameAt, roadExtent } from '../data/locations.js';
 import { mat } from '../world/builders.js';
 import { notify } from '../ui/feedback.js';
 import { msg } from './economy.js';
 
 // Dynamic city events: NEPA power outages, go-slow traffic jams, Owambe parties.
-let outageT = 0, jamT = 0, partyDay = 0, crowd = [];
+let outageT = 0, jamT = 0, partyDay = 0, crowd = [], wreck = null;
 
 export const powerOut = () => !!G.outage;
 export const owambeOn = () => G.state.clock >= 19 && G.state.clock < 23.5;
@@ -21,9 +21,15 @@ function startOutage() {
 function endOutage() { G.outage = 0; notify('NEPA', 'Up NEPA! Light don come back.'); emit('sky'); }
 
 function startJam() {
-  const axis = pick(['h', 'v']), k = pick(axis === 'h' ? ROADS.h : ROADS.v), from = rnd(-120, 60);
+  const axis = pick(['h', 'v']), k = pick(axis === 'h' ? ROADS.h : ROADS.v), [ea, eb] = roadExtent(axis, k), from = rnd(ea + 20, eb - 80);
   G.jam = { axis, k, from, to: from + 60, until: rnd(60, 120) };
-  notify('Traffic', `Go-slow on ${roadName(axis, k)} — danfos dey crawl. Find another route.`);
+  if (Math.random() < 0.4) {
+    // road incident: an overturned keke in the lane, hazard cones, crowd of onlookers
+    const mid = from + 30, x = axis === 'h' ? mid : k + 4.5, z = axis === 'h' ? k - 4.5 : mid;
+    import('../entities/vehicles.js').then(v => { wreck = v.makeVehicle('keke'); wreck.position.set(x, 0.6, z); wreck.rotation.z = Math.PI / 2.2; wreck.rotation.y = rnd(0, 6); });
+    G.jam.wreck = true;
+    notify('Traffic', `Accident on ${roadNameAt(axis, k, mid)} — keke don tumble. Expect go-slow.`);
+  } else notify('Traffic', `Go-slow on ${roadNameAt(axis, k, from + 30)} — danfos dey crawl. Find another route.`);
 }
 
 function spawnCrowd() {
@@ -46,7 +52,7 @@ export function updateEvents(dt) {
   if (G.outage) { G.outage -= dt; if (G.outage <= 0) endOutage(); }
   else { outageT -= dt; if (outageT <= 0) { outageT = rnd(120, 260); if (night && Math.random() < 0.6) startOutage(); } }
   // Go-slow
-  if (G.jam) { G.jam.until -= dt; if (G.jam.until <= 0) { G.jam = null; notify('Traffic', 'Go-slow don clear.'); } }
+  if (G.jam) { G.jam.until -= dt; if (G.jam.until <= 0) { G.jam = null; if (wreck) { G.scene.remove(wreck); wreck = null; } notify('Traffic', 'Go-slow don clear.'); } }
   else { jamT -= dt; if (jamT <= 0) { jamT = rnd(90, 200); if (Math.random() < 0.7) startJam(); } }
   // Owambe
   if (owambeOn()) {

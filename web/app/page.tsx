@@ -20,7 +20,7 @@ export default function Home() {
           <h1>NAIJA <b>RISE</b><br />Lagos</h1>
           <p>Build your life. Build your empire. Survive the city. An original open-world life simulation set in a living Surulere — playable in the browser, on phone, with keyboard, touch or controller.</p>
           <div className="cta">
-            <Link href="/play" className="btn big">Play Alpha 0.8</Link>
+            <Link href="/play" className="btn big">Play Alpha 0.9</Link>
             <Link href="/play#play" className="btn big ghost">Skip title screen</Link>
           </div>
         </div>

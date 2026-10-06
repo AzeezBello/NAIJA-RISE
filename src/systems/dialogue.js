@@ -4,7 +4,7 @@ import { $, esc } from '../core/utils.js';
 import { contactOf } from '../data/characters.js';
 import { Avatar, Key } from '../ui/components.js';
 import { toast } from '../ui/feedback.js';
-import { tx } from './economy.js';
+import { tx, msg } from './economy.js';
 import { curMission, applyMission } from './navigation.js';
 import { startTask } from './missions.js';
 
@@ -36,10 +36,22 @@ export function advanceDialog(choiceIdx) {
   const done = dlg.onDone; G.dialog = null; renderDialog(); done && done();
 }
 
+// Any story dialogue can be declined: the story pauses, the player hustles (jobs, skills, business) and comes back later.
+const SKIP = { label: 'Not now — I go find another hustle', skip: true };
+export function pauseStory() {
+  const s = G.state; s.storyPaused = true;
+  toast('Story paused · jobs, skills, business — come back when you ready');
+  msg(curMission().at === 'marina' ? 'amaka' : 'babak', 'No wahala. Go hustle, learn something, come back when you ready. I dey here.');
+  applyMission(); emit('hud');
+}
+export function resumeStory() { G.state.storyPaused = false; applyMission(); emit('hud'); }
 export function runMission() {
   const m = curMission();
   const before = G.state.mission;
-  startDialog(m.lines(), m.choices, ch => {
+  G.state.storyPaused = false;
+  const choices = m.choices ? [...m.choices, SKIP] : [{ label: 'Alright, I dey in.', apply() {} }, SKIP];
+  startDialog(m.lines(), choices, ch => {
+    if (ch && ch.skip) { pauseStory(); return; }
     if (ch && ch.apply) ch.apply();
     if (m.task && G.state.mission === before && !G.task) { startTask(m); return; }   // mission continues as a task
     m.after();

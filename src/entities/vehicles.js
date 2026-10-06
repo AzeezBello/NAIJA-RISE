@@ -3,7 +3,9 @@ import { G, pos } from '../core/context.js';
 import { approach, pick, rnd } from '../core/utils.js';
 import { mat, lamps } from '../world/builders.js';
 import { VEH, PARKED, TRAFFIC_MIX, TRAFFIC_COLORS, LANE_OFFSET } from '../data/vehicles.js';
-import { ROADS } from '../data/locations.js';
+import { ROADS, roadRules, JUNCTIONS, roadExtent, BRIDGE_RUSH } from '../data/locations.js';
+import { heightAt } from '../world/terrain.js';
+import { lightFor } from '../systems/trafficlights.js';
 import { PERF } from '../data/config.js';
 
 // Local forward: every vehicle model faces -z.
@@ -115,8 +117,8 @@ const snapLane = t => { if (t.axis === 'h') t.g.position.z = t.k + t.dir * LANE_
 export function spawnTraffic() {
   G.traffic = TRAFFIC_MIX.slice(0, PERF.lowEnd ? PERF.trafficCap.low : PERF.trafficCap.full).map(type => {
     const axis = type === 'brt' || type === 'tanker' ? 'h' : pick(['h', 'v']);
-    const k = pick(axis === 'h' ? ROADS.h : ROADS.v), dir = pick([1, -1]);
-    let c = rnd(-140, 140); if (Math.abs(c) < 25 && Math.abs(k) < 1) c += 40;
+    const k = pick(axis === 'h' ? ROADS.h : ROADS.v), dir = pick([1, -1]), [ea, eb] = roadExtent(axis, k);
+    let c = rnd(ea + 10, eb - 10); if (Math.abs(c) < 25 && Math.abs(k) < 1) c += 40;
     const g = makeVehicle(type, pick(TRAFFIC_COLORS));
     const t = { g, type, axis, dir, k, speed: 0, cruise: VEH[type].max * rnd(0.5, 0.7), cool: rnd(0, 2), pursuit: false };
     if (axis === 'h') g.position.set(c, 0, k + dir * LANE_OFFSET); else g.position.set(k - dir * LANE_OFFSET, 0, c);
@@ -129,8 +131,8 @@ export function spawnTraffic() {
 export function rejoinTraffic(t) {
   const p = t.g.position;
   let best = null;
-  for (const z of ROADS.h) { const d = Math.abs(p.z - z); if (!best || d < best.d) best = { d, axis: 'h', k: z }; }
-  for (const x of ROADS.v) { const d = Math.abs(p.x - x); if (d < best.d) best = { d, axis: 'v', k: x }; }
+  for (const z of ROADS.h) { const [a, b] = roadExtent('h', z); if (p.x < a || p.x > b) continue; const d = Math.abs(p.z - z); if (!best || d < best.d) best = { d, axis: 'h', k: z }; }
+  for (const x of ROADS.v) { const [a, b] = roadExtent('v', x); if (p.z < a || p.z > b) continue; const d = Math.abs(p.x - x); if (!best || d < best.d) best = { d, axis: 'v', k: x }; }
   t.axis = best.axis; t.k = best.k; t.dir = pick([1, -1]); t.pursuit = false; snapLane(t); t.g.rotation.y = poseFor(t);
 }
 
@@ -150,6 +152,16 @@ export function updateTraffic(dt) {
     const jam = G.jam;
     if (jam && jam.axis === t.axis && jam.k === t.k) { const c = t.axis === 'h' ? t.g.position.x : t.g.position.z; if (c > jam.from && c < jam.to) target = Math.min(target, 1.6); }
     if (G.rain) target *= 0.7;
+    target *= roadRules(t.axis, t.k).speed;
+    if (t.axis === 'h' && t.k === 0 && t.g.position.x > 155 && t.g.position.x < 345) target *= 1.4 * BRIDGE_RUSH(G.state.clock);   // Eko Bridge: fast at night, crawling at rush hour
+    // red lights: stop 3–9 m before the junction box on this axis
+    if (roadRules(t.axis, t.k).lights !== false && lightFor(t.axis) !== 'green') {
+      for (const j of JUNCTIONS) {
+        const jc = t.axis === 'h' ? j.x : j.z, jk = t.axis === 'h' ? j.z : j.x; if (jk !== t.k) continue;
+        const c = t.axis === 'h' ? t.g.position.x : t.g.position.z, ahead = (jc - c) * t.dir - (t.axis === 'h' ? 14 : 14);
+        if (ahead > -2 && ahead < 10) { target = Math.min(target, Math.max(0, (ahead - 3) * 1.2)); break; }
+      }
+    }
     t.speed = approach(t.speed, target, (target < t.speed ? 22 : 7) * dt);
     t.g.position.x += fx * t.speed * dt; t.g.position.z += fz * t.speed * dt;
     t.cool -= dt;
@@ -158,6 +170,7 @@ export function updateTraffic(dt) {
       const c = t.axis === 'h' ? t.g.position.x : t.g.position.z;
       for (const k of cross) {
         if (Math.abs(c - k) >= 1.2) continue;
+        const [xa, xb] = roadExtent(t.axis === 'h' ? 'v' : 'h', k); if (t.k < xa || t.k > xb) continue;
         t.cool = 2.5;
         if (Math.random() < 0.4) {
           const nd = pick([1, -1]);
@@ -168,7 +181,8 @@ export function updateTraffic(dt) {
         break;
       }
     }
-    const c2 = t.axis === 'h' ? t.g.position.x : t.g.position.z;
-    if (c2 > 152 || c2 < -152) { const nc = c2 > 0 ? -150 : 150; if (t.axis === 'h') t.g.position.x = nc; else t.g.position.z = nc; }
+    const c2 = t.axis === 'h' ? t.g.position.x : t.g.position.z, [ea, eb] = roadExtent(t.axis, t.k);
+    if (c2 > eb + 2 || c2 < ea - 2) { const nc = c2 > eb ? ea : eb; if (t.axis === 'h') t.g.position.x = nc; else t.g.position.z = nc; }
+    t.g.position.y = heightAt(t.g.position.x, t.g.position.z);
   }
 }

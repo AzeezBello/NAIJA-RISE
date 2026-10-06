@@ -12,6 +12,7 @@ import { failTaskOnArrest } from './missions.js';
 import { box } from '../world/builders.js';
 import { colliders } from '../world/builders.js';
 import { homeProp } from './navigation.js';
+import { heightAt } from '../world/terrain.js';
 
 // Law and order: FRSC speeding tickets, army checkpoint, pedestrian hits, police pursuit and arrest at Heat 3+.
 let ticketT = 0, checkT = 0, bustT = 0, flash = 0;
@@ -83,6 +84,7 @@ export function updateLaw(dt) {
       t.g.position.x += dx / d * sp * dt; t.g.position.z += dz / d * sp * dt;
       t.g.rotation.y = Math.atan2(-dx, -dz);
     }
+    t.g.position.y = heightAt(t.g.position.x, t.g.position.z);
     if (bar) { bar.emissive.set(Math.floor(flash * 6) % 2 ? 0xff2222 : 0x2244ff); bar.emissiveIntensity = 2; }
     if (d < 4.5) near = true;
   }

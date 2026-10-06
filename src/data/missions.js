@@ -17,19 +17,19 @@ export const MISSIONS = [
       { s: 'babak', t: 'I get two kinds of work for you. Fast money wey get risk, or slow money wey clean.' },
     ],
     choices: [
-      { label: 'The fast one.', reply: 'Ehen. Carry this package go Marina, Amaka dey wait. Stake na ₦5,000, you go collect ₦25,000.',
+      { label: 'The fast one.', reply: 'Ehen. Carry this package go Iponri, Amaka dey wait. Stake na ₦5,000, you go collect ₦25,000.',
         apply() { G.state.path = 'risk'; G.state.cash -= 5000; tx('Stake paid to Baba K', -5000); addItem('package'); } },
-      { label: 'The clean one.', reply: 'Wise man. Carry these documents go Marina for Amaka. ₦12,000, no wahala.',
+      { label: 'The clean one.', reply: 'Wise man. Carry these documents go Iponri for Amaka. ₦12,000, no wahala.',
         apply() { G.state.path = 'legit'; addItem('documents'); } },
     ],
     after() {
-      msg('babak', G.state.path === 'risk' ? 'Package dey your hand. Amaka dey wait for Marina. No waste time.' : 'Documents dey your hand. Amaka dey Marina. Do am well.');
+      msg('babak', G.state.path === 'risk' ? 'Package dey your hand. Amaka dey wait for Iponri. No waste time.' : 'Documents dey your hand. Amaka dey Iponri. Do am well.');
       xp(20);
     },
   },
   {
     title: 'Make the Delivery', at: 'marina', r: 10,
-    obj: () => (G.state.path === 'risk' ? 'Deliver the package to Amaka at Marina' : 'Deliver the documents to Amaka at Marina'),
+    obj: () => (G.state.path === 'risk' ? 'Deliver the package to Amaka at Iponri' : 'Deliver the documents to Amaka at Iponri'),
     lines: () => (G.state.path === 'risk'
       ? [{ s: 'amaka', t: 'You carry am come? Give me quick, eyes dey everywhere.' }, { s: 'amaka', t: 'Clean work. ₦25,000. But police go hear about this one.' }]
       : [{ s: 'amaka', t: 'Ah, the documents. Baba K said you were reliable.' }, { s: 'amaka', t: 'Here is ₦12,000. Honest money spends the same.' }]),
@@ -58,13 +58,13 @@ export const MISSIONS = [
     requires: () => G.state.level >= 2,
     obj: () => (G.state.level >= 2 ? 'Return to Baba K at Ojuelegba Junction' : 'Reach Level 2 — work jobs from your phone'),
     lines: () => [{ s: 'babak', t: 'Level 2 already? Lagos dey favour you.' }, { s: 'babak', t: 'This na just the beginning. Buy property, buy business, build your empire.' }],
-    after() { msg('babak', 'You don rise small. Property and Businesses dey your phone. Amaka get one hot job for you at Marina — if you get liver.'); addRep('street', 5); xp(20); },
+    after() { msg('babak', 'You don rise small. Property and Businesses dey your phone. Amaka get one hot job for you at Iponri — if you get liver.'); addRep('street', 5); xp(20); },
   },
   {
     title: 'Hot Delivery', at: 'marina', r: 10,
-    obj: () => 'See Amaka at Marina for the hot job',
+    obj: () => 'See Amaka at Iponri for the hot job',
     lines: () => [
-      { s: 'amaka', t: 'This package na hot one. Police dey watch Marina. The moment you carry am, dem go follow you.' },
+      { s: 'amaka', t: 'This package na hot one. Police dey watch Iponri. The moment you carry am, dem go follow you.' },
       { s: 'amaka', t: 'Get am to Baba K at Ojuelegba. If dem catch you, na you sabi. ₦60,000 if you deliver.' },
     ],
     choices: [
@@ -79,14 +79,14 @@ export const MISSIONS = [
     lines: () => [{ s: 'babak', t: 'You reach! With police for your back. Na so we dey do am.' }, { s: 'babak', t: '₦60,000. Lagos don hear your name now.' }],
     after() {
       const s = G.state; s.chase = false; removeItem('package'); s.cash += 60000; tx('Hot delivery', 60000); s.heat = 0; addRep('street', 15); addRep('public', -5);
-      msg('amaka', 'Two roads from here. Come see me at Marina if you want clean money. Baba K go call you if you want the other thing.'); xp(40);
+      msg('amaka', 'Two roads from here. Come see me at Iponri if you want clean money. Baba K go call you if you want the other thing.'); xp(40);
     },
   },
   // ---------- 7 · Crossroads: the fork. Street reputation opens Baba K's arc, Public opens Amaka's. ----------
   {
     title: 'Crossroads', at: 'marina', r: 10,
-    obj: () => 'Choose your road — see Amaka at Marina',
-    lines: () => [{ s: 'amaka', t: `Street rep ${G.state.rep.street}, public rep ${G.state.rep.public}. Lagos don notice you.` }, { s: 'amaka', t: 'I run clean logistics — convoys, cold chain, a race the Marina crews bet on. Baba K runs the other kind. Wetin you be?' }],
+    obj: () => 'Choose your road — see Amaka at Iponri',
+    lines: () => [{ s: 'amaka', t: `Street rep ${G.state.rep.street}, public rep ${G.state.rep.public}. Lagos don notice you.` }, { s: 'amaka', t: 'I run clean logistics — convoys, cold chain, a race the Iponri crews bet on. Baba K runs the other kind. Wetin you be?' }],
     choices: [
       { label: 'Legit with Amaka (needs Public 0+)', reply: 'Good. First job na cold chain — vaccines for the school clinic. Time matters.',
         apply() { if (G.state.rep.public < 0) { toast('Your public reputation is too low. Pray, work shifts, settle fines.'); G.state.mission--; return; } G.state.arc = 'legit'; G.state.mission = 6; } },
@@ -98,7 +98,7 @@ export const MISSIONS = [
   // ---------- Legit arc (Amaka) 8–10 ----------
   {
     title: 'Cold Chain', at: 'marina', r: 10, arc: 'legit',
-    obj: taskObj('Collect the vaccine box from Amaka at Marina'),
+    obj: taskObj('Collect the vaccine box from Amaka at Iponri'),
     lines: () => [{ s: 'amaka', t: 'Vaccine box. Community Grammar School clinic. You get 20 minutes of Lagos time before e spoil.' }],
     task: { type: 'timed', dest: 'school', minutes: 20, item: 'coldbox', obj: 'Deliver the vaccine box to the school before it spoils' },
     after() { const s = G.state; s.cash += 40000; tx('Cold chain delivery', 40000); addRep('public', 6); addRep('business', 4); msg('amaka', 'Clinic got it cold. Next: a warehouse run. No speeding, the cargo is fragile.'); xp(30); },
@@ -109,11 +109,11 @@ export const MISSIONS = [
     obj: taskObj('Pick up the fragile cargo at the LAWMA depot'),
     lines: () => [{ s: 'amaka', t: 'Glassware for the filling station shop. Keep it under 90 km/h the whole way or everything breaks.' }],
     task: { type: 'cargo', dest: 'fuel', maxKmh: 90, item: 'cargo', obj: 'Deliver the glassware to Mobil — stay under 90 km/h' },
-    after() { const s = G.state; s.cash += 50000; tx('Warehouse run', 50000); addRep('business', 6); msg('amaka', 'Not one crack. The Marina crews race Funsho Williams tonight — win it and they will respect our name.'); xp(30); },
+    after() { const s = G.state; s.cash += 50000; tx('Warehouse run', 50000); addRep('business', 6); msg('amaka', 'Not one crack. The Iponri crews race Funsho Williams tonight — win it and they will respect our name.'); xp(30); },
     fail() { msg('amaka', 'Everything broke. Fragile means fragile. Try again.'); },
   },
   {
-    title: 'The Marina Race', at: 'stadstop', r: 10, arc: 'legit',
+    title: 'The Iponri Race', at: 'stadstop', r: 10, arc: 'legit',
     obj: taskObj('Meet Speedy at the Stadium bus stop to race for Amaka'),
     lines: () => [{ s: 'speedy', t: 'Amaka\'s boy? Funsho Williams, two laps, my crew versus you. Lose and Marina pays.' }],
     task: { type: 'race', wager: 0, obj: 'Win the race on Funsho Williams Avenue' },

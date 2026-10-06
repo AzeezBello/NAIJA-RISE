@@ -1,20 +1,48 @@
 // SURULERE, LAGOS — the first playable district. World units are roughly metres; +x east, +z south (down on the map).
 // Every district module exports the same shape so new areas (Yaba, Ikeja, Lekki, other states) drop in here.
-export const META = { id: 'surulere', name: 'Surulere', state: 'Lagos', spawn: { x: 0, z: 34 }, bounds: 145 };
-export const ROADS = { h: [0, -66], v: [0, 72, -72] };
+export const META = { id: 'surulere', name: 'Surulere', state: 'Lagos', spawn: { x: 0, z: 34 }, bounds: { x: [-145, 475], z: [-145, 145] } };
+// Regions of this world (PRD corridor map). The locale indicator names them.
+export const REGIONS = [{ id: 'surulere', name: 'Surulere', x: [-150, 135] }, { id: 'costain', name: 'Costain · Iganmu', x: [135, 165] }, { id: 'lagoon', name: 'Eko Bridge · Lagos Lagoon', x: [165, 340] }, { id: 'island', name: 'Lagos Island', x: [340, 480] }];
+export const regionAt = x => REGIONS.find(r => x >= r.x[0] && x < r.x[1]) || REGIONS[0];
+export const ROADS = { h: [0, -66, 142], v: [0, 72, -72, 360, 440] };
+// Where each road physically runs. Bode Thomas continues east over Eko Bridge onto Lagos Island.
+export const ROAD_EXTENT = { h: { 0: [-150, 470], '-66': [-150, 150], 142: [-150, 150] }, v: { 0: [-150, 150], 72: [-150, 150], '-72': [-150, 150], 360: [-80, 80], 440: [-80, 80] } };
+export const roadExtent = (axis, k) => ROAD_EXTENT[axis][k] || [-150, 150];
+// Named segments along a road (coordinate ranges along its axis).
+export const ROAD_SEGMENTS = { h: { 0: [[-150, 150, 'Bode Thomas Street'], [150, 160, 'Costain Interchange'], [160, 345, 'Eko Bridge'], [345, 470, 'Nnamdi Azikiwe Street · CMS']] } };
+export const roadNameAt = (axis, k, along) => { const seg = (ROAD_SEGMENTS[axis]?.[k] || []).find(([a, b]) => along >= a && along < b); return seg ? seg[2] : ROAD_NAMES[axis][k] || 'the main road'; };
+// Road classes drive traffic density, cruise speed, LASTMA speed limits and what lines the kerb.
+// class: expressway | highway | main | commercial | residential | market
+export const ROAD_CLASS = {
+  h: { 0: 'main', '-66': 'market', 142: 'expressway' },
+  v: { 0: 'commercial', 72: 'highway', '-72': 'residential', 360: 'commercial', 440: 'main' },
+};
+export const CLASS_RULES = {
+  expressway: { speed: 1.7, limit: 120, density: 1.3, lights: false, median: true },
+  highway: { speed: 1.25, limit: 100, density: 1.2, lights: true, median: true },
+  main: { speed: 1, limit: 80, density: 1, lights: true },
+  commercial: { speed: 0.9, limit: 60, density: 1.1, lights: true },
+  residential: { speed: 0.7, limit: 50, density: 0.6, lights: true },
+  market: { speed: 0.6, limit: 40, density: 1, lights: true, vendors: true },
+  bridge: { speed: 1.4, limit: 100, density: 1.4, lights: false, median: true },
+};
+// Rush-hour profile for the bridge (PRD: traffic understands bridges). Factor on cruise speed by hour.
+export const BRIDGE_RUSH = h => (h >= 7 && h < 10) || (h >= 16 && h < 19.5) ? 0.45 : h >= 22 || h < 5 ? 1.3 : 1;
+export const roadClass = (axis, k) => ROAD_CLASS[axis][k] || 'main';
+export const roadRules = (axis, k) => CLASS_RULES[roadClass(axis, k)];
 // Real Surulere street names on the stylised grid. Keys are the road coordinates above.
 export const ROAD_NAMES = {
-  h: { 0: 'Bode Thomas Street', '-66': 'Itire Road · Ojuelegba Road' },
-  v: { 0: 'Adeniran Ogunsanya Street', 72: 'Funsho Williams Avenue', '-72': 'Ogunlana Drive' },
+  h: { 0: 'Bode Thomas Street', '-66': 'Itire Road · Ojuelegba Road', 142: 'Apapa–Oworonshoki Expressway' },
+  v: { 0: 'Adeniran Ogunsanya Street', 72: 'Funsho Williams Avenue', '-72': 'Ogunlana Drive · Shitta Bridge', 360: 'Broad Street', 440: 'Marina' },
 };
-export const ROAD_WIDTHS = { h: { 0: 22, '-66': 18 }, v: { 0: 22, 72: 18, '-72': 18 } };
+export const ROAD_WIDTHS = { h: { 0: 22, '-66': 18, 142: 24 }, v: { 0: 22, 72: 24, '-72': 16, 360: 18, 440: 22 } };
 export const roadName = (axis, k) => ROAD_NAMES[axis][k] || 'the main road';
 
 // kind: landmark | market | police | army | service | bank | venue | hotel | checkpoint | post
 export const LANDMARKS = [
   // Surulere core
   { id: 'ojuelegba', name: 'Ojuelegba Junction', short: 'OJUELEGBA', x: 42, z: -48, c: '#87652e', sign: '#ffc52f', h: 5, kind: 'landmark' },
-  { id: 'marina', name: 'Marina', short: 'MARINA', x: 58, z: 60, c: '#245e69', sign: '#3dff79', h: 11, kind: 'landmark' },
+  { id: 'marina', name: 'Iponri Logistics Yard', short: 'IPONRI', x: 58, z: 60, c: '#245e69', sign: '#3dff79', h: 11, kind: 'landmark' },
   { id: 'ladipo', name: 'Ladipo Garage', short: 'LADIPO', x: -42, z: 48, c: '#5c4933', sign: '#ffc52f', h: 5, kind: 'landmark' },
   { id: 'yaba', name: 'Yaba Market', short: 'YABA MKT', x: -48, z: -48, c: '#6b4737', sign: '#ffc52f', h: 5, kind: 'market' },
   { id: 'shitta', name: 'Shitta Market', short: 'SHITTA MKT', x: -96, z: -24, c: '#6b4737', sign: '#ffc52f', h: 5, kind: 'market' },
@@ -42,13 +70,31 @@ export const LANDMARKS = [
   { id: 'nepa', name: 'PHCN / Eko Disco Office', short: 'NEPA', x: 120, z: 48, c: '#4a4a4a', sign: '#ffc52f', h: 7, kind: 'nepa' },
   { id: 'fuel', name: 'Mobil Filling Station', short: 'FUEL', x: -48, z: -96, c: '#b32020', sign: '#ffffff', h: 4, kind: 'fuel' },
   { id: 'owambe', name: 'Surulere Event Centre', short: 'EVENT CTR', x: -120, z: 120, c: '#7a3a6a', sign: '#ffc52f', h: 7, kind: 'owambe', cost: 3000 },
+  // Living City · places (Phase 2)
+  { id: 'gym', name: 'Surulere Fitness Gym', short: 'GYM', x: 24, z: 48, c: '#2a4a6a', sign: '#3dff79', h: 6, kind: 'gym' },
+  { id: 'fastfood', name: 'Chicken Republic', short: 'FAST FOOD', x: 48, z: -24, c: '#c62828', sign: '#ffffff', h: 5, kind: 'restaurant' },
+  { id: 'mall', name: 'Adeniran Ogunsanya Shopping Mall', short: 'MALL', x: -24, z: 72, c: '#8a8f93', sign: '#ffc52f', h: 12, kind: 'mall', big: true },
+  { id: 'cafe', name: 'Surulere Cyber Café', short: 'CYBER CAFE', x: -48, z: 72, c: '#3a4a7a', sign: '#5db8ff', h: 5, kind: 'cafe' },
+  { id: 'pitch', name: 'Teslim Balogun Stadium', short: 'TESLIM BALOGUN', x: -120, z: -48, c: '#2f7d49', sign: '#ffffff', kind: 'pitch' },
+  // Costain / Iganmu corridor and Lagos Island (Phase: Bridges & Corridors)
+  { id: 'theatre', name: 'National Theatre', short: 'NAT. THEATRE', x: 148, z: -44, c: '#8a8f93', sign: '#ffffff', kind: 'theatre', region: 'costain' },
+  { id: 'cathedral', name: 'Cathedral Church of Christ, Marina', short: 'CATHEDRAL', x: 408, z: -24, c: '#d9d2c2', sign: '#ffc52f', h: 12, kind: 'worship', region: 'island' },
+  { id: 'tbs', name: 'Tafawa Balewa Square', short: 'TBS', x: 408, z: 48, c: '#b9a98f', sign: '#ffffff', h: 6, kind: 'landmark', big: true, region: 'island' },
+  { id: 'marinabank', name: 'RiseBank Marina', short: 'BANK', x: 464, z: -24, c: '#2d2d4a', sign: '#b7b7ff', h: 18, kind: 'bank', region: 'island' },
+  { id: 'broadbank', name: 'First Lagos Tower · Broad Street', short: 'TOWER', x: 384, z: 24, c: '#4a6a8a', sign: '#ffffff', h: 30, kind: 'landmark', region: 'island' },
 ];
+// Compound cells for Lagos Island blocks (dense: towers and storey buildings).
+export const ISLAND_CELLS = [384, 408, 464].flatMap(x => [-72, -48, -24, 24, 48, 72].map(z => [x, z]));
+// Roadside vendors on the market street and near the markets.
+export const VENDORS = [[-30, -56], [-10, -56], [10, -76], [30, -76], [-60, -56], [-96, -12], [-84, -36], [-36, -108]];
 
 export const BUSSTOPS = [
   { id: 'kilo', name: 'Kilo Bus Stop', short: 'KILO', x: -40, z: 15, agberos: 2 },
   { id: 'ojstop', name: 'Ojuelegba Bus Stop', short: 'OJUELEGBA B/S', x: 18, z: -54, agberos: 1 },
   { id: 'stadstop', name: 'Stadium Bus Stop', short: 'STADIUM B/S', x: -86, z: -55, agberos: 0 },
   { id: 'mushinstop', name: 'Mushin Bus Stop', short: 'MUSHIN B/S', x: -30, z: -77, agberos: 1 },
+  { id: 'costain', name: 'Costain Bus Terminal', short: 'COSTAIN', x: 140, z: 15, agberos: 1 },
+  { id: 'cms', name: 'CMS Bus Terminal', short: 'CMS', x: 372, z: -15, agberos: 2 },
 ];
 
 // Housing (PRD §10): rent through an agent or buy from the landlord; owned homes can be let to tenants.
@@ -90,12 +136,13 @@ export const NIGHTLIFE_NPCS = [
 
 // Grid buildings and palms keep clear of these spots.
 export const RESERVED = [
-  ...LANDMARKS.map(l => ({ x: l.x, z: l.z, r: l.stadium ? 34 : (l.kind === 'checkpoint' || l.kind === 'post') ? 8 : 17 })),
+  ...LANDMARKS.map(l => ({ x: l.x, z: l.z, r: l.stadium ? 34 : l.kind === 'pitch' ? 26 : l.big ? 22 : (l.kind === 'checkpoint' || l.kind === 'post') ? 8 : 17 })),
   ...BUSSTOPS.map(b => ({ x: b.x, z: b.z, r: 13 })),
   ...PROPERTIES.map(p => ({ x: p.x, z: p.z, r: 17 })),
 ];
 
 export const PLACES = [...LANDMARKS, ...BUSSTOPS];
+export const JUNCTIONS = ROADS.h.flatMap(z => ROADS.v.filter(x => { const [a, b] = ROAD_EXTENT.v[x], [c, d] = ROAD_EXTENT.h[z]; return z >= a && z <= b && x >= c && x <= d; }).map(x => ({ x, z })));
 export const placeOf = id => LANDMARKS.find(l => l.id === id) || BUSSTOPS.find(b => b.id === id) || PROPERTIES.find(p => p.id === id);
 export const placesOfKind = kind => LANDMARKS.filter(l => l.kind === kind);
-export const WATER = { x: -170, w: 70 };   // lagoon strip west of the district
+export const WATER = { x: 252, w: 174 };   // Lagos Lagoon between Costain (x≈165) and Lagos Island (x≈339)

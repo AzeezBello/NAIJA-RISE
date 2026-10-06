@@ -19,6 +19,7 @@ import { updateEvents } from '../systems/events.js';
 import { updateWeather } from '../systems/weather.js';
 import { updateMissions } from '../systems/missions.js';
 import { updateRace } from '../systems/racing.js';
+import { updateTrafficLights } from '../systems/trafficlights.js';
 import { setupAudio, updateAudio } from '../ui/audio.js';
 import { awayReport } from '../systems/economy.js';
 import { startDialog } from '../systems/dialogue.js';
@@ -61,7 +62,7 @@ export const CityScene = {
     updateGamepad(dt);
     updateMovement(dt);
     updateTraffic(dt); updateNpcs(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
-    updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateMissions(dt); updateRace(dt); updateClock(dt); updateAudio();
+    updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateMissions(dt); updateRace(dt); updateTrafficLights(dt); updateClock(dt); updateAudio();
     routeT += dt; if (routeT > 0.25) { routeT = 0; updateRoute(); }   // GPS re-routes 4× a second
     updateCamera(dt);
     frame++; hudFrame(); if (frame % 2 === 0) mapDraw(); updateTouch();

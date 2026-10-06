@@ -7,6 +7,7 @@ import { placeOf } from '../data/locations.js';
 import { switchScene } from './manager.js';
 import { updateTraffic } from '../entities/vehicles.js';
 import { updateClouds } from '../world/district.js';
+import { updateTrafficLights } from '../systems/trafficlights.js';
 import { Key } from '../ui/components.js';
 
 // Title screen: the city idles behind a slow orbiting camera while the player chooses Continue / New game.
@@ -42,6 +43,6 @@ export const TitleScene = {
     G.camera.position.set(o.x + Math.cos(t * 0.08) * 70, 28 + Math.sin(t * 0.05) * 6, o.z + Math.sin(t * 0.08) * 70);
     G.camera.lookAt(new THREE.Vector3(o.x, 4, o.z));
     if (G.sky) G.sky.position.copy(G.camera.position);
-    updateTraffic(dt); updateClouds(dt);
+    updateTraffic(dt); updateClouds(dt); updateTrafficLights(dt);
   },
 };

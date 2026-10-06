@@ -1,6 +1,6 @@
 import { G, pos } from '../core/context.js';
 import { $, clampN } from '../core/utils.js';
-import { ROADS, ROAD_NAMES, LANDMARKS, BUSSTOPS, PROPERTIES, WATER } from '../data/locations.js';
+import { ROADS, ROAD_NAMES, LANDMARKS, BUSSTOPS, PROPERTIES, WATER, roadExtent, ROAD_WIDTHS } from '../data/locations.js';
 import { BUSINESSES } from '../data/businesses.js';
 import { VEH } from '../data/vehicles.js';
 import { vForward } from '../entities/vehicles.js';
@@ -11,14 +11,15 @@ const KIND_COLORS = { police: '#2c3f70', army: '#3f5a2a', service: '#8a4a2a', ba
 
 // Shared world drawing in world units; callers set up the transform.
 function drawWorld(g) {
-  g.fillStyle = '#122820'; g.fillRect(-200, -200, 400, 400);
+  g.fillStyle = '#122820'; g.fillRect(-220, -200, 760, 400);
   g.fillStyle = '#0e5f72'; g.fillRect(WATER.x - WATER.w / 2, -200, WATER.w, 400);
-  g.fillStyle = '#2b3f38'; for (const z of ROADS.h) g.fillRect(-150, z - 10, 300, 20); for (const x of ROADS.v) g.fillRect(x - 10, -150, 20, 300);
-  g.fillStyle = '#e6d58a33'; for (const z of ROADS.h) g.fillRect(-150, z - 0.4, 300, 0.8); for (const x of ROADS.v) g.fillRect(x - 0.4, -150, 0.8, 300);
+  for (const z of ROADS.h) { const [a, b] = roadExtent('h', z), w = ROAD_WIDTHS.h[z] * 0.9; g.fillStyle = z === 142 ? '#3a4d46' : '#2b3f38'; g.fillRect(a, z - w / 2, b - a, w); if (z === 0) { g.fillStyle = '#4a5a62'; g.fillRect(155, -10, 190, 20); } }
+  for (const x of ROADS.v) { const [a, b] = roadExtent('v', x), w = ROAD_WIDTHS.v[x] * 0.9; g.fillStyle = '#2b3f38'; g.fillRect(x - w / 2, a, w, b - a); }
+  g.fillStyle = '#e6d58a33'; for (const z of ROADS.h) { const [a, b] = roadExtent('h', z); g.fillRect(a, z - 0.4, b - a, 0.8); } for (const x of ROADS.v) { const [a, b] = roadExtent('v', x); g.fillRect(x - 0.4, a, 0.8, b - a); }
   for (const l of LANDMARKS) {
     if (l.stadium) { g.fillStyle = l.c; g.beginPath(); g.arc(l.x, l.z, 22, 0, Math.PI * 2); g.fill(); g.fillStyle = '#4a5055'; g.beginPath(); g.arc(l.x, l.z, 14, 0, Math.PI * 2); g.fill(); continue; }
     g.fillStyle = KIND_COLORS[l.kind] || l.c;
-    if (l.kind === 'checkpoint' || l.kind === 'post') g.fillRect(l.x - 2.5, l.z - 2.5, 5, 5); else g.fillRect(l.x - 9, l.z - 7, 18, 14);
+    if (l.kind === 'checkpoint' || l.kind === 'post') g.fillRect(l.x - 2.5, l.z - 2.5, 5, 5); else if (l.kind === 'theatre') { g.beginPath(); g.arc(l.x, l.z, 16, 0, Math.PI * 2); g.fill(); } else g.fillRect(l.x - 9, l.z - 7, 18, 14);
   }
   for (const b of BUSSTOPS) { g.fillStyle = '#f5c518'; g.fillRect(b.x - 3.5, b.z - 1.3, 7, 2.6); }
   for (const p of PROPERTIES) { g.fillStyle = G.state.props.includes(p.id) ? (p.id === G.state.home ? '#3dff79' : '#9fe3b8') : '#4a5a52'; g.fillRect(p.x - 8, p.z - 6, 16, 12); }
@@ -65,29 +66,31 @@ export function mapDraw() {
 // Full district map inside the phone, north-up, with labels. Tap sets a waypoint.
 export function phoneMapDraw() {
   const pmap = $('pmap'); if (!pmap) return;
-  const pctx = pmap.getContext('2d'), W = pmap.width, s = W / 330;
+  const pctx = pmap.getContext('2d'), W = pmap.width, s = W / 660, cx = W / 2 - 160 * s;
   pctx.clearRect(0, 0, W, W); pctx.fillStyle = '#0a1612'; pctx.fillRect(0, 0, W, W);
-  pctx.save(); pctx.translate(W / 2, W / 2); pctx.scale(s, s); drawWorld(pctx); pctx.restore();
-  const p = pos(); arrow(pctx, W / 2 + p.x * s, W / 2 + p.z * s, heading(), 9, '#fff');
+  pctx.save(); pctx.translate(cx, W / 2); pctx.scale(s, s); drawWorld(pctx); pctx.restore();
+  const p = pos(); arrow(pctx, cx + p.x * s, W / 2 + p.z * s, heading(), 9, '#fff');
   pctx.textAlign = 'center'; pctx.textBaseline = 'top';
   for (const l of LANDMARKS) {
     const small = l.kind === 'checkpoint' || l.kind === 'post';
     pctx.fillStyle = small ? l.c : '#fff'; pctx.font = `700 ${small ? 8 : 11}px Inter,sans-serif`;
-    pctx.fillText(l.short, W / 2 + l.x * s, W / 2 + (l.z + (l.stadium ? 24 : small ? 4 : 9)) * s);
+    pctx.fillText(l.short, cx + l.x * s, W / 2 + (l.z + (l.stadium ? 24 : small ? 4 : 9)) * s);
   }
-  pctx.fillStyle = '#f5c518'; pctx.font = '700 8px Inter,sans-serif'; for (const b of BUSSTOPS) pctx.fillText(b.short, W / 2 + b.x * s, W / 2 + (b.z + 3) * s);
+  pctx.fillStyle = '#f5c518'; pctx.font = '700 8px Inter,sans-serif'; for (const b of BUSSTOPS) pctx.fillText(b.short, cx + b.x * s, W / 2 + (b.z + 3) * s);
   pctx.fillStyle = '#bfe8cf'; pctx.font = '700 9px Inter,sans-serif';
-  for (const pr of PROPERTIES) if (G.state.props.includes(pr.id)) pctx.fillText(pr.id === G.state.home ? 'HOME' : pr.name.toUpperCase(), W / 2 + pr.x * s, W / 2 + (pr.z + 8) * s);
+  for (const pr of PROPERTIES) if (G.state.props.includes(pr.id)) pctx.fillText(pr.id === G.state.home ? 'HOME' : pr.name.toUpperCase(), cx + pr.x * s, W / 2 + (pr.z + 8) * s);
   pctx.fillStyle = '#c9d6cf'; pctx.font = '600 8px Inter,sans-serif'; pctx.textBaseline = 'middle';
-  for (const z of ROADS.h) pctx.fillText(ROAD_NAMES.h[z].toUpperCase(), W / 2 + 108 * s, W / 2 + (z - 7) * s);
-  for (const x of ROADS.v) { pctx.save(); pctx.translate(W / 2 + (x + 7) * s, W / 2 + 110 * s); pctx.rotate(-Math.PI / 2); pctx.fillText(ROAD_NAMES.v[x].toUpperCase(), 0, 0); pctx.restore(); }
-  pctx.fillStyle = '#9fd8e6'; pctx.font = '700 11px Inter,sans-serif'; pctx.save(); pctx.translate(W / 2 + WATER.x * s + 20, W / 2); pctx.rotate(-Math.PI / 2); pctx.textBaseline = 'middle'; pctx.fillText('LAGOON', 0, 0); pctx.restore();
+  for (const z of ROADS.h) pctx.fillText(ROAD_NAMES.h[z].toUpperCase(), cx + 60 * s, W / 2 + (z - 9) * s);
+  pctx.fillText('EKO BRIDGE', cx + 250 * s, W / 2 - 9 * s);
+  for (const x of ROADS.v) { const [a] = roadExtent('v', x); pctx.save(); pctx.translate(cx + (x + 7) * s, W / 2 + (a + 40) * s); pctx.rotate(-Math.PI / 2); pctx.fillText(ROAD_NAMES.v[x].toUpperCase(), 0, 0); pctx.restore(); }
+  pctx.fillStyle = '#9fd8e6'; pctx.font = '700 11px Inter,sans-serif'; pctx.fillText('LAGOS LAGOON', cx + WATER.x * s, W / 2 + 60 * s);
+  pctx.fillStyle = '#ffffff'; pctx.font = '800 10px Inter,sans-serif'; pctx.fillText('SURULERE', cx + 0 * s, W / 2 - 150 * s); pctx.fillText('LAGOS ISLAND', cx + 410 * s, W / 2 - 100 * s);
 }
 export function bindPhoneMap() {
   const pmap = $('pmap'); if (!pmap) return;
   pmap.addEventListener('click', e => {
-    const r = pmap.getBoundingClientRect(), s = pmap.width / 330;
-    const x = ((e.clientX - r.left) * pmap.width / r.width - pmap.width / 2) / s, z = ((e.clientY - r.top) * pmap.height / r.height - pmap.height / 2) / s;
-    setWaypoint({ x: clampN(x, -145, 145), z: clampN(z, -145, 145), label: 'Waypoint' }); toast('GPS waypoint set');
+    const r = pmap.getBoundingClientRect(), s = pmap.width / 660, cx = pmap.width / 2 - 160 * s;
+    const x = ((e.clientX - r.left) * pmap.width / r.width - cx) / s, z = ((e.clientY - r.top) * pmap.height / r.height - pmap.height / 2) / s;
+    setWaypoint({ x: clampN(x, -145, 475), z: clampN(z, -145, 145), label: 'Waypoint' }); toast('GPS waypoint set');
   });
 }

@@ -3,13 +3,15 @@ import { G, pos } from '../core/context.js';
 import { on, emit } from '../core/events.js';
 import { MISSIONS } from '../data/missions.js';
 import { jobOf } from '../data/jobs.js';
-import { ROADS, PROPERTIES, placeOf } from '../data/locations.js';
+import { ROADS, PROPERTIES, placeOf, roadExtent } from '../data/locations.js';
+import { heightAt } from '../world/terrain.js';
 
 /* ---------- mission / job / home lookups ---------- */
 export const curMission = () => MISSIONS[Math.min(G.state.mission, MISSIONS.length - 1)];
 const taskDest = () => { const t = G.task; if (!t) return null; if (t.type === 'steal' && !G.inCar) return t.destPos; return t.dest ? placeOf(t.dest) : null; };
 export const missionPos = () => taskDest() || placeOf(curMission().at);
-export const missionActive = () => { const m = curMission(); return !G.state.done && (!m.requires || m.requires()) && (!m.arc || m.arc === G.state.arc); };
+export const missionAvailable = () => { const m = curMission(); return !G.state.done && (!m.requires || m.requires()) && (!m.arc || m.arc === G.state.arc); };
+export const missionActive = () => missionAvailable() && !G.state.storyPaused;
 export const jobPos = j => placeOf(j.at);
 export const homeProp = () => PROPERTIES.find(p => p.id === G.state.home) || null;
 
@@ -59,8 +61,8 @@ export function gpsTarget() {
 }
 function snap(p) {
   let best = null;
-  for (const z of ROADS.h) { const d = Math.abs(p.z - z); if (!best || d < best.d) best = { d, type: 'h', k: z, x: p.x, z }; }
-  for (const x of ROADS.v) { const d = Math.abs(p.x - x); if (d < best.d) best = { d, type: 'v', k: x, x, z: p.z }; }
+  for (const z of ROADS.h) { const [a, b] = roadExtent('h', z); if (p.x < a - 20 || p.x > b + 20) continue; const d = Math.abs(p.z - z); if (!best || d < best.d) best = { d, type: 'h', k: z, x: Math.min(b, Math.max(a, p.x)), z }; }
+  for (const x of ROADS.v) { const [a, b] = roadExtent('v', x); if (p.z < a - 20 || p.z > b + 20) continue; const d = Math.abs(p.x - x); if (!best || d < best.d) best = { d, type: 'v', k: x, x, z: Math.min(b, Math.max(a, p.z)) }; }
   return best;
 }
 export function route(a, b) {
@@ -68,8 +70,8 @@ export function route(a, b) {
   if (A.d > 3) pts.push([A.x, A.z]);
   if (A.type === B.type && A.k === B.k) { /* same road */ }
   else if (A.type !== B.type) pts.push([A.type === 'v' ? A.k : B.k, A.type === 'h' ? A.k : B.k]);
-  else if (A.type === 'h') { let bx = ROADS.v[0], bd = 1e9; for (const x of ROADS.v) { const d = Math.abs(a.x - x) + Math.abs(b.x - x); if (d < bd) { bd = d; bx = x; } } pts.push([bx, A.k], [bx, B.k]); }
-  else { let bz = ROADS.h[0], bd = 1e9; for (const z of ROADS.h) { const d = Math.abs(a.z - z) + Math.abs(b.z - z); if (d < bd) { bd = d; bz = z; } } pts.push([A.k, bz], [B.k, bz]); }
+  else if (A.type === 'h') { let bx = null, bd = 1e9; for (const x of ROADS.v) { const [va, vb] = roadExtent('v', x); if (A.k < va || A.k > vb || B.k < va || B.k > vb) continue; const d = Math.abs(a.x - x) + Math.abs(b.x - x); if (d < bd) { bd = d; bx = x; } } if (bx !== null) pts.push([bx, A.k], [bx, B.k]); else pts.push([0, A.k], [0, 0], [B.x > 150 ? 360 : 0, 0], [B.x > 150 ? 360 : 0, B.k]); }
+  else { let bz = null, bd = 1e9; for (const z of ROADS.h) { const [ha, hb] = roadExtent('h', z); if (A.k < ha || A.k > hb || B.k < ha || B.k > hb) continue; const d = Math.abs(a.z - z) + Math.abs(b.z - z); if (d < bd) { bd = d; bz = z; } } pts.push([A.k, bz ?? 0], [B.k, bz ?? 0]); }
   if (B.d > 3) pts.push([B.x, B.z]);
   pts.push([b.x, b.z]);
   return pts.filter((p, i) => i === 0 || Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) > 0.5);
@@ -80,7 +82,7 @@ export function updateRoute() {
   const pts = route(pos(), t);
   let len = 0;
   const a = routeGeo.attributes.position;
-  pts.forEach(([x, z], i) => { a.setXYZ(i, x, 0.25, z); if (i) len += Math.hypot(x - pts[i - 1][0], z - pts[i - 1][1]); });
+  pts.forEach(([x, z], i) => { a.setXYZ(i, x, 0.25 + heightAt(x, z), z); if (i) len += Math.hypot(x - pts[i - 1][0], z - pts[i - 1][1]); });
   a.needsUpdate = true; routeGeo.setDrawRange(0, pts.length); routeLine.computeLineDistances(); routeLine.visible = true;
   G.currentRoute = pts; G.routeLen = len;
 }

@@ -13,11 +13,12 @@ import { applyPet } from '../entities/animals.js';
 import { toast } from '../ui/feedback.js';
 import { applySky } from '../world/daynight.js';
 import { tx, pay, xp, addItem, msg, addHeat, addRep, gainSkill } from './economy.js';
-import { missionActive, curMission, missionPos, jobPos, homeProp } from './navigation.js';
+import { missionActive, missionAvailable, curMission, missionPos, jobPos, homeProp } from './navigation.js';
 import { runMission, advanceDialog, startDialog } from './dialogue.js';
 import { owambeOn } from './events.js';
 import { tryCompleteTask } from './missions.js';
 import { startRace } from './racing.js';
+import { nearPlace, openPlace, placePrompt } from './places.js';
 import { LIVERIES, SLOGANS } from '../data/vehicles.js';
 
 export function nearestCar() {
@@ -33,7 +34,7 @@ const nearGate = () => !G.inCar && PROPERTIES.find(p => p.id !== G.state.home &&
 const nearPump = () => G.inCar && (dist(pos(), placeOf('ladipo')) < 16 || dist(pos(), placeOf('fuel')) < 16);
 const venueOpen = () => G.state.clock >= TIME.venueOpen || G.state.clock < TIME.venueClose;
 const nearYaba = () => !G.inCar && !missionActive() && dist(pos(), placeOf('yaba')) < 11;
-const nearDealer = () => !G.inCar && dist(pos(), placeOf('ladipo')) < 16;
+const nearDealer = () => !G.inCar && dist(pos(), placeOf('ladipo')) < 13;
 const nearRacer = () => !G.race && !G.task && dist(pos(), placeOf('stadstop')) < 10 && !(missionActive() && curMission().at === 'stadstop');
 
 export function toggleCar() {
@@ -155,7 +156,7 @@ export function interact() {
   if (G.dialog) { advanceDialog(); return; }
   const p = pos(), s = G.state;
   if (tryCompleteTask()) return;
-  if (missionActive() && !G.task && dist(p, missionPos()) < curMission().r) { runMission(); return; }
+  if (missionAvailable() && !G.task && dist(p, missionPos()) < curMission().r) { runMission(); return; }   // paused stories resume here
   const j = jobOf(s.job);
   if (j && dist(p, jobPos(j)) < 9) { G.working = { job: j, t: 0 }; return; }
   if (nearHome()) { sleep(homeProp()); return; }
@@ -164,6 +165,7 @@ export function interact() {
     const night = nearNight(); if (night) { hookupDialog(night); return; }
     if (nearKiosk()) { posDialog(); return; }
     if (nearYaba()) { petDialog(); return; }
+    const place = nearPlace(); if (place) { openPlace(place); return; }
     if (nearDealer()) { dealerDialog(); return; }
     if (nearRacer()) { racerDialog(); return; }
     const bank = nearKind('bank', 11); if (bank) { emit('phone:open', 'bank'); return; }
@@ -212,7 +214,7 @@ export function promptFor() {
   if (G.dialog) return null;
   if (G.working) return { text: `Working · ${G.working.job.title}`, bar: G.working.t / G.working.job.dur };
   if (G.task && !G.race) { const d = missionPos(); if (d && dist(p, d) < 13 && (G.task.type !== 'steal' || G.inCar)) return { key: 'E', text: G.task.type === 'steal' ? 'Hand over the sedan' : 'Deliver' }; }
-  if (missionActive() && !G.task && dist(p, missionPos()) < curMission().r) return { key: 'E', text: 'Talk' };
+  if (missionAvailable() && !G.task && dist(p, missionPos()) < curMission().r) return { key: 'E', text: s.storyPaused ? 'Resume the story' : 'Talk' };
   const j = jobOf(s.job);
   if (j && dist(p, jobPos(j)) < 9) return { key: 'E', text: `Start shift · ${j.title}` };
   if (nearHome()) return { key: 'E', text: 'Sleep · restore and skip to morning' };
@@ -221,6 +223,7 @@ export function promptFor() {
     const night = nearNight(); if (night) return { key: 'E', text: `${night.name} · talk` };
     if (nearKiosk()) return { key: 'E', text: 'POS agent · cash, water, suya' };
     if (nearYaba()) return { key: 'E', text: 'Mama Nkechi · pets and provisions' };
+    const place = nearPlace(); if (place) return { key: 'E', text: placePrompt(place) };
     if (nearDealer()) return { key: 'E', text: 'Dayo · buy or service a vehicle' };
     if (nearRacer()) return { key: 'E', text: 'Speedy · street race (₦20,000 wager)' };
     const bank = nearKind('bank', 11); if (bank) return { key: 'E', text: `${bank.name} · banking` };
