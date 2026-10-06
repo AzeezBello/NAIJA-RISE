@@ -4,10 +4,12 @@
   "private": true,
   "description": "NAIJA RISE — Lagos: Next.js shell (landing, accounts, launcher) hosting the Three.js game engine in ../src",
   "scripts": {
+    "sync": "node scripts/sync-engine.mjs",
+    "predev": "npm run sync",
     "dev": "next dev",
+    "prebuild": "npm run sync",
     "build": "next build",
-    "start": "next start",
-    "postinstall": "npm --prefix .. install --no-audit --no-fund --omit=dev"
+    "start": "next start"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",

@@ -32,3 +32,7 @@ node_modules/
 # Vercel
 .vercel/
 web/.vercel/
+
+# Copied into the Next app at build time (scripts/sync-engine.mjs)
+web/engine/
+web/styles/
