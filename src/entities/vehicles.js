@@ -4,6 +4,7 @@ import { approach, pick, rnd } from '../core/utils.js';
 import { mat, lamps } from '../world/builders.js';
 import { VEH, PARKED, TRAFFIC_MIX, TRAFFIC_COLORS, LANE_OFFSET } from '../data/vehicles.js';
 import { ROADS } from '../data/locations.js';
+import { PERF } from '../data/config.js';
 
 // Local forward: every vehicle model faces -z.
 export const vForward = o => new THREE.Vector3(-Math.sin(o.rotation.y), 0, -Math.cos(o.rotation.y));
@@ -112,7 +113,7 @@ const poseFor = t => (t.axis === 'h' ? (t.dir > 0 ? -Math.PI / 2 : Math.PI / 2) 
 const snapLane = t => { if (t.axis === 'h') t.g.position.z = t.k + t.dir * LANE_OFFSET; else t.g.position.x = t.k - t.dir * LANE_OFFSET; };
 
 export function spawnTraffic() {
-  G.traffic = TRAFFIC_MIX.map(type => {
+  G.traffic = TRAFFIC_MIX.slice(0, PERF.lowEnd ? PERF.trafficCap.low : PERF.trafficCap.full).map(type => {
     const axis = type === 'brt' || type === 'tanker' ? 'h' : pick(['h', 'v']);
     const k = pick(axis === 'h' ? ROADS.h : ROADS.v), dir = pick([1, -1]);
     let c = rnd(-140, 140); if (Math.abs(c) < 25 && Math.abs(k) < 1) c += 40;

@@ -11,6 +11,7 @@ import { missionActive, curMission, missionPos, gpsTarget } from '../systems/nav
 import { promptFor } from '../systems/interaction.js';
 import { wanted } from '../systems/police.js';
 import { timeStr } from '../world/daynight.js';
+import { LANDMARKS, BUSSTOPS, ROADS, ROAD_NAMES, META } from '../data/locations.js';
 
 // Builds the in-game HUD once. Layout: player card + objective (top-left), wallet (top-right),
 // minimap + GPS (bottom-left), prompt + hints + dialogue (bottom-centre), vitals / vehicle (bottom-right).
@@ -20,6 +21,7 @@ export function buildHud(root) {
     <div class="fade"></div>
     <div class="sleepfade" id="sleepfade"></div>
     <div class="brandtag"><b>${GAME.title}</b><span>${GAME.subtitle} · ${GAME.version.toUpperCase()}</span><span class="clk" id="hudClock">08:30</span></div>
+    <div class="locale" id="locale"><b>Surulere</b><span>Lagos</span></div>
     <section class="player glass">
       <canvas id="portrait" class="portrait" width="112" height="112"></canvas>
       <div class="pinfo">
@@ -86,7 +88,15 @@ export function refreshHud() {
   saveState(s);
 }
 
-let lastPrompt = '';
+let lastPrompt = '', lastLocale = '', localeT = 0;
+// Nearest named place, else the street you are on, else the district.
+function localeName(p) {
+  for (const l of [...LANDMARKS, ...BUSSTOPS]) if (dist(p, l) < (l.stadium ? 32 : 16)) return l.name;
+  let best = null, bd = 14;
+  for (const z of ROADS.h) { const d = Math.abs(p.z - z); if (d < bd) { bd = d; best = ROAD_NAMES.h[z]; } }
+  for (const x of ROADS.v) { const d = Math.abs(p.x - x); if (d < bd) { bd = d; best = ROAD_NAMES.v[x]; } }
+  return best || META.name;
+}
 // Per-frame HUD updates: prompt, distances, bars, speedometer.
 export function hudFrame() {
   const s = G.state, p = pos();
@@ -99,6 +109,7 @@ export function hudFrame() {
   }
   if (pr && pr.bar !== undefined) { const i = e.querySelector('.bar i'); if (i) i.style.width = (pr.bar * 100) + '%'; }
   $('objDist').textContent = missionActive() ? Math.round(dist(p, missionPos())) + ' m' : '';
+  localeT -= 1 / 60; if (localeT <= 0) { localeT = 0.5; const n = localeName(p); if (n !== lastLocale) { lastLocale = n; const e = $('locale'); e.querySelector('b').textContent = n; e.querySelector('span').textContent = n === META.name ? META.state : META.name; e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); } }
   const t = gpsTarget();
   $('gpsTarget').textContent = t ? t.label : 'No route'; $('gpsDist').textContent = t ? Math.round(G.routeLen) + ' m' : '';
   $('hp').style.width = s.health + '%'; $('sta').style.width = s.stamina + '%';

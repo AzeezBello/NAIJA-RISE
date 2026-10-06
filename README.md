@@ -1,4 +1,4 @@
-# NAIJA RISE — Lagos · Alpha 0.7
+# NAIJA RISE — Lagos · Alpha 0.8
 
 A browser-playable open-world life simulation set in a living Surulere, Lagos. Original IP: original characters, missions and story, with real Lagos place and street names on a stylised map.
 
@@ -26,7 +26,7 @@ npm run build && npm start
 
 Three.js and fonts load from CDNs in the static build, so an internet connection is required for the first load; a service worker then caches the shell and the page installs as a PWA. Progress saves to the browser (localStorage).
 
-## What is in Alpha 0.7
+## What is in Alpha 0.8
 
 **The city** — Surulere grid with Bode Thomas Street, Adeniran Ogunsanya Street, Ogunlana Drive, Funsho Williams Avenue and Itire/Ojuelegba Road, street signs at every junction. Ojuelegba Junction, Kilo, Shitta and Mushin bus stops, Yaba, Shitta and Mushin markets, National Stadium, Ladipo Garage, Marina, Area C Police Station, Fire Service, Army Barracks, LAWMA depot, FRSC checkpoint, LASTMA post, two RiseBank branches, Forties Bar, Lust Club, The Crib, Rita Lori Hotel, a school, Grace Chapel, Surulere Central Mosque, PHCN office, Mobil filling station, Surulere Event Centre, POS kiosks, three properties.
 
@@ -57,6 +57,10 @@ Three.js and fonts load from CDNs in the static build, so an internet connection
 **Audio** — synthesised engine hum, rain, generator drone during outages, horn on crashes and a cash chime, no audio files; toggle in Settings.
 
 **Graphics** — procedural facade, asphalt, concrete and ground textures, sidewalks and curbs, street lights with halos, gradient sky dome with sun and clouds, ACES tone mapping, soft shadows.
+
+**Playable core (0.8)** — smoother on-foot acceleration and turning with a walk bob; third-person camera with mouse orbit, wheel zoom, pinch-to-zoom and one-finger drag on touch, and occlusion against buildings; collisions against buildings, fences, poles, palms, parked and moving vehicles; a location indicator under the clock that names the street or landmark you are on.
+
+**Performance** — lane markings, fences, street-light poles, panels and lamp heads, palm trunks and leaves are merged into one mesh each; the shadow frustum follows the player at 2048 instead of covering the district at 4096; no per-frame allocations in movement and camera; GPS re-routes four times a second and the minimap redraws every other frame. Touch devices and small screens get a low-end profile: pixel ratio 1.5, no antialiasing, shadows off by default, fewer pedestrians, vehicles and raindrops, and no blur behind HUD panels.
 
 **Controls** — keyboard (WASD or arrow keys), mouse camera, touch (joystick and buttons, auto on phones and tablets), gamepad (left stick move/steer, right stick camera, RT gas, LT brake, A interact, B vehicle, Y phone, X sprint, LB handbrake, D-pad dialogue choices).
 
@@ -97,5 +101,5 @@ Add a new area by creating `src/data/districts/<id>.js` with the same exports as
 
 - `node --check` passes for every module.
 - Headless Chrome (puppeteer-core) runs with zero page errors: title → city, phone apps, jobs, bank, character, mission dialogue with a branching choice, driving, police pursuit, night lighting, mobile viewport with touch controls; the Next build serves `/` and `/play`.
-- Saves from Alpha 0.5 and 0.6 migrate automatically.
+- Saves from Alpha 0.5 to 0.7 migrate automatically.
 - Append `#debug` to the URL to expose `window.__nr` for manual testing.

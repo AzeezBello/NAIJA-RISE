@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { G } from '../core/context.js';
 import { pick } from '../core/utils.js';
-import { box, cyl, building, compound, sign, mat, occluders, colliders, lamps, glows } from './builders.js';
+import { box, cyl, building, compound, sign, mat, occluders, colliders, lamps, glows, staticBox, staticCyl, flushStatic } from './builders.js';
+import { PERF } from '../data/config.js';
 import { asphaltTexture, groundTexture, concreteTexture, cloudTexture, glowTexture } from './textures.js';
 import { ROADS, ROAD_NAMES, LANDMARKS, BUSSTOPS, PROPERTIES, KIOSKS, RESERVED, WATER } from '../data/locations.js';
 
@@ -15,8 +16,8 @@ function road(x, z, w, d, asphalt) {
   const m = new THREE.MeshStandardMaterial({ map: asphalt.clone(), roughness: 0.95 });
   m.map.repeat.set(w / 8, d / 8); m.map.needsUpdate = true;
   box(x, z, w, d, 0.1, 0, 'road', 0, m);
-  if (w > d) for (let p = x - w / 2 + 8; p < x + w / 2 - 8; p += 14) box(p, z, 0.65, 4, 0.11, 0xe6d58a, 'lane');
-  else for (let p = z - d / 2 + 8; p < z + d / 2 - 8; p += 14) box(x, p, 4, 0.65, 0.11, 0xe6d58a, 'lane');
+  if (w > d) for (let p = x - w / 2 + 8; p < x + w / 2 - 8; p += 14) staticBox('lanes', p, z, 0.65, 4, 0.11);
+  else for (let p = z - d / 2 + 8; p < z + d / 2 - 8; p += 14) staticBox('lanes', x, p, 4, 0.65, 0.11);
 }
 
 function sidewalks(concrete) {
@@ -26,14 +27,13 @@ function sidewalks(concrete) {
 }
 
 function streetLight(x, z, armDir) {
-  cyl(x, z, 0.12, 7, 0x6c7378, 'pole', 0, 8, 0.09);
-  const arm = box(x + armDir.x * 1.1, z + armDir.z * 1.1, Math.abs(armDir.x) * 2.2 + 0.18, Math.abs(armDir.z) * 2.2 + 0.18, 0.14, 0x6c7378, 'prop', 6.9);
-  const head = box(x + armDir.x * 2.1, z + armDir.z * 2.1, 0.7, 0.7, 0.22, 0xfff1c9, 'prop', 6.75); lamps.push(head.material);
-  const panel = box(x - armDir.x * 0.5, z - armDir.z * 0.5, 1.1, 0.7, 0.06, 0x1a2a4a, 'prop', 7.2); panel.rotation.x = -0.5; panel.material.metalness = 0.6; panel.material.roughness = 0.3; // solar panel
+  staticCyl('poles', x, z, 0.12, 7, 0, 8, 0.09); colliders.push({ x, z, w: 0.55, d: 0.55 });
+  staticBox('poles', x + armDir.x * 1.1, z + armDir.z * 1.1, Math.abs(armDir.x) * 2.2 + 0.18, Math.abs(armDir.z) * 2.2 + 0.18, 0.14, 6.9);
+  staticBox('heads', x + armDir.x * 2.1, z + armDir.z * 2.1, 0.7, 0.7, 0.22, 6.75);
+  staticBox('panels', x - armDir.x * 0.5, z - armDir.z * 0.5, 1.1, 0.7, 0.06, 7.2);   // solar panel
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: streetLight.glow, transparent: true, depthWrite: false, opacity: 0.85 }));
   halo.position.set(x + armDir.x * 2.1, 6.6, z + armDir.z * 2.1); halo.scale.set(9, 9, 1); halo.visible = false;
   G.scene.add(halo); glows.push(halo);
-  void arm;
 }
 function streetLights() {
   streetLight.glow = glowTexture();
@@ -152,13 +152,11 @@ function buildPalms() {
     const x = (Math.random() - 0.5) * 280, z = (Math.random() - 0.5) * 280;
     if (Math.abs(x) < 18 || Math.abs(z) < 18 || reserved(x, z, 4) || x < WATER.x + WATER.w / 2 + 8) continue;
     const h = 3 + Math.random() * 2.5;
-    const trunk = cyl(x, z, 0.22, h, 0x6b4a2e, 'palm', 0, 8, 0.14); trunk.rotation.z = (Math.random() - 0.5) * 0.12;
+    staticCyl('trunks', x, z, 0.22, h, 0, 8, 0.14); colliders.push({ x, z, w: 0.75, d: 0.75 });
     for (let a = 0; a < 8; a++) {
-      const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.16, 2.6, 0.5), mat(0x2f7d49));
       const ang = a * Math.PI / 4 + Math.random() * 0.3;
-      leaf.position.set(x + Math.cos(ang) * 0.9, h + 0.3, z + Math.sin(ang) * 0.9);
-      leaf.rotation.y = -ang; leaf.rotation.z = 0.95; leaf.castShadow = true;
-      G.scene.add(leaf);
+      const leaf = new THREE.BoxGeometry(0.16, 2.6, 0.5); leaf.rotateZ(0.95); leaf.rotateY(-ang); leaf.translate(x + Math.cos(ang) * 0.9, h + 0.3, z + Math.sin(ang) * 0.9);
+      leaf.computeBoundingBox(); (staticLeaf(leaf));
     }
   }
 }
@@ -173,6 +171,17 @@ function streetSigns() {
   }
 }
 
-export function buildDistrict() { buildSky(); buildGround(); streetLights(); streetSigns(); buildBlocks(); buildLandmarks(); buildPalms(); }
+import { staticLeaf } from './builders.js';
+const STATIC_MATS = () => ({
+  lanes: mat(0xe6d58a), fences: mat(0xbfb8a6, { roughness: 0.9 }), poles: mat(0x6c7378, { metalness: 0.4, roughness: 0.5 }),
+  heads: (() => { const m = mat(0xfff1c9); lamps.push(m); return m; })(), panels: mat(0x1a2a4a, { metalness: 0.6, roughness: 0.3 }),
+  trunks: mat(0x6b4a2e), leaves: mat(0x2f7d49),
+});
+export function buildDistrict() {
+  buildSky(); buildGround(); streetLights(); streetSigns(); buildBlocks(); buildLandmarks(); buildPalms();
+  const merged = flushStatic(STATIC_MATS());
+  if (merged.fences) occluders.push(merged.fences);
+  console.info(`[district] scene objects: ${G.scene.children.length}`);
+}
 export function updateClouds(dt) { for (const c of G.clouds || []) { c.position.x += dt * 1.2; if (c.position.x > 280) c.position.x = -280; } }
 export { ROADS };

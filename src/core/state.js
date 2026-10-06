@@ -1,4 +1,4 @@
-import { GAME, ECON, TIME } from '../data/config.js';
+import { GAME, ECON, TIME, PERF } from '../data/config.js';
 
 export const DEFAULT = {
   v: GAME.saveVersion, name: 'Tunde Okafor',
@@ -13,16 +13,16 @@ export const DEFAULT = {
   skills: { driving: 0, business: 0, charisma: 0, fitness: 0 },
   rep: { public: 0, business: 0, street: 0, social: 0 },
   vehicles: [], biz: {}, lastSeen: 0, awayTotal: 0, arc: null, upgrades: {}, complaints: {},
-  settings: { sens: 1, shadows: true, rotateMap: true, hints: true, touch: 'auto', mature: true },
+  settings: { sens: 1, shadows: !PERF.lowEnd, rotateMap: true, hints: true, touch: 'auto', mature: true },
 };
 
-const LEGACY_KEYS = ['naijarise.alpha06', 'naijarise.alpha05'];
+const LEGACY_KEYS = ['naijarise.alpha07', 'naijarise.alpha06', 'naijarise.alpha05'];
 export function hasSave() { try { return !!(localStorage.getItem(GAME.saveKey) || LEGACY_KEYS.some(k => localStorage.getItem(k))); } catch { return false; } }
 export function freshState() { return structuredClone(DEFAULT); }
 export function loadState() {
   try {
     const s = JSON.parse(localStorage.getItem(GAME.saveKey)) || LEGACY_KEYS.map(k => JSON.parse(localStorage.getItem(k))).find(Boolean);
-    if (s && (s.v === GAME.saveVersion || s.v === 6 || s.v === 5)) {   // v5 saves migrate: new fields take defaults
+    if (s && (s.v === GAME.saveVersion || s.v === 7 || s.v === 6 || s.v === 5)) {   // v5 saves migrate: new fields take defaults
       const st = freshState();
       Object.assign(st, s);
       st.settings = Object.assign({}, DEFAULT.settings, s.settings || {});

@@ -1,7 +1,7 @@
 import { G } from '../core/context.js';
 import { emit } from '../core/events.js';
 import { $ } from '../core/utils.js';
-import { WORLD } from '../data/config.js';
+import { WORLD, PERF } from '../data/config.js';
 import { createPlayer, applyLook } from '../entities/player.js';
 import { spawnNpcs, spawnAgberos, spawnServiceNpcs, spawnExtras, updateNpcs } from '../entities/npcs.js';
 import { spawnAnimals, applyPet, updateAnimals } from '../entities/animals.js';
@@ -32,7 +32,7 @@ import { mapDraw, phoneMapDraw } from '../ui/minimap.js';
 
 // The playable city. World geometry and traffic are built once in main.js; this scene adds the player,
 // NPCs, HUD and phone, then runs the per-frame systems.
-let built = false;
+let built = false, frame = 0, routeT = 0;
 export const CityScene = {
   name: 'city',
   enter() {
@@ -41,7 +41,7 @@ export const CityScene = {
       built = true;
       createPlayer();
       createMarkers();
-      spawnNpcs(); spawnAgberos(); spawnServiceNpcs(); spawnExtras(); spawnAnimals();
+      spawnNpcs(PERF.lowEnd ? PERF.npcs.low : PERF.npcs.full); spawnAgberos(); spawnServiceNpcs(); spawnExtras(); spawnAnimals();
       buildHud(root); buildPhone(root); buildTouch(root);
       setupDialogue(); setupInteraction(); setupMovement(); setupAudio();
     }
@@ -62,8 +62,9 @@ export const CityScene = {
     updateMovement(dt);
     updateTraffic(dt); updateNpcs(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
     updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateMissions(dt); updateRace(dt); updateClock(dt); updateAudio();
-    updateRoute(); updateCamera(dt);
-    hudFrame(); mapDraw(); updateTouch();
-    if (G.app === 'map' && phoneOpen()) phoneMapDraw();
+    routeT += dt; if (routeT > 0.25) { routeT = 0; updateRoute(); }   // GPS re-routes 4× a second
+    updateCamera(dt);
+    frame++; hudFrame(); if (frame % 2 === 0) mapDraw(); updateTouch();
+    if (G.app === 'map' && phoneOpen() && frame % 4 === 0) phoneMapDraw();
   },
 };

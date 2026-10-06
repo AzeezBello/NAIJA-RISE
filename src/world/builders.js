@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from '../core/context.js';
 import { facadeTextures, roofTexture } from './textures.js';
 
@@ -10,6 +11,29 @@ export const windows = [];     // facade materials whose windows light up at nig
 export const glows = [];       // sprites shown only at night (street-light halos)
 
 export const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.82, ...o });
+
+// Static geometry buckets: many small boxes of the same material become one mesh (one draw call each).
+const buckets = {};
+export function staticBox(bucket, x, z, w, d, h, y = 0) {
+  const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y + h / 2, z);
+  (buckets[bucket] ??= []).push(g);
+}
+export function staticCyl(bucket, x, z, r, h, y = 0, seg = 8, rTop = r) {
+  const g = new THREE.CylinderGeometry(rTop, r, h, seg); g.translate(x, y + h / 2, z);
+  (buckets[bucket] ??= []).push(g);
+}
+export function staticLeaf(geo) { (buckets.leaves ??= []).push(geo); }
+export function flushStatic(materials) {
+  const out = {};
+  for (const [name, geos] of Object.entries(buckets)) {
+    if (!geos.length) continue;
+    const merged = mergeGeometries(geos, false); geos.forEach(g => g.dispose());
+    const m = new THREE.Mesh(merged, materials[name] || mat(0x888888));
+    m.castShadow = name !== 'lanes'; m.receiveShadow = true; m.userData.name = name;
+    G.scene.add(m); out[name] = m; buckets[name] = [];
+  }
+  return out;
+}
 
 const SOLID = ['building', 'landmark', 'kiosk', 'property', 'fence'];
 export function box(x, z, w, d, h, c, name = 'building', y = 0, material) {
@@ -88,11 +112,12 @@ export function compound(x, z, pw, pd, style, color, name = 'building', h) {
     return house;
   }
   // fence with a gate gap on the street side
-  const fc = 0xbfb8a6, fh = 1.8, t = 0.3, gate = 3.2;
-  box(x, z + pd / 2, pw, t, fh, fc, 'fence');                                  // back
-  box(x - pw / 2, z, t, pd, fh, fc, 'fence'); box(x + pw / 2, z, t, pd, fh, fc, 'fence');
+  const fh = 1.8, t = 0.3, gate = 3.2;
+  const wall = (wx, wz, ww, wd) => { staticBox('fences', wx, wz, ww, wd, fh); colliders.push({ x: wx, z: wz, w: ww, d: wd }); };
+  wall(x, z + pd / 2, pw, t);                                                   // back
+  wall(x - pw / 2, z, t, pd); wall(x + pw / 2, z, t, pd);
   const side = (pw - gate) / 2;
-  box(x - pw / 2 + side / 2, z - pd / 2, side, t, fh, fc, 'fence'); box(x + pw / 2 - side / 2, z - pd / 2, side, t, fh, fc, 'fence');
+  wall(x - pw / 2 + side / 2, z - pd / 2, side, t); wall(x + pw / 2 - side / 2, z - pd / 2, side, t);
   const g = box(x, z - pd / 2, gate, 0.12, fh + 0.2, 0x2b2b2b, 'prop'); g.userData.gate = true; g.visible = Math.random() < 0.5; // half the gates stand open
   for (const sx of [-gate / 2 - 0.25, gate / 2 + 0.25]) box(x + sx, z - pd / 2, 0.5, 0.5, fh + 0.6, 0x8a8a8a, 'prop');
   house.userData.door = { x, z: z - pd / 2 - 1.5 };

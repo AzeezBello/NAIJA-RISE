@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { G } from '../core/context.js';
 import { emit } from '../core/events.js';
 import { rnd } from '../core/utils.js';
-import { WEATHER } from '../data/config.js';
+import { WEATHER, PERF } from '../data/config.js';
 import { notify } from '../ui/feedback.js';
 
 // Rain (PRD §21): darker sky, wet roads, reduced grip, slower traffic, a particle curtain around the camera.
@@ -10,7 +10,7 @@ let rain = null, nextCheck = 60;
 export const isRaining = () => !!G.rain;
 
 function makeRain() {
-  const n = 1800, pos = new Float32Array(n * 3);
+  const n = PERF.lowEnd ? PERF.rainDrops.low : PERF.rainDrops.full, pos = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) { pos[i * 3] = rnd(-40, 40); pos[i * 3 + 1] = rnd(0, 40); pos[i * 3 + 2] = rnd(-40, 40); }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xbfd4e6, size: 0.12, transparent: true, opacity: 0.55, depthWrite: false }));

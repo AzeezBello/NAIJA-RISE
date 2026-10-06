@@ -36,7 +36,8 @@ export function applySky() {
   sun.color.copy(lerpC(A[2], B[2], t)); sun.intensity = mix(A[3], B[3]);
   hemi.color.copy(lerpC(A[4], B[4], t)); hemi.groundColor.copy(lerpC(A[5], B[5], t)); hemi.intensity = mix(A[6], B[6]);
   const az = (h - 6) / 12 * Math.PI, el = Math.sin(az);
-  sun.position.set(Math.cos(az) * 120, Math.max(22, el * 110), 45);
+  G.sunDir = G.sunDir || new THREE.Vector3(); G.sunDir.set(Math.cos(az) * 120, Math.max(22, el * 110), 45);
+  sun.position.copy(G.sunDir).add(sun.target.position);
   if (sky) {
     sky.material.uniforms.top.value.copy(lerpC(A[9], B[9], t));
     sky.material.uniforms.horizon.value.copy(lerpC(A[10], B[10], t));
