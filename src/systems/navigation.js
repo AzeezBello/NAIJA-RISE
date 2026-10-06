@@ -7,8 +7,9 @@ import { ROADS, PROPERTIES, placeOf } from '../data/locations.js';
 
 /* ---------- mission / job / home lookups ---------- */
 export const curMission = () => MISSIONS[Math.min(G.state.mission, MISSIONS.length - 1)];
-export const missionPos = () => placeOf(curMission().at);
-export const missionActive = () => { const m = curMission(); return !G.state.done && (!m.requires || m.requires()); };
+const taskDest = () => { const t = G.task; if (!t) return null; if (t.type === 'steal' && !G.inCar) return t.destPos; return t.dest ? placeOf(t.dest) : null; };
+export const missionPos = () => taskDest() || placeOf(curMission().at);
+export const missionActive = () => { const m = curMission(); return !G.state.done && (!m.requires || m.requires()) && (!m.arc || m.arc === G.state.arc); };
 export const jobPos = j => placeOf(j.at);
 export const homeProp = () => PROPERTIES.find(p => p.id === G.state.home) || null;
 
@@ -28,8 +29,8 @@ export function createMarkers() {
 }
 export function applyMission() {
   const m = G.markers.mission;
-  if (!missionActive()) { m.visible = false; return; }
-  const p = missionPos(); m.visible = true; m.position.set(p.x, 0.22, p.z);
+  if (!missionActive() || (G.task && (G.task.type === 'escape' || G.task.type === 'race'))) { m.visible = false; return; }
+  const p = missionPos(); if (!p) { m.visible = false; return; } m.visible = true; m.position.set(p.x, 0.22, p.z);
 }
 export function applyJob() {
   const j = jobOf(G.state.job), m = G.markers.job;
@@ -48,6 +49,8 @@ export function updateMarkers(dt) {
 /* ---------- GPS: waypoint > job > mission, routed along the road grid ---------- */
 export function gpsTarget() {
   const s = G.state;
+  if (G.race && !G.race.finished) { const c = G.race.cps[G.race.i]; return { x: c.x, z: c.z, label: `Race · checkpoint ${G.race.i + 1}/${G.race.cps.length}`, kind: 'mission' }; }
+  if (G.task && G.task.type !== 'escape') { const p = taskDest(); if (p) return { x: p.x, z: p.z, label: G.task.obj.split(' — ')[0], kind: 'mission' }; }
   if (s.waypoint) return { x: s.waypoint.x, z: s.waypoint.z, label: s.waypoint.label || 'Waypoint', kind: 'wp' };
   const j = jobOf(s.job);
   if (j) { const p = jobPos(j); return { x: p.x, z: p.z, label: `${j.title} · ${j.where}`, kind: 'job' }; }

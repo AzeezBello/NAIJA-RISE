@@ -44,6 +44,7 @@ export function applySky() {
   }
   if (sunDisc) { sunDisc.visible = el > -0.05; sunDisc.position.set(Math.cos(az) * 420, el * 400, 160); sunDisc.material.color.copy(sun.color); }
   const night = isNight(), out = !!G.outage;
+  if (G.state.day % 10 >= 7 && !G.rain) { scene.background.lerp(cA.set(0xd9c7a0), 0.45); scene.fog.color.copy(scene.background); scene.fog.near = 35; scene.fog.far = 140; sun.intensity *= 0.75; sun.color.lerp(cA.set(0xffd9a0), 0.5); if (sky) { sky.material.uniforms.top.value.lerp(cA.set(0xc9b890), 0.5); sky.material.uniforms.horizon.value.lerp(cA.set(0xe3d2ad), 0.6); } }
   if (G.rain) { scene.background.multiplyScalar(0.55); scene.fog.color.copy(scene.background); scene.fog.near *= 0.5; scene.fog.far *= 0.6; sun.intensity *= 0.45; hemi.intensity *= 0.8; if (sky) { sky.material.uniforms.top.value.multiplyScalar(0.5); sky.material.uniforms.horizon.value.multiplyScalar(0.6); } }
   if (clouds) { const cc = night ? 0x2a3550 : 0xffffff; for (const c of clouds) c.material.color.set(cc); }
   for (const m of lamps) { m.emissive.set(0xffe7ad); m.emissiveIntensity = night ? 1.6 : 0; }   // solar street lights: NEPA cannot touch them

@@ -1,9 +1,9 @@
 import { G } from '../core/context.js';
 import { emit, on } from '../core/events.js';
-import { fmt } from '../core/utils.js';
+import { fmt, pick } from '../core/utils.js';
 import { notify, toast } from '../ui/feedback.js';
 import { contactOf } from '../data/characters.js';
-import { bizIncome } from '../data/businesses.js';
+import { bizIncome, BUSINESSES, bizCfg, rivalOpen } from '../data/businesses.js';
 import { ECON, UNLOCKS, RENT, AWAY } from '../data/config.js';
 import { PROPERTIES } from '../data/locations.js';
 
@@ -55,6 +55,8 @@ export function updateEconomy(dt) {
       s.payIn = ECON.payCycle;
       const total = bizIncome(s);
       s.bank += total; tx('Business income', total); emit('cash');
+      for (const b of BUSINESSES) if (s.owned.includes(b.id)) { const c = bizCfg(s, b.id); c.stock = Math.max(0, (c.stock ?? 100) - 15); if (c.stock === 30) notify('Business', `${b.name} is running low on stock`); }
+      if (rivalOpen(s) && !s.rivalTold) { s.rivalTold = true; msg('nkechi', "Chidi don open shop near your own. E dey undercut you. Drop your prices if you wan keep customers."); }
       notify('RiseBank', `Credit alert · ${fmt(total)} business income`);
       emit('hud');
     }
@@ -64,7 +66,7 @@ export function updateEconomy(dt) {
 // New game day: tenants pay, leases run out.
 on('day', day => {
   const s = G.state;
-  const income = (s.let || []).reduce((sum, id) => { const p = PROPERTIES.find(p => p.id === id); return sum + (p ? Math.round(p.rent * RENT.tenantShare) : 0); }, 0);
+  const income = (s.let || []).reduce((sum, id) => { const p = PROPERTIES.find(p => p.id === id); return sum + (p ? Math.round(p.rent * RENT.tenantShare * (s.complaints?.[id] ? 0.5 : 1)) : 0); }, 0);
   if (income > 0) { s.bank += income; tx('Rent from tenants', income); notify('RiseBank', `Credit alert · ${fmt(income)} rent from your tenants`); }
   if (s.rented) {
     const p = PROPERTIES.find(p => p.id === s.rented.id), left = s.rented.until - day;
@@ -83,9 +85,11 @@ export function gainSkill(kind, n) {
   if (Math.floor(sk[kind]) > before && Math.floor(sk[kind]) % 5 === 0) { toast(`${kind[0].toUpperCase() + kind.slice(1)} skill ${Math.floor(sk[kind])}`); emit('hud'); }
 }
 
-// Property upkeep each morning: owned homes cost rent/60 per day.
+// Property upkeep each morning: owned homes cost rent/60 per day. Tenants sometimes complain; ignore them and rent halves.
 on('day', () => {
   const s = G.state;
+  s.complaints ??= {};
+  for (const id of s.let || []) { if (!s.complaints[id] && Math.random() < 0.2) { s.complaints[id] = pick(['the pumping machine don spoil', 'roof dey leak', 'NEPA wire don cut', 'soakaway don full']); msg('landlord', `Your tenant for ${PROPERTIES.find(p => p.id === id).type} talk say ${s.complaints[id]}. Fix am or rent go drop.`); } }
   const upkeep = s.props.reduce((t, id) => { const p = PROPERTIES.find(p => p.id === id); return t + (p ? Math.round(p.rent / 60) : 0); }, 0);
   if (upkeep > 0) { s.bank -= upkeep; tx('Property maintenance', -upkeep); }
 });

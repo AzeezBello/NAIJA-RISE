@@ -72,7 +72,7 @@ export const ANIMALS = [
 ];
 
 // Uniformed NPCs standing at their posts.
-export const UNIFORMS = { police: 0x111318, army: 0x3f5a2a, fire: 0xb52a2a, lawma: 0xf07a1e, lastma: 0xd9b92e, frsc: 0xe4d14b };
+export const UNIFORMS = { police: 0x111318, army: 0x3f5a2a, fire: 0xb52a2a, lawma: 0xf07a1e, lastma: 0xd9b92e, frsc: 0xe4d14b, racer: 0xff5d9e };
 export const SERVICE_NPCS = [
   { x: 92, z: -84, u: 'police' }, { x: 100, z: -84, u: 'police' },
   { x: 114, z: -12, u: 'army' }, { x: 124, z: -12, u: 'army' },
@@ -80,6 +80,7 @@ export const SERVICE_NPCS = [
   { x: -92, z: 84, u: 'lawma' }, { x: -30, z: 13, u: 'lawma' }, { x: 30, z: -13, u: 'lawma' },
   { x: -12, z: -56, u: 'lastma' },
   { x: 80, z: 30, u: 'frsc' }, { x: 64, z: 30, u: 'frsc' },
+  { x: -80, z: -58, u: 'racer' },
 ];
 
 // Night hustlers outside the clubs (mature content, toggle in Settings).

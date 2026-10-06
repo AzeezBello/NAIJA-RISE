@@ -7,13 +7,29 @@ import { placeOf } from '../data/locations.js';
 import { rejoinTraffic } from '../entities/vehicles.js';
 import { toast } from '../ui/feedback.js';
 import { tx, msg, pay, addHeat, addRep, removeItem } from './economy.js';
+import { startDialog } from './dialogue.js';
+import { failTaskOnArrest } from './missions.js';
+import { box } from '../world/builders.js';
+import { colliders } from '../world/builders.js';
+import { homeProp } from './navigation.js';
 
 // Law and order: FRSC speeding tickets, army checkpoint, pedestrian hits, police pursuit and arrest at Heat 3+.
 let ticketT = 0, checkT = 0, bustT = 0, flash = 0;
 const kmh = () => Math.abs(G.carSpeed) * 3.6;
 
+let busting = false;
 function bust() {
+  if (busting) return; busting = true;
+  const s = G.state, bribe = s.heat * 5000;
+  G.carSpeed = 0;
+  startDialog([{ s: 'police', t: `Oga, pull over. Heat ${s.heat}. We fit settle am here for ${fmt(bribe)}, or you follow us go station.` }], [
+    { label: `Settle here · ${fmt(bribe)}`, apply() { if (!pay(bribe, 'Settled with the police')) { toast('No money — station it is'); arrest(); return; } if (Math.random() < 0.6) { s.heat = 0; addRep('street', 2); for (const t of G.traffic) if (t.pursuit) rejoinTraffic(t); toast('They collect and let you go'); } else { toast('Wrong officer. You still go station.'); arrest(); } } },
+    { label: 'Follow them to Area C', apply() { arrest(); } },
+  ], ch => { ch.apply(); busting = false; emit('hud'); });
+}
+function arrest() {
   const s = G.state, fine = s.heat * ECON.bustRate;
+  failTaskOnArrest();
   if (!pay(fine, 'Police fine')) { s.cash = 0; s.bank = 0; tx('Police fine (all funds)', -fine); }
   s.heat = 0;
   if (G.inCar) { G.inCar = false; G.player.visible = true; G.car = null; G.carSpeed = 0; }
@@ -71,5 +87,25 @@ export function updateLaw(dt) {
     if (d < 4.5) near = true;
   }
   if (chasing && near) { bustT += dt; if (bustT > LAW.bustSeconds) { bustT = 0; bust(); } } else bustT = 0;
+  updateRoadblocks(s.heat >= 4);
+  layLow(dt, chasing);
 }
 export const wanted = () => G.state.heat >= LAW.pursuitHeat;
+
+// Heat 4+: the army blocks Funsho Williams at Bode Thomas and Ogunlana Drive at Shitta.
+const BLOCKS = [{ x: 72, z: 14, w: 18, d: 2.5 }, { x: -72, z: -14, w: 18, d: 2.5 }];
+let blocks = null;
+function updateRoadblocks(on) {
+  if (on && !blocks) {
+    blocks = BLOCKS.map(b => { const m = box(b.x, b.z, b.w, b.d, 1.2, 0x3f5a2a, 'prop'); const c = { x: b.x, z: b.z, w: b.w, d: b.d }; colliders.push(c); m.userData.collider = c; for (const ox of [-6, 0, 6]) box(b.x + ox, b.z, 0.5, 0.5, 2.2, 0xd9c22e, 'prop').userData.block = m; return m; });
+    toast('ARMY ROADBLOCKS — Funsho Williams and Ogunlana Drive are closed');
+  }
+  if (!on && blocks) { for (const m of blocks) { const i = colliders.indexOf(m.userData.collider); if (i >= 0) colliders.splice(i, 1); G.scene.remove(m); } G.scene.children.filter(o => o.userData.block).forEach(o => G.scene.remove(o)); blocks = null; }
+}
+// Safe house: stay at your gate for ten seconds while wanted and the patrols give up (heat drops to 2).
+let lowT = 0;
+function layLow(dt, chasing) {
+  const h = homeProp();
+  if (chasing && h && !G.inCar && dist(G.player.position, h.door) < 6) { lowT += dt; if (lowT > 10) { lowT = 0; G.state.heat = 2; for (const t of G.traffic) if (t.pursuit) rejoinTraffic(t); toast('You lay low at home — the patrols move on'); emit('hud'); } }
+  else lowT = 0;
+}

@@ -33,7 +33,7 @@ function truck(g, add, len, cabColor, bedColor, extra) {
 // Low-poly Lagos vehicles: sedan, danfo, korope, keke napep, okada, BRT, police, fire, LAWMA, army.
 export function makeVehicle(type, color = 0x172e35) {
   const g = new THREE.Group(); g.userData.type = type;
-  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
+  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.userData.body = m.isMeshStandardMaterial && m !== glass && m.color.getHex() !== 0x111111 && m.color.getHex() !== 0x101111; g.add(o); return o; };
   const glass = GLASS();
   switch (type) {
     case 'car': case 'police': {
@@ -101,7 +101,9 @@ export function spawnOwned(home) {
     if (G.parked.some(v => v.userData.ownedId === o.id)) continue;
     const v = makeVehicle(o.type, 0x1f3a5a); v.userData.ownedId = o.id; v.userData.owned = true; v.userData.cond = o.cond ?? 100;
     const base = home ? home.door : { x: -42, z: 62 }; const i = G.parked.filter(v => v.userData.owned).length;
-    v.position.set(base.x + 6 + i * 4, 0, base.z - 3); v.rotation.y = Math.PI / 2; G.parked.push(v);
+    if (o.pos) { v.position.set(o.pos.x, 0, o.pos.z); v.rotation.y = o.pos.rot; } else { v.position.set(base.x + 6 + i * 4, 0, base.z - 3); v.rotation.y = Math.PI / 2; }
+    G.parked.push(v);
+    import('../systems/interaction.js').then(m => { if (o.livery !== undefined) m.applyLivery(v, o); if (o.slogan !== undefined) m.applySlogan(v, o); });
   }
 }
 

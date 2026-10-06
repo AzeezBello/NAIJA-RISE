@@ -17,6 +17,8 @@ import { updateEconomy, msg } from '../systems/economy.js';
 import { updateLaw } from '../systems/police.js';
 import { updateEvents } from '../systems/events.js';
 import { updateWeather } from '../systems/weather.js';
+import { updateMissions } from '../systems/missions.js';
+import { updateRace } from '../systems/racing.js';
 import { setupAudio, updateAudio } from '../ui/audio.js';
 import { awayReport } from '../systems/economy.js';
 import { startDialog } from '../systems/dialogue.js';
@@ -59,7 +61,7 @@ export const CityScene = {
     updateGamepad(dt);
     updateMovement(dt);
     updateTraffic(dt); updateNpcs(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
-    updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateClock(dt); updateAudio();
+    updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateMissions(dt); updateRace(dt); updateClock(dt); updateAudio();
     updateRoute(); updateCamera(dt);
     hudFrame(); mapDraw(); updateTouch();
     if (G.app === 'map' && phoneOpen()) phoneMapDraw();

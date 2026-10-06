@@ -11,6 +11,7 @@ export const CONTACTS = [
   { id: 'dayo', name: 'Dayo', role: 'Mechanic · Ladipo', at: 'ladipo', c: '#5db8ff', line: 'Bring the motor, I go check am.' },
   { id: 'nkechi', name: 'Mama Nkechi', role: 'Trader · Yaba Market', at: 'yaba', c: '#ff9a5d', line: 'My customer! Come buy something.' },
   { id: 'driver', name: 'Oga Driver', role: 'Danfo driver · Kilo', at: 'kilo', c: '#f5c518', line: 'Kilo! Kilo! Enter with your change!' },
+  { id: 'speedy', name: 'Speedy', role: 'Street racer · Funsho Williams', at: 'stadstop', c: '#ff5d9e', line: 'Two laps. Bring money or bring excuses.' },
   { id: 'bayo', name: 'Coach Bayo', role: 'Steward lead · Stadium', at: 'stadium', c: '#d8dde0', line: 'Match day soon. I need hands.' },
   { id: 'police', name: 'NPF Area C', role: 'Police station', at: 'police', c: '#9fb3ff', line: 'Keep your record clean and we no go have problem.' },
   { id: 'agbero', name: 'Agbero', role: 'Bus stop boys', c: '#c8d400', line: 'Owo da?' },

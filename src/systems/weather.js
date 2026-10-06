@@ -16,25 +16,28 @@ function makeRain() {
   const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xbfd4e6, size: 0.12, transparent: true, opacity: 0.55, depthWrite: false }));
   pts.frustumCulled = false; G.scene.add(pts); return pts;
 }
-export function startRain(minutes = rnd(...WEATHER.rainMinutes)) {
+export const FLOOD = { axis: 'h', k: -66, from: -20, to: 60 };   // Ojuelegba underpass floods in a storm
+export const isHarmattan = () => G.state.day % 10 >= 7;             // days 7–9 of every ten: dry, hazy season
+export function startRain(minutes = rnd(...WEATHER.rainMinutes), storm = Math.random() < 0.35) {
   if (!rain) rain = makeRain();
-  rain.visible = true; G.rain = minutes * 60;
-  notify('Weather', 'Rain don start — roads slippery, go-slow everywhere.');
+  rain.visible = true; G.rain = minutes * 60; G.storm = storm;
+  if (storm) { G.jam = { ...FLOOD, until: minutes * 60 + 30, flood: true }; notify('Weather', 'Storm! Ojuelegba underpass don flood — Itire Road is a go-slow.'); }
+  else notify('Weather', 'Rain don start — roads slippery, go-slow everywhere.');
   emit('sky'); emit('weather', true);
 }
-export function stopRain() { G.rain = 0; if (rain) rain.visible = false; notify('Weather', 'Rain don stop.'); emit('sky'); emit('weather', false); }
+export function stopRain() { G.rain = 0; G.storm = false; if (rain) rain.visible = false; notify('Weather', 'Rain don stop.'); emit('sky'); emit('weather', false); }
 
 export function updateWeather(dt) {
   if (G.rain) {
     G.rain -= dt; if (G.rain <= 0) { stopRain(); return; }
     const a = rain.geometry.attributes.position, cam = G.camera.position;
     for (let i = 0; i < a.count; i++) {
-      let y = a.getY(i) - dt * 28; if (y < 0) { y += 40; a.setX(i, rnd(-40, 40)); a.setZ(i, rnd(-40, 40)); }
+      let y = a.getY(i) - dt * (G.storm ? 40 : 28); if (y < 0) { y += 40; a.setX(i, rnd(-40, 40)); a.setZ(i, rnd(-40, 40)); }
       a.setY(i, y);
     }
     a.needsUpdate = true; rain.position.set(cam.x, 0, cam.z);
   } else {
     nextCheck -= dt;
-    if (nextCheck <= 0) { nextCheck = rnd(120, 240); if (Math.random() < WEATHER.rainChance) startRain(); }
+    if (nextCheck <= 0) { nextCheck = rnd(120, 240); if (!isHarmattan() && Math.random() < WEATHER.rainChance) startRain(); }
   }
 }

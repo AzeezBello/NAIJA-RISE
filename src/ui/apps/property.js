@@ -2,7 +2,8 @@ import { G } from '../../core/context.js';
 import { emit } from '../../core/events.js';
 import { esc, fmt } from '../../core/utils.js';
 import { PROPERTIES } from '../../data/locations.js';
-import { RENT } from '../../data/config.js';
+import { RENT, UPGRADES } from '../../data/config.js';
+import { pay } from '../../systems/economy.js';
 import { Balance, Card, Btn, Pill, Row, Spacer, Note } from '../components.js';
 import { toast } from '../feedback.js';
 import { homeProp } from '../../systems/navigation.js';
@@ -27,7 +28,9 @@ export default {
           (own
             ? (home ? '' : Btn('Set as home', 'setHome', { id: p.id, cls: 'sm' }) + (letOut ? Btn('Stop letting', 'stopLet', { id: p.id, cls: 'ghost sm' }) : Btn('Let to tenants', 'letOut', { id: p.id, cls: 'sm' })))
             : (renting ? (home ? '' : Btn('Set as home', 'setHome', { id: p.id, cls: 'sm' })) : Btn('Rent', 'rent', { id: p.id, cls: 'sm' })) + (p.buy && !own ? Btn('Buy', 'buyProp', { id: p.id, cls: 'sm', disabled: s.cash + s.bank < p.buy }) : ''));
-        return Card(`${Row(`<h6 class="sp">${esc(p.name)}</h6>${Pill(p.type)}${tag}`)}<p>${esc(p.desc)}</p><p>${terms}</p>${Row(actions)}`);
+        const ups = own ? Row(UPGRADES.map(([id, label, cost]) => (s.upgrades?.[p.id]?.includes(id) ? Pill(label, 'green') : Btn(`${label} · ${fmt(cost)}`, 'upgrade', { id: `${p.id}:${id}`, cls: 'ghost sm' }))).join('')) : '';
+        const complaint = s.complaints?.[p.id] ? Row(`<span class="sp">Tenant: ${esc(s.complaints[p.id])} (rent halved)</span>` + Btn('Fix · ₦10,000', 'fixComplaint', { id: p.id, cls: 'sm' })) : '';
+        return Card(`${Row(`<h6 class="sp">${esc(p.name)}</h6>${Pill(p.type)}${tag}`)}<p>${esc(p.desc)}</p><p>${terms}</p>${ups}${complaint}${Row(actions)}`);
       }).join('') + Note('Agents collect 10% on every lease. Owned homes you do not live in can be let; tenants pay every game morning.');
   },
   actions: {
@@ -35,6 +38,8 @@ export default {
     buyProp: id => buyProperty(PROPERTIES.find(p => p.id === id)),
     setHome: id => { const s = G.state; s.home = id; s.let = (s.let || []).filter(x => x !== id); toast('Home updated'); emit('hud'); },
     letOut: id => { const s = G.state; if (s.home === id) return toast('Move out first — set another home'); s.let = [...(s.let || []), id]; toast('Tenants moved in. Rent lands every morning.'); emit('hud'); },
+    upgrade: id => { const [pid, up] = id.split(':'); const s = G.state, u = UPGRADES.find(u => u[0] === up); if (!pay(u[2], `${u[1]} · ${PROPERTIES.find(p => p.id === pid).name}`)) return toast('Not enough money'); (s.upgrades ??= {})[pid] = [...(s.upgrades[pid] || []), up]; toast(`${u[1]} installed`); emit('hud'); },
+    fixComplaint: id => { const s = G.state; if (!pay(10000, 'Tenant repair')) return toast('Not enough money'); delete s.complaints[id]; toast('Repaired. Rent back to full.'); emit('hud'); },
     stopLet: id => { const s = G.state; s.let = (s.let || []).filter(x => x !== id); toast('Tenants given notice'); emit('hud'); },
   },
 };

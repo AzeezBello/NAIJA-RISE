@@ -25,3 +25,5 @@ export const PARKED = [
 export const TRAFFIC_MIX = ['danfo', 'danfo', 'danfo', 'danfo', 'korope', 'korope', 'keke', 'keke', 'keke', 'okada', 'okada', 'okada', 'okada', 'brt', 'car', 'car', 'police', 'police', 'lawma', 'tanker', 'tanker'];
 export const TRAFFIC_COLORS = [0x6b2730, 0x294c39, 0x2b3a66, 0x7a7a7a, 0x1b1b1b];
 export const LANE_OFFSET = 4.5; // right-hand traffic
+export const LIVERIES = [0x1f3a5a, 0xf5c518, 0xc62828, 0xf0f0f0, 0x1b1b1b, 0x2bb34a, 0x7a28d6];
+export const SLOGANS = ['NO FOOD FOR LAZY MAN', "GOD'S TIME IS THE BEST", 'NO CONDITION IS PERMANENT', 'MAN MUST WACK', 'REMEMBER YOUR SIX FEET', 'EKO O NI BAJE'];

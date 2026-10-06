@@ -81,7 +81,8 @@ export function updateNpcs(dt) {
   for (const a of G.agberos) {
     a.g.rotation.y = Math.sin(t + a.x) * 0.4;
     a.cool -= dt;
-    if (!G.inCar && !frozen() && !G.state.pet && a.cool <= 0 && dist(G.player.position, a) < 3.6) { runAgbero(a); break; }
+    const guarded = G.state.home && G.state.upgrades?.[G.state.home]?.includes('security');
+    if (!G.inCar && !frozen() && !G.state.pet && !guarded && a.cool <= 0 && dist(G.player.position, a) < 3.6) { runAgbero(a); break; }
   }
   for (const s of G.service || []) s.g.rotation.y = Math.sin(t * 0.6 + s.x) * 0.25;
 }

@@ -55,7 +55,8 @@ export function driveCar(dt) {
   const boost = k.shift || pad.sprint, hand = k[' '] || pad.hand;
   if (frozen()) G.carSpeed = approach(G.carSpeed, 0, 20 * dt);
   else {
-    const cond = car.userData.cond ?? 100, wet = G.rain ? 0.7 : 1;
+    const jam = G.jam, flooded = jam?.flood && Math.abs(car.position.z - jam.k) < 9 && car.position.x > jam.from && car.position.x < jam.to;
+    const cond = car.userData.cond ?? 100, wet = (G.rain ? 0.7 : 1) * (flooded ? 0.45 : 1);
     const maxF = (boost ? S.boost : S.max) * (G.state.fuel > 0 ? 1 : 0.2) * (cond < 30 ? 0.5 : 1) * wet;
     if (hand) G.carSpeed = approach(G.carSpeed, 0, 45 * dt);
     else if (gas) G.carSpeed = Math.min(maxF, G.carSpeed + (G.carSpeed < 0 ? 30 : boost ? S.accel * 1.3 : S.accel) * dt);
@@ -63,14 +64,14 @@ export function driveCar(dt) {
     else G.carSpeed = approach(G.carSpeed, 0, 6 * dt);
     let steer = (k.a ? 1 : 0) - (k.d ? 1 : 0);
     if (st.active && Math.abs(st.x) > 0.12) steer = -st.x;
-    if (Math.abs(G.carSpeed) > 0.3) car.rotation.y += steer * 2.3 * wet * Math.min(1, Math.abs(G.carSpeed) / 9) * dt * Math.sign(G.carSpeed);
+    if (Math.abs(G.carSpeed) > 0.3) car.rotation.y += steer * 2.3 * wet * (0.6 + 0.4 * cond / 100) * Math.min(1, Math.abs(G.carSpeed) / 9) * dt * Math.sign(G.carSpeed);
   }
   if (Math.abs(G.carSpeed) < 0.05) return;
   const old = car.position.clone();
   car.position.addScaledVector(vForward(car), G.carSpeed * dt);
   if (blockedAt(car.position, S.wid * 0.75, car)) {
     car.position.copy(old);
-    if (Math.abs(G.carSpeed) > 18) { G.state.health = Math.max(0, G.state.health - 8); car.userData.cond = Math.max(0, (car.userData.cond ?? 100) - 12); emit('crash'); toast(`Crash! −8 HP · vehicle condition ${Math.round(car.userData.cond)}%`); }
+    if (Math.abs(G.carSpeed) > 18) { G.state.health = Math.max(0, G.state.health - 8); car.userData.cond = Math.max(0, (car.userData.cond ?? 100) - (G.state.vehicles.find(o => o.id === car.userData.ownedId)?.insured ? 6 : 12)); emit('crash'); toast(`Crash! −8 HP · vehicle condition ${Math.round(car.userData.cond)}%`); }
     G.carSpeed = -G.carSpeed * 0.2;
   }
 }

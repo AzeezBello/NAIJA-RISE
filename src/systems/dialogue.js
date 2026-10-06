@@ -6,6 +6,7 @@ import { Avatar, Key } from '../ui/components.js';
 import { toast } from '../ui/feedback.js';
 import { tx } from './economy.js';
 import { curMission, applyMission } from './navigation.js';
+import { startTask } from './missions.js';
 
 // A dialogue is a list of {s: contactId, t: text} lines, optional choices on the last line, and an onDone(choice).
 export function startDialog(lines, choices, onDone) { G.dialog = { lines, i: 0, choices: choices || null, onDone }; renderDialog(); }
@@ -37,8 +38,10 @@ export function advanceDialog(choiceIdx) {
 
 export function runMission() {
   const m = curMission();
+  const before = G.state.mission;
   startDialog(m.lines(), m.choices, ch => {
     if (ch && ch.apply) ch.apply();
+    if (m.task && G.state.mission === before && !G.task) { startTask(m); return; }   // mission continues as a task
     m.after();
     if (!G.state.done) G.state.mission++;
     applyMission(); emit('hud');
