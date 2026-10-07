@@ -22,6 +22,7 @@ import { startRace } from './racing.js';
 import { nearPlace, openPlace, placePrompt } from './places.js';
 import { LIVERIES, SLOGANS } from '../data/vehicles.js';
 import { CHARACTER } from '../data/config.js';
+import { familyPrompt, tryFamilyInteract, maybeIssueFamilyRequest } from './family.js';
 
 export function nearestCar() {
   let best = null, d0 = 5;
@@ -31,6 +32,10 @@ export function nearestCar() {
 const nearKind = (kind, r) => LANDMARKS.find(l => l.kind === kind && dist(pos(), l) < r);
 const nearKiosk = () => !G.inCar && KIOSKS.some(([x, z]) => dist(G.player.position, { x, z }) < 4);
 const nearNight = () => !G.inCar && G.state.settings.mature !== false && venueOpen() && (G.nightlife || []).find(n => dist(G.player.position, n) < 3.5);
+
+  const fp = familyPrompt();
+  if (fp) return fp;
+
 export const nearHome = () => { const h = homeProp(); return !!h && !G.inCar && dist(G.player.position, h.door) < 6; };
 const nearGate = () => !G.inCar && PROPERTIES.find(p => p.id !== G.state.home && dist(G.player.position, p.door) < 6);
 const nearPump = () => G.inCar && (dist(pos(), placeOf('ladipo')) < 16 || dist(pos(), placeOf('fuel')) < 16);

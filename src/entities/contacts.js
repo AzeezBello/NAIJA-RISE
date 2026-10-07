@@ -6,6 +6,8 @@ import { placeOf, SERVICE_NPCS } from '../data/locations.js';
 import { createCharacter } from './character.js';
 import { buildPrimitive } from './wardrobe.js';
 import { missionActive, curMission } from '../systems/navigation.js';
+import { FAMILY, FAMILY_HOME } from '../data/family.js';
+import { activeFamilyRequest } from '../systems/family.js';
 
 // Story and job contacts stand in the world as people, not buildings: Baba K outside Ojuelegba Junction, Amaka at the
 // Iponri yard, Dayo at Ladipo, Mama Nkechi at Yaba Market… The contact who owns the current objective carries a
@@ -21,6 +23,8 @@ const LOOKS = {
   mallguy: { rig: 0, look: { outfit: 8, shirt: 6, pants: 1, skin: 2 } },
   cafeguy: { rig: 0, look: { outfit: 5, shirt: 6, pants: 1, skin: 3, accessory: 3 } },
   captain: { rig: 0, look: { outfit: 4, shirt: 7, pants: 4, skin: 4 } },
+  mum:     { rig: 0, look: { outfit: 9, shirt: 0, pants: 5, skin: 3, hair: 3, bodyType: 2 } },
+  sibling: { rig: 0, look: { outfit: 10, shirt: 1, pants: 0, skin: 2, hair: 3, bodyType: 0 } },
 };
 // Where a contact stands: on the street side of their building, by the shelter at a bus stop.
 function spotFor(c) {
@@ -53,6 +57,20 @@ export function spawnContacts() {
   const racer = SERVICE_NPCS.find(s => s.u === 'racer'); if (racer) { G.contactPos.speedy = { x: racer.x, z: racer.z }; G.contacts.push({ id: 'speedy', name: 'Speedy', g: null, arrow: arrowMesh(), x: racer.x, z: racer.z }); }
 }
 
+  // Family compound (Alpha 1.1)
+  for (const f of FAMILY) {
+    const at = { x: FAMILY_HOME.x + f.offset.x, z: FAMILY_HOME.z + f.offset.z };
+    const ch = createCharacter({
+      build: (l, t) => buildPrimitive(l, { scale: 0.86, tint: t }),
+      look: f.look, rig: 0, scale: 0.92 + (f.look.bodyType === 2 ? 0.06 : 0),
+    });
+    ch.group.position.set(at.x, 0, at.z);
+    ch.group.rotation.y = Math.PI;
+    G.scene.add(ch.group);
+    G.contacts.push({ id: f.id, name: f.name, g: ch.group, c: ch, arrow: arrowMesh(), x: at.x, z: at.z });
+    G.contactPos[f.id] = at;
+  }
+
 export const missionWho = m => m.who || (typeof m.lines === 'function' ? m.lines()[0]?.s : null);
 
 export function updateContacts(dt) {
@@ -64,5 +82,19 @@ export function updateContacts(dt) {
     const on = c.id === active;
     c.arrow.visible = on;
     if (on) { c.arrow.position.set(c.x, 3.3 + Math.sin(t * 3) * 0.18, c.z); c.arrow.rotation.y = t * 1.6; }
+  }
+
+  const fam = activeFamilyRequest();
+  for (const c of G.contacts) {
+    if (c.g && p && !frozen()) {
+      const d = dist(p, c);
+      if (d < 10) { c.g.rotation.y = Math.atan2(p.x - c.x, p.z - c.z); c.c?.setState('idle', 0); }
+    }
+    const on = c.id === active || (fam && c.id === fam.who);
+    c.arrow.visible = on;
+    if (on) {
+      c.arrow.position.set(c.x, 3.3 + Math.sin(t * 3) * 0.18, c.z);
+      c.arrow.rotation.y = t * 1.6;
+    }
   }
 }

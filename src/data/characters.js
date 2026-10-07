@@ -50,5 +50,7 @@ export const CONTACTS = [
   { id: 'agent', name: 'Agent Kunle', role: 'Property agent', c: '#f0a040', line: 'Agent fee na 10%. No agent, no house.' },
   { id: 'landlord', name: 'Landlord', role: 'Baba Landlord · Surulere', c: '#c9b48a', line: 'Rent na yearly, but for you I go take monthly.' },
   { id: 'bank', name: 'RiseBank', role: 'Alerts', c: '#b7b7ff', line: 'Thank you for banking with RiseBank.' },
+  { id: 'mum', name: 'Mama Tunde', role: 'Mother · Adelabu', at: 'family', c: '#e8b86d', line: 'My son, you no go come see your mother?' },
+  { id: 'sibling', name: 'Chioma', role: 'Sister · Adelabu', at: 'family', c: '#7ec8e3', line: 'Abeg help me with something small.' },
 ];
 export const contactOf = id => CONTACTS.find(c => c.id === id);
