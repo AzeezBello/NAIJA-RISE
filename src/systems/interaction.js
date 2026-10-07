@@ -23,6 +23,20 @@ import { nearPlace, openPlace, placePrompt } from './places.js';
 import { LIVERIES, SLOGANS } from '../data/vehicles.js';
 import { CHARACTER } from '../data/config.js';
 import { familyPrompt, tryFamilyInteract } from './family.js';
+import { contactOf } from '../data/characters.js';
+import { bumpRel, rewardContact, talkToContact, getRel } from './relationships.js';
+
+function nearStoryContact(r = 4) {
+  if (G.inCar || !G.contacts) return null;
+  const p = G.player.position;
+  let best = null, bd = r;
+  for (const c of G.contacts) {
+    if (!c.g && !c.x) continue;
+    const d = Math.hypot(p.x - c.x, p.z - c.z);
+    if (d < bd) { bd = d; best = c; }
+  }
+  return best;
+}
 
 export function nearestCar() {
   let best = null, d0 = 5;
@@ -247,6 +261,16 @@ export function interact() {
   if (nearHome()) { sleep(homeProp()); return; }
   if (!G.inCar) {
     if (tryFamilyInteract()) return;
+
+    const sc = nearStoryContact(4);
+    if (sc && contactOf(sc.id)) {
+      const missionTalk = missionAvailable() && !G.task && dist(pos(), missionPos()) < curMission().r;
+      if (!missionTalk) {
+        talkToContact(sc.id);
+        return;
+      }
+    }
+
     const gate = nearGate(); if (gate) { agentDialog(gate); return; }
     const night = nearNight(); if (night) { hookupDialog(night); return; }
     if (nearKiosk()) { posDialog(); return; }
@@ -306,6 +330,16 @@ export function promptFor() {
   if (nearHome()) return { key: 'E', text: 'Enter home · sleep' };
   if (!G.inCar) {
     const fp = familyPrompt(); if (fp) return fp;
+    
+    const sc = nearStoryContact(4);
+    if (sc && contactOf(sc.id)) {
+      // Don't steal mission talk prompt
+      const missionTalk = missionAvailable() && !G.task && dist(pos(), missionPos()) < curMission().r;
+      if (!missionTalk) {
+        return { key: 'E', text: `Talk to ${sc.name}` };
+      }
+    }
+
     const gate = nearGate(); if (gate) return { key: 'E', text: `Talk to Agent Kunle · ${gate.type}${G.state.props.includes(gate.id) || G.state.rented?.id === gate.id ? ' (yours)' : ' to let'}` };
     const night = nearNight(); if (night) return { key: 'E', text: `Talk to ${night.name}` };
     if (nearKiosk()) return { key: 'E', text: 'Use POS kiosk' };

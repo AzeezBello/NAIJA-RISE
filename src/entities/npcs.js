@@ -9,6 +9,9 @@ import { buildPrimitive } from './wardrobe.js';
 import { blockedAt } from '../systems/movement.js';
 import { heightAt } from '../world/terrain.js';
 import { randomWalkPoint, onWalkable, projectToWalk, nearestCrossing } from '../world/walkables.js';
+import { bindSchedule, applyScheduleSteer } from '../systems/npcSchedule.js';
+
+
 
 const hex = c => '#' + c.toString(16).padStart(6, '0');
 const chance = p => Math.random() < p;
@@ -75,27 +78,29 @@ function steerAway(from, others, radius, force, out) {
 
 export function spawnNpcs(count = 28) {
   G.npcs = [];
-  let placed = 0, guard = count * 4;
-  while (placed < count && guard-- > 0) {
-    const p = randomWalkPoint();
-    if (inWater(p.x, p.z)) continue;
+  for (let i = 0; i < count; i++) {
     const n = person();
-    n.position.set(p.x, heightAt(p.x, p.z), p.z);
+    // Prefer sidewalk spawn if walkables registered
+    let x, z;
+    try {
+      const p = randomWalkPoint?.();
+      if (p) { x = p.x; z = p.z; }
+    } catch { /* walkables optional */ }
+    if (x == null) {
+      x = (Math.random() - 0.5) * 125;
+      z = (Math.random() - 0.5) * 125;
+      if (Math.abs(x) < 14 || Math.abs(z) < 14) x += 22;
+    }
+    n.position.set(x, 0, z);
     G.scene.add(n);
-    const alongH = Math.random() < 0.5;
-    const dir = Math.random() < 0.5 ? 1 : -1;
-    G.npcs.push({
+    const rec = {
       g: n,
-      v: new THREE.Vector3(
-        alongH ? dir * SPEED : (Math.random() - 0.5) * 0.35,
-        0,
-        alongH ? (Math.random() - 0.5) * 0.35 : dir * SPEED
-      ),
+      v: new THREE.Vector3((Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2),
       turn: 2 + Math.random() * 4,
       hitT: 0,
-      crossing: null,   // { x, z, r, t } while mid-crossing
-    });
-    placed++;
+    };
+    bindSchedule(rec);
+    G.npcs.push(rec);
   }
 }
 
@@ -149,22 +154,44 @@ export function updateNpcs(dt) {
   const h = G.state.clock;
   const nightOpen = h >= 20 || h < 4;
   const schoolTime = h >= 7 && h < 14;
-  const marketHour = h >= 10 && h < 16;
+    const marketHour = h >= 10 && h < 16; // keep for backwards compat
   const lateNight = h >= 23 || h < 5;
 
-  for (const n of G.nightlife || []) {
-    n.g.visible = nightOpen && G.state.settings.mature !== false;
-    n.g.rotation.y = Math.sin(performance.now() / 700 + n.x) * 0.5;
-  }
-  for (const k of G.kids || []) {
-    k.g.visible = schoolTime;
-    k.t += dt;
-    k.g.position.x = k.home.x + Math.sin(k.t) * 2;
-    k.g.position.y = Math.abs(Math.sin(k.t * 5)) * 0.1;
-  }
+  for (const n of G.npcs) {
+    if (n.hidden) { n.g.visible = false; continue; }
 
-  G.npcs.forEach((n, i) => { n.g.visible = !n.hidden && !(lateNight && i % 2); });
+    // Schedule drives intent; fall back to old market pull / random
+    const steered = applyScheduleSteer(n, h);
+    if (!steered) {
+      n.g.visible = !(lateNight && (G.npcs.indexOf(n) % 2));
+      if (marketHour && n.turn <= 0.05) {
+        const m = pick([placeOf('yaba'), placeOf('shitta'), placeOf('mushin')]);
+        if (m && dist(n.g.position, m) > 18) {
+          n.v.set(m.x - n.g.position.x, 0, m.z - n.g.position.z).normalize().multiplyScalar(1.6);
+          n.turn = 2;
+        }
+      }
+      n.turn -= dt;
+      if (n.turn <= 0) {
+        n.turn = 2 + Math.random() * 4;
+        n.v.set((Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 2);
+      }
+    }
 
+    n.g.position.addScaledVector(n.v, dt);
+    const sp = Math.hypot(n.v.x, n.v.z);
+    if (sp > 0.2) n.g.rotation.y = Math.atan2(n.v.x, n.v.z);
+    n.g.userData.c?.setState(sp > 0.2 ? 'walk' : 'idle', sp);
+
+    if (Math.abs(n.g.position.x) > 200 || Math.abs(n.g.position.z) > 200) {
+      n.v.x *= -1; n.v.z *= -1;
+    }
+    if (n.hitT > 0) {
+      n.hitT -= dt;
+      n.g.rotation.x = n.hitT > 0 ? Math.PI / 2 : 0;
+    }
+  }
+  
   // Snapshot positions for separation (reused array length)
   const positions = G._npcPos || (G._npcPos = []);
   positions.length = 0;
