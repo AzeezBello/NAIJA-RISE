@@ -35,6 +35,23 @@ export function flushStatic(materials) {
   return out;
 }
 
+// ---- Solid variants (Alpha 1.1): geometry + collider in one call, so no world object
+// can render without its collider again. opts.minY / opts.maxY restrict the collider to a
+// height band (e.g. deck barriers only block things up on the deck; bridge pillars only
+// block things at ground level).
+export function solidBox(bucket, x, z, w, d, h, y = 0, opts = {}) {
+  staticBox(bucket, x, z, w, d, h, y);
+  colliders.push({ x, z, w, d, ...(opts.minY !== undefined ? { minY: opts.minY } : {}), ...(opts.maxY !== undefined ? { maxY: opts.maxY } : {}) });
+}
+export function solidCyl(bucket, x, z, r, h, y = 0, seg = 8, rTop = r, opts = {}) {
+  staticCyl(bucket, x, z, r, h, y, seg, rTop);
+  colliders.push({ x, z, w: r * 2 + 0.3, d: r * 2 + 0.3, ...(opts.minY !== undefined ? { minY: opts.minY } : {}), ...(opts.maxY !== undefined ? { maxY: opts.maxY } : {}) });
+}
+// Convenience for one-off meshes created with box()/cyl() under a non-SOLID name.
+export function solidAt(x, z, w, d, opts = {}) {
+  colliders.push({ x, z, w, d, ...(opts.minY !== undefined ? { minY: opts.minY } : {}), ...(opts.maxY !== undefined ? { maxY: opts.maxY } : {}) });
+}
+
 const SOLID = ['building', 'landmark', 'kiosk', 'property', 'fence'];
 export function box(x, z, w, d, h, c, name = 'building', y = 0, material) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material || mat(c));
@@ -51,6 +68,30 @@ export function cyl(x, z, r, h, c, name = 'prop', y = 0, seg = 12, rTop = r) {
   if (name === 'palm' || name === 'pole') colliders.push({ x, z, w: r * 2 + 0.3, d: r * 2 + 0.3 });
   G.scene.add(m);
   return m;
+}
+
+// ---- Debug collision visualization (toggle with window.__nr.toggleColliders(), #debug only).
+// Ground-level colliders render red; height-banded ones (decks, pillars) render blue.
+let colliderDebug = null;
+export function toggleColliderDebug(force) {
+  const show = force !== undefined ? force : !colliderDebug;
+  if (colliderDebug) {
+    G.scene.remove(colliderDebug);
+    colliderDebug.children.forEach(m => m.geometry.dispose());
+    colliderDebug = null;
+  }
+  if (!show) return false;
+  colliderDebug = new THREE.Group();
+  const matGround = new THREE.MeshBasicMaterial({ color: 0xff3344, transparent: true, opacity: 0.35, depthWrite: false });
+  const matDeck = new THREE.MeshBasicMaterial({ color: 0x3388ff, transparent: true, opacity: 0.35, depthWrite: false });
+  for (const c of colliders) {
+    const base = c.minY || 0, top = c.maxY !== undefined ? c.maxY : base + 2.2;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(c.w, top - base, c.d), c.minY !== undefined ? matDeck : matGround);
+    m.position.set(c.x, base + (top - base) / 2, c.z);
+    colliderDebug.add(m);
+  }
+  G.scene.add(colliderDebug);
+  return true;
 }
 
 // Textured building: window facades on the sides, plain roof, lit windows registered for night.
@@ -136,7 +177,9 @@ export function compound(x, z, pw, pd, style, color, name = 'building', h) {
   wall(x - pw / 2, z, t, pd); wall(x + pw / 2, z, t, pd);
   const side = (pw - gate) / 2;
   wall(x - pw / 2 + side / 2, z - pd / 2, side, t); wall(x + pw / 2 - side / 2, z - pd / 2, side, t);
+  // Alpha 1.1: a closed gate is solid; an open (hidden) gate leaves the gap walkable.
   const g = box(x, z - pd / 2, gate, 0.12, fh + 0.2, 0x2b2b2b, 'prop'); g.userData.gate = true; g.visible = Math.random() < 0.5; // half the gates stand open
+  if (g.visible) colliders.push({ x, z: z - pd / 2, w: gate, d: 0.5 });
   for (const sx of [-gate / 2 - 0.25, gate / 2 + 0.25]) box(x + sx, z - pd / 2, 0.5, 0.5, fh + 0.6, 0x8a8a8a, 'prop');
   house.userData.door = { x, z: z - pd / 2 - 1.5 };
   return house;

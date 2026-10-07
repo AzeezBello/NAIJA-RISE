@@ -21,6 +21,8 @@ let bob = 0, camHit = 0, fovNow = 58;
 const setState = s => { if (G.moveState !== s) { G.moveState = s; G.stateT = 0; } };
 
 // Buildings, traffic and other parked vehicles block movement.
+// The test is square-vs-AABB on purpose: with the axis-separated resolution in moveFoot/driveCar
+// it slides cleanly along walls, whereas a circle test catches on AABB corners.
 export function blockedAt(p, r, self) {
   const y = heightAt(p.x, p.z);
   for (const c of colliders) { if (c.minY !== undefined && y < c.minY) continue; if (c.maxY !== undefined && y > c.maxY) continue; if (Math.abs(p.x - c.x) < c.w / 2 + r && Math.abs(p.z - c.z) < c.d / 2 + r) return true; }
@@ -62,9 +64,14 @@ export function moveFoot(dt) {
   const old = _old.copy(pl.position);
   pl.position.addScaledVector(lastDir, G.curSpeed * dt);
   if (blockedAt(pl.position, 0.65)) {
-    pl.position.x = old.x;
-    if (blockedAt(pl.position, 0.65)) pl.position.z = old.z;
-    if (blockedAt(pl.position, 0.65)) pl.position.copy(old);
+    // Alpha 1.1: try each axis slide. The old third check was dead code (it tested the
+    // fully-restored position), so an x-slide along a z-facing wall never got a chance.
+    const nx = pl.position.x, nz = pl.position.z;
+    pl.position.set(old.x, pl.position.y, nz);        // slide along z (wall facing x)
+    if (blockedAt(pl.position, 0.65)) {
+      pl.position.set(nx, pl.position.y, old.z);      // slide along x (wall facing z)
+      if (blockedAt(pl.position, 0.65)) pl.position.copy(old);
+    }
   }
   pl.rotation.y = Math.atan2(lastDir.x, lastDir.z);
 }

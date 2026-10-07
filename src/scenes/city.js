@@ -34,6 +34,7 @@ import { buildHud, hudFrame } from '../ui/hud.js';
 import { buildPhone, phoneOpen } from '../ui/phone.js';
 import { buildTouch, updateTouch } from '../ui/touch.js';
 import { mapDraw, phoneMapDraw } from '../ui/minimap.js';
+import { toggleColliderDebug } from '../world/builders.js';
 
 // The playable city. World geometry and traffic are built once in main.js; this scene adds the player,
 // NPCs, HUD and phone, then runs the per-frame systems.
@@ -60,7 +61,8 @@ export const CityScene = {
     if (away) setTimeout(() => startDialog([{ s: 'bank', t: `While you were away (${away.minutes} min): ${away.biz ? `business income ${fmt(away.biz)}` : 'no business income'}${away.rent ? `, rent ${fmt(away.rent)}` : ''}${away.upkeep ? `, maintenance −${fmt(away.upkeep)}` : ''}. Net ${fmt(away.net)} to your account. Lagos no dey sleep.` }], null, null), 600);
     $('hud').classList.add('show');
     emit('mission:refresh'); emit('hud'); emit('clock');
-    if (G.debug) import('../systems/weather.js').then(w => { window.__nr = { G, get state() { return G.state; }, startRain: w.startRain, awayReport }; });
+    // Alpha 1.1: #debug also exposes toggleColliders() — call it from the console to see every collider.
+    if (G.debug) import('../systems/weather.js').then(w => { window.__nr = { G, get state() { return G.state; }, startRain: w.startRain, awayReport, toggleColliders: toggleColliderDebug }; });
   },
   exit() { $('hud')?.classList.remove('show'); },
   update(dt) {

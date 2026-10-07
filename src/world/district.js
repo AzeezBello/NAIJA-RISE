@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { G } from '../core/context.js';
 import { pick } from '../core/utils.js';
-import { box, cyl, building, compound, sign, mat, occluders, colliders, lamps, glows, staticBox, staticCyl, flushStatic } from './builders.js';
+import { box, cyl, building, compound, sign, mat, occluders, colliders, lamps, glows, staticBox, staticCyl, flushStatic, solidBox, solidCyl, solidAt } from './builders.js';
 import { PERF } from '../data/config.js';
 import { buildTrafficLights } from '../systems/trafficlights.js';
 import { asphaltTexture, groundTexture, concreteTexture, cloudTexture, glowTexture } from './textures.js';
@@ -51,8 +51,9 @@ function buildGround() {
   G.scene.add(ground);
   const asphalt = asphaltTexture();
   // every road from the data: tarmac along its extent, a concrete median and tall posts on expressways and highways
-  for (const z of ROADS.h) { const [a, b] = roadExtent('h', z), w = ROAD_W[z]; road((a + b) / 2, z, b - a, w, asphalt); const r = roadRules('h', z); if (r.median) { staticBox('medians', (a + b) / 2, z, b - a, 1.2, 0.9); for (let x = a + 12; x <= b - 12; x += 24) { if (onBridge('h', z, x)) continue; staticBox('poles', x, z, 0.3, 0.3, 9); staticBox('heads', x, z, 2.6, 0.5, 0.3, 9); } } }
-  for (const x of ROADS.v) { const [a, b] = roadExtent('v', x), w = VROAD_W[x]; road(x, (a + b) / 2, w, b - a, asphalt); const r = roadRules('v', x); if (r.median) { staticBox('medians', x, (a + b) / 2, 1, b - a, 0.9); for (let z = a + 12; z <= b - 12; z += 24) { if (onBridge('v', x, z)) continue; staticBox('poles', x, z, 0.3, 0.3, 9); staticBox('heads', x, z, 0.5, 2.6, 0.3, 9); } } }
+  // Alpha 1.1: medians are solid — no more walking through the expressway divider.
+  for (const z of ROADS.h) { const [a, b] = roadExtent('h', z), w = ROAD_W[z]; road((a + b) / 2, z, b - a, w, asphalt); const r = roadRules('h', z); if (r.median) { solidBox('medians', (a + b) / 2, z, b - a, 1.2, 0.9); for (let x = a + 12; x <= b - 12; x += 24) { if (onBridge('h', z, x)) continue; staticBox('poles', x, z, 0.3, 0.3, 9); staticBox('heads', x, z, 2.6, 0.5, 0.3, 9); } } }
+  for (const x of ROADS.v) { const [a, b] = roadExtent('v', x), w = VROAD_W[x]; road(x, (a + b) / 2, w, b - a, asphalt); const r = roadRules('v', x); if (r.median) { solidBox('medians', x, (a + b) / 2, 1, b - a, 0.9); for (let z = a + 12; z <= b - 12; z += 24) { if (onBridge('v', x, z)) continue; staticBox('poles', x, z, 0.3, 0.3, 9); staticBox('heads', x, z, 0.5, 2.6, 0.3, 9); } } }
   road(152, 0, 30, 22, asphalt);                                     // Costain approach apron
   sidewalks(concreteTexture());
   // water bodies share one material so the night tint applies to all of them
@@ -100,6 +101,7 @@ function buildStadium(l) {
   const outer = cyl(l.x, l.z, 22, 9, 0x8a8f93, 'landmark', 0, 40);
   occluders.push(outer); colliders.push({ x: l.x, z: l.z, w: 44, d: 44 });
   cyl(l.x, l.z, 16, 11, 0x4a5055, 'prop', 0, 40);
+  solidAt(l.x, l.z, 32.4, 32.4);                                   // Alpha 1.1: inner bowl wall
   const ring = new THREE.Mesh(new THREE.TorusGeometry(20, 1.4, 8, 40), mat(0xd8dde0));
   ring.rotation.x = Math.PI / 2; ring.position.set(l.x, 9.6, l.z); ring.castShadow = true;
   G.scene.add(ring);
@@ -119,6 +121,7 @@ function buildCheckpoint(l) {
 function buildPost(l) {
   // LASTMA: a small kiosk-style post by Ojuelegba.
   box(l.x, l.z + 2.5, 2.4, 2, 2.4, 0x8b1e2d, 'prop');
+  solidAt(l.x, l.z + 2.5, 2.4, 2);                                 // Alpha 1.1: the post is solid
   sign(l.short, l.x, 3.1, l.z + 1.4, '#ffffff', 3.2, 0.8, 'rgba(120,20,40,.95)');
 }
 
@@ -142,17 +145,19 @@ function buildLandmarks() {
     for (const ox of [-3, 3]) cyl(b.x + ox, b.z, 0.12, 3.1, 0xc9ced3, 'pole');
     box(b.x, b.z, 7.4, 2.6, 0.18, 0xf5c518, 'prop', 3.1);        // roof
     box(b.x, b.z + 0.6, 6, 0.5, 0.5, 0x6b5a3a, 'prop', 0.5);     // bench
+    solidAt(b.x, b.z + 0.6, 6, 0.5);                             // Alpha 1.1: the bench is solid
     cyl(b.x + 4.6, b.z - 1, 0.08, 3.6, 0xc9ced3);
     sign(b.short, b.x + 4.6, 4.1, b.z - 1, '#07100e', 4.6, 1.15, 'rgba(245,197,24,.98)');
   }
   for (const [x, z] of KIOSKS) { box(x, z, 3, 2.2, 1.6, 0x925f3d, 'kiosk'); sign('POS · KIOSK', x, 2.3, z - 1.2, '#ffffff', 3.6, 0.85, 'rgba(20,60,120,.95)'); }
   // filling station: canopy on pillars with pumps; church cross and mosque dome/minaret
-  { const f = LANDMARKS.find(l => l.id === 'fuel'); for (const ox of [-6, 6]) for (const oz of [-4, 4]) cyl(f.x + ox, f.z + 12 + oz, 0.25, 5, 0xd0d0d0); box(f.x, f.z + 12, 16, 11, 0.5, 0xb32020, 'prop', 5); for (const ox of [-3, 0, 3]) { box(f.x + ox, f.z + 12, 0.8, 0.5, 1.6, 0xe8e8e8, 'prop'); } sign('FUEL · ₦', f.x, 6.4, f.z + 17.6, '#ffffff', 5, 1.2, 'rgba(179,32,32,.95)'); }
+  { const f = LANDMARKS.find(l => l.id === 'fuel'); for (const ox of [-6, 6]) for (const oz of [-4, 4]) cyl(f.x + ox, f.z + 12 + oz, 0.25, 5, 0xd0d0d0, 'pole'); box(f.x, f.z + 12, 16, 11, 0.5, 0xb32020, 'prop', 5); for (const ox of [-3, 0, 3]) { box(f.x + ox, f.z + 12, 0.8, 0.5, 1.6, 0xe8e8e8, 'prop'); solidAt(f.x + ox, f.z + 12, 0.8, 0.5); } sign('FUEL · ₦', f.x, 6.4, f.z + 17.6, '#ffffff', 5, 1.2, 'rgba(179,32,32,.95)'); }
   { const c = LANDMARKS.find(l => l.id === 'church'); box(c.x, c.z, 3, 3, 6, 0xd9d2c2, 'prop', c.h); box(c.x, c.z, 0.5, 0.5, 3, 0xffc52f, 'prop', c.h + 6); box(c.x, c.z, 2, 0.5, 0.5, 0xffc52f, 'prop', c.h + 7.6); }
   { const m = LANDMARKS.find(l => l.id === 'mosque'); const dome = new THREE.Mesh(new THREE.SphereGeometry(5, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x3dd39a)); dome.position.set(m.x, m.h, m.z); dome.castShadow = true; G.scene.add(dome); cyl(m.x + 10, m.z - 5, 1, 18, 0xe8e8e8, 'pole', 0, 10); const cap = new THREE.Mesh(new THREE.ConeGeometry(1.4, 2.4, 10), mat(0x3dd39a)); cap.position.set(m.x + 10, 19.2, m.z - 5); G.scene.add(cap); }
-  { const n = LANDMARKS.find(l => l.id === 'nepa'); for (const ox of [-6, 6]) { cyl(n.x + ox, n.z + 10, 0.2, 10, 0x6c7378); box(n.x + ox, n.z + 10, 2.4, 0.3, 0.3, 0x6c7378, 'prop', 9.6); } }
+  { const n = LANDMARKS.find(l => l.id === 'nepa'); for (const ox of [-6, 6]) { cyl(n.x + ox, n.z + 10, 0.2, 10, 0x6c7378, 'pole'); box(n.x + ox, n.z + 10, 2.4, 0.3, 0.3, 0x6c7378, 'prop', 9.6); } }
   // Shitta roundabout island at the -72/0 junction
   cyl(-72, 0, 2.6, 0.5, 0x8d9a8a, 'prop', 0, 24); cyl(-72, 0, 0.3, 4, 0x5d402b, 'prop', 0.5);
+  solidAt(-72, 0, 5.5, 5.5);                                       // Alpha 1.1: roundabout island
   sign('SHITTA', -72, 5.2, 0, '#ffc52f', 4.6, 1.15);
 }
 
@@ -231,7 +236,7 @@ function buildCorridors() {
     const w = ROAD_W[t.k];
     for (const sz of [-w / 2 - 1, w / 2 + 1]) cyl(t.at, t.k + sz, 0.35, 6.5, 0xd0d0d0, 'pole');
     box(t.at, t.k, 8, w + 4, 0.6, 0xe4d14b, 'prop', 6.5);
-    for (const lane of [-7.5, -2.5, 2.5, 7.5]) { box(t.at - 2.2, t.k + lane, 1.6, 1.4, 2.6, 0x2b2b2b, 'prop'); box(t.at + 1.2, t.k + lane + 1.2, 3.2, 0.12, 0.12, 0xd62828, 'prop', 1.1); }
+    for (const lane of [-7.5, -2.5, 2.5, 7.5]) { box(t.at - 2.2, t.k + lane, 1.6, 1.4, 2.6, 0x2b2b2b, 'prop'); solidAt(t.at - 2.2, t.k + lane, 1.6, 1.4); box(t.at + 1.2, t.k + lane + 1.2, 3.2, 0.12, 0.12, 0xd62828, 'prop', 1.1); }
     sign('LEKKI TOLL GATE · ₦1,200', t.at, 8.2, t.k - w / 2 - 1.5, '#07100e', 8, 1.4, 'rgba(228,209,75,.98)');
   }
   // pedestrian bridges: two stair towers and a deck over the carriageway
@@ -242,6 +247,7 @@ function buildCorridors() {
   }
   // Costain interchange: roundabout island and signage
   cyl(152, 0, 4, 0.5, 0x8d9a8a, 'prop', 0, 24); cyl(152, 0, 0.3, 5, 0x5d402b, 'prop', 0.5);
+  solidAt(152, 0, 8.3, 8.3);                                       // Alpha 1.1: Costain roundabout island
   sign('COSTAIN', 152, 6.2, 0, '#ffffff', 5, 1.2, 'rgba(20,90,50,.96)');
   sign('EKO BRIDGE → LAGOS ISLAND', 185, 13.5, -14, '#ffffff', 11, 1.6, 'rgba(20,90,50,.96)');
   sign('SHITTA BRIDGE', -72, 10, -52, '#ffffff', 7, 1.4, 'rgba(20,90,50,.96)');
@@ -280,7 +286,7 @@ function buildPlaces() {
   const mall = LANDMARKS.find(l => l.id === 'mall');
   for (let i = 0; i < 6; i++) staticBox('lanes', mall.x - 10 + i * 4, mall.z - 16, 0.2, 5, 0.02, 0.17);   // car park bays
   sign('CINEMA · SHOPS · FOOD COURT', mall.x, 4.2, mall.z - 10.6, '#ffffff', 9, 1.6, 'rgba(40,40,60,.95)');
-  for (const [x, z] of VENDORS) { staticBox('fences', x, z, 1.8, 1, 0.9); staticCyl('umbrellas', x, z, 1.4, 0.5, 2.2, 8, 0.05); staticCyl('poles', x, z, 0.05, 2.2, 0, 6); }
+  for (const [x, z] of VENDORS) { solidBox('fences', x, z, 1.8, 1, 0.9); staticCyl('umbrellas', x, z, 1.4, 0.5, 2.2, 8, 0.05); staticCyl('poles', x, z, 0.05, 2.2, 0, 6); }
 }
 export function buildDistrict() {
   buildSky(); buildGround(); buildCorridors(); streetLights(); streetSigns(); buildBlocks(); buildIsland(); buildLandmarks(); buildPlaces(); buildPalms();
