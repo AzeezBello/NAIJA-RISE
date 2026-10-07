@@ -148,8 +148,12 @@ export function dressBuilding(x, z, bw, bd, h, style, front = -1) {
   if (Math.random() < 0.75) staticCyl('tanks', x + bw / 2 - 1.3, z + bd / 2 - 1.3, 0.8, 1.5, h, 10);                                            // black water tank
   if (Math.random() < 0.5) staticCyl('ac', x - bw / 2 + 1, z + bd / 2 - 1, 0.55, 0.08, h + 0.6, 10);                                             // satellite dish
   if (style !== 'bungalow' && Math.random() < 0.6) { staticBox('awnings', x, fz + front * 0.8, Math.min(bw * 0.8, 8), 1.6, 0.1, 3.2); for (const sx of [-1, 1]) staticBox('rails', x + sx * Math.min(bw * 0.4, 4), fz + front * 1.5, 0.08, 0.08, 3.2); }   // shop awning
-  if (Math.random() < 0.5) staticBox('gens', x + bw / 2 + 1.6, z, 0.8, 1.3, 0.9);                                                                 // "I better pass my neighbour" generator
+  if (Math.random() < 0.5) {
+  solidBox('gens', x + bw / 2 + 1.6, z, 0.8, 1.3, 0.9);
+}               // "I better pass my neighbour" generator
 }
+
+// In compound() — replace the highrise early-return and the gate section
 
 export function compound(x, z, pw, pd, style, color, name = 'building', h) {
   const bw = pw - 7, bd = pd - 7;
@@ -166,21 +170,31 @@ export function compound(x, z, pw, pd, style, color, name = 'building', h) {
     box(x, z + 1, bw + 0.4, bd + 0.4, 0.5, color, 'prop', h);                 // parapet
     box(x, z + 1 + bd / 2 + 0.3, bw * 0.6, 0.6, 0.12, 0x3a3a3a, 'prop', h * 0.5); // balcony slab
   } else {
+    // highrise — still get a perimeter fence (Alpha 1.1)
     h = h || 15 + Math.random() * 13;
     house = building(x, z, pw - 4, pd - 4, h, color, name); dressBuilding(x, z, pw - 4, pd - 4, h, style);
-    return house;
   }
-  // fence with a gate gap on the street side
+
+  // fence with a gate gap on the street side (all styles, including highrise)
   const fh = 1.8, t = 0.3, gate = 3.2;
   const wall = (wx, wz, ww, wd) => { staticBox('fences', wx, wz, ww, wd, fh); colliders.push({ x: wx, z: wz, w: ww, d: wd }); };
   wall(x, z + pd / 2, pw, t);                                                   // back
   wall(x - pw / 2, z, t, pd); wall(x + pw / 2, z, t, pd);
   const side = (pw - gate) / 2;
   wall(x - pw / 2 + side / 2, z - pd / 2, side, t); wall(x + pw / 2 - side / 2, z - pd / 2, side, t);
-  // Alpha 1.1: a closed gate is solid; an open (hidden) gate leaves the gap walkable.
-  const g = box(x, z - pd / 2, gate, 0.12, fh + 0.2, 0x2b2b2b, 'prop'); g.userData.gate = true; g.visible = Math.random() < 0.5; // half the gates stand open
+
+  // closed gate is solid; open (hidden) gate leaves the gap walkable
+  const g = box(x, z - pd / 2, gate, 0.12, fh + 0.2, 0x2b2b2b, 'prop');
+  g.userData.gate = true;
+  g.visible = Math.random() < 0.5;
   if (g.visible) colliders.push({ x, z: z - pd / 2, w: gate, d: 0.5 });
-  for (const sx of [-gate / 2 - 0.25, gate / 2 + 0.25]) box(x + sx, z - pd / 2, 0.5, 0.5, fh + 0.6, 0x8a8a8a, 'prop');
+
+  // gate pillars — now solid (P0)
+  for (const sx of [-gate / 2 - 0.25, gate / 2 + 0.25]) {
+    box(x + sx, z - pd / 2, 0.5, 0.5, fh + 0.6, 0x8a8a8a, 'prop');
+    solidAt(x + sx, z - pd / 2, 0.5, 0.5);
+  }
+
   house.userData.door = { x, z: z - pd / 2 - 1.5 };
   return house;
 }

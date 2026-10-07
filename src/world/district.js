@@ -114,7 +114,10 @@ function buildStadium(l) {
 
 function buildCheckpoint(l) {
   // FRSC: cones across the x=72 road and a yellow sign on the kerb.
-  for (const ox of [-6, -3, 0, 3, 6]) cyl(72 + ox, l.z, 0.25, 0.7, 0xff6a1a, 'prop', 0, 8, 0.08);
+  for (const ox of [-6, -3, 0, 3, 6]) {
+    cyl(72 + ox, l.z, 0.25, 0.7, 0xff6a1a, 'prop', 0, 8, 0.08);
+    solidAt(72 + ox, l.z, 0.6, 0.6);          // P0: cones block
+  }
   cyl(l.x, l.z, 0.08, 3.2, 0xc9ced3);
   sign(l.short, l.x, 3.6, l.z, '#07100e', 4.2, 1.05, 'rgba(228,209,75,.98)');
 }
@@ -152,8 +155,23 @@ function buildLandmarks() {
   for (const [x, z] of KIOSKS) { box(x, z, 3, 2.2, 1.6, 0x925f3d, 'kiosk'); sign('POS · KIOSK', x, 2.3, z - 1.2, '#ffffff', 3.6, 0.85, 'rgba(20,60,120,.95)'); }
   // filling station: canopy on pillars with pumps; church cross and mosque dome/minaret
   { const f = LANDMARKS.find(l => l.id === 'fuel'); for (const ox of [-6, 6]) for (const oz of [-4, 4]) cyl(f.x + ox, f.z + 12 + oz, 0.25, 5, 0xd0d0d0, 'pole'); box(f.x, f.z + 12, 16, 11, 0.5, 0xb32020, 'prop', 5); for (const ox of [-3, 0, 3]) { box(f.x + ox, f.z + 12, 0.8, 0.5, 1.6, 0xe8e8e8, 'prop'); solidAt(f.x + ox, f.z + 12, 0.8, 0.5); } sign('FUEL · ₦', f.x, 6.4, f.z + 17.6, '#ffffff', 5, 1.2, 'rgba(179,32,32,.95)'); }
-  { const c = LANDMARKS.find(l => l.id === 'church'); box(c.x, c.z, 3, 3, 6, 0xd9d2c2, 'prop', c.h); box(c.x, c.z, 0.5, 0.5, 3, 0xffc52f, 'prop', c.h + 6); box(c.x, c.z, 2, 0.5, 0.5, 0xffc52f, 'prop', c.h + 7.6); }
-  { const m = LANDMARKS.find(l => l.id === 'mosque'); const dome = new THREE.Mesh(new THREE.SphereGeometry(5, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x3dd39a)); dome.position.set(m.x, m.h, m.z); dome.castShadow = true; G.scene.add(dome); cyl(m.x + 10, m.z - 5, 1, 18, 0xe8e8e8, 'pole', 0, 10); const cap = new THREE.Mesh(new THREE.ConeGeometry(1.4, 2.4, 10), mat(0x3dd39a)); cap.position.set(m.x + 10, 19.2, m.z - 5); G.scene.add(cap); }
+  
+  { // church
+  const c = LANDMARKS.find(l => l.id === 'church');
+  box(c.x, c.z, 3, 3, 6, 0xd9d2c2, 'prop', c.h);
+  solidAt(c.x, c.z, 3, 3);                     // tower base solid
+  box(c.x, c.z, 0.5, 0.5, 3, 0xffc52f, 'prop', c.h + 6);
+  box(c.x, c.z, 2, 0.5, 0.5, 0xffc52f, 'prop', c.h + 7.6);
+}
+
+{ // mosque
+  const m = LANDMARKS.find(l => l.id === 'mosque');
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(5, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(0x3dd39a));
+  dome.position.set(m.x, m.h, m.z); dome.castShadow = true; G.scene.add(dome);
+  cyl(m.x + 10, m.z - 5, 1, 18, 0xe8e8e8, 'pole', 0, 10);   // already gets collider via 'pole'
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(1.4, 2.4, 10), mat(0x3dd39a));
+  cap.position.set(m.x + 10, 19.2, m.z - 5); G.scene.add(cap);
+}
   { const n = LANDMARKS.find(l => l.id === 'nepa'); for (const ox of [-6, 6]) { cyl(n.x + ox, n.z + 10, 0.2, 10, 0x6c7378, 'pole'); box(n.x + ox, n.z + 10, 2.4, 0.3, 0.3, 0x6c7378, 'prop', 9.6); } }
   // Shitta roundabout island at the -72/0 junction
   cyl(-72, 0, 2.6, 0.5, 0x8d9a8a, 'prop', 0, 24); cyl(-72, 0, 0.3, 4, 0x5d402b, 'prop', 0.5);
@@ -201,20 +219,42 @@ const STATIC_MATS = () => ({
   awnings: mat(0xc62828, { roughness: 0.8 }), gens: mat(0x2f5a3a, { metalness: 0.3, roughness: 0.6 }),
 });
 // ---------- Bridges & corridors: Shitta flyover, Costain interchange, Eko Bridge, Lagos Island ----------
-function deckMesh(deck, color = 0x2a2d30) {
-  // staircase of short slabs following the height profile, with side barriers and pillars
+function deckMesh(deck) {
   const step = 5, w = deck.halfW * 2;
   for (let a = deck.from; a < deck.to; a += step) {
     const mid = a + step / 2, h = deck.axis === 'h' ? heightAt(mid, deck.k) : heightAt(deck.k, mid);
-    if (deck.axis === 'h') { staticBox('deck', mid, deck.k, step + 0.1, w, 0.8, h - 0.8); staticBox('medians', mid, deck.k - deck.halfW + 0.3, step + 0.1, 0.5, 1.1, h); staticBox('medians', mid, deck.k + deck.halfW - 0.3, step + 0.1, 0.5, 1.1, h); }
-    else { staticBox('deck', deck.k, mid, w, step + 0.1, 0.8, h - 0.8); staticBox('medians', deck.k - deck.halfW + 0.3, mid, 0.5, step + 0.1, 1.1, h); staticBox('medians', deck.k + deck.halfW - 0.3, mid, 0.5, step + 0.1, 1.1, h); }
-    if (h > 2 && Math.round(a / step) % 5 === 0) { const px = deck.axis === 'h' ? mid : deck.k, pz = deck.axis === 'h' ? deck.k : mid; staticCyl('pillars', px, pz, 1.1, h - 0.8, 0, 10); colliders.push({ x: px, z: pz, w: 2.4, d: 2.4, maxY: 2.5 }); }
+    if (deck.axis === 'h') {
+      staticBox('deck', mid, deck.k, step + 0.1, w, 0.8, h - 0.8);
+      staticBox('medians', mid, deck.k - deck.halfW + 0.3, step + 0.1, 0.5, 1.1, h);
+      staticBox('medians', mid, deck.k + deck.halfW - 0.3, step + 0.1, 0.5, 1.1, h);
+      // centre median on deck (P1)
+      staticBox('medians', mid, deck.k, step + 0.1, 0.6, 0.9, h);
+      colliders.push({ x: mid, z: deck.k, w: step + 0.1, d: 0.6, minY: h - 0.2, maxY: h + 1.2 });
+    } else {
+      staticBox('deck', deck.k, mid, w, step + 0.1, 0.8, h - 0.8);
+      staticBox('medians', deck.k - deck.halfW + 0.3, mid, 0.5, step + 0.1, 1.1, h);
+      staticBox('medians', deck.k + deck.halfW - 0.3, mid, 0.5, step + 0.1, 1.1, h);
+      staticBox('medians', deck.k, mid, 0.6, step + 0.1, 0.9, h);
+      colliders.push({ x: deck.k, z: mid, w: 0.6, d: step + 0.1, minY: h - 0.2, maxY: h + 1.2 });
+    }
+    if (h > 2 && Math.round(a / step) % 5 === 0) {
+      const px = deck.axis === 'h' ? mid : deck.k, pz = deck.axis === 'h' ? deck.k : mid;
+      staticCyl('pillars', px, pz, 1.1, h - 0.8, 0, 10);
+      colliders.push({ x: px, z: pz, w: 2.4, d: 2.4, maxY: 2.5 });
+    }
   }
-  // deck-level barriers block only things on the deck
+  // existing side barriers …
   const [a, b] = [deck.from, deck.to], len = b - a, mid = (a + b) / 2;
-  if (deck.axis === 'h') { colliders.push({ x: mid, z: deck.k - deck.halfW, w: len, d: 0.6, minY: 2.5 }, { x: mid, z: deck.k + deck.halfW, w: len, d: 0.6, minY: 2.5 }); }
-  else { colliders.push({ x: deck.k - deck.halfW, z: mid, w: 0.6, d: len, minY: 2.5 }, { x: deck.k + deck.halfW, z: mid, w: 0.6, d: len, minY: 2.5 }); }
+  if (deck.axis === 'h') {
+    colliders.push({ x: mid, z: deck.k - deck.halfW, w: len, d: 0.6, minY: 2.5 },
+                   { x: mid, z: deck.k + deck.halfW, w: len, d: 0.6, minY: 2.5 });
+  } else {
+    colliders.push({ x: deck.k - deck.halfW, z: mid, w: 0.6, d: len, minY: 2.5 },
+                   { x: deck.k + deck.halfW, z: mid, w: 0.6, d: len, minY: 2.5 });
+  }
 }
+
+
 function buildCorridors() {
   // Shitta Bridge: a flyover carrying Ogunlana Drive over Bode Thomas
   addDeck({ id: 'shitta', name: 'Shitta Bridge', axis: 'v', k: -72, halfW: 7, profile: [[-50, 0], [-16, 6.5], [16, 6.5], [50, 0]] });
@@ -241,10 +281,24 @@ function buildCorridors() {
   }
   // pedestrian bridges: two stair towers and a deck over the carriageway
   for (const f of FOOTBRIDGES) {
-    const w = ROAD_W[f.k], x = f.axis === 'h' ? f.at : f.k, z = f.axis === 'h' ? f.k : f.at;
-    staticBox('ledges', x, z, 2.4, w + 10, 0.3, 5.2); staticBox('rails', x - 1.2, z, 0.08, w + 10, 1.1, 5.5); staticBox('rails', x + 1.2, z, 0.08, w + 10, 1.1, 5.5);
-    for (const side of [-1, 1]) { const tz = z + side * (w / 2 + 6.5); box(x, tz, 3, 3, 5.2, 0x8c8f93, 'prop'); staticBox('rails', x, tz + side * 1.6, 3, 0.08, 1.1, 5.5); colliders.push({ x, z: tz, w: 3, d: 3 }); }
+  const w = ROAD_W[f.k], x = f.axis === 'h' ? f.at : f.k, z = f.axis === 'h' ? f.k : f.at;
+  // deck slab
+  staticBox('ledges', x, z, 2.4, w + 10, 0.3, 5.2);
+  // rails (visual + collider)
+  staticBox('rails', x - 1.2, z, 0.08, w + 10, 1.1, 5.5);
+  staticBox('rails', x + 1.2, z, 0.08, w + 10, 1.1, 5.5);
+  colliders.push({ x: x - 1.2, z, w: 0.25, d: w + 10, minY: 5.0, maxY: 7.0 });
+  colliders.push({ x: x + 1.2, z, w: 0.25, d: w + 10, minY: 5.0, maxY: 7.0 });
+
+  // stair towers
+  for (const side of [-1, 1]) {
+    const tz = z + side * (w / 2 + 6.5);
+    box(x, tz, 3, 3, 5.2, 0x8c8f93, 'prop');
+    staticBox('rails', x, tz + side * 1.6, 3, 0.08, 1.1, 5.5);
+    colliders.push({ x, z: tz, w: 3, d: 3 });
   }
+}
+
   // Costain interchange: roundabout island and signage
   cyl(152, 0, 4, 0.5, 0x8d9a8a, 'prop', 0, 24); cyl(152, 0, 0.3, 5, 0x5d402b, 'prop', 0.5);
   solidAt(152, 0, 8.3, 8.3);                                       // Alpha 1.1: Costain roundabout island
