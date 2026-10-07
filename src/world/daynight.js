@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { QUALITY } from '../core/quality.js';
 import { G } from '../core/context.js';
 import { emit } from '../core/events.js';
 import { clampN } from '../core/utils.js';
@@ -60,7 +61,9 @@ export function applySky() {
   for (const m of G.roadMats || []) { m.roughness = 0.95 - 0.5 * wet; m.metalness = 0.02 + 0.1 * wet; }
   if (G.bloom) { G.bloom.strength = 0.25 + 0.2 * wet + (G.rain ? 0.1 : 0); G.bloom.threshold = night ? 0.8 : 0.9; G.bloom.radius = 0.35; }
   if (G.grade) { G.grade.uniforms.split.value = 0.1 + 0.1 * wet; G.grade.uniforms.vignette.value = 0.28 + 0.12 * wet; }
-  if (G.scene.environmentIntensity !== undefined) G.scene.environmentIntensity = night ? 0.25 : 0.4;
+  const q = QUALITY[G.quality] || QUALITY.medium;
+  scene.fog.far *= q.fogScale; scene.fog.near *= q.fogScale;
+  if (G.scene.environmentIntensity !== undefined) G.scene.environmentIntensity = (night ? 0.25 : 0.4) * (q.env / 0.4);
 }
 
 let tick = 0;

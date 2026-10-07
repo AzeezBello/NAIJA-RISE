@@ -6,6 +6,7 @@ import { GAME, PERF } from '../../data/config.js';
 import { Field, Toggle, Row, Btn, Note } from '../components.js';
 import { timeStr } from '../../world/daynight.js';
 import { gamepadConnected } from '../../core/gamepad.js';
+import { QUALITY, setQuality } from '../../core/quality.js';
 
 export default {
   id: 'settings', title: 'Settings', tint: '#4a5560',
@@ -16,6 +17,7 @@ export default {
       Field('PLAYER NAME', `<input type="text" id="setName" maxlength="24" value="${esc(s.name)}">`) +
       Field(`CAMERA SENSITIVITY · ${st.sens.toFixed(1)}×`, `<input type="range" id="setSens" min="0.3" max="2" step="0.1" value="${st.sens}">`) +
       Toggle('Rotate minimap with camera', 'setRotate', st.rotateMap) +
+      Field(`GRAPHICS · now ${QUALITY[G.quality]?.label || 'Auto'}${G.gpu ? ' · ' + esc(G.gpu.slice(0, 40)) : ''}`, `<select id="setQuality">${['auto', 'low', 'medium', 'high'].map(v => `<option value="${v}" ${(st.quality || 'auto') === v ? 'selected' : ''}>${v === 'auto' ? 'Auto (detect and adapt)' : QUALITY[v].label}</option>`).join('')}</select>`) +
       Toggle('Shadows', 'setShadows', st.shadows) +
       Toggle('Cinematic look (bloom, colour grade)', 'setFx', st.fx === undefined ? !PERF.lowEnd : st.fx) +
       Toggle('Rigged 3D characters (applies after reload)', 'setRig', st.rig !== false) +
@@ -29,6 +31,7 @@ export default {
     $('setSens').addEventListener('input', e => { st.sens = +e.target.value; e.target.parentElement.firstChild.textContent = `CAMERA SENSITIVITY · ${st.sens.toFixed(1)}×`; saveState(s); });
     $('setRotate').addEventListener('change', e => { st.rotateMap = e.target.checked; saveState(s); });
     $('setShadows').addEventListener('change', e => { st.shadows = e.target.checked; emit('hud'); });
+    $('setQuality').addEventListener('change', e => { setQuality(e.target.value); emit('hud'); });
     $('setFx').addEventListener('change', e => { st.fx = e.target.checked; saveState(s); });
     $('setRig').addEventListener('change', e => { st.rig = e.target.checked; saveState(s); });
     $('setHints').addEventListener('change', e => { st.hints = e.target.checked; emit('hud'); });

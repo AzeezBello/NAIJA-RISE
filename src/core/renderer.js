@@ -9,7 +9,7 @@ export function createRenderer(mount) {
   scene.fog = new THREE.Fog(0xbcd8e6, 110, 260);
   const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 600);
   const renderer = new THREE.WebGLRenderer({ antialias: !PERF.lowEnd, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, PERF.lowEnd ? 1.5 : 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));   // core/quality.js raises or lowers this per level
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;

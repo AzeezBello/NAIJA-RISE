@@ -20,10 +20,22 @@ function startOutage() {
 }
 function endOutage() { G.outage = 0; notify('NEPA', 'Up NEPA! Light don come back.'); emit('sky'); }
 
+let works = [];
 function startJam() {
   const axis = pick(['h', 'v']), k = pick(axis === 'h' ? ROADS.h : ROADS.v), [ea, eb] = roadExtent(axis, k), from = rnd(ea + 20, eb - 80);
   G.jam = { axis, k, from, to: from + 60, until: rnd(60, 120) };
-  if (Math.random() < 0.4) {
+  const r = Math.random();
+  if (r < 0.3) {
+    // road construction: cones, concrete barriers and a DIVERSION sign close one lane for a long stretch
+    G.jam.until = rnd(150, 260); G.jam.works = true;
+    import('../world/builders.js').then(b => {
+      for (let c = from; c <= from + 60; c += 6) { const x = axis === 'h' ? c : k + 4.5, z = axis === 'h' ? k - 4.5 : c; works.push(b.cyl(x, z, 0.25, 0.7, 0xff6a1a, 'prop', 0, 8, 0.08)); }
+      for (let c = from + 3; c <= from + 57; c += 12) { const x = axis === 'h' ? c : k + 2.2, z = axis === 'h' ? k - 2.2 : c; works.push(b.box(x, z, axis === 'h' ? 8 : 0.6, axis === 'h' ? 0.6 : 8, 0.9, 0xbfb8a6, 'prop')); }
+      const sx = axis === 'h' ? from - 6 : k + 7, sz = axis === 'h' ? k - 7 : from - 6;
+      works.push(b.sign('ROAD WORKS · DIVERSION', sx, 3, sz, '#07100e', 6.5, 1.3, 'rgba(255,106,26,.97)'));
+    });
+    notify('LASTMA', `Road construction on ${roadNameAt(axis, k, from + 30)} — one lane closed, follow the diversion.`);
+  } else if (r < 0.6) {
     // road incident: an overturned keke in the lane, hazard cones, crowd of onlookers
     const mid = from + 30, x = axis === 'h' ? mid : k + 4.5, z = axis === 'h' ? k - 4.5 : mid;
     import('../entities/vehicles.js').then(v => { wreck = v.makeVehicle('keke'); wreck.position.set(x, 0.6, z); wreck.rotation.z = Math.PI / 2.2; wreck.rotation.y = rnd(0, 6); });
@@ -52,7 +64,7 @@ export function updateEvents(dt) {
   if (G.outage) { G.outage -= dt; if (G.outage <= 0) endOutage(); }
   else { outageT -= dt; if (outageT <= 0) { outageT = rnd(120, 260); if (night && Math.random() < 0.6) startOutage(); } }
   // Go-slow
-  if (G.jam) { G.jam.until -= dt; if (G.jam.until <= 0) { G.jam = null; if (wreck) { G.scene.remove(wreck); wreck = null; } notify('Traffic', 'Go-slow don clear.'); } }
+  if (G.jam) { G.jam.until -= dt; if (G.jam.until <= 0) { const w = G.jam.works; G.jam = null; if (wreck) { G.scene.remove(wreck); wreck = null; } for (const o of works) G.scene.remove(o); works = []; notify(w ? 'LASTMA' : 'Traffic', w ? 'Road works done — lane reopened.' : 'Go-slow don clear.'); } }
   else { jamT -= dt; if (jamT <= 0) { jamT = rnd(90, 200); if (Math.random() < 0.7) startJam(); } }
   // Owambe
   if (owambeOn()) {

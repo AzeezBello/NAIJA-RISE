@@ -1,6 +1,6 @@
 {
   "name": "naija-rise-web",
-  "version": "0.11.0",
+  "version": "1.0.0",
   "private": true,
   "description": "NAIJA RISE — Lagos: Next.js shell (landing, accounts, launcher) hosting the Three.js game engine in ../src",
   "scripts": {

@@ -26,16 +26,19 @@ const GradeShader = {
     }`,
 };
 
-export const fxEnabled = () => { const s = G.state?.settings?.fx; return s === undefined ? !PERF.lowEnd : s; };
+import { current } from './quality.js';
+// Cinematic look runs only when the quality level allows it; the Settings toggle can switch it off at any level.
+export const fxEnabled = () => { const s = G.state?.settings?.fx; return s === false ? false : current().fx; };
 
 export function setupPostFx() {
   const { renderer, scene, camera } = G;
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.4; pmrem.dispose();
-  const target = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: PERF.lowEnd ? 0 : 4 });
+  const half = renderer.capabilities.isWebGL2 && (renderer.extensions.has('EXT_color_buffer_half_float') || renderer.extensions.has('EXT_color_buffer_float'));
+  const target = new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: half ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: PERF.lowEnd ? 0 : 2 });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.35, 0.55, 0.88);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.35, 0.55, 0.88);
   const grade = new ShaderPass(GradeShader);
   composer.addPass(bloom); composer.addPass(grade); composer.addPass(new OutputPass());
   Object.assign(G, { composer, bloom, grade });

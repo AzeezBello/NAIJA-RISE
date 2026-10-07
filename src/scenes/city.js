@@ -4,6 +4,9 @@ import { $ } from '../core/utils.js';
 import { WORLD, PERF } from '../data/config.js';
 import { createPlayer, applyLook, updatePlayer } from '../entities/player.js';
 import { updateCharacters } from '../entities/character.js';
+import { applyQuality } from '../core/quality.js';
+import { spawnContacts, updateContacts } from '../entities/contacts.js';
+import { updateTolls } from '../systems/tolls.js';
 import { spawnNpcs, spawnAgberos, spawnServiceNpcs, spawnExtras, updateNpcs } from '../entities/npcs.js';
 import { spawnAnimals, applyPet, updateAnimals } from '../entities/animals.js';
 import { updateTraffic } from '../entities/vehicles.js';
@@ -43,7 +46,8 @@ export const CityScene = {
       built = true;
       createPlayer();
       createMarkers();
-      spawnNpcs(PERF.lowEnd ? PERF.npcs.low : PERF.npcs.full); spawnAgberos(); spawnServiceNpcs(); spawnExtras(); spawnAnimals();
+      spawnNpcs(PERF.lowEnd ? PERF.npcs.low : PERF.npcs.full); spawnAgberos(); spawnServiceNpcs(); spawnExtras(); spawnAnimals(); spawnContacts();
+      applyQuality(G.quality);   // crowd / traffic caps for the current graphics level
       buildHud(root); buildPhone(root); buildTouch(root);
       setupDialogue(); setupInteraction(); setupMovement(); setupAudio();
     }
@@ -62,8 +66,8 @@ export const CityScene = {
   update(dt) {
     updateGamepad(dt);
     updateMovement(dt);
-    updatePlayer(); updateTraffic(dt); updateNpcs(dt); updateCharacters(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
-    updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateMissions(dt); updateRace(dt); updateTrafficLights(dt); updateClock(dt); updateAudio();
+    updatePlayer(); updateTraffic(dt); updateNpcs(dt); updateContacts(dt); updateCharacters(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
+    updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateMissions(dt); updateRace(dt); updateTrafficLights(dt); updateTolls(); updateClock(dt); updateAudio();
     routeT += dt; if (routeT > 0.25) { routeT = 0; updateRoute(); }   // GPS re-routes 4× a second
     updateCamera(dt);
     frame++; hudFrame(); if (frame % 2 === 0) mapDraw(); updateTouch();

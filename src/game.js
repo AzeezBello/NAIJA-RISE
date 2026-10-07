@@ -3,6 +3,7 @@
 import { PERF } from './data/config.js';
 import { preloadCharacters } from './entities/character.js';
 import { setupPostFx, renderFrame } from './core/postfx.js';
+import { setQuality, updateQuality } from './core/quality.js';
 import { G } from './core/context.js';
 import { loadState } from './core/state.js';
 import { createRenderer } from './core/renderer.js';
@@ -31,6 +32,7 @@ export function createGame({ mount, ui, startScene } = {}) {
   spawnParked();
   spawnTraffic();
   setupPostFx();
+  setQuality(G.state.settings.quality);   // GPU-detected level, adaptive in auto mode
   applySky();
   preloadCharacters(PERF.lowEnd);   // rigs stream in behind the title screen
 
@@ -43,6 +45,7 @@ export function createGame({ mount, ui, startScene } = {}) {
     requestAnimationFrame(frame);
     const dt = Math.min(G.clock.getDelta(), 0.05);
     updateScene(dt);
+    updateQuality();
     renderFrame();
   }
   frame();

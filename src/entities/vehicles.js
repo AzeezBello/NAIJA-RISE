@@ -4,7 +4,7 @@ import { approach, pick, rnd } from '../core/utils.js';
 import { mat, lamps } from '../world/builders.js';
 import { VEH, PARKED, TRAFFIC_MIX, TRAFFIC_COLORS, LANE_OFFSET, MODELS, MODEL_PAINT } from '../data/vehicles.js';
 import { attachModel, spinWheels } from './vehicleModels.js';
-import { ROADS, roadRules, JUNCTIONS, roadExtent, BRIDGE_RUSH } from '../data/locations.js';
+import { ROADS, roadRules, JUNCTIONS, roadExtent, BRIDGE_RUSH, onBridge } from '../data/locations.js';
 import { heightAt } from '../world/terrain.js';
 import { lightFor } from '../systems/trafficlights.js';
 import { PERF } from '../data/config.js';
@@ -144,6 +144,7 @@ export function updateTraffic(dt) {
   const pp = pos();
   for (const t of G.traffic) {
     if (t.pursuit) continue;   // systems/police.js drives it
+    if (t.hidden) continue;    // over the quality level's traffic cap
     const fx = t.axis === 'h' ? t.dir : 0, fz = t.axis === 'v' ? t.dir : 0;
     let target = t.cruise;
     const check = (px, pz, gap) => {
@@ -157,7 +158,7 @@ export function updateTraffic(dt) {
     if (jam && jam.axis === t.axis && jam.k === t.k) { const c = t.axis === 'h' ? t.g.position.x : t.g.position.z; if (c > jam.from && c < jam.to) target = Math.min(target, 1.6); }
     if (G.rain) target *= 0.7;
     target *= roadRules(t.axis, t.k).speed;
-    if (t.axis === 'h' && t.k === 0 && t.g.position.x > 155 && t.g.position.x < 345) target *= 1.4 * BRIDGE_RUSH(G.state.clock);   // Eko Bridge: fast at night, crawling at rush hour
+    if (onBridge(t.axis, t.k, t.axis === 'h' ? t.g.position.x : t.g.position.z)) target *= 1.4 * BRIDGE_RUSH(G.state.clock);   // bridges: fast at night, crawling at rush hour
     // red lights: stop 3–9 m before the junction box on this axis
     if (roadRules(t.axis, t.k).lights !== false && lightFor(t.axis) !== 'green') {
       for (const j of JUNCTIONS) {
@@ -189,5 +190,5 @@ export function updateTraffic(dt) {
     if (c2 > eb + 2 || c2 < ea - 2) { const nc = c2 > eb ? ea : eb; if (t.axis === 'h') t.g.position.x = nc; else t.g.position.z = nc; }
     t.g.position.y = heightAt(t.g.position.x, t.g.position.z);
   }
-  for (const t of G.traffic) spinWheels(t.g, t.speed, dt);
+  for (const t of G.traffic) if (!t.hidden) spinWheels(t.g, t.speed, dt);
 }

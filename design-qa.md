@@ -1,6 +1,8 @@
-# Design QA — Alpha 0.11
+# Design QA — Alpha 1.0
 
 ## Implemented
+- Corridors: Falomo and Third Mainland decks, VI / Lekki / Yaba / Ebute Metta / Ikorodu blocks and landmarks, five water bodies, toll plaza, footbridges, danfo queues, road-works diversions, long-distance jobs, data-driven roads and lights, region rectangles, bigger minimap and phone map.
+- Graphics levels (Auto/Low/Medium/High) with GPU detection, adaptive step-down, 8-bit fallback for the HDR target, half-res bloom, frustum-culled characters, near-only character shadows, crowd and traffic caps. Story contacts spawned as characters with an objective arrow; missions, GPS and prompts target the person.
 - Kenney Car Kit vehicles with palette repainting (danfo yellow, LAWMA orange, army olive, liveries), headlights, police/fire light bars and rolling wheels; house detail pass (ledges, balconies, ACs, tanks, dishes, awnings, generators).
 - Poster look: HDR composer with bloom, split-tone grade and vignette; environment reflections; wet roads and stronger bloom after dark; golden-hour → ember → twilight → night sky palette; new games start at 17:15. Three human street rigs (Ready Player Me, Michelle, CesiumMan) with eleven outfit types and random wardrobe; rigs on by default on phones; title-screen preload.
 - Character pipeline: rigged GLB player and pedestrians with Idle/Walk/Run cross-fades driven by the controller states, primitive fallback, Nigerian wardrobe (ankara shirt / senator / buba & sokoto / agbada / Super Eagles / t-shirt in procedural ankara, adire, aso-oke and lace prints, fila and face cap), eleven-slot customiser (skin, face, body, hair, hair colour, facial hair, outfit, fabric, trousers, shoes, accessory) with head-bone accessories, skinned shadows, Settings toggle for the rig.

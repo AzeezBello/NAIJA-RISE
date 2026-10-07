@@ -6,6 +6,7 @@ import { CHARACTER } from '../data/config.js';
 import { LOOK, FABRIC_OUTFITS } from '../data/characters.js';
 import { mat } from '../world/builders.js';
 import { fabricTexture, fabricMaterial, fabricOf } from './wardrobe.js';
+import { current } from '../core/quality.js';
 
 // NAIJA RISE Character Pipeline v1.
 // One rigged GLB (Mixamo-compatible skeleton, Idle/Walk/Run clips) is loaded once and cloned per character.
@@ -40,7 +41,7 @@ export function loadRig(i = 0) {
           });
         }
         const box = new THREE.Box3().setFromObject(gltf.scene), h = box.max.y - box.min.y;
-        gltf.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+        gltf.scene.traverse(o => { if (o.isMesh) o.castShadow = true; });
         bases[i] = { rig, scene: gltf.scene, clips, scale: CHARACTER.height / h, url };
         console.info(`[character] rig ${rig.id} loaded: ${url} (${clips.map(c => c.name).join(', ')})`);
         for (const inst of instances) if (inst.rigIdx === i) { try { inst._swap(); } catch (e) { console.warn(`[character] swap failed: ${e.message}`); } }
@@ -92,7 +93,7 @@ export function createCharacter({ look = G.state?.look || {}, build, placeholder
     inst.base = base;
     const model = SkeletonUtils.clone(base.scene);
     model.rotation.y = base.rig.facing; model.scale.setScalar(base.scale * scale);
-    model.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.castShadow = true; } });
+    inst.meshes = []; model.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.castShadow = true; inst.meshes.push(o); } });
     if (inst._placeholder) { group.remove(inst._placeholder); inst._placeholder = null; }
     group.add(model); inst.model = model; inst.rig = true;
     inst.mixer = new THREE.AnimationMixer(model);
@@ -143,10 +144,12 @@ function applyLookTo(inst) {
 // Per-frame: advance mixers for characters near the camera; distant ones hold their pose.
 export function updateCharacters(dt) {
   const cam = G.camera?.position; if (!cam) return;
+  const q = current(), ar = q.animRange * q.animRange, sr = q.shadowRange * q.shadowRange;
   for (const inst of instances) {
     if (!inst.mixer) continue;
-    const p = inst.group.getWorldPosition(_tmp);
-    if (p.distanceToSquared(cam) < CHARACTER.animRange * CHARACTER.animRange) inst.mixer.update(dt);
+    const p = inst.group.getWorldPosition(_tmp), d2 = p.distanceToSquared(cam);
+    if (d2 < ar) inst.mixer.update(dt);
+    const near = d2 < sr; if (inst.near !== near) { inst.near = near; for (const m of inst.meshes || []) m.castShadow = near; }
   }
 }
 const _tmp = new THREE.Vector3();

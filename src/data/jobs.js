@@ -12,6 +12,10 @@ export const JOBS = [
   { id: 'bouncer', title: 'Bouncer', where: 'Lust Club', at: 'lust', pay: 15000, xp: 22, dur: 5, by: 'amaka', skill: 'fitness', min: 15, night: true },
   { id: 'courier', title: 'Island Courier', where: 'CMS, Lagos Island', at: 'cms', pay: 14000, xp: 22, dur: 4, by: 'amaka', skill: 'driving', min: 10 },
   { id: 'tanker', title: 'Tanker Driver', where: 'Mobil Filling Station', at: 'fuel', pay: 18000, xp: 25, dur: 6, by: 'dayo', skill: 'driving', min: 20 },
+  // long-distance runs over the corridors (the trip is the job)
+  { id: 'lekki', title: 'Lekki Dispatch Rider', where: 'Lekki Toll Gate', at: 'lekkitoll', pay: 30000, xp: 32, dur: 5, by: 'amaka', skill: 'driving', min: 15, far: true },
+  { id: 'yabarun', title: 'Campus Courier', where: 'Yaba College of Technology', at: 'yabatech', pay: 22000, xp: 26, dur: 4, by: 'nkechi', skill: 'driving', min: 10, far: true },
+  { id: 'ikorodu', title: 'Ikorodu Haulage', where: 'Ikorodu Garage', at: 'ikorodu', pay: 35000, xp: 36, dur: 6, by: 'dayo', skill: 'driving', min: 25, far: true },
 ];
 export const jobOf = id => JOBS.find(j => j.id === id) || null;
 export const jobPay = (j, skills) => Math.round(j.pay * (1 + (skills?.[j.skill] || 0) * 0.01));   // +1% per skill point

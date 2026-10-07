@@ -3,13 +3,15 @@ import { G, pos } from '../core/context.js';
 import { on, emit } from '../core/events.js';
 import { MISSIONS } from '../data/missions.js';
 import { jobOf } from '../data/jobs.js';
-import { ROADS, PROPERTIES, placeOf, roadExtent } from '../data/locations.js';
+import { ROADS, PROPERTIES, placeOf, roadExtent, JUNCTIONS } from '../data/locations.js';
 import { heightAt } from '../world/terrain.js';
 
 /* ---------- mission / job / home lookups ---------- */
 export const curMission = () => MISSIONS[Math.min(G.state.mission, MISSIONS.length - 1)];
 const taskDest = () => { const t = G.task; if (!t) return null; if (t.type === 'steal' && !G.inCar) return t.destPos; return t.dest ? placeOf(t.dest) : null; };
-export const missionPos = () => taskDest() || placeOf(curMission().at);
+// The mission's contact stands in the world (entities/contacts.js); fall back to the place when there is no one to meet.
+const contactPos = m => { const who = m.who || (typeof m.lines === 'function' ? m.lines()[0]?.s : null); return who && G.contactPos?.[who] || null; };
+export const missionPos = () => taskDest() || contactPos(curMission()) || placeOf(curMission().at);
 export const missionAvailable = () => { const m = curMission(); return !G.state.done && (!m.requires || m.requires()) && (!m.arc || m.arc === G.state.arc); };
 export const missionActive = () => missionAvailable() && !G.state.storyPaused;
 export const jobPos = j => placeOf(j.at);
@@ -22,7 +24,7 @@ function flatMarker(color) {
 }
 export function createMarkers() {
   const routeGeo = new THREE.BufferGeometry();
-  routeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(16 * 3), 3));
+  routeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(32 * 3), 3));
   const routeLine = new THREE.Line(routeGeo, new THREE.LineDashedMaterial({ color: 0x3dff79, dashSize: 2, gapSize: 1.3, transparent: true, opacity: 0.85 }));
   routeLine.frustumCulled = false; routeLine.visible = false; G.scene.add(routeLine);
   G.markers = { mission: flatMarker(0x3dff79), job: flatMarker(0x5db8ff), wp: flatMarker(0xc77dff), routeLine, routeGeo };
@@ -65,13 +67,43 @@ function snap(p) {
   for (const x of ROADS.v) { const [a, b] = roadExtent('v', x); if (p.z < a - 20 || p.z > b + 20) continue; const d = Math.abs(p.x - x); if (!best || d < best.d) best = { d, type: 'v', k: x, x, z: Math.min(b, Math.max(a, p.z)) }; }
   return best;
 }
+// Shortest path over the road graph: junctions are nodes, stretches of road between neighbouring junctions are edges,
+// and the two snapped endpoints join the graph along their own road. Bridges and corridors route like any other road.
+let graph = null;
+function buildGraph() {
+  const nodes = JUNCTIONS.map(j => ({ x: j.x, z: j.z, roads: [['h', j.z], ['v', j.x]] }));
+  const onRoad = (axis, k) => nodes.filter(n => n.roads.some(([ax, kk]) => ax === axis && kk === k)).sort((p, q) => (axis === 'h' ? p.x - q.x : p.z - q.z));
+  const edges = new Map(nodes.map(n => [n, []]));
+  for (const axis of ['h', 'v']) for (const k of ROADS[axis]) { const line = onRoad(axis, k); for (let i = 1; i < line.length; i++) { const u = line[i - 1], v = line[i], d = Math.hypot(u.x - v.x, u.z - v.z); edges.get(u).push([v, d]); edges.get(v).push([u, d]); } }
+  graph = { nodes, edges, onRoad };
+}
+function dijkstra(starts, goals) {
+  const dist = new Map(), prev = new Map(), open = [];
+  for (const [n, d] of starts) { dist.set(n, d); open.push(n); }
+  const goalD = new Map(goals);
+  let best = null, bestD = Infinity;
+  while (open.length) {
+    open.sort((p, q) => dist.get(p) - dist.get(q)); const u = open.shift(), du = dist.get(u);
+    if (goalD.has(u) && du + goalD.get(u) < bestD) { bestD = du + goalD.get(u); best = u; }
+    if (du > bestD) break;
+    for (const [v, w] of graph.edges.get(u)) { const nd = du + w; if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, u); if (!open.includes(v)) open.push(v); } }
+  }
+  if (!best) return null;
+  const path = []; for (let n = best; n; n = prev.get(n)) path.unshift(n); return path;
+}
 export function route(a, b) {
+  if (!graph) buildGraph();
   const A = snap(a), B = snap(b), pts = [[a.x, a.z]];
+  if (!A || !B) { pts.push([b.x, b.z]); return pts; }
   if (A.d > 3) pts.push([A.x, A.z]);
-  if (A.type === B.type && A.k === B.k) { /* same road */ }
-  else if (A.type !== B.type) pts.push([A.type === 'v' ? A.k : B.k, A.type === 'h' ? A.k : B.k]);
-  else if (A.type === 'h') { let bx = null, bd = 1e9; for (const x of ROADS.v) { const [va, vb] = roadExtent('v', x); if (A.k < va || A.k > vb || B.k < va || B.k > vb) continue; const d = Math.abs(a.x - x) + Math.abs(b.x - x); if (d < bd) { bd = d; bx = x; } } if (bx !== null) pts.push([bx, A.k], [bx, B.k]); else pts.push([0, A.k], [0, 0], [B.x > 150 ? 360 : 0, 0], [B.x > 150 ? 360 : 0, B.k]); }
-  else { let bz = null, bd = 1e9; for (const z of ROADS.h) { const [ha, hb] = roadExtent('h', z); if (A.k < ha || A.k > hb || B.k < ha || B.k > hb) continue; const d = Math.abs(a.z - z) + Math.abs(b.z - z); if (d < bd) { bd = d; bz = z; } } pts.push([A.k, bz ?? 0], [B.k, bz ?? 0]); }
+  if (A.type === B.type && A.k === B.k) { /* same road: straight along it */ }
+  else {
+    const along = n => (A.type === 'h' ? n.x : n.z), alongB = n => (B.type === 'h' ? n.x : n.z);
+    const starts = graph.onRoad(A.type, A.k).map(n => [n, Math.abs(along(n) - (A.type === 'h' ? A.x : A.z))]);
+    const goals = graph.onRoad(B.type, B.k).map(n => [n, Math.abs(alongB(n) - (B.type === 'h' ? B.x : B.z))]);
+    const path = dijkstra(starts, goals);
+    if (path) for (const n of path) pts.push([n.x, n.z]);
+  }
   if (B.d > 3) pts.push([B.x, B.z]);
   pts.push([b.x, b.z]);
   return pts.filter((p, i) => i === 0 || Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) > 0.5);

@@ -80,7 +80,7 @@ export function updateNpcs(dt) {
   for (const n of G.nightlife || []) { n.g.visible = nightOpen && G.state.settings.mature !== false; n.g.rotation.y = Math.sin(performance.now() / 700 + n.x) * 0.5; }
   for (const k of G.kids || []) { k.g.visible = schoolTime; k.t += dt; k.g.position.x = k.home.x + Math.sin(k.t) * 2; k.g.position.y = Math.abs(Math.sin(k.t * 5)) * 0.1; }
   const marketHour = h >= 10 && h < 16, lateNight = h >= 23 || h < 5;
-  G.npcs.forEach((n, i) => { n.g.visible = !(lateNight && i % 2); });     // half the street goes home late at night
+  G.npcs.forEach((n, i) => { n.g.visible = !n.hidden && !(lateNight && i % 2); });     // half the street goes home late at night
   for (const n of G.npcs) {
     if (marketHour && !n.market) { n.market = pick([placeOf('yaba'), placeOf('shitta'), placeOf('mushin')]); }
     if (!marketHour) n.market = null;

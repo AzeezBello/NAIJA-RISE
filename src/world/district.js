@@ -5,7 +5,7 @@ import { box, cyl, building, compound, sign, mat, occluders, colliders, lamps, g
 import { PERF } from '../data/config.js';
 import { buildTrafficLights } from '../systems/trafficlights.js';
 import { asphaltTexture, groundTexture, concreteTexture, cloudTexture, glowTexture } from './textures.js';
-import { ROADS, ROAD_NAMES, ROAD_WIDTHS, ROAD_EXTENT, roadExtent, LANDMARKS, BUSSTOPS, PROPERTIES, KIOSKS, RESERVED, WATER, VENDORS, ISLAND_CELLS, JUNCTIONS } from '../data/locations.js';
+import { ROADS, ROAD_NAMES, ROAD_WIDTHS, ROAD_EXTENT, roadExtent, LANDMARKS, BUSSTOPS, PROPERTIES, KIOSKS, RESERVED, WATER, WATERS, inWater, onBridge, VENDORS, ISLAND_CELLS, VI_CELLS, LEKKI_CELLS, YABA_CELLS, EBUTE_CELLS, TOLLS, FOOTBRIDGES, JUNCTIONS, roadRules, roadClass } from '../data/locations.js';
 import { addDeck, heightAt } from './terrain.js';
 
 const PALETTE = [0x6f7d84, 0x8a7d6a, 0x9c8f7a, 0x7a8ba0, 0x8f6b63, 0x6e8a8a, 0xa08866, 0xb9a98f];
@@ -39,30 +39,28 @@ function streetLight(x, z, armDir) {
 }
 function streetLights() {
   streetLight.glow = glowTexture();
-  for (const z of ROADS.h) { if (z === 142) continue; const hw = ROAD_W[z] / 2 + 1; for (let x = -132; x <= 132; x += 36) { if (Math.abs(x) < 14 || Math.abs(Math.abs(x) - 72) < 12) continue; streetLight(x, z - hw, { x: 0, z: 1 }); streetLight(x + 18, z + hw, { x: 0, z: -1 }); } }
-  for (let x = 360; x <= 460; x += 36) { streetLight(x, -12, { x: 0, z: 1 }); streetLight(x + 18, 12, { x: 0, z: -1 }); }
-  for (const x of ROADS.v) { const hw = VROAD_W[x] / 2 + 1, [a, b] = roadExtent('v', x); for (let z = a + 18; z <= b - 18; z += 36) { if (Math.abs(z) < 14 || Math.abs(z + 66) < 12) continue; streetLight(x - hw, z, { x: 1, z: 0 }); streetLight(x + hw, z + 18, { x: -1, z: 0 }); } }
+  const nearCross = (coord, cross) => cross.some(k => Math.abs(coord - k) < 14);
+  for (const z of ROADS.h) { if (roadClass('h', z) === 'expressway' || roadClass('h', z) === 'highway') continue; const hw = ROAD_W[z] / 2 + 1, [a, b] = roadExtent('h', z); for (let x = a + 18; x <= b - 18; x += 36) { if (nearCross(x, ROADS.v) || onBridge('h', z, x) || inWater(x, z)) continue; streetLight(x, z - hw, { x: 0, z: 1 }); streetLight(x + 18, z + hw, { x: 0, z: -1 }); } }
+  for (const x of ROADS.v) { if (roadClass('v', x) === 'expressway' || roadClass('v', x) === 'highway') continue; const hw = VROAD_W[x] / 2 + 1, [a, b] = roadExtent('v', x); for (let z = a + 18; z <= b - 18; z += 36) { if (nearCross(z, ROADS.h) || onBridge('v', x, z) || inWater(x, z)) continue; streetLight(x - hw, z, { x: 1, z: 0 }); streetLight(x + hw, z + 18, { x: -1, z: 0 }); } }
 }
 
 function buildGround() {
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(760, 400), new THREE.MeshStandardMaterial({ map: groundTexture(), roughness: 1 }));
-  ground.material.map.repeat.set(76, 40);
-  ground.rotation.x = -Math.PI / 2; ground.position.x = 160; ground.receiveShadow = true;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(900, 880), new THREE.MeshStandardMaterial({ map: groundTexture(), roughness: 1 }));
+  ground.material.map.repeat.set(90, 88);
+  ground.rotation.x = -Math.PI / 2; ground.position.set(235, 0, -35); ground.receiveShadow = true;
   G.scene.add(ground);
   const asphalt = asphaltTexture();
-  road(0, 0, 300, 22, asphalt); road(0, 0, 22, 300, asphalt); road(0, -66, 300, 18, asphalt); road(72, 0, 24, 300, asphalt); road(-72, 0, 16, 300, asphalt);
-  road(407, 0, 130, 22, asphalt);                                    // Nnamdi Azikiwe Street · CMS (island end of Bode Thomas)
-  road(360, 0, 18, 160, asphalt); road(440, 0, 22, 160, asphalt);    // Broad Street, Marina
-  road(152, 0, 30, 22, asphalt);                                     // Costain approach
-  road(0, 142, 300, 24, asphalt);                                   // Apapa–Oworonshoki Expressway
-  staticBox('medians', 0, 142, 300, 1.2, 0.9); staticBox('medians', 72, 0, 1, 300, 0.9);   // concrete medians on the expressway and Funsho Williams
-  for (let x = -132; x <= 132; x += 24) staticBox('poles', x, 142, 0.3, 0.3, 9);           // tall expressway lamp posts
-  for (let x = -126; x <= 126; x += 24) staticBox('heads', x, 142, 2.6, 0.5, 0.3, 9);
+  // every road from the data: tarmac along its extent, a concrete median and tall posts on expressways and highways
+  for (const z of ROADS.h) { const [a, b] = roadExtent('h', z), w = ROAD_W[z]; road((a + b) / 2, z, b - a, w, asphalt); const r = roadRules('h', z); if (r.median) { staticBox('medians', (a + b) / 2, z, b - a, 1.2, 0.9); for (let x = a + 12; x <= b - 12; x += 24) { if (onBridge('h', z, x)) continue; staticBox('poles', x, z, 0.3, 0.3, 9); staticBox('heads', x, z, 2.6, 0.5, 0.3, 9); } } }
+  for (const x of ROADS.v) { const [a, b] = roadExtent('v', x), w = VROAD_W[x]; road(x, (a + b) / 2, w, b - a, asphalt); const r = roadRules('v', x); if (r.median) { staticBox('medians', x, (a + b) / 2, 1, b - a, 0.9); for (let z = a + 12; z <= b - 12; z += 24) { if (onBridge('v', x, z)) continue; staticBox('poles', x, z, 0.3, 0.3, 9); staticBox('heads', x, z, 0.5, 2.6, 0.3, 9); } } }
+  road(152, 0, 30, 22, asphalt);                                     // Costain approach apron
   sidewalks(concreteTexture());
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(WATER.w, 400), new THREE.MeshStandardMaterial({ color: 0x14758e, roughness: 0.22, metalness: 0.45 }));
-  water.rotation.x = -Math.PI / 2; water.position.set(WATER.x, 0.03, 0);
-  G.scene.add(water); G.water = water;
-  for (const sx of [WATER.x - WATER.w / 2 - 3, WATER.x + WATER.w / 2 + 3]) { const sand = box(sx, 0, 6, 400, 0.08, 0xcbb98a, 'prop'); sand.receiveShadow = true; }
+  // water bodies share one material so the night tint applies to all of them
+  const wm = new THREE.MeshStandardMaterial({ color: 0x14758e, roughness: 0.22, metalness: 0.45 });
+  G.waters = WATERS.map(w => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w.x[1] - w.x[0], w.z[1] - w.z[0]), wm); m.rotation.x = -Math.PI / 2; m.position.set((w.x[0] + w.x[1]) / 2, 0.03, (w.z[0] + w.z[1]) / 2); G.scene.add(m); return m; });
+  G.water = G.waters[0];
+  for (const sx of [WATER.x - WATER.w / 2 - 3, WATER.x + WATER.w / 2 + 3]) { const sand = box(sx, 40, 6, 580, 0.08, 0xcbb98a, 'prop'); sand.receiveShadow = true; }
+  { const beach = box(480, 328, 280, 8, 0.1, 0xe3d3a6, 'prop'); beach.receiveShadow = true; }   // Bar Beach / Eko Atlantic shore
 }
 
 function buildSky() {
@@ -158,24 +156,29 @@ function buildLandmarks() {
   sign('SHITTA', -72, 5.2, 0, '#ffc52f', 4.6, 1.15);
 }
 
+function palm(x, z, h) {
+  staticCyl('trunks', x, z, 0.22, h, 0, 8, 0.14); colliders.push({ x, z, w: 0.75, d: 0.75 });
+  for (let a = 0; a < 8; a++) {
+    const ang = a * Math.PI / 4 + Math.random() * 0.3;
+    const leaf = new THREE.BoxGeometry(0.16, 2.6, 0.5); leaf.rotateZ(0.95); leaf.rotateY(-ang); leaf.translate(x + Math.cos(ang) * 0.9, h + 0.3, z + Math.sin(ang) * 0.9);
+    leaf.computeBoundingBox(); staticLeaf(leaf);
+  }
+}
 function buildPalms() {
   for (let i = 0; i < 40; i++) {
     const x = (Math.random() - 0.5) * 280, z = (Math.random() - 0.5) * 280;
-    if (Math.abs(x) < 18 || Math.abs(z) < 18 || reserved(x, z, 4) || x < WATER.x + WATER.w / 2 + 8) continue;
-    const h = 3 + Math.random() * 2.5;
-    staticCyl('trunks', x, z, 0.22, h, 0, 8, 0.14); colliders.push({ x, z, w: 0.75, d: 0.75 });
-    for (let a = 0; a < 8; a++) {
-      const ang = a * Math.PI / 4 + Math.random() * 0.3;
-      const leaf = new THREE.BoxGeometry(0.16, 2.6, 0.5); leaf.rotateZ(0.95); leaf.rotateY(-ang); leaf.translate(x + Math.cos(ang) * 0.9, h + 0.3, z + Math.sin(ang) * 0.9);
-      leaf.computeBoundingBox(); (staticLeaf(leaf));
-    }
+    if (Math.abs(x) < 18 || Math.abs(z) < 18 || reserved(x, z, 4) || inWater(x, z)) continue;
+    palm(x, z, 3 + Math.random() * 2.5);
   }
+  for (let x = 346; x <= 614; x += 14) palm(x + Math.random() * 4, 323 + Math.random() * 2, 4 + Math.random() * 2.5);     // Bar Beach / Eko Atlantic palms
+  for (let z = 190; z <= 320; z += 26) { if (Math.abs(z - 240) < 14 || Math.abs(z - 300) < 13) continue; palm(452, z, 4 + Math.random()); palm(428, z + 8, 4 + Math.random()); }   // Ahmadu Bello / Akin Adesola boulevard
+  for (let z = -260; z >= -395; z -= 26) { if (Math.abs(z + 300) < 11 || Math.abs(z + 330) < 14) continue; palm(348, z, 3.5 + Math.random()); }   // Murtala Muhammed Way, Yaba
 }
 
 // Street-name signs at every intersection: a pole with the two road names.
 function streetSigns() {
   for (const { x, z } of JUNCTIONS) {
-    if (z === 142) continue;
+    if (roadClass('h', z) === 'expressway' || inWater(x, z)) continue;
     const sx = x + VROAD_W[x] / 2 + 2.5, sz = z - ROAD_W[z] / 2 - 2.5;
     cyl(sx, sz, 0.08, 3.4, 0x3a8a4a, 'pole');
     sign(ROAD_NAMES.h[z].toUpperCase(), sx, 3.2, sz, '#ffffff', 6.5, 0.8, 'rgba(20,90,50,.96)');
@@ -212,7 +215,31 @@ function buildCorridors() {
   addDeck({ id: 'shitta', name: 'Shitta Bridge', axis: 'v', k: -72, halfW: 7, profile: [[-50, 0], [-16, 6.5], [16, 6.5], [50, 0]] });
   // Eko Bridge: Bode Thomas climbs at Costain and crosses the lagoon to Lagos Island
   addDeck({ id: 'eko', name: 'Eko Bridge', axis: 'h', k: 0, halfW: 10, profile: [[155, 0], [192, 9], [310, 9], [345, 0]] });
-  for (const d of [{ axis: 'v', k: -72, halfW: 7, from: -50, to: 50 }, { axis: 'h', k: 0, halfW: 10, from: 155, to: 345 }]) deckMesh(d);
+  // Falomo Bridge: Marina climbs over Five Cowrie Creek into Victoria Island
+  addDeck({ id: 'falomo', name: 'Falomo Bridge', axis: 'v', k: 440, halfW: 10, profile: [[82, 0], [108, 8], [156, 8], [180, 0]] });
+  // Third Mainland Bridge: Broad Street climbs north over the lagoon to Yaba
+  addDeck({ id: 'thirdmainland', name: 'Third Mainland Bridge', axis: 'v', k: 360, halfW: 10, profile: [[-248, 0], [-218, 9], [-115, 9], [-86, 0]] });
+  for (const d of [{ axis: 'v', k: -72, halfW: 7, from: -50, to: 50 }, { axis: 'h', k: 0, halfW: 10, from: 155, to: 345 }, { axis: 'v', k: 440, halfW: 10, from: 82, to: 180 }, { axis: 'v', k: 360, halfW: 10, from: -248, to: -86 }]) deckMesh(d);
+  sign('FALOMO BRIDGE → VICTORIA ISLAND', 426, 12.5, 100, '#ffffff', 11, 1.6, 'rgba(20,90,50,.96)');
+  sign('THIRD MAINLAND BRIDGE → YABA', 374, 13.5, -100, '#ffffff', 11, 1.6, 'rgba(20,90,50,.96)');
+  sign('WELCOME TO VICTORIA ISLAND', 440, 9, 186, '#ffc52f', 12, 1.8, 'rgba(10,40,30,.95)');
+  sign('YABA · HERBERT MACAULAY WAY', 360, 9, -256, '#ffc52f', 12, 1.8, 'rgba(10,40,30,.95)');
+  sign('IKORODU ROAD → IKORODU', 72, 9, -316, '#ffffff', 11, 1.6, 'rgba(20,90,50,.96)');
+  sign('LEKKI PHASE 1 · ADMIRALTY WAY', 560, 9, 186, '#ffc52f', 12, 1.8, 'rgba(10,40,30,.95)');
+  // Lekki toll plaza: canopy on pillars, booths and barrier arms across each lane
+  for (const t of TOLLS) {
+    const w = ROAD_W[t.k];
+    for (const sz of [-w / 2 - 1, w / 2 + 1]) cyl(t.at, t.k + sz, 0.35, 6.5, 0xd0d0d0, 'pole');
+    box(t.at, t.k, 8, w + 4, 0.6, 0xe4d14b, 'prop', 6.5);
+    for (const lane of [-7.5, -2.5, 2.5, 7.5]) { box(t.at - 2.2, t.k + lane, 1.6, 1.4, 2.6, 0x2b2b2b, 'prop'); box(t.at + 1.2, t.k + lane + 1.2, 3.2, 0.12, 0.12, 0xd62828, 'prop', 1.1); }
+    sign('LEKKI TOLL GATE · ₦1,200', t.at, 8.2, t.k - w / 2 - 1.5, '#07100e', 8, 1.4, 'rgba(228,209,75,.98)');
+  }
+  // pedestrian bridges: two stair towers and a deck over the carriageway
+  for (const f of FOOTBRIDGES) {
+    const w = ROAD_W[f.k], x = f.axis === 'h' ? f.at : f.k, z = f.axis === 'h' ? f.k : f.at;
+    staticBox('ledges', x, z, 2.4, w + 10, 0.3, 5.2); staticBox('rails', x - 1.2, z, 0.08, w + 10, 1.1, 5.5); staticBox('rails', x + 1.2, z, 0.08, w + 10, 1.1, 5.5);
+    for (const side of [-1, 1]) { const tz = z + side * (w / 2 + 6.5); box(x, tz, 3, 3, 5.2, 0x8c8f93, 'prop'); staticBox('rails', x, tz + side * 1.6, 3, 0.08, 1.1, 5.5); colliders.push({ x, z: tz, w: 3, d: 3 }); }
+  }
   // Costain interchange: roundabout island and signage
   cyl(152, 0, 4, 0.5, 0x8d9a8a, 'prop', 0, 24); cyl(152, 0, 0.3, 5, 0x5d402b, 'prop', 0.5);
   sign('COSTAIN', 152, 6.2, 0, '#ffffff', 5, 1.2, 'rgba(20,90,50,.96)');
@@ -225,13 +252,20 @@ function buildCorridors() {
   const crown = new THREE.Mesh(new THREE.CylinderGeometry(9, 13, 5, 36), mat(0x9aa0a6)); crown.position.set(t.x, 13.5, t.z); crown.castShadow = true; G.scene.add(crown);
   sign(t.name.toUpperCase(), t.x, 18, t.z, '#ffffff', 12, 2.6, 'rgba(10,40,30,.95)');
 }
+const CELL_SETS = [
+  { cells: ISLAND_CELLS, pick: () => (Math.random() < 0.6 ? 'highrise' : 'storey'), palette: [0x6f7d84, 0x7a8ba0, 0x8f9aa6, 0x5a6e8a, 0xb9a98f], signs: ['BANK', 'BUREAU DE CHANGE', 'LAW CHAMBERS', 'INSURANCE', 'BOOKSHOP', 'PHARMACY'] },
+  { cells: VI_CELLS, pick: () => (Math.random() < 0.7 ? 'highrise' : 'storey'), palette: [0x5a6e8a, 0x7a8ba0, 0x9aa6b4, 0x4a5a7a, 0xd9d2c2], signs: ['BANK HQ', 'OIL & GAS', 'TELECOMS', 'EMBASSY', 'LOUNGE', 'SUSHI', 'HOTEL'] },
+  { cells: LEKKI_CELLS, pick: () => (Math.random() < 0.8 ? 'storey' : 'highrise'), palette: [0xd9d2c2, 0xb9a98f, 0xc9c0b0, 0x8f9aa6], signs: ['ESTATE', 'CAFÉ', 'GYM', 'PHARMACY', 'SUPERMART'] },
+  { cells: YABA_CELLS, pick: () => (Math.random() < 0.75 ? 'storey' : 'highrise'), palette: [0x8a7d6a, 0x9c8f7a, 0x7a8ba0, 0x8f6b63, 0xa08866], signs: ['TECH HUB', 'PRINTING', 'PHONE', 'BUKA', 'LAUNDRY', 'HOSTEL'] },
+  { cells: EBUTE_CELLS, pick: () => (Math.random() < 0.55 ? 'bungalow' : 'storey'), palette: [0x8a7d6a, 0x9c8f7a, 0x8f6b63, 0xa08866, 0xb9a98f], signs: ['MECHANIC', 'BUKA', 'PROVISIONS', 'TYRES', 'CHURCH'] },
+];
 function buildIsland() {
-  // Lagos Island: dense business blocks east of Eko Bridge, between Broad Street and Marina and beyond
-  for (const [x, z] of ISLAND_CELLS) {
-    if (reserved(x, z)) continue;
-    const style = Math.random() < 0.6 ? 'highrise' : 'storey';
-    const b = compound(x, z, 20, 18, style, pick([0x6f7d84, 0x7a8ba0, 0x8f9aa6, 0x5a6e8a, 0xb9a98f]));
-    if (Math.random() < 0.5) sign(pick(['BANK', 'BUREAU DE CHANGE', 'LAW CHAMBERS', 'INSURANCE', 'BOOKSHOP', 'PHARMACY']), b.position.x, 2.6, b.position.z - 7.2, Math.random() < 0.5 ? '#3dff79' : '#ffc52f', 5, 1.25);
+  // Lagos Island towers, Victoria Island business blocks, Lekki estates, Yaba storey buildings, Ebute Metta compounds
+  for (const set of CELL_SETS) for (const [x, z] of set.cells) {
+    if (reserved(x, z) || inWater(x, z)) continue;
+    const style = set.pick();
+    const b = compound(x, z, 20, 18, style, pick(set.palette));
+    if (style !== 'bungalow' && Math.random() < 0.5) sign(pick(set.signs), b.position.x, 2.6, b.position.z - 7.2, Math.random() < 0.5 ? '#3dff79' : '#ffc52f', 5, 1.25);
   }
   sign('WELCOME TO LAGOS ISLAND', 352, 9, -14, '#ffc52f', 12, 1.8, 'rgba(10,40,30,.95)');
 }

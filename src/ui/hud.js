@@ -3,6 +3,7 @@ import { on } from '../core/events.js';
 import { $, esc, fmt, dist } from '../core/utils.js';
 import { saveState } from '../core/state.js';
 import { levelTitle } from '../data/config.js';
+import { QUALITY } from '../core/quality.js';
 import { MISSIONS } from '../data/missions.js';
 import { VEH } from '../data/vehicles.js';
 import { Key, StatBar } from './components.js';
@@ -86,7 +87,7 @@ export function refreshHud() {
   const b = s.unread ? String(s.unread) : '';
   $('hintBadge').textContent = b; const mb = $('msgBadge'); if (mb) mb.textContent = b;
   $('hints').classList.toggle('hide', !s.settings.hints);
-  G.sun.castShadow = s.settings.shadows;
+  G.sun.castShadow = s.settings.shadows && (QUALITY[G.quality]?.shadows ?? 1) > 0;
   renderApp();
   saveState(s);
 }
@@ -99,7 +100,7 @@ function localeName(p) {
   let best = null, bd = 14;
   for (const z of ROADS.h) { const [a, b] = roadExtent('h', z); if (p.x < a || p.x > b) continue; const d = Math.abs(p.z - z); if (d < bd) { bd = d; best = roadNameAt('h', z, p.x); } }
   for (const x of ROADS.v) { const [a, b] = roadExtent('v', x); if (p.z < a || p.z > b) continue; const d = Math.abs(p.x - x); if (d < bd) { bd = d; best = roadNameAt('v', x, p.z); } }
-  return best || regionAt(p.x).name;
+  return best || regionAt(p.x, p.z).name;
 }
 
 // Per-frame HUD updates: prompt, distances, bars, speedometer.
@@ -120,7 +121,7 @@ export function hudFrame() {
     const ang = Math.atan2(target.x - p.x, -(target.z - p.z)) + G.camYaw;   // bearing relative to the camera
     $('objArrow').style.transform = `rotate(${(ang * 180 / Math.PI - 90).toFixed(0)}deg)`; $('objArrow').style.opacity = 1;
   } else { $('objDist').textContent = ''; $('objArrow').style.opacity = 0; }
-  if (performance.now() - localeAt > 500) { localeAt = performance.now(); const n = localeName(p); if (n !== lastLocale) { lastLocale = n; const el = $('locale'); el.querySelector('b').textContent = n; el.querySelector('span').textContent = regionAt(p.x).name === n ? META.state : regionAt(p.x).name; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } }
+  if (performance.now() - localeAt > 500) { localeAt = performance.now(); const n = localeName(p); if (n !== lastLocale) { lastLocale = n; const el = $('locale'); el.querySelector('b').textContent = n; el.querySelector('span').textContent = regionAt(p.x, p.z).name === n ? META.state : regionAt(p.x, p.z).name; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } }
   const t = gpsTarget();
   $('gpsTarget').textContent = t ? t.label : 'No route'; $('gpsDist').textContent = t ? fmtDist(G.routeLen) : '';
   $('hp').style.width = s.health + '%'; $('sta').style.width = s.stamina + '%';

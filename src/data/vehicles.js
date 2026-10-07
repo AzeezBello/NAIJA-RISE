@@ -25,6 +25,10 @@ export const PARKED = [
   { type: 'korope', x: -15, z: -34, rot: 0 },
   { type: 'fire', x: 96, z: -34, rot: Math.PI / 2 },
   { type: 'army', x: 108, z: -13, rot: Math.PI / 2 },
+  // danfo queues at the bus terminals
+  { type: 'danfo', x: 126, z: 22, rot: Math.PI / 2 }, { type: 'danfo', x: 133, z: 22, rot: Math.PI / 2 }, { type: 'danfo', x: 147, z: 22, rot: Math.PI / 2 },
+  { type: 'danfo', x: 380, z: -24, rot: Math.PI / 2 }, { type: 'danfo', x: 387, z: -24, rot: Math.PI / 2 }, { type: 'danfo', x: 394, z: -24, rot: Math.PI / 2 },
+  { type: 'danfo', x: 392, z: -320, rot: Math.PI / 2 }, { type: 'danfo', x: 399, z: -320, rot: Math.PI / 2 },
 ];
 
 export const TRAFFIC_MIX = ['danfo', 'danfo', 'danfo', 'danfo', 'korope', 'korope', 'keke', 'keke', 'keke', 'okada', 'okada', 'okada', 'okada', 'brt', 'car', 'car', 'police', 'police', 'lawma', 'tanker', 'tanker'];

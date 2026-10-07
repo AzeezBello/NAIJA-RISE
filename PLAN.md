@@ -7,7 +7,7 @@ Pitch: **Build your life. Build your empire. Survive the city.**
 
 ---
 
-## 1. Where we are — Alpha 0.11 (October 2026)
+## 1. Where we are — Alpha 1.0 (October 2026)
 
 The PRD's §25 "Version 0.1" MVP list, checked against the current build:
 
@@ -60,14 +60,14 @@ One character pipeline for the player and NPCs: rigged GLB (Mixamo-compatible sk
 **Character asset decision (open):** the placeholder proves the pipeline. For Nigerian identity (faces, afro/braids/fade hair, ankara/agbada/buba outfits) the recommended path is a **custom Blender rig** auto-rigged through Mixamo (so the existing bone names and clips keep working), exported as one GLB with Idle/Walk/Run baked; Ready Player Me is the faster stop-gap (Mixamo-compatible, but limited African hair and dress). Turn/stop clips, a jump and vehicle enter/exit come with the same asset.
 
 ### Alpha 0.11 — The poster look (shipped)
-Post-processing (bloom, split-tone colour grade, vignette, ACES) with an environment map for reflections, wet night roads, the poster's dusk-to-night palette and a golden-hour start; human rigs only (Ready Player Me avatar with RPM locomotion clips, Mixamo Michelle, Khronos CesiumMan) with eleven everyday outfits (ankara to jacket-and-jeans, gowns and skirts) and sneakers for street variety; rigs on mobile; title-screen preload; service-worker cache bump. Vehicles are Kenney Car Kit models (CC0) with runtime repainting and rolling wheels (keke, okada, BRT and tanker still procedural); houses carry ledges, balconies, ACs, water tanks, dishes, awnings and generators.
+Post-processing (bloom, split-tone colour grade, vignette, ACES) with an environment map for reflections, wet night roads, the poster's dusk-to-night palette and a golden-hour start; human rigs only (Ready Player Me avatar with RPM locomotion clips, Mixamo Michelle, Khronos CesiumMan) with eleven everyday outfits (ankara to jacket-and-jeans, gowns and skirts) and sneakers for street variety; rigs on mobile; title-screen preload; service-worker cache bump. Graphics quality levels (auto-detect + adaptive step-down, Settings › Graphics) for weaker GPUs; story contacts are characters in the world with objective arrows. Vehicles are Kenney Car Kit models (CC0) with runtime repainting and rolling wheels (keke, okada, BRT and tanker still procedural); houses carry ledges, balconies, ACs, water tanks, dishes, awnings and generators.
 
-## 2. Next phase — Alpha 1.0 (Living City Phases 3–4 + corridor expansion, 4 weeks)
+### Alpha 1.0 — Corridors (shipped)
+Falomo Bridge → Victoria Island → Lekki toll gate and Lekki Phase 1; Third Mainland Bridge → Yaba; Ikorodu Road across Ebute Metta to Ikorodu Garage via Western Avenue; pedestrian bridges, terminal danfo queues, toll plaza with fees and heat, road-works diversions, bridge rush profiles, long-distance jobs; world builders generated from the district data (roads, medians, lights, signs, water bodies, cells).
 
-**Corridors (from the Bridge & Corridor spec):**
-1. **Lagos Island → Victoria Island** over Falomo Bridge: VI business district, hotels, restaurants, Eko Atlantic edge; Lekki Phase 1 stub behind the Lekki toll gate.
-2. **3rd Mainland Bridge → Yaba → Ikorodu Road** as the second corridor from a Yaba district stub; long-distance delivery missions.
-3. **Infrastructure pass**: pedestrian bridges, bus terminals at CMS and Costain with danfo queues, toll plaza, interchanges with ramps, road construction diversions.
+## 2. Next phase — Alpha 1.1 (Living City Phases 3–4, 4 weeks)
+
+**Corridors — remaining:** Ikoyi proper between the Island and VI, Lekki beyond Phase 1 (Ajah, Eleko), Ikorodu town, Apapa port road; interchange ramps at Costain and Falomo; BRT dedicated lanes on Ikorodu Road.
 
 **Living City Phase 3 — Life:** family system (mum, sibling, uncle with needs, requests and storylines), education tree (training centre, computer institute, polytechnic) that unlocks careers, fitness as recovery/strength, businesses v4 (employees with schedules).
 
