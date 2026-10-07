@@ -18,7 +18,7 @@
 .tr .daynum{font-size:10px;color:#dfe8e3}
 
 /* ---------- objective card (above the minimap) ---------- */
-.objective{position:absolute;left:22px;bottom:226px;width:272px;padding:10px 14px 10px 12px;border-left:3px solid var(--gold);border-radius:8px var(--r) var(--r) 8px}
+.objective{position:absolute;left:22px;bottom:268px;width:272px;padding:10px 14px 10px 12px;border-left:3px solid var(--gold);border-radius:8px var(--r) var(--r) 8px}
 .objhead{display:flex;align-items:baseline;gap:8px;min-width:0}
 .objkicker{font-size:8px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);font-weight:900;flex:none}
 .objtitle{font-size:11px;font-weight:800;color:#dfe8e3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -120,7 +120,7 @@
 /* ---------- responsive: tablets and phones ---------- */
 @media (max-width:900px),(max-height:560px){
   .topbar{padding:8px 10px}.locale b{font-size:10px}.tr{gap:5px}.tr .clk{font-size:13px}
-  .objective{left:12px;bottom:150px;width:200px;padding:7px 10px 8px 9px}.objline{font-size:11px}
+  .objective{left:12px;bottom:186px;width:200px;padding:7px 10px 8px 9px}.objline{font-size:11px}
   .nav{left:12px;bottom:12px;gap:6px}.minimap{width:104px;height:104px}.gps{max-width:180px;font-size:9px;padding:5px 9px}
   .status{min-width:0;padding:6px 9px 6px 6px;gap:8px}.portrait{width:34px;height:34px}.cash{font-size:16px}.srow{font-size:8px}
   .bottom{bottom:12px;gap:8px}.vitals{min-width:140px;padding:6px 10px}.vehicle{padding:5px 10px 5px 5px}.speedo{width:60px;height:60px}.speednum b{font-size:16px}.vehicle .fuel{width:88px}
@@ -129,9 +129,15 @@
   .dialog{width:calc(100vw - 24px);bottom:80px;padding:10px 12px;gap:10px}.dbody p{font-size:12px}
   .notif{top:56px;max-width:80vw}.toast{top:30%;font-size:12px;padding:10px 16px}
 }
-body.touch-ui .bottom{left:auto;right:12px;transform:none;bottom:248px;flex-direction:column;align-items:flex-end;gap:8px}
+body.touch-ui .bottom{left:auto;right:12px;transform:none;top:128px;bottom:auto;flex-direction:column;align-items:flex-end;gap:8px}
 body.touch-ui .topbar{padding-right:8px}
 body.touch-ui .nav{bottom:150px}
-body.touch-ui .objective{bottom:290px}
+body.touch-ui .objective{bottom:326px}
 body.touch-ui .dialog{bottom:210px}
 @media (pointer:coarse){.glass{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(6,14,12,.9)}.prompt{backdrop-filter:none}}
+/* landscape phones: the objective card pins to the top-left in a compact form so it clears the street name and minimap */
+@media (max-height:560px){
+  body.touch-ui .objective{top:4px;bottom:auto;padding:5px 9px 5px 8px;width:190px}
+  body.touch-ui .objective .objfoot,body.touch-ui .objective .objkicker{display:none}
+  body.touch-ui .objective .objtitle{font-size:9px}
+}

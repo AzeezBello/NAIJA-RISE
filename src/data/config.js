@@ -7,9 +7,10 @@ export const WORLD = { bounds: { x: [-145, 615], z: [-395, 325] }, spawn: { x: 0
 export const PERF = { lowEnd: typeof matchMedia !== 'undefined' && (matchMedia('(pointer:coarse)').matches || innerWidth < 900), npcs: { full: 22, low: 12 }, trafficCap: { full: 99, low: 12 }, rainDrops: { full: 1800, low: 700 } };
 // Character pipeline: the first reachable rig wins. Ship your own at assets/characters/player.glb (Mixamo-compatible
 // skeleton with Idle/Walk/Run clips); the three.js Soldier is the development placeholder.
-// Character rigs. Every rig is a real human: rig 0 (the player and half the street) is a Ready Player Me avatar in a
+// Character rigs. Every rig is a real human: rig 0 (the player and most of the street) is a Ready Player Me avatar in a
 // hoodie, jeans and sneakers animated with Ready Player Me's own locomotion clips (their licence allows the clips only
-// on RPM avatars); Michelle and CesiumMan are Mixamo / Khronos humans animated with the three.js Soldier clips.
+// on RPM avatars); CesiumMan (Khronos) walks with his own clip. Clips are never borrowed across skeletons: Mixamo's
+// Michelle driven by the Soldier clips came out folded in half, so each rig must ship its own Idle/Walk/Run.
 // Ship your own at assets/characters/player.glb (with Idle/Walk/Run baked in) and it replaces rig 0.
 // `slots` map material names to wardrobe slots: top wears the fabric print or its colour, bottom / shoes / skin / hair tint.
 const CDN = 'https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/models/gltf/', RPM_ANIM = 'https://raw.githubusercontent.com/readyplayerme/animation-library/master/masculine/glb/';
@@ -19,12 +20,9 @@ export const CHARACTER = {
     { id: 'rpm', urls: ['assets/characters/player.glb', CDN + 'readyplayer.me.glb'],
       anims: [{ key: 'idle', url: RPM_ANIM + 'idle/M_Standing_Idle_001.glb' }, { key: 'walk', url: RPM_ANIM + 'locomotion/M_Walk_001.glb' }, { key: 'run', url: RPM_ANIM + 'locomotion/M_Run_001.glb' }],
       clips: { idle: ['idle', 'Idle'], walk: ['walk', 'Walk'], run: ['run', 'Run'] }, headBone: 'Head', facing: 0,
-      slots: { top: /Outfit_Top/, bottom: /Outfit_Bottom/, shoes: /Footwear/, skin: /Wolf3D_Body|Wolf3D_Skin/, beard: /Beard/, cap: /Headwear/ }, street: true, weight: 0.5 },
-    { id: 'michelle', urls: [CDN + 'Michelle.glb'],
-      anims: [{ key: 'idle', url: CDN + 'Soldier.glb', clip: 'Idle' }, { key: 'walk', url: CDN + 'Soldier.glb', clip: 'Walk' }, { key: 'run', url: CDN + 'Soldier.glb', clip: 'Run' }], stripPosition: true,
-      clips: { idle: ['idle'], walk: ['walk'], run: ['run'] }, headBone: 'mixamorigHead', facing: 0, slots: { skin: /Ch03_Body/ }, street: true, weight: 0.3 },
+      slots: { top: /Outfit_Top/, bottom: /Outfit_Bottom/, shoes: /Footwear/, skin: /Wolf3D_Body|Wolf3D_Skin/, beard: /Beard/, cap: /Headwear/ }, street: true, weight: 0.7 },
     { id: 'cesium', urls: ['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMan/glTF-Binary/CesiumMan.glb'],
-      clips: { idle: ['animation_0'], walk: ['animation_0'], run: ['animation_0'] }, idleFreeze: true, headBone: 'Skeleton_neck_joint_1', facing: 0, slots: { top: /Cesium/ }, tintOnly: true, street: true, weight: 0.2 },
+      clips: { idle: ['animation_0'], walk: ['animation_0'], run: ['animation_0'] }, idleFreeze: true, headBone: 'Skeleton_neck_joint_1', facing: 0, slots: { top: /Cesium/ }, tintOnly: true, street: true, weight: 0.3 },
   ],
 };
 export const LAW = { pursuitHeat: 3, bustSeconds: 2.5, ticketKmh: 90, checkpointKmh: 60 };

@@ -12,9 +12,9 @@ import { missionActive, curMission } from '../systems/navigation.js';
 // bobbing arrow over their head, and the mission marker, GPS and talk prompt all point at them (G.contactPos).
 const LOOKS = {
   babak:   { rig: 0, look: { outfit: 3, shirt: 2, pants: 2, skin: 3, hair: 4, hairColor: 3, bodyType: 2, accessory: 1, facialHair: 1, face: 1 } },   // agbada and fila, grey beard
-  amaka:   { rig: 1, look: { outfit: 9, shirt: 1, pants: 0, skin: 2, hair: 3 } },
+  amaka:   { rig: 0, look: { outfit: 9, shirt: 1, pants: 0, skin: 2, hair: 3 } },
   dayo:    { rig: 0, look: { outfit: 6, shirt: 8, pants: 1, skin: 3, hair: 1, accessory: 2 } },                                                      // singlet, face cap
-  nkechi:  { rig: 1, look: { outfit: 10, shirt: 0, pants: 5, skin: 3, hair: 3, bodyType: 2 } },
+  nkechi:  { rig: 0, look: { outfit: 10, shirt: 0, pants: 5, skin: 3, hair: 3, bodyType: 2 } },
   driver:  { rig: 0, look: { outfit: 5, shirt: 7, pants: 0, skin: 4, accessory: 2 } },
   bayo:    { rig: 0, look: { outfit: 4, shirt: 7, pants: 1, skin: 2, hair: 1 } },
   coach:   { rig: 0, look: { outfit: 7, shirt: 8, pants: 3, skin: 3, hair: 1, bodyType: 2 } },
