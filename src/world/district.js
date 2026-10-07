@@ -7,6 +7,7 @@ import { buildTrafficLights } from '../systems/trafficlights.js';
 import { asphaltTexture, groundTexture, concreteTexture, cloudTexture, glowTexture } from './textures.js';
 import { ROADS, ROAD_NAMES, ROAD_WIDTHS, ROAD_EXTENT, roadExtent, LANDMARKS, BUSSTOPS, PROPERTIES, KIOSKS, RESERVED, WATER, WATERS, inWater, onBridge, VENDORS, ISLAND_CELLS, VI_CELLS, LEKKI_CELLS, YABA_CELLS, EBUTE_CELLS, TOLLS, FOOTBRIDGES, JUNCTIONS, roadRules, roadClass } from '../data/locations.js';
 import { addDeck, heightAt } from './terrain.js';
+import { registerSidewalks } from './walkables.js';
 
 const PALETTE = [0x6f7d84, 0x8a7d6a, 0x9c8f7a, 0x7a8ba0, 0x8f6b63, 0x6e8a8a, 0xa08866, 0xb9a98f];
 const SHOP_SIGNS = ['SHOP', 'PHONE', 'BUKA', 'FASHION', 'MART', 'AUTO', 'POS', 'BET9JA', 'PHARMACY', 'BARBER'];
@@ -56,6 +57,8 @@ function buildGround() {
   for (const x of ROADS.v) { const [a, b] = roadExtent('v', x), w = VROAD_W[x]; road(x, (a + b) / 2, w, b - a, asphalt); const r = roadRules('v', x); if (r.median) { solidBox('medians', x, (a + b) / 2, 1, b - a, 0.9); for (let z = a + 12; z <= b - 12; z += 24) { if (onBridge('v', x, z)) continue; staticBox('poles', x, z, 0.3, 0.3, 9); staticBox('heads', x, z, 0.5, 2.6, 0.3, 9); } } }
   road(152, 0, 30, 22, asphalt);                                     // Costain approach apron
   sidewalks(concreteTexture());
+  registerSidewalks();   // Alpha 1.1: NPC walkable registry
+  
   // water bodies share one material so the night tint applies to all of them
   const wm = new THREE.MeshStandardMaterial({ color: 0x14758e, roughness: 0.22, metalness: 0.45 });
   G.waters = WATERS.map(w => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w.x[1] - w.x[0], w.z[1] - w.z[0]), wm); m.rotation.x = -Math.PI / 2; m.position.set((w.x[0] + w.x[1]) / 2, 0.03, (w.z[0] + w.z[1]) / 2); G.scene.add(m); return m; });
