@@ -70,7 +70,6 @@ export const CityScene = {
     updateGamepad(dt);
     updateMovement(dt);
     updateVehicleTransition(dt);
-    updateMovement(dt);
     updatePlayer(); updateTraffic(dt); updateNpcs(dt); updateContacts(dt); updateCharacters(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
     updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateMissions(dt); updateRace(dt); updateTrafficLights(dt); updateTolls(); updateClock(dt); updateAudio();
     routeT += dt; if (routeT > 0.25) { routeT = 0; updateRoute(); }   // GPS re-routes 4× a second
