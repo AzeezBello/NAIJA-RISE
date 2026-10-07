@@ -7,7 +7,7 @@ import { updateCharacters } from '../entities/character.js';
 import { applyQuality } from '../core/quality.js';
 import { spawnContacts, updateContacts } from '../entities/contacts.js';
 import { updateTolls } from '../systems/tolls.js';
-import { spawnNpcs, spawnAgberos, spawnServiceNpcs, spawnExtras, updateNpcs } from '../entities/npcs.js';
+import { spawnNpcs, spawnAgberos, spawnServiceNpcs, spawnExtras, spawnCrew, updateNpcs } from '../entities/npcs.js';
 import { spawnAnimals, applyPet, updateAnimals } from '../entities/animals.js';
 import { updateTraffic } from '../entities/vehicles.js';
 import { updateClouds } from '../world/district.js';
@@ -54,6 +54,7 @@ export const CityScene = {
       applyQuality(G.quality);   // crowd / traffic caps for the current graphics level
       buildHud(root); buildPhone(root); buildTouch(root);
       setupDialogue(); setupInteraction(); setupMovement(); setupAudio();
+      setupFamily();             // Alpha 1.1: family system was imported but never initialized
     }
     const h = homeProp();
     if (h) G.player.position.set(h.door.x, 0, h.door.z + 2); else G.player.position.set(WORLD.spawn.x, 0, WORLD.spawn.z);
@@ -72,25 +73,26 @@ export const CityScene = {
     updateGamepad(dt);
     updateMovement(dt);
     updateVehicleTransition(dt);
-    updatePlayer(); 
-    updateTraffic(dt); 
+    updatePlayer();
+    updateTraffic(dt);
     updateFamily(dt);
+    maybeIssueFamilyRequest(dt);   // Alpha 1.1: was imported but never called — check family.js for the expected argument
     updateContacts(dt);
-    updateNpcs(dt);  
-    updateCharacters(dt); 
-    updateAnimals(dt); 
-    updateMarkers(dt); 
+    updateNpcs(dt);
+    updateCharacters(dt);
+    updateAnimals(dt);
+    updateMarkers(dt);
     updateClouds(dt);
-    updateVitals(dt); 
-    updateEconomy(dt); 
-    updateLaw(dt); 
-    updateEvents(dt); 
-    updateWeather(dt); 
-    updateMissions(dt); 
-    updateRace(dt); 
-    updateTrafficLights(dt); 
-    updateTolls(); 
-    updateClock(dt); 
+    updateVitals(dt);
+    updateEconomy(dt);
+    updateLaw(dt);
+    updateEvents(dt);
+    updateWeather(dt);
+    updateMissions(dt);
+    updateRace(dt);
+    updateTrafficLights(dt);
+    updateTolls();
+    updateClock(dt);
     updateAudio();
     routeT += dt; if (routeT > 0.25) { routeT = 0; updateRoute(); }   // GPS re-routes 4× a second
     updateCamera(dt);

@@ -101,7 +101,9 @@ export function spawnCrew() {
   });
 }
 
-// In updateNpcs, after agberos:
+// Alpha 1.1: the crew update used to sit at module top level (dead code — it ran once at import
+// against an empty G.crew and never again). It now lives in updateNpcs, after the agberos loop.
+function updateCrew(dt) {
   for (const c of G.crew || []) {
     c.g.rotation.y = Math.sin(performance.now() / 800 + c.x) * 0.35;
     c.cool -= dt;
@@ -117,6 +119,7 @@ export function spawnCrew() {
       break;
     }
   }
+}
 
 
 function streetLook() {
@@ -294,7 +297,7 @@ export function updateNpcs(dt) {
       n.g.rotation.x = n.hitT > 0 ? Math.PI / 2 : 0;
     }
   }
-  
+
   // Snapshot positions for separation (reused array length)
   const positions = G._npcPos || (G._npcPos = []);
   positions.length = 0;
@@ -412,5 +415,6 @@ export function updateNpcs(dt) {
       break;
     }
   }
+  updateCrew(dt);   // Alpha 1.1: crew was orphaned at module top level; now runs every frame
   for (const s of G.service || []) s.g.rotation.y = Math.sin(t * 0.6 + s.x) * 0.25;
 }
