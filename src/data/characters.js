@@ -52,5 +52,8 @@ export const CONTACTS = [
   { id: 'bank', name: 'RiseBank', role: 'Alerts', c: '#b7b7ff', line: 'Thank you for banking with RiseBank.' },
   { id: 'mum', name: 'Mama Tunde', role: 'Mother · Adelabu', at: 'family', c: '#e8b86d', line: 'My son, you no go come see your mother?' },
   { id: 'sibling', name: 'Chioma', role: 'Sister · Adelabu', at: 'family', c: '#7ec8e3', line: 'Abeg help me with something small.' },
+  { id: 'driver', name: 'Oga Driver', role: 'Danfo driver', c: '#f5c518', line: 'Enter with your change!' },
+  { id: 'conductor', name: 'Conductor', role: 'Danfo conductor', c: '#2bb34a', line: 'Owo da? Pay your money!' },
+  { id: 'brt_driver', name: 'BRT Driver', role: 'BRT corridor', c: '#1c4fa0', line: 'Tap card or cash.' },
 ];
 export const contactOf = id => CONTACTS.find(c => c.id === id);

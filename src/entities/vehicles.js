@@ -8,6 +8,7 @@ import { ROADS, roadRules, JUNCTIONS, roadExtent, BRIDGE_RUSH, onBridge } from '
 import { heightAt } from '../world/terrain.js';
 import { lightFor } from '../systems/trafficlights.js';
 import { PERF } from '../data/config.js';
+import { BUSSTOPS } from '../data/locations.js';
 
 // Local forward: every vehicle model faces -z.
 export const vForward = o => new THREE.Vector3(-Math.sin(o.rotation.y), 0, -Math.cos(o.rotation.y));
@@ -52,29 +53,74 @@ export function makeVehicle(type, color = 0x172e35) {
       }
       break;
     }
-    case 'danfo':
-      add(B(2.3, 2, 5.2), body(0xf5c518), 0, 1.35, 0); add(B(2.34, 0.62, 3.4), glass, 0, 1.85, 0.3); add(B(2.34, 0.6, 0.1), glass, 0, 1.85, -2.56);
-      for (const sx of [-1.17, 1.17]) add(B(0.04, 0.28, 5.2), body(0x111111), sx, 1.05, 0);
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) wheel(g, sx * 1.05, 0.42, sz * 1.7, 0.4);
-      lamp(g, -0.7, 0.9, -2.62); lamp(g, 0.7, 0.9, -2.62); break;
+        case 'danfo': {
+      // Yellow VW-style high-roof bus: boxy body, black stripe, rear engine hump
+      const Y = 0xf5c518, BLK = 0x111111;
+      add(B(2.35, 2.15, 5.4), body(Y), 0, 1.4, 0);                    // body
+      add(B(2.38, 0.55, 3.6), glass, 0, 1.95, 0.15);                  // side windows
+      add(B(2.38, 0.7, 0.08), glass, 0, 1.9, -2.68);                  // windscreen
+      add(B(2.38, 0.5, 0.08), glass, 0, 1.85, 2.68);                  // rear window
+      // classic black waist stripe
+      for (const sx of [-1.19, 1.19]) add(B(0.05, 0.32, 5.4), body(BLK), sx, 1.05, 0);
+      add(B(2.36, 0.28, 5.42), body(BLK), 0, 1.05, 0);
+      // rear engine bulge (VW)
+      add(B(2.1, 0.7, 0.9), body(Y), 0, 0.95, 2.35);
+      // bumper + number plate stub
+      add(B(2.2, 0.25, 0.15), body(0x333333), 0, 0.55, -2.72);
+      for (const sx of [-1, 1]) for (const sz of [-1.6, 1.6]) wheel(g, sx * 1.05, 0.42, sz, 0.4);
+      lamp(g, -0.75, 0.95, -2.72); lamp(g, 0.75, 0.95, -2.72);
+      g.userData.commercial = true;
+      break;
+    }
+    case 'keke': {
+      // Napep: yellow cabin, open rear passenger bench, 3 wheels
+      const Y = 0xf5c518, GRN = 0x2bb34a;
+      add(B(1.35, 0.9, 1.5), body(Y), 0, 0.85, -0.35);               // cabin
+      add(B(1.28, 0.75, 1.0), glass, 0, 1.45, -0.35);                 // cabin glass
+      add(B(1.45, 0.08, 1.4), body(Y), 0, 1.9, -0.3);                 // roof
+      // open passenger tub behind
+      add(B(1.4, 0.55, 1.15), body(Y), 0, 0.7, 0.85);
+      add(B(1.42, 0.5, 0.06), body(GRN), 0, 0.95, 1.4);               // rear panel stripe
+      // roll bars
+      for (const sx of [-0.6, 0.6]) add(B(0.06, 0.7, 0.06), body(0x333333), sx, 1.35, 0.7);
+      add(B(1.3, 0.06, 0.06), body(0x333333), 0, 1.7, 0.7);
+      // 1 front + 2 rear wheels
+      wheel(g, 0, 0.32, -1.0, 0.28);
+      wheel(g, -0.55, 0.32, 0.85, 0.28);
+      wheel(g, 0.55, 0.32, 0.85, 0.28);
+      lamp(g, 0, 0.95, -1.15);
+      g.userData.commercial = true;
+      break;
+    }
+    case 'brt': {
+      // Blue “London-style” single-deck city bus (Lagos BRT blue + white band)
+      const BLU = 0x1c4fa0, WHT = 0xf0f0f0;
+      add(B(2.7, 3.1, 12), body(BLU), 0, 1.85, 0);                    // body
+      add(B(2.74, 0.55, 12), body(WHT), 0, 1.35, 0);                  // white waist band
+      add(B(2.74, 0.95, 11.2), glass, 0, 2.55, 0);                    // windows
+      add(B(2.74, 1.0, 0.1), glass, 0, 2.5, -5.95);                   // front glass
+      add(B(2.74, 0.8, 0.1), glass, 0, 2.4, 5.95);                    // rear glass
+      // roof route box
+      add(B(1.6, 0.35, 0.8), body(0x111111), 0, 3.5, -4.2);
+      add(B(1.5, 0.25, 0.08), body(0xffc52f), 0, 3.5, -4.62);         // amber destination stub
+      // doors (left side indent)
+      add(B(0.08, 1.8, 1.4), body(WHT), -1.36, 1.5, -2.5);
+      for (const sx of [-1, 1]) for (const sz of [-4.2, 0, 4.2]) wheel(g, sx * 1.2, 0.5, sz, 0.5);
+      lamp(g, -0.95, 1.05, -6.0); lamp(g, 0.95, 1.05, -6.0);
+      g.userData.commercial = true;
+      break;
+    }
     case 'korope':
       add(B(1.9, 1.8, 3.6), body(0xf5c518), 0, 1.2, 0); add(B(1.94, 0.55, 2.4), glass, 0, 1.65, 0.2); add(B(1.94, 0.55, 0.1), glass, 0, 1.65, -1.76);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) wheel(g, sx * 0.85, 0.36, sz * 1.2, 0.34);
       lamp(g, -0.55, 0.8, -1.82); lamp(g, 0.55, 0.8, -1.82); break;
-    case 'keke':
-      add(B(1.3, 0.8, 2.4), body(0xf5c518), 0, 0.75, 0); add(B(1.22, 0.85, 1.6), glass, 0, 1.45, 0.25); add(B(1.42, 0.1, 2.2), body(0xf5c518), 0, 1.92, 0.1);
-      wheel(g, 0, 0.32, -1.05, 0.3); wheel(g, -0.6, 0.32, 0.8, 0.3); wheel(g, 0.6, 0.32, 0.8, 0.3);
-      lamp(g, 0, 0.95, -1.22); break;
+    
     case 'okada':
       add(B(0.3, 0.5, 1.8), body(color), 0, 0.65, 0); add(B(0.5, 0.12, 0.6), body(0x222222), 0, 0.95, 0.2);
       wheel(g, 0, 0.35, -0.85, 0.35); wheel(g, 0, 0.35, 0.85, 0.35);
       add(new THREE.CapsuleGeometry(0.24, 0.55, 4, 8), mat(pick([0x356a50, 0x8b5a31, 0x4c5178])), 0, 1.3, 0.15);
       add(new THREE.SphereGeometry(0.22, 10, 8), mat(0x1b1b1b), 0, 1.85, 0.05);
       lamp(g, 0, 0.85, -0.95); break;
-    case 'brt':
-      add(B(2.6, 3, 11), body(0x1c4fa0), 0, 1.7, 0); add(B(2.64, 0.5, 11), body(0xf0f0f0), 0, 1.25, 0); add(B(2.64, 0.85, 10), glass, 0, 2.4, 0); add(B(2.64, 0.9, 0.1), glass, 0, 2.4, -5.52);
-      for (const sx of [-1, 1]) for (const sz of [-3.8, 0, 3.8]) wheel(g, sx * 1.2, 0.5, sz, 0.48);
-      lamp(g, -0.9, 1, -5.55); lamp(g, 0.9, 1, -5.55); break;
     case 'fire':
       truck(g, add, 8, 0xc62828, 0xb71c1c, () => { add(B(0.5, 0.3, 4.5), body(0xdddddd), 0.6, 2.6, 1.6); add(B(0.5, 0.3, 4.5), body(0xdddddd), -0.6, 2.6, 1.6); const bar = add(B(1.2, 0.18, 0.4), new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff2222, emissiveIntensity: 0.5 }), 0, 2.8, -2.8); g.userData.lightbar = bar.material; });
       break;
@@ -95,6 +141,7 @@ export function makeVehicle(type, color = 0x172e35) {
   // real model where one exists: the primitives above stay as the placeholder until it streams in
   const names = USE_MODELS && MODELS[type];
   if (names) attachModel(g, type, pick(names), type in MODEL_PAINT ? MODEL_PAINT[type] : color, { lightbar: type === 'police' ? 0x2244ff : type === 'fire' ? 0xff2222 : null });
+  if (VEH[type]?.commercial) g.userData.commercial = true;
   G.scene.add(g);
   return g;
 }
@@ -125,6 +172,10 @@ export function spawnTraffic() {
     let c = rnd(ea + 10, eb - 10); if (Math.abs(c) < 25 && Math.abs(k) < 1) c += 40;
     const g = makeVehicle(type, pick(TRAFFIC_COLORS));
     const t = { g, type, axis, dir, k, speed: 0, cruise: VEH[type].max * rnd(0.5, 0.7), cool: rnd(0, 2), pursuit: false };
+    if (type === 'brt') {
+      t.axis = 'h';
+      t.k = pick(ROADS.h.filter(z => Math.abs(z) < 5 || z === -330 || z === 240) || ROADS.h);
+    }
     if (axis === 'h') g.position.set(c, 0, k + dir * LANE_OFFSET); else g.position.set(k - dir * LANE_OFFSET, 0, c);
     g.rotation.y = poseFor(t);
     return t;

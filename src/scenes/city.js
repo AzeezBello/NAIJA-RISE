@@ -50,7 +50,7 @@ export const CityScene = {
       built = true;
       createPlayer();
       createMarkers();
-      spawnNpcs(PERF.lowEnd ? PERF.npcs.low : PERF.npcs.full); spawnAgberos(); spawnServiceNpcs(); spawnExtras(); spawnAnimals(); spawnContacts();
+      spawnNpcs(PERF.lowEnd ? PERF.npcs.low : PERF.npcs.full); spawnAgberos(); spawnServiceNpcs(); spawnExtras(); spawnCrew(); spawnAnimals(); spawnContacts();
       applyQuality(G.quality);   // crowd / traffic caps for the current graphics level
       buildHud(root); buildPhone(root); buildTouch(root);
       setupDialogue(); setupInteraction(); setupMovement(); setupAudio();
@@ -73,10 +73,25 @@ export const CityScene = {
     updateMovement(dt);
     updateVehicleTransition(dt);
     updatePlayer(); 
+    updateTraffic(dt); 
     updateFamily(dt);
     updateContacts(dt);
-    updateTraffic(dt); updateNpcs(dt);  updateCharacters(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
-    updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateMissions(dt); updateRace(dt); updateTrafficLights(dt); updateTolls(); updateClock(dt); updateAudio();
+    updateNpcs(dt);  
+    updateCharacters(dt); 
+    updateAnimals(dt); 
+    updateMarkers(dt); 
+    updateClouds(dt);
+    updateVitals(dt); 
+    updateEconomy(dt); 
+    updateLaw(dt); 
+    updateEvents(dt); 
+    updateWeather(dt); 
+    updateMissions(dt); 
+    updateRace(dt); 
+    updateTrafficLights(dt); 
+    updateTolls(); 
+    updateClock(dt); 
+    updateAudio();
     routeT += dt; if (routeT > 0.25) { routeT = 0; updateRoute(); }   // GPS re-routes 4× a second
     updateCamera(dt);
     frame++; hudFrame(); if (frame % 2 === 0) mapDraw(); updateTouch();

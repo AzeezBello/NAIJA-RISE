@@ -19,14 +19,17 @@ export function createPlayer() {
 
 // Drives the animation controller from the movement states (systems/movement.js); updateCharacters advances the mixer.
 export function updatePlayer() {
-  if (G.vehicleT) {
-    // Mid enter/exit blend — character.js already set enter/exit
+  const ch = G.playerChar;
+  if (!ch) return;
+  if (G.vehicleT != null) {
+    // setState driven by updateVehicleTransition
     return;
   }
-  G.playerChar?.setState(
-    G.inCar ? 'idle' : (G.moveState || 'idle'),
-    G.inCar ? 0 : (G.curSpeed || 0)
-  );
+  if (G.inCar) {
+    ch.setState('idle', 0);
+    return;
+  }
+  ch.setState(G.moveState || 'idle', G.curSpeed || 0);
 }
 
 // Applies state.look to the 3D character (rig tints + fabric + accessories, or a rebuilt primitive body) and every portrait canvas.

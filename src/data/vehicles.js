@@ -1,16 +1,44 @@
 // Vehicle classes. max/boost are m/s (×3.6 for km/h), accel is m/s².
+// commercial: NPC public-transport fleet (fares, bus-stop behaviour).
 export const VEH = {
   car:    { name: 'Sedan',       len: 4.75, wid: 2.55, max: 24, boost: 34, accel: 12 },
-  danfo:  { name: 'Danfo',       len: 5.2,  wid: 2.3,  max: 20, boost: 27, accel: 9 },
-  korope: { name: 'Korope',      len: 3.6,  wid: 1.9,  max: 19, boost: 25, accel: 10 },
-  keke:   { name: 'Keke Napep',  len: 2.5,  wid: 1.4,  max: 13, boost: 16, accel: 9 },
-  okada:  { name: 'Okada',       len: 2.1,  wid: 0.7,  max: 26, boost: 36, accel: 16 },
-  brt:    { name: 'BRT',         len: 11,   wid: 2.6,  max: 17, boost: 21, accel: 5 },
+  danfo:  { name: 'Danfo',       len: 5.4,  wid: 2.35, max: 18, boost: 24, accel: 8,  commercial: true, fare: 300 },
+  korope: { name: 'Korope',      len: 3.6,  wid: 1.9,  max: 19, boost: 25, accel: 10, commercial: true, fare: 200 },
+  keke:   { name: 'Keke Napep',  len: 2.6,  wid: 1.45, max: 12, boost: 15, accel: 8,  commercial: true, fare: 150 },
+  okada:  { name: 'Okada',       len: 2.1,  wid: 0.7,  max: 26, boost: 36, accel: 16, commercial: true, fare: 100 },
+  brt:    { name: 'BRT',         len: 12,   wid: 2.7,  max: 16, boost: 20, accel: 4.5, commercial: true, fare: 500 },
   police: { name: 'Police',      len: 4.75, wid: 2.55, max: 25, boost: 35, accel: 13 },
   fire:   { name: 'Fire Truck',  len: 8,    wid: 2.6,  max: 16, boost: 20, accel: 5 },
   lawma:  { name: 'LAWMA Truck', len: 7,    wid: 2.5,  max: 15, boost: 19, accel: 5 },
   army:   { name: 'Army Truck',  len: 7,    wid: 2.5,  max: 17, boost: 22, accel: 6 },
   tanker: { name: 'Fuel Tanker', len: 10,   wid: 2.6,  max: 14, boost: 18, accel: 4 },
+};
+
+export const isCommercial = type => !!VEH[type]?.commercial;
+
+// Prefer commercial fleet on the road (Lagos density).
+export const TRAFFIC_MIX = [
+  // Danfo (yellow VW-style buses) — backbone
+  'danfo', 'danfo', 'danfo', 'danfo', 'danfo',
+  // Keke napep
+  'keke', 'keke', 'keke', 'keke',
+  // BRT (blue) — fewer, longer routes
+  'brt', 'brt',
+  // Other commercial
+  'korope', 'korope', 'okada', 'okada', 'okada',
+  // Private / service
+  'car', 'car', 'car', 'police', 'lawma', 'tanker',
+];
+
+export const MODEL_PAINT = {
+  danfo: 0xf5c518,   // Lagos yellow
+  korope: 0xf5c518,
+  keke: 0xf5c518,
+  brt: 0x1c4fa0,     // BRT blue
+  lawma: 0xf07a1e,
+  army: 0x3f5a2a,
+  police: null,
+  fire: null,
 };
 
 // Real models (Kenney Car Kit, CC0) by vehicle type; a type picks one at random. Keke, okada, BRT and the tanker stay procedural.
@@ -19,7 +47,6 @@ export const MODEL_BASE = 'assets/vehicles/kenney/';
 // procedural vehicles for everything.
 export const USE_MODELS = true;
 export const MODELS = { car: ['sedan', 'suv', 'hatchback-sports', 'sedan-sports', 'suv-luxury', 'taxi'], police: ['police'], lawma: ['garbage-truck'], fire: ['firetruck'], army: ['truck'] };
-export const MODEL_PAINT = { danfo: 0xf5c518, korope: 0xf5c518, lawma: 0xf07a1e, army: 0x3f5a2a, police: null, fire: null };
 
 export const PARKED = [
   { type: 'car', color: 0x172e35, x: 10, z: 32, rot: 0 },

@@ -10,11 +10,114 @@ import { blockedAt } from '../systems/movement.js';
 import { heightAt } from '../world/terrain.js';
 import { randomWalkPoint, onWalkable, projectToWalk, nearestCrossing } from '../world/walkables.js';
 import { bindSchedule, applyScheduleSteer } from '../systems/npcSchedule.js';
-
+import {
+  TRAITS, DRIVER_NAMES, CONDUCTOR_NAMES, ROUTES, CREW_LOOK, pickTrait, fareFor,
+} from '../data/crew.js';
+import { runCrewDialog } from '../systems/crew.js';
+import { VEH } from '../data/vehicles.js';
 
 
 const hex = c => '#' + c.toString(16).padStart(6, '0');
 const chance = p => Math.random() < p;
+
+function crewUniform(roleKey) {
+  const u = CREW_LOOK[roleKey] || CREW_LOOK.danfo_driver;
+  return {
+    look: {
+      outfit: 5, shirt: 8, pants: 3, skin: 2 + Math.floor(Math.random() * 3),
+      hair: Math.floor(Math.random() * 4), hairColor: 0, bodyType: 1,
+      accessory: 2, facialHair: Math.random() < 0.4 ? 1 : 0,
+    },
+    tint: {
+      top: hex(u.top),
+      bottom: hex(u.bottom),
+      skin: '#5a3a28',
+      shoes: '#1b1b1b',
+      cap: u.cap ? hex(u.cap) : null,
+    },
+  };
+}
+
+/**
+ * Spawn drivers + conductors at bus stops.
+ * Danfo stops: 1 driver standing near queue + 1 conductor calling route.
+ * BRT: 1 driver in blue.
+ */
+export function spawnCrew() {
+  G.crew = [];
+  const stops = BUSSTOPS || [];
+  stops.forEach((b, bi) => {
+    const isBrt = /brt|ikorodu|cms/i.test(b.name || '');
+    const vehType = isBrt ? 'brt' : (Math.random() < 0.25 ? 'keke' : 'danfo');
+    const route = pick(ROUTES.filter(r =>
+      isBrt ? r.id === 'brt_corridor' : r.id !== 'brt_corridor'
+    ));
+
+    // Driver
+    const dRole = vehType === 'brt' ? 'brt_driver' : vehType === 'keke' ? 'keke_driver' : 'danfo_driver';
+    const dTrait = pickTrait();
+    const dg = person({ ...crewUniform(dRole), scale: 1.02 });
+    dg.position.set(b.x + 4, 0, b.z - 3);
+    G.scene.add(dg);
+    G.crew.push({
+      g: dg,
+      role: 'driver',
+      vehType,
+      name: pick(DRIVER_NAMES),
+      trait: dTrait,
+      traitLabel: TRAITS[dTrait].label,
+      route,
+      fare: fareFor(vehType, dTrait),
+      stop: b,
+      x: dg.position.x,
+      z: dg.position.z,
+      cool: 0,
+      callT: 2 + Math.random() * 4,
+    });
+
+    // Conductor (danfo / BRT only — keke is usually solo)
+    if (vehType !== 'keke') {
+      const cRole = vehType === 'brt' ? 'brt_conductor' : 'danfo_conductor';
+      const cTrait = pickTrait();
+      const cg = person({ ...crewUniform(cRole), scale: 0.98 });
+      cg.position.set(b.x - 2 + (bi % 3), 0, b.z - 1.5);
+      G.scene.add(cg);
+      G.crew.push({
+        g: cg,
+        role: 'conductor',
+        vehType,
+        name: pick(CONDUCTOR_NAMES),
+        trait: cTrait,
+        traitLabel: TRAITS[cTrait].label,
+        route,
+        fare: fareFor(vehType, cTrait),
+        stop: b,
+        x: cg.position.x,
+        z: cg.position.z,
+        cool: 0,
+        callT: 1 + Math.random() * 3,
+      });
+    }
+  });
+}
+
+// In updateNpcs, after agberos:
+  for (const c of G.crew || []) {
+    c.g.rotation.y = Math.sin(performance.now() / 800 + c.x) * 0.35;
+    c.cool -= dt;
+    c.callT -= dt;
+    // Conductors pace a short line while calling
+    if (c.role === 'conductor' && c.callT <= 0) {
+      c.callT = 3 + Math.random() * 4;
+      c.g.position.x = c.x + (Math.random() - 0.5) * 2.5;
+      c.g.position.z = c.z + (Math.random() - 0.5) * 1.5;
+    }
+    if (!G.inCar && !frozen() && c.cool <= 0 && dist(G.player.position, c) < 3.2) {
+      runCrewDialog(c);
+      break;
+    }
+  }
+
 
 function streetLook() {
   const r = Math.random(), outfit = r < 0.2 ? 0 : r < 0.3 ? 1 : r < 0.42 ? 2 : r < 0.46 ? 3 : r < 0.52 ? 4 : r < 0.64 ? 5 : r < 0.72 ? 6 : r < 0.78 ? 7 : r < 0.86 ? 8 : r < 0.93 ? 9 : 10;

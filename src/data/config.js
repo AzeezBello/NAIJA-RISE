@@ -15,7 +15,10 @@ export const PERF = { lowEnd: typeof matchMedia !== 'undefined' && (matchMedia('
 // `slots` map material names to wardrobe slots: top wears the fabric print or its colour, bottom / shoes / skin / hair tint.
 const CDN = 'https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/models/gltf/', RPM_ANIM = 'https://raw.githubusercontent.com/readyplayerme/animation-library/master/masculine/glb/';
 export const CHARACTER = {
-  height: 2.3, blend: 0.25, animRange: 120,
+  height: 2.3, 
+  blend: 0.25, 
+  animRange: 120, 
+  enterExitT: 0.55,   // seconds for door blend
   // Enter/exit vehicle blend duration (seconds). Clips optional — pose holds if missing.
   enterExit: 0.85,
   rigs: [
@@ -31,14 +34,15 @@ export const CHARACTER = {
         // { key: 'stop', url: RPM_ANIM + 'locomotion/M_WalkStop_001.glb' },
       ],
       clips: {
-        idle:  ['idle', 'Idle', 'Idle_Neutral'],
-        walk:  ['walk', 'Walk', 'Walking'],
-        run:   ['run', 'Run', 'Running'],
-        turn:  ['turn', 'Turn', 'TurnLeft', 'turn_left', 'LeftTurn'],
-        stop:  ['stop', 'Stop', 'WalkStop', 'walk_stop'],
-        enter: ['enter', 'Enter', 'EnterCar', 'enter_car'],
-        exit:  ['exit', 'Exit', 'ExitCar', 'exit_car'],
-        jump:  ['jump', 'Jump'],
+        idle:  ['idle', 'Idle', 'Idle_Neutral', 'M_Standing_Idle_001'],
+        walk:  ['walk', 'Walk', 'Walking', 'M_Walk_001'],
+        run:   ['run', 'Run', 'Running', 'M_Run_001'],
+        // Optional — fall back in setState if missing
+        turn:  ['turn', 'Turn', 'TurnLeft', 'turn_left', 'LeftTurn', 'M_Turn_001'],
+        stop:  ['stop', 'Stop', 'WalkStop', 'walk_stop', 'Idle'],
+        enter: ['enter', 'Enter', 'EnterCar', 'enter_car', 'Idle'],
+        exit:  ['exit', 'Exit', 'ExitCar', 'exit_car', 'Idle'],
+        jump:  ['jump', 'Jump', 'Idle'],
       },
       headBone: 'Head', facing: 0,
       slots: {
