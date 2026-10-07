@@ -129,7 +129,7 @@ function vehicleMenu(v) {
   choices.push({ label: 'Back', apply() { dealerDialog(); } });
   startDialog([{ s: 'dayo', t: `${name} · condition ${Math.round(cond)}%${o.insured ? ' · insured' : ''}. Wetin we dey do?` }], choices, ch => { ch.apply(); emit('hud'); });
 }
-export function applyLivery(v, o) { const c = LIVERIES[o.livery || 0]; v.traverse(m => { if (m.isMesh && m.userData.body) m.material.color.set(c); }); }
+export function applyLivery(v, o) { const c = LIVERIES[o.livery || 0]; v.userData.livery = c; if (v.userData.repaint) return v.userData.repaint(c); v.traverse(m => { if (m.isMesh && m.userData.body) m.material.color.set(c); }); }
 export function applySlogan(v, o) { if (v.userData.sloganSprite) v.remove(v.userData.sloganSprite); if (o.slogan === undefined) return; import('../world/builders.js').then(b => { const sp = b.textSprite(SLOGANS[o.slogan], '#07100e', 'rgba(245,197,24,.98)'); sp.position.set(0, 2.9, 0); sp.scale.set(4.2, 1, 1); v.add(sp); v.userData.sloganSprite = sp; }); }
 function dealerDialog() {
   const s = G.state, mine = G.parked.filter(v => v.userData.owned);

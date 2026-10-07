@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { G, pos } from '../core/context.js';
 import { approach, pick, rnd } from '../core/utils.js';
 import { mat, lamps } from '../world/builders.js';
-import { VEH, PARKED, TRAFFIC_MIX, TRAFFIC_COLORS, LANE_OFFSET } from '../data/vehicles.js';
+import { VEH, PARKED, TRAFFIC_MIX, TRAFFIC_COLORS, LANE_OFFSET, MODELS, MODEL_PAINT } from '../data/vehicles.js';
+import { attachModel, spinWheels } from './vehicleModels.js';
 import { ROADS, roadRules, JUNCTIONS, roadExtent, BRIDGE_RUSH } from '../data/locations.js';
 import { heightAt } from '../world/terrain.js';
 import { lightFor } from '../systems/trafficlights.js';
@@ -91,6 +92,9 @@ export function makeVehicle(type, color = 0x172e35) {
       break;
     }
   }
+  // real model where one exists: the primitives above stay as the placeholder until it streams in
+  const names = MODELS[type];
+  if (names) attachModel(g, type, pick(names), type in MODEL_PAINT ? MODEL_PAINT[type] : color, { lightbar: type === 'police' ? 0x2244ff : type === 'fire' ? 0xff2222 : null });
   G.scene.add(g);
   return g;
 }
@@ -185,4 +189,5 @@ export function updateTraffic(dt) {
     if (c2 > eb + 2 || c2 < ea - 2) { const nc = c2 > eb ? ea : eb; if (t.axis === 'h') t.g.position.x = nc; else t.g.position.z = nc; }
     t.g.position.y = heightAt(t.g.position.x, t.g.position.z);
   }
+  for (const t of G.traffic) spinWheels(t.g, t.speed, dt);
 }

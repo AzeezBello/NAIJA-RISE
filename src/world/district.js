@@ -189,6 +189,8 @@ const STATIC_MATS = () => ({
   heads: (() => { const m = mat(0xfff1c9); lamps.push(m); return m; })(), panels: mat(0x1a2a4a, { metalness: 0.6, roughness: 0.3 }),
   trunks: mat(0x6b4a2e), leaves: mat(0x2f7d49), medians: mat(0xb9b9b4, { roughness: 0.95 }), umbrellas: mat(0xd62828),
   deck: mat(0x2a2d30, { roughness: 0.95 }), pillars: mat(0x8c8f93, { roughness: 0.9 }),
+  ledges: mat(0xd9d4c7, { roughness: 0.9 }), rails: mat(0x2b2b2b, { metalness: 0.5, roughness: 0.5 }), ac: mat(0xe8e8e4, { roughness: 0.7 }), tanks: mat(0x151515, { roughness: 0.6 }),
+  awnings: mat(0xc62828, { roughness: 0.8 }), gens: mat(0x2f5a3a, { metalness: 0.3, roughness: 0.6 }),
 });
 // ---------- Bridges & corridors: Shitta flyover, Costain interchange, Eko Bridge, Lagos Island ----------
 function deckMesh(deck, color = 0x2a2d30) {

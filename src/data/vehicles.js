@@ -13,6 +13,11 @@ export const VEH = {
   tanker: { name: 'Fuel Tanker', len: 10,   wid: 2.6,  max: 14, boost: 18, accel: 4 },
 };
 
+// Real models (Kenney Car Kit, CC0) by vehicle type; a type picks one at random. Keke, okada, BRT and the tanker stay procedural.
+export const MODEL_BASE = 'assets/vehicles/kenney/';
+export const MODELS = { car: ['sedan', 'suv', 'hatchback-sports', 'sedan-sports', 'suv-luxury', 'taxi'], police: ['police'], danfo: ['van'], korope: ['delivery'], lawma: ['garbage-truck'], fire: ['firetruck'], army: ['truck'] };
+export const MODEL_PAINT = { danfo: 0xf5c518, korope: 0xf5c518, lawma: 0xf07a1e, army: 0x3f5a2a, police: null, fire: null };
+
 export const PARKED = [
   { type: 'car', color: 0x172e35, x: 10, z: 32, rot: 0 },
   { type: 'danfo', x: -32, z: 7, rot: -Math.PI / 2 },

@@ -60,7 +60,7 @@ One character pipeline for the player and NPCs: rigged GLB (Mixamo-compatible sk
 **Character asset decision (open):** the placeholder proves the pipeline. For Nigerian identity (faces, afro/braids/fade hair, ankara/agbada/buba outfits) the recommended path is a **custom Blender rig** auto-rigged through Mixamo (so the existing bone names and clips keep working), exported as one GLB with Idle/Walk/Run baked; Ready Player Me is the faster stop-gap (Mixamo-compatible, but limited African hair and dress). Turn/stop clips, a jump and vehicle enter/exit come with the same asset.
 
 ### Alpha 0.11 — The poster look (shipped)
-Post-processing (bloom, split-tone colour grade, vignette, ACES) with an environment map for reflections, wet night roads, the poster's dusk-to-night palette and a golden-hour start; human rigs only (Ready Player Me avatar with RPM locomotion clips, Mixamo Michelle, Khronos CesiumMan) with eleven everyday outfits (ankara to jacket-and-jeans, gowns and skirts) and sneakers for street variety; rigs on mobile; title-screen preload; service-worker cache bump. Still primitives: vehicles, buildings and props — see "Also queued".
+Post-processing (bloom, split-tone colour grade, vignette, ACES) with an environment map for reflections, wet night roads, the poster's dusk-to-night palette and a golden-hour start; human rigs only (Ready Player Me avatar with RPM locomotion clips, Mixamo Michelle, Khronos CesiumMan) with eleven everyday outfits (ankara to jacket-and-jeans, gowns and skirts) and sneakers for street variety; rigs on mobile; title-screen preload; service-worker cache bump. Vehicles are Kenney Car Kit models (CC0) with runtime repainting and rolling wheels (keke, okada, BRT and tanker still procedural); houses carry ledges, balconies, ACs, water tanks, dishes, awnings and generators.
 
 ## 2. Next phase — Alpha 1.0 (Living City Phases 3–4 + corridor expansion, 4 weeks)
 
@@ -73,7 +73,7 @@ Post-processing (bloom, split-tone colour grade, vignette, ACES) with an environ
 
 **Living City Phase 4 — Social:** NPC relationship model (trust, respect, affection, reputation), friendships and romance, Egbon Adugbo as the neighbourhood network manager who hands out jobs and missions by local reputation.
 
-**Also queued:** GLB vehicle set (danfo, keke, okada, BRT, sedan) and building facade kits to match the characters' realism; production character rig (see the open decision above) with turn/stop, jump and vehicle enter/exit clips; real outfit meshes per clothing slot (the fabric prints already exist as textures) instead of tints; NPC uniform meshes (police, LASTMA, agbero caps) on the rig.
+**Also queued:** keke, okada, BRT and tanker models (none in the CC0 kits yet) and a building facade kit; production character rig (see the open decision above) with turn/stop, jump and vehicle enter/exit clips; real outfit meshes per clothing slot (the fabric prints already exist as textures) instead of tints; NPC uniform meshes (police, LASTMA, agbero caps) on the rig.
 
 **Then (Alpha 1.1+):** Phase 5 dynamic world (NPC schedules, random encounters, neighbourhood stories) and Phase 6 the NAIJA RISE MCP server (world, player, NPC, mission, business, education and community tools) feeding an AI world director; multiplayer groundwork and accounts as planned before.
 

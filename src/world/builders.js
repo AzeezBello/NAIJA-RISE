@@ -92,23 +92,41 @@ export function sign(label, x, y, z, color, sx, sy, bg) {
 // Surulere compound: a house inside a fenced plot with a gate gap on the street (-z) side.
 // style: bungalow (one floor, pitched zinc roof) | storey (2–3 floors, flat roof with parapet) | highrise (textured tower).
 const ZINC = [0x8a4a2a, 0x6b6b6b, 0x4a5a6a, 0x7a3a2a];
+// Rooftop and facade detail that makes a box read as a Lagos house: GeePee water tank, satellite dish, split-unit ACs,
+// floor ledges, a street-side balcony with railings on storey buildings, a shop awning, and a generator by the fence.
+export function dressBuilding(x, z, bw, bd, h, style, front = -1) {
+  const floors = Math.max(1, Math.round(h / 3.4)), fz = z + front * bd / 2;
+  if (style !== 'bungalow') for (let f = 1; f < floors; f++) { const y = f * (h / floors); staticBox('ledges', x, z, bw + 0.3, bd + 0.3, 0.18, y); }   // floor ledges
+  if (style === 'storey') for (let f = 1; f < floors; f++) {                                                                                     // balconies
+    const y = f * (h / floors), w = Math.min(bw * 0.7, 7);
+    staticBox('ledges', x, fz + front * 0.7, w, 1.4, 0.16, y);
+    staticBox('rails', x, fz + front * 1.35, w, 0.06, 1.0, y + 0.16); staticBox('rails', x - w / 2, fz + front * 0.7, 0.06, 1.3, 1.0, y + 0.16); staticBox('rails', x + w / 2, fz + front * 0.7, 0.06, 1.3, 1.0, y + 0.16);
+  }
+  const acs = style === 'bungalow' ? 1 : Math.min(floors * 2, 6);                                                                               // split-unit ACs
+  for (let i = 0; i < acs; i++) { const f = style === 'bungalow' ? 0 : 1 + (i % Math.max(1, floors - 1)); const sx = (i % 2 ? 1 : -1) * (bw / 2 - 1 - (i >> 1) * 1.6); staticBox('ac', x + sx, fz + front * 0.3, 0.9, 0.4, 0.6, f * (h / floors) + 1.9); }
+  if (Math.random() < 0.75) staticCyl('tanks', x + bw / 2 - 1.3, z + bd / 2 - 1.3, 0.8, 1.5, h, 10);                                            // black water tank
+  if (Math.random() < 0.5) staticCyl('ac', x - bw / 2 + 1, z + bd / 2 - 1, 0.55, 0.08, h + 0.6, 10);                                             // satellite dish
+  if (style !== 'bungalow' && Math.random() < 0.6) { staticBox('awnings', x, fz + front * 0.8, Math.min(bw * 0.8, 8), 1.6, 0.1, 3.2); for (const sx of [-1, 1]) staticBox('rails', x + sx * Math.min(bw * 0.4, 4), fz + front * 1.5, 0.08, 0.08, 3.2); }   // shop awning
+  if (Math.random() < 0.5) staticBox('gens', x + bw / 2 + 1.6, z, 0.8, 1.3, 0.9);                                                                 // "I better pass my neighbour" generator
+}
+
 export function compound(x, z, pw, pd, style, color, name = 'building', h) {
   const bw = pw - 7, bd = pd - 7;
   let house;
   if (style === 'bungalow') {
     h = h || 3.4 + Math.random() * 0.6;
-    house = building(x, z + 1, bw, bd, h, color, name);
+    house = building(x, z + 1, bw, bd, h, color, name); dressBuilding(x, z + 1, bw, bd, h, style);
     const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(bw, bd) * 0.78, 2.2, 4), mat(ZINC[Math.floor(Math.random() * ZINC.length)], { roughness: 0.6, metalness: 0.3 }));
     roof.position.set(x, h + 1.1, z + 1); roof.rotation.y = Math.PI / 4; roof.scale.set(bw / Math.max(bw, bd), 1, bd / Math.max(bw, bd)); roof.castShadow = true;
     G.scene.add(roof);
   } else if (style === 'storey') {
     h = h || 6.8 + Math.random() * 4.2;
-    house = building(x, z + 1, bw, bd, h, color, name);
+    house = building(x, z + 1, bw, bd, h, color, name); dressBuilding(x, z + 1, bw, bd, h, style);
     box(x, z + 1, bw + 0.4, bd + 0.4, 0.5, color, 'prop', h);                 // parapet
     box(x, z + 1 + bd / 2 + 0.3, bw * 0.6, 0.6, 0.12, 0x3a3a3a, 'prop', h * 0.5); // balcony slab
   } else {
     h = h || 15 + Math.random() * 13;
-    house = building(x, z, pw - 4, pd - 4, h, color, name);
+    house = building(x, z, pw - 4, pd - 4, h, color, name); dressBuilding(x, z, pw - 4, pd - 4, h, style);
     return house;
   }
   // fence with a gate gap on the street side

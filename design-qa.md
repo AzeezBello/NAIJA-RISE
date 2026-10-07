@@ -1,6 +1,7 @@
 # Design QA — Alpha 0.11
 
 ## Implemented
+- Kenney Car Kit vehicles with palette repainting (danfo yellow, LAWMA orange, army olive, liveries), headlights, police/fire light bars and rolling wheels; house detail pass (ledges, balconies, ACs, tanks, dishes, awnings, generators).
 - Poster look: HDR composer with bloom, split-tone grade and vignette; environment reflections; wet roads and stronger bloom after dark; golden-hour → ember → twilight → night sky palette; new games start at 17:15. Three human street rigs (Ready Player Me, Michelle, CesiumMan) with eleven outfit types and random wardrobe; rigs on by default on phones; title-screen preload.
 - Character pipeline: rigged GLB player and pedestrians with Idle/Walk/Run cross-fades driven by the controller states, primitive fallback, Nigerian wardrobe (ankara shirt / senator / buba & sokoto / agbada / Super Eagles / t-shirt in procedural ankara, adire, aso-oke and lace prints, fila and face cap), eleven-slot customiser (skin, face, body, hair, hair colour, facial hair, outfit, fabric, trousers, shoes, accessory) with head-bone accessories, skinned shadows, Settings toggle for the rig.
 - Game HUD ("The Lagos Experience"): top bar with brand, district/street, clock, day icon and day counter; objective card with distance and direction arrow above the minimap; money/level card with portrait, cash, bank, level title, XP and heat; health/energy bars and a verb-and-target interaction prompt bottom-centre; vehicle gauges replace vitals when driving; dialogue box with numbered choices.

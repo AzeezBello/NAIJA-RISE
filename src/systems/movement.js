@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { spinWheels } from '../entities/vehicleModels.js';
 import { G, frozen } from '../core/context.js';
 import { on, emit } from '../core/events.js';
 import { approach, lerpAngle } from '../core/utils.js';
@@ -133,7 +134,7 @@ export function updateCamera(dt) {
 }
 
 export function updateMovement(dt) {
-  if (G.inCar) { driveCar(dt); clampWorld(G.car); G.player.position.copy(G.car.position); }
+  if (G.inCar) { driveCar(dt); clampWorld(G.car); G.player.position.copy(G.car.position); spinWheels(G.car, G.carSpeed, dt); }
   else { moveFoot(dt); clampWorld(G.player); }
 }
 
