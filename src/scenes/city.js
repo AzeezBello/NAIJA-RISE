@@ -36,6 +36,8 @@ import { buildTouch, updateTouch } from '../ui/touch.js';
 import { mapDraw, phoneMapDraw } from '../ui/minimap.js';
 import { toggleColliderDebug } from '../world/builders.js';
 import { updateVehicleTransition } from '../systems/interaction.js';
+import { setupFamily, maybeIssueFamilyRequest, updateFamily } from '../systems/family.js';
+
 
 // The playable city. World geometry and traffic are built once in main.js; this scene adds the player,
 // NPCs, HUD and phone, then runs the per-frame systems.
@@ -70,7 +72,10 @@ export const CityScene = {
     updateGamepad(dt);
     updateMovement(dt);
     updateVehicleTransition(dt);
-    updatePlayer(); updateTraffic(dt); updateNpcs(dt); updateContacts(dt); updateCharacters(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
+    updatePlayer(); 
+    updateFamily(dt);
+    updateContacts(dt);
+    updateTraffic(dt); updateNpcs(dt);  updateCharacters(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
     updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateMissions(dt); updateRace(dt); updateTrafficLights(dt); updateTolls(); updateClock(dt); updateAudio();
     routeT += dt; if (routeT > 0.25) { routeT = 0; updateRoute(); }   // GPS re-routes 4× a second
     updateCamera(dt);

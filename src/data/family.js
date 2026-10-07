@@ -97,3 +97,56 @@ export const FAMILY_REQUESTS = [
 ];
 
 export const requestOf = id => FAMILY_REQUESTS.find(r => r.id === id);
+
+// ---- C1.5 schedules ----------------------------------------------------------
+// Clock is G.state.clock (0–24). Each window: [startHour, endHour) → world spot.
+// Chioma "school" uses a stand-in near the existing school landmark if present,
+// else a fixed Surulere yard point.
+
+export const FAMILY_SPOTS = {
+  home_yard:   { x: -88, z: 22 },
+  home_door:   { x: -88, z: 17.5 },
+  market_edge: { x: -48, z: -52 },   // near Yaba / market corridor
+  school_gate: { x: 12, z: -70 },    // override in code if placeOf('school') exists
+  church_side: { x: -40, z: 40 },
+};
+
+/** Per-member day plan. First matching window wins. */
+export const FAMILY_SCHEDULES = {
+  mum: [
+    { from: 5,  to: 9,  spot: 'home_yard',  label: 'home' },
+    { from: 9,  to: 14, spot: 'market_edge', label: 'market' },
+    { from: 14, to: 18, spot: 'home_yard',  label: 'home' },
+    { from: 18, to: 22, spot: 'home_door',  label: 'home' },
+    { from: 22, to: 24, spot: 'home_yard',  label: 'sleep' },
+    { from: 0,  to: 5,  spot: 'home_yard',  label: 'sleep' },
+  ],
+  sibling: [
+    { from: 6,  to: 8,  spot: 'home_yard',   label: 'home' },
+    { from: 8,  to: 14, spot: 'school_gate', label: 'school' },
+    { from: 14, to: 17, spot: 'market_edge', label: 'errand' },
+    { from: 17, to: 21, spot: 'home_door',   label: 'home' },
+    { from: 21, to: 24, spot: 'home_yard',   label: 'sleep' },
+    { from: 0,  to: 6,  spot: 'home_yard',   label: 'sleep' },
+  ],
+};
+
+/** Which request kinds require the issuer to be at a label. */
+export const REQUEST_NEED_LABEL = {
+  chop_money:   ['home'],
+  visit_home:   ['home'],
+  sunday_visit: ['home'],
+  school_levy:  ['home', 'school'],
+  market_errand:['home', 'errand', 'market'],
+};
+
+export function scheduleSlot(who, clock) {
+  const plan = FAMILY_SCHEDULES[who];
+  if (!plan) return null;
+  const h = ((clock % 24) + 24) % 24;
+  return plan.find(w => h >= w.from && h < w.to) || plan[0];
+}
+
+export function spotCoords(spotId) {
+  return FAMILY_SPOTS[spotId] || FAMILY_SPOTS.home_yard;
+}
