@@ -1,14 +1,30 @@
-// Customisation slots. skin/hair/shirt/pants drive the portrait and the primitive fallback; the rest tint the rig.
+// Fabrics are procedural prints (entities/wardrobe.js). `look.shirt` indexes this list.
+export const FABRICS = [
+  { name: 'Ankara sunset', base: '#e07b1a', accent: '#1b4d8c', pattern: 'ankara' },
+  { name: 'Ankara emerald', base: '#1f7a4d', accent: '#f2c230', pattern: 'ankara' },
+  { name: 'Ankara royal', base: '#4a2a8c', accent: '#f0a830', pattern: 'ankara' },
+  { name: 'Adire indigo', base: '#1d3a78', accent: '#e8e1cf', pattern: 'adire' },
+  { name: 'Aso-oke wine', base: '#6e1a2c', accent: '#d9a441', pattern: 'stripe' },
+  { name: 'White lace', base: '#f1ecdf', accent: '#cfc6b0', pattern: 'lace' },
+  { name: 'Sky kaftan', base: '#7fb3d5', accent: '#7fb3d5', pattern: 'plain' },
+  { name: 'Super Eagles', base: '#1a8a3c', accent: '#ffffff', pattern: 'jersey' },
+  { name: 'Black', base: '#1b1b1b', accent: '#1b1b1b', pattern: 'plain' },
+];
+// Customisation slots. Outfits are Nigerian everyday wear; the rig tints/maps materials by slot, the primitive
+// fallback builds the silhouette. `shirt` = fabric index, `pants` = trouser / sokoto colour.
+// Outfits that wear the fabric print; the rest keep the garment's own texture tinted with the fabric colour.
+export const FABRIC_OUTFITS = new Set(['Ankara shirt', 'Senator', 'Buba & Sokoto', 'Agbada', 'Super Eagles', 'Gown', 'Skirt & blouse']);
 export const LOOK = {
   skin: ['#b07a55', '#8a5a3c', '#714835', '#5a3a28', '#3f2619'],
   face: ['Oval', 'Round', 'Square', 'Long'],
   hair: ['Short', 'Fade', 'Afro', 'Braids', 'Bald'],
   hairColor: ['#120b08', '#3a2214', '#6b3e1a', '#b0b0b0', '#d62828'],
   bodyType: ['Slim', 'Average', 'Big'],
-  shirt: ['#3d8b5a', '#ffc52f', '#e8e8e8', '#2f5fd0', '#c9342f', '#1b1b1b'],
-  pants: ['#26312d', '#1f2a44', '#4a3b2e', '#2b2b2b'],
+  outfit: ['Ankara shirt', 'Senator', 'Buba & Sokoto', 'Agbada', 'Super Eagles', 'T-shirt & jeans', 'Singlet & jeans', 'Tank top & shorts', 'Jacket & jeans', 'Gown', 'Skirt & blouse'],
+  shirt: FABRICS.map(f => f.base),
+  pants: ['#26312d', '#1f2a44', '#4a3b2e', '#2b2b2b', '#f1ecdf', '#6e1a2c'],
   shoes: ['#1b1b1b', '#f0f0f0', '#8a5a3c', '#2f5fd0'],
-  accessory: ['None', 'Cap', 'Glasses', 'Chain'],
+  accessory: ['None', 'Fila', 'Face cap', 'Glasses', 'Chain'],
   facialHair: ['None', 'Beard', 'Goatee', 'Moustache'],
 };
 

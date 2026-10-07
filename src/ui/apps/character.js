@@ -1,7 +1,7 @@
 import { G } from '../../core/context.js';
 import { emit } from '../../core/events.js';
 import { esc } from '../../core/utils.js';
-import { LOOK } from '../../data/characters.js';
+import { LOOK, FABRICS } from '../../data/characters.js';
 import { SKILLS, REPS, levelTitle } from '../../data/config.js';
 import { Sect, Swatches, Chips, Card } from '../components.js';
 import { applyLook } from '../../entities/player.js';
@@ -20,7 +20,7 @@ export default {
       Sect('Reputation') + Card(Object.entries(REPS).map(([k, label]) => bar(label, s.rep[k] || 0, -100, 100, k === 'street' ? 'fuelfill' : 'stafill')).join('') + '<p>Public falls when you are arrested; Street rises with risk; Business with ownership; Social with owambe and nightlife.</p>') +
       Sect('Skin') + Swatches('skin', LOOK.skin, L.skin) + Sect('Face') + Chips('face', LOOK.face, L.face ?? 0) + Sect('Body') + Chips('bodyType', LOOK.bodyType, L.bodyType ?? 1) +
       Sect('Hair') + Chips('hair', LOOK.hair, L.hair) + Sect('Hair colour') + Swatches('hairColor', LOOK.hairColor, L.hairColor ?? 0) + Sect('Facial hair') + Chips('facialHair', LOOK.facialHair, L.facialHair ?? 0) +
-      Sect('Shirt') + Swatches('shirt', LOOK.shirt, L.shirt) + Sect('Trousers') + Swatches('pants', LOOK.pants, L.pants) + Sect('Shoes') + Swatches('shoes', LOOK.shoes, L.shoes ?? 0) + Sect('Accessory') + Chips('accessory', LOOK.accessory, L.accessory ?? 0) +
+      Sect('Outfit') + Chips('outfit', LOOK.outfit, L.outfit ?? 0) + Sect(`Fabric · ${esc(FABRICS[L.shirt ?? 0]?.name || '')}`) + Swatches('shirt', LOOK.shirt, L.shirt) + Sect('Trousers / sokoto') + Swatches('pants', LOOK.pants, L.pants) + Sect('Shoes') + Swatches('shoes', LOOK.shoes, L.shoes ?? 0) + Sect('Accessory') + Chips('accessory', LOOK.accessory, L.accessory ?? 0) +
       `<p class="note">${characterRigReady() ? 'Rigged character active — walk and run are real animation clips.' : 'Loading the rigged character… primitives shown meanwhile.'}</p>`;
     applyLook();
   },

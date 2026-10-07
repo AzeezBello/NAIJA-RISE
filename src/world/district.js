@@ -14,8 +14,9 @@ const reserved = (x, z, pad = 0) => RESERVED.some(r => Math.hypot(x - r.x, z - r
 const ROAD_W = ROAD_WIDTHS.h, VROAD_W = ROAD_WIDTHS.v;
 
 function road(x, z, w, d, asphalt) {
-  const m = new THREE.MeshStandardMaterial({ map: asphalt.clone(), roughness: 0.95 });
+  const m = new THREE.MeshStandardMaterial({ map: asphalt.clone(), roughness: 0.95, metalness: 0.02 });
   m.map.repeat.set(w / 8, d / 8); m.map.needsUpdate = true;
+  (G.roadMats = G.roadMats || []).push(m);
   box(x, z, w, d, 0.1, 0, 'road', 0, m);
   if (w > d) for (let p = x - w / 2 + 8; p < x + w / 2 - 8; p += 14) staticBox('lanes', p, z, 0.65, 4, 0.11);
   else for (let p = z - d / 2 + 8; p < z + d / 2 - 8; p += 14) staticBox('lanes', x, p, 4, 0.65, 0.11);

@@ -17,7 +17,8 @@ export default {
       Field(`CAMERA SENSITIVITY · ${st.sens.toFixed(1)}×`, `<input type="range" id="setSens" min="0.3" max="2" step="0.1" value="${st.sens}">`) +
       Toggle('Rotate minimap with camera', 'setRotate', st.rotateMap) +
       Toggle('Shadows', 'setShadows', st.shadows) +
-      Toggle('Rigged 3D characters (applies after reload)', 'setRig', st.rig === undefined ? !PERF.lowEnd : st.rig) +
+      Toggle('Cinematic look (bloom, colour grade)', 'setFx', st.fx === undefined ? !PERF.lowEnd : st.fx) +
+      Toggle('Rigged 3D characters (applies after reload)', 'setRig', st.rig !== false) +
       Toggle('Show control hints', 'setHints', st.hints) +
       Toggle('Sound', 'setAudio', st.audio !== false) +
       Toggle('Mature content (18+)', 'setMature', st.mature !== false) +
@@ -28,6 +29,7 @@ export default {
     $('setSens').addEventListener('input', e => { st.sens = +e.target.value; e.target.parentElement.firstChild.textContent = `CAMERA SENSITIVITY · ${st.sens.toFixed(1)}×`; saveState(s); });
     $('setRotate').addEventListener('change', e => { st.rotateMap = e.target.checked; saveState(s); });
     $('setShadows').addEventListener('change', e => { st.shadows = e.target.checked; emit('hud'); });
+    $('setFx').addEventListener('change', e => { st.fx = e.target.checked; saveState(s); });
     $('setRig').addEventListener('change', e => { st.rig = e.target.checked; saveState(s); });
     $('setHints').addEventListener('change', e => { st.hints = e.target.checked; emit('hud'); });
     $('setMature').addEventListener('change', e => { st.mature = e.target.checked; emit('hud'); });

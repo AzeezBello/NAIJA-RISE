@@ -8,7 +8,7 @@ export const DEFAULT = {
   job: null, waypoint: null, owned: [], props: [], home: null,
   inv: { water: 2, suya: 1 }, msgs: [], unread: 0, tx: [], payIn: ECON.payCycle,
   clock: TIME.startClock, day: 1,
-  look: { skin: 2, face: 0, hair: 0, hairColor: 0, bodyType: 1, shirt: 0, pants: 0, shoes: 0, accessory: 0, facialHair: 0 },
+  look: { skin: 2, face: 0, hair: 0, hairColor: 0, bodyType: 1, outfit: 0, shirt: 0, pants: 0, shoes: 0, accessory: 1, facialHair: 0 },   // ankara shirt, dark trousers, fila
   pet: null, prayedDay: 0, partyDay: 0, rented: null, let: [],
   skills: { driving: 0, business: 0, charisma: 0, fitness: 0 },
   rep: { public: 0, business: 0, street: 0, social: 0 },

@@ -1,5 +1,8 @@
 // Engine entry usable from the static page (src/main.js) or from React/Next (web/components/GameCanvas.tsx).
 // createGame mounts the renderer into `mount`, builds UI into `ui`, and returns { stop } for cleanup.
+import { PERF } from './data/config.js';
+import { preloadCharacters } from './entities/character.js';
+import { setupPostFx, renderFrame } from './core/postfx.js';
 import { G } from './core/context.js';
 import { loadState } from './core/state.js';
 import { createRenderer } from './core/renderer.js';
@@ -27,7 +30,9 @@ export function createGame({ mount, ui, startScene } = {}) {
   buildDistrict();
   spawnParked();
   spawnTraffic();
+  setupPostFx();
   applySky();
+  preloadCharacters(PERF.lowEnd);   // rigs stream in behind the title screen
 
   registerScene(TitleScene);
   registerScene(CityScene);
@@ -38,7 +43,7 @@ export function createGame({ mount, ui, startScene } = {}) {
     requestAnimationFrame(frame);
     const dt = Math.min(G.clock.getDelta(), 0.05);
     updateScene(dt);
-    renderer.render(scene, camera);
+    renderFrame();
   }
   frame();
   return { stop: stopGame, G };
