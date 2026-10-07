@@ -18,6 +18,17 @@ const bases = [], loading = [], failed = [];
 const instances = new Set();
 
 // Loads rig `i` once (first reachable URL wins) and swaps it into every instance waiting for it.
+// Removes root motion: any hips / root position track keeps its first-frame x and z for the whole clip (y bob stays),
+// so a walk or run cycle never slides the body forward and snaps it back on loop.
+function lockRoot(clip) {
+  for (const t of clip.tracks) {
+    if (!/(^|[.:])(mixamorig)?(Hips|Root|Armature|Skeleton_torso_joint_1)\.position$/i.test(t.name) && !/\.position$/.test(t.name)) continue;
+    const v = t.values; if (!v || v.length < 3) continue;
+    const isRoot = /(Hips|Root|Armature|torso_joint_1)\.position$/i.test(t.name);
+    if (!isRoot) continue;
+    for (let i = 3; i < v.length; i += 3) { v[i] = v[0]; v[i + 2] = v[2]; }
+  }
+}
 const gltfCache = {};
 const loadGltf = (loader, url) => gltfCache[url] || (gltfCache[url] = loader.loadAsync(url));
 // Loads rig `i` once (first reachable URL wins) plus its external animation clips, then swaps it into every waiting instance.
@@ -40,6 +51,7 @@ export function loadRig(i = 0) {
             clips.push(clip);
           });
         }
+        for (const c of clips) lockRoot(c);   // in-place locomotion: the game moves the character, the clip must not
         const box = new THREE.Box3().setFromObject(gltf.scene), h = box.max.y - box.min.y;
         gltf.scene.traverse(o => { if (o.isMesh) o.castShadow = true; });
         bases[i] = { rig, scene: gltf.scene, clips, scale: CHARACTER.height / h, url };
@@ -63,6 +75,7 @@ export const streetRigs = lowEnd => CHARACTER.rigs.map((r, i) => i).filter(i => 
 // Weighted pick among the street rigs.
 export function pickStreetRig(lowEnd) { const ids = streetRigs(lowEnd); let r = Math.random() * ids.reduce((a, i) => a + (CHARACTER.rigs[i].weight || 1), 0); for (const i of ids) { r -= CHARACTER.rigs[i].weight || 1; if (r <= 0) return i; } return ids[0]; }
 
+const OVERALLS = ['#3b4a6b', '#4a4a4a', '#6b4a2a', '#2f5a3a', '#7a3a2a', '#1b3a5a', '#5a5a3a', '#2b2b2b', '#4a3a5a'];
 const clipFor = (clips, names) => { for (const n of names) { const c = clips.find(c => c.name.toLowerCase() === n.toLowerCase()); if (c) return c; } return null; };
 const slotColor = (look, slot) => {
   const L = LOOK, v = look[slot] ?? 0, out = L.outfit[look.outfit ?? 0];
@@ -119,7 +132,8 @@ function applyLookTo(inst) {
     const mt = o.material, slot = slotOf(mt); if (!slot) return;
     if (slot === 'top') {
       if (inst.tint?.top) { if (!rig.tintOnly) mt.map = null; mt.color.set(inst.tint.top); }
-      else if (rig.tintOnly || !FABRIC_OUTFITS.has(outfit)) mt.color.set(fab.base);                // garment keeps its texture, tinted
+      else if (rig.tintOnly) mt.color.set(OVERALLS[(look.shirt ?? 0) % OVERALLS.length]);        // single-material bodies: muted work-wear colours, never a bright full-body tint
+      else if (!FABRIC_OUTFITS.has(outfit)) mt.color.set(fab.base);                                // garment keeps its texture, tinted
       else { if (!mt.userData.origMap) mt.userData.origMap = mt.map; mt.map = fabricTexture(look.shirt ?? 0); mt.color.set(0xffffff); }   // wears the print
       mt.needsUpdate = true;
     } else if (slot === 'beard') o.visible = LOOK.facialHair[look.facialHair ?? 0] !== 'None', mt.color.set(LOOK.hairColor[look.hairColor ?? 0]);

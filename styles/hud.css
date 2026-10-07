@@ -5,15 +5,14 @@
 .sleepfade.on{opacity:1}
 
 /* ---------- top bar: brand + district · clock + day ---------- */
-.topbar{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:flex-start;padding:16px 24px;background:linear-gradient(180deg,#000a,transparent)}
-.brand{font-size:19px;font-weight:950;letter-spacing:-.05em;line-height:1;text-shadow:0 2px 12px #000}
-.brand b{color:var(--green);font-family:"Permanent Marker",Inter,cursive;font-weight:400;letter-spacing:0;font-size:21px}
-.locale{margin-top:6px;transition:opacity .4s}
+.topbar{position:absolute;left:0;right:0;top:0;display:flex;justify-content:flex-end;align-items:flex-start;padding:16px 24px;background:linear-gradient(180deg,#000a,transparent);pointer-events:none}
+.locale{margin:0 0 2px 6px;transition:opacity .4s}
 .locale b{display:block;font-size:12px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;text-shadow:0 2px 10px #000}
 .locale span{font-size:8px;letter-spacing:.3em;text-transform:uppercase;color:#aeb9b4}
 .locale.flash b{animation:localeIn 1.6s ease-out}
 @keyframes localeIn{0%{opacity:0;transform:translateY(-4px)}20%{opacity:1}100%{opacity:1;transform:none}}
-.tr{display:flex;align-items:center;gap:12px;font-size:12px;font-weight:800;letter-spacing:.12em;text-shadow:0 2px 10px #000}
+.tr{display:flex;flex-direction:column;align-items:flex-end;gap:8px;font-size:12px;font-weight:800;letter-spacing:.12em;text-shadow:0 2px 10px #000}
+.clockrow{display:flex;align-items:center;gap:12px;padding-right:4px}
 .tr .clk{font-size:16px;font-variant-numeric:tabular-nums;letter-spacing:.04em}
 .tr .dayicon{font-size:13px}
 .tr .daynum{font-size:10px;color:#dfe8e3}
@@ -42,7 +41,7 @@
 .gps .gd{font-variant-numeric:tabular-nums;flex:none}
 
 /* ---------- money / level card ---------- */
-.status{position:absolute;right:22px;bottom:22px;display:flex;align-items:center;gap:12px;padding:10px 16px 10px 10px;min-width:240px}
+.status{display:flex;align-items:center;gap:12px;padding:10px 16px 10px 10px;min-width:240px;pointer-events:auto}
 .portrait{width:44px;height:44px;border-radius:50%;border:2px solid var(--green);box-shadow:0 0 0 3px #3dff7922;background:#0d1f19;flex:none;align-self:flex-start}
 .sinfo{flex:1;min-width:0}
 .cash{font-size:22px;font-weight:900;color:var(--green);font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
@@ -120,10 +119,10 @@
 
 /* ---------- responsive: tablets and phones ---------- */
 @media (max-width:900px),(max-height:560px){
-  .topbar{padding:10px 12px}.brand{font-size:15px}.brand b{font-size:17px}.locale b{font-size:10px}.tr{gap:8px}.tr .clk{font-size:13px}
+  .topbar{padding:8px 10px}.locale b{font-size:10px}.tr{gap:5px}.tr .clk{font-size:13px}
   .objective{left:12px;bottom:150px;width:200px;padding:7px 10px 8px 9px}.objline{font-size:11px}
   .nav{left:12px;bottom:12px;gap:6px}.minimap{width:104px;height:104px}.gps{max-width:180px;font-size:9px;padding:5px 9px}
-  .status{right:12px;bottom:12px;min-width:0;padding:7px 10px 7px 7px;gap:8px}.portrait{width:34px;height:34px}.cash{font-size:16px}.srow{font-size:8px}
+  .status{min-width:0;padding:6px 9px 6px 6px;gap:8px}.portrait{width:34px;height:34px}.cash{font-size:16px}.srow{font-size:8px}
   .bottom{bottom:12px;gap:8px}.vitals{min-width:140px;padding:6px 10px}.vehicle{padding:5px 10px 5px 5px}.speedo{width:60px;height:60px}.speednum b{font-size:16px}.vehicle .fuel{width:88px}
   .prompt{font-size:10px;padding:7px 10px 7px 7px}.prompt .ptext{max-width:150px}
   .hints{display:none}
@@ -131,7 +130,7 @@
   .notif{top:56px;max-width:80vw}.toast{top:30%;font-size:12px;padding:10px 16px}
 }
 body.touch-ui .bottom{left:auto;right:12px;transform:none;bottom:248px;flex-direction:column;align-items:flex-end;gap:8px}
-body.touch-ui .status{bottom:150px}
+body.touch-ui .topbar{padding-right:8px}
 body.touch-ui .nav{bottom:150px}
 body.touch-ui .objective{bottom:290px}
 body.touch-ui .dialog{bottom:210px}

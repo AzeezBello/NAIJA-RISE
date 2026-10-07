@@ -8,12 +8,12 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { G } from './context.js';
 import { PERF } from '../data/config.js';
 
-// Cinematic look (the poster): HDR render → bloom for neon, street lights and the sunset → colour grade with
-// warm-highlight / teal-shadow split toning, a touch of contrast and a vignette → tone mapping + sRGB output.
+// Natural look with a light touch: HDR render → soft bloom on neon and street lights (mostly at night) → neutral grade
+// (split toning and saturation off, faint vignette) → tone mapping + sRGB output.
 // An environment map gives car paint, glass and wet asphalt something to reflect. Off on the low-end profile
 // unless the player turns "Cinematic look" on in Settings.
 const GradeShader = {
-  uniforms: { tDiffuse: { value: null }, vignette: { value: 0.3 }, split: { value: 0.14 }, sat: { value: 1.08 }, contrast: { value: 1.05 }, warm: { value: new THREE.Color(1.0, 0.84, 0.64) }, cool: { value: new THREE.Color(0.62, 0.8, 1.0) } },
+  uniforms: { tDiffuse: { value: null }, vignette: { value: 0.08 }, split: { value: 0 }, sat: { value: 1 }, contrast: { value: 1 }, warm: { value: new THREE.Color(1.0, 0.84, 0.64) }, cool: { value: new THREE.Color(0.62, 0.8, 1.0) } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `uniform sampler2D tDiffuse; uniform float vignette, split, sat, contrast; uniform vec3 warm, cool; varying vec2 vUv;
     void main(){

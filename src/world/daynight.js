@@ -10,13 +10,11 @@ import { TIME } from '../data/config.js';
 const SKY = [
   [0, 0x101a2e, 0x9fb4ff, 1.3, 0x6e88c8, 0x2a3030, 1.9, 60, 200, 0x050a18, 0x1a2c4e],
   [5, 0x101a2e, 0x9fb4ff, 1.3, 0x6e88c8, 0x2a3030, 1.9, 60, 200, 0x050a18, 0x1a2c4e],
-  [6.5, 0xe8a070, 0xffb070, 1.9, 0xa0b4cc, 0x2a2a20, 1.1, 85, 230, 0x4e68a8, 0xf4a878],
-  [8, 0xc2dcec, 0xffe6b4, 3.4, 0xe7f5ff, 0x4a5a45, 1.6, 110, 260, 0x4a8ccc, 0xc2dcec],
-  [16, 0xc9d6dc, 0xffdca0, 3.1, 0xe4ecf2, 0x4a5240, 1.45, 100, 250, 0x4a84c4, 0xd6c8b0],
-  [17.5, 0xf0a868, 0xffa050, 2.4, 0xd8b090, 0x33281f, 1.15, 70, 220, 0x3a4a90, 0xffb060],     // golden hour
-  [18.6, 0xd86a40, 0xff7a3a, 1.3, 0xb08070, 0x241c1a, 0.95, 60, 200, 0x2a2f6e, 0xf07040],     // ember sunset
-  [19.6, 0x2a3458, 0xa0a8ff, 1.1, 0x7080c0, 0x2a3030, 1.6, 55, 190, 0x0a1230, 0x6a3a5a],     // teal-navy twilight, magenta horizon
-  [21, 0x101a2e, 0x9fb4ff, 1.3, 0x6e88c8, 0x2a3030, 1.9, 60, 200, 0x050a18, 0x1a2c4e],
+  [6.5, 0xe39a6a, 0xffa870, 1.8, 0x9fb0c8, 0x2a2a20, 1.1, 90, 230, 0x5a6ea0, 0xf0a070],
+  [8, 0xbcd8e6, 0xffe4ae, 3.4, 0xe7f5ff, 0x4a5a45, 1.6, 110, 260, 0x4f8fc9, 0xbcd8e6],
+  [16.5, 0xbcd8e6, 0xffe4ae, 3.2, 0xe7f5ff, 0x4a5a45, 1.5, 110, 260, 0x4f8fc9, 0xbcd8e6],
+  [18.5, 0xe0854f, 0xff8f4a, 1.6, 0xc9a08a, 0x2a2420, 1.0, 90, 230, 0x3e3d78, 0xf08a4f],
+  [20, 0x101a2e, 0x9fb4ff, 1.3, 0x6e88c8, 0x2a3030, 1.9, 60, 200, 0x050a18, 0x1a2c4e],
   [24, 0x101a2e, 0x9fb4ff, 1.3, 0x6e88c8, 0x2a3030, 1.9, 60, 200, 0x050a18, 0x1a2c4e],
 ];
 const cA = new THREE.Color(), cB = new THREE.Color();
@@ -59,8 +57,8 @@ export function applySky() {
   // after dark the asphalt reads wet and glossy; neon and street lights bloom harder
   const wet = night || G.rain ? 1 : h > 17.5 ? (h - 17.5) / 1.1 : 0;
   for (const m of G.roadMats || []) { m.roughness = 0.95 - 0.5 * wet; m.metalness = 0.02 + 0.1 * wet; }
-  if (G.bloom) { G.bloom.strength = 0.25 + 0.2 * wet + (G.rain ? 0.1 : 0); G.bloom.threshold = night ? 0.8 : 0.9; G.bloom.radius = 0.35; }
-  if (G.grade) { G.grade.uniforms.split.value = 0.1 + 0.1 * wet; G.grade.uniforms.vignette.value = 0.28 + 0.12 * wet; }
+  if (G.bloom) { G.bloom.strength = 0.12 + 0.18 * wet + (G.rain ? 0.1 : 0); G.bloom.threshold = night ? 0.8 : 0.92; G.bloom.radius = 0.35; }   // natural by day, a soft glow on lights at night
+  if (G.grade) { G.grade.uniforms.split.value = 0; G.grade.uniforms.vignette.value = 0.08; }
   const q = QUALITY[G.quality] || QUALITY.medium;
   scene.fog.far *= q.fogScale; scene.fog.near *= q.fogScale;
   if (G.scene.environmentIntensity !== undefined) G.scene.environmentIntensity = (night ? 0.25 : 0.4) * (q.env / 0.4);

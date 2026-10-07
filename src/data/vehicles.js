@@ -15,7 +15,10 @@ export const VEH = {
 
 // Real models (Kenney Car Kit, CC0) by vehicle type; a type picks one at random. Keke, okada, BRT and the tanker stay procedural.
 export const MODEL_BASE = 'assets/vehicles/kenney/';
-export const MODELS = { car: ['sedan', 'suv', 'hatchback-sports', 'sedan-sports', 'suv-luxury', 'taxi'], police: ['police'], danfo: ['van'], korope: ['delivery'], lawma: ['garbage-truck'], fire: ['firetruck'], army: ['truck'] };
+// The danfo and korope are the original hand-built yellow buses (real Lagos silhouettes); set USE_MODELS false to use the
+// procedural vehicles for everything.
+export const USE_MODELS = true;
+export const MODELS = { car: ['sedan', 'suv', 'hatchback-sports', 'sedan-sports', 'suv-luxury', 'taxi'], police: ['police'], lawma: ['garbage-truck'], fire: ['firetruck'], army: ['truck'] };
 export const MODEL_PAINT = { danfo: 0xf5c518, korope: 0xf5c518, lawma: 0xf07a1e, army: 0x3f5a2a, police: null, fire: null };
 
 export const PARKED = [

@@ -14,16 +14,27 @@ import { wanted } from '../systems/police.js';
 import { timeStr } from '../world/daynight.js';
 import { LANDMARKS, BUSSTOPS, ROADS, META, roadExtent, roadNameAt, regionAt } from '../data/locations.js';
 
-// "The Lagos Experience" HUD. Layout: top bar — brand, district, clock, day; objective card above the minimap
-// (bottom-left); money / level card (bottom-right); health, energy and the interaction prompt (bottom-centre).
+// "The Lagos Experience" HUD, GTA-style: clock, day and the money / level card stacked top-right; street name above the
+// minimap and the objective card bottom-left; health, energy and the interaction prompt bottom-centre. No branding in play.
 export function buildHud(root) {
   root.insertAdjacentHTML('beforeend', `
   <div class="hud" id="hud">
     <div class="fade"></div>
     <div class="sleepfade" id="sleepfade"></div>
     <header class="topbar">
-      <div class="tl"><div class="brand">NAIJA <b>RISE</b></div><div class="locale" id="locale"><b>Surulere</b><span>Lagos</span></div></div>
-      <div class="tr"><span class="clk" id="hudClock">08:30</span><span class="dayicon" id="dayIcon">☀</span><span class="daynum" id="dayNum">DAY 01</span></div>
+      <div class="tr">
+        <div class="clockrow"><span class="clk" id="hudClock">08:30</span><span class="dayicon" id="dayIcon">☀</span><span class="daynum" id="dayNum">DAY 01</span></div>
+        <section class="status glass" id="status">
+          <canvas id="portrait" class="portrait" width="112" height="112"></canvas>
+          <div class="sinfo">
+            <div class="cash" id="cash">₦0</div>
+            <div class="srow"><span class="lvl">LVL <b id="pLevel">1</b></span><span class="ltitle" id="pTitle">Newcomer</span><span class="bankv" id="bank">₦0</span></div>
+            <div class="xpbar"><i id="pXp"></i></div>
+            <div class="srow small"><span id="pName"></span><span id="pXpNum">0 / 100 XP</span></div>
+            <div class="heatrow"><span class="wl" id="heatLabel">Heat</span><span class="heatpips" id="heat"></span></div>
+          </div>
+        </section>
+      </div>
     </header>
 
     <section class="objective glass" id="objCard">
@@ -33,19 +44,9 @@ export function buildHud(root) {
     </section>
 
     <section class="nav">
+      <div class="locale" id="locale"><b>Surulere</b><span>Lagos</span></div>
       <div class="minimap"><canvas id="map" width="300" height="300"></canvas></div>
       <div class="gps glass" id="gps"><b>GPS</b><span class="gt" id="gpsTarget">No route</span><span class="gd" id="gpsDist"></span></div>
-    </section>
-
-    <section class="status glass" id="status">
-      <canvas id="portrait" class="portrait" width="112" height="112"></canvas>
-      <div class="sinfo">
-        <div class="cash" id="cash">₦0</div>
-        <div class="srow"><span class="lvl">LVL <b id="pLevel">1</b></span><span class="ltitle" id="pTitle">Newcomer</span><span class="bankv" id="bank">₦0</span></div>
-        <div class="xpbar"><i id="pXp"></i></div>
-        <div class="srow small"><span id="pName"></span><span id="pXpNum">0 / 100 XP</span></div>
-        <div class="heatrow"><span class="wl" id="heatLabel">Heat</span><span class="heatpips" id="heat"></span></div>
-      </div>
     </section>
 
     <section class="bottom">
