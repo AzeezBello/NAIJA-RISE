@@ -47,7 +47,43 @@ export const MODEL_BASE = 'assets/vehicles/kenney/';
 // The danfo and korope are the original hand-built yellow buses (real Lagos silhouettes); set USE_MODELS false to use the
 // procedural vehicles for everything.
 export const USE_MODELS = true;
-export const MODELS = { car: ['sedan', 'suv', 'hatchback-sports', 'sedan-sports', 'suv-luxury', 'taxi'], police: ['police'], lawma: ['garbage-truck'], fire: ['firetruck'], army: ['truck'] };
+export const MODELS = {
+  car: [
+    'sedan',
+    'suv',
+    'hatchback-sports',
+    'sedan-sports',
+    'suv-luxury',
+    'taxi',
+  ],
+
+  police: [
+    'police',
+  ],
+
+  lawma: [
+    'garbage-truck',
+  ],
+
+  fire: [
+    'firetruck',
+  ],
+
+  army: [
+    'truck',
+  ],
+
+  // Real Lagos vehicle assets
+  danfo: [
+    'danfo_vanagon',
+  ],
+
+  keke: [
+    'keke_bajaj_re',
+  ],
+};
+
+
 
 export const PARKED = [
   { type: 'car', color: 0x172e35, x: 10, z: 32, rot: 0 },

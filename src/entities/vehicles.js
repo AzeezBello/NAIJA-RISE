@@ -138,11 +138,53 @@ export function makeVehicle(type, color = 0x172e35) {
       break;
     }
   }
-  // real model where one exists: the primitives above stay as the placeholder until it streams in
+  // ---------------------------------------------------------------------------
+  // Real vehicle models
+  //
+  // Danfo and Keke use dedicated Lagos GLBs.
+  // Other vehicles continue using the existing Kenney fleet.
+  // The procedural vehicle remains underneath until the GLB finishes loading.
+  // ---------------------------------------------------------------------------
+
   const names = USE_MODELS && MODELS[type];
-  if (names) attachModel(g, type, pick(names), type in MODEL_PAINT ? MODEL_PAINT[type] : color, { lightbar: type === 'police' ? 0x2244ff : type === 'fire' ? 0xff2222 : null });
-  if (VEH[type]?.commercial) g.userData.commercial = true;
+
+  if (names?.length) {
+    const modelName = pick(names);
+
+    // Danfo and Keke already contain their correct Lagos yellow livery.
+    // Passing null prevents the generic Kenney recolouring system from
+    // overwriting their materials.
+    const modelColor =
+      type === 'danfo' || type === 'keke'
+        ? null
+        : (
+            type in MODEL_PAINT
+              ? MODEL_PAINT[type]
+              : color
+          );
+
+    attachModel(
+      g,
+      type,
+      modelName,
+      modelColor,
+      {
+        lightbar:
+          type === 'police'
+            ? 0x2244ff
+            : type === 'fire'
+              ? 0xff2222
+              : null,
+      }
+    );
+  }
+
+  if (VEH[type]?.commercial) {
+    g.userData.commercial = true;
+  }
+
   G.scene.add(g);
+
   return g;
 }
 

@@ -1,81 +1,724 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { VEH, MODELS, MODEL_BASE } from '../data/vehicles.js';
+import { VEH, MODEL_BASE } from '../data/vehicles.js';
 import { lamps } from '../world/builders.js';
 
-// Real vehicle models (Kenney Car Kit, CC0, assets/vehicles/kenney). Each model is loaded once; its paint is found as the
-// body's dominant palette texel (by triangle area) and every texel of the same hue is repainted per colour on a cloned
-// palette, so danfos are yellow, LAWMA trucks orange, army trucks olive and traffic cars take their livery while glass,
-// lights and chrome keep their colours. Models face +z and are turned to the game's -z forward; wheels spin.
+// -----------------------------------------------------------------------------
+// Vehicle asset paths
+// -----------------------------------------------------------------------------
+// Kenney assets continue to live under assets/vehicles/kenney/.
+// Custom Lagos vehicles live in their own folders.
+//
+// IMPORTANT:
+// Models should face +Z in the GLB.
+// The game uses -Z as vehicle forward, so attachModel() rotates the model PI.
+// -----------------------------------------------------------------------------
+
+const CUSTOM_ASSETS = {
+  danfo: 'assets/vehicles/danfo/danfo_vanagon.glb',
+  keke: 'assets/vehicles/keke/keke_bajaj_re.glb',
+};
+
 const loader = new GLTFLoader();
-const models = {}, paints = {};
 
-const hsl = (r, g, b) => { const c = new THREE.Color(r / 255, g / 255, b / 255), o = {}; c.getHSL(o); return o; };
+const models = {};
+const paints = {};
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+const hsl = (r, g, b) => {
+  const c = new THREE.Color(
+    r / 255,
+    g / 255,
+    b / 255
+  );
+
+  const o = {};
+  c.getHSL(o);
+
+  return o;
+};
+
+const assetPathFor = name => {
+  if (name === 'danfo_vanagon') {
+    return CUSTOM_ASSETS.danfo;
+  }
+
+  if (name === 'keke_bajaj_re') {
+    return CUSTOM_ASSETS.keke;
+  }
+
+  return `${MODEL_BASE}${name}.glb`;
+};
+
+// -----------------------------------------------------------------------------
+// Load vehicle GLB
+// -----------------------------------------------------------------------------
+
 export function loadVehicleModel(name) {
-  return models[name] || (models[name] = loader.loadAsync(MODEL_BASE + name + '.glb').then(gltf => {
-    const scene = gltf.scene, body = scene.getObjectByName('body') || scene.children[0];
-    const box = new THREE.Box3().setFromObject(scene), size = box.getSize(new THREE.Vector3());
-    const tex = body.material.map, img = tex.image, W = img.width, H = img.height;
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
-    const data = cx.getImageData(0, 0, W, H);
-    // dominant texel of the body by area → the paint hue
-    const geo = body.geometry, uv = geo.attributes.uv, pos = geo.attributes.position, idx = geo.index, hist = {};
-    const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), n = idx ? idx.count : pos.count;
-    for (let i = 0; i < n; i += 3) {
-      const a = idx ? idx.getX(i) : i, b = idx ? idx.getX(i + 1) : i + 1, c = idx ? idx.getX(i + 2) : i + 2;
-      A.fromBufferAttribute(pos, a); B.fromBufferAttribute(pos, b); C.fromBufferAttribute(pos, c);
-      const area = B.sub(A).cross(C.sub(A)).length(), u = (uv.getX(a) + uv.getX(b) + uv.getX(c)) / 3, v = (uv.getY(a) + uv.getY(b) + uv.getY(c)) / 3;
-      const k = Math.floor(u * W) + ',' + Math.floor((tex.flipY ? 1 - v : v) * H); hist[k] = (hist[k] || 0) + area;
-    }
-    const [dx, dy] = Object.entries(hist).sort((p, q) => q[1] - p[1])[0][0].split(',').map(Number);
-    const px = (x, y) => { const o = (y * W + x) * 4; return [data.data[o], data.data[o + 1], data.data[o + 2]]; };
-    const dom = hsl(...px(dx, dy));
-    // every texel the body uses whose hue sits with the paint (and is not grey glass / chrome) gets repainted
-    const paintTexels = Object.keys(hist).map(k => k.split(',').map(Number)).filter(([x, y]) => { const h = hsl(...px(x, y)); return h.s > 0.18 && Math.min(Math.abs(h.h - dom.h), 1 - Math.abs(h.h - dom.h)) < 0.07; }).map(([x, y]) => ({ x, y, l: hsl(...px(x, y)).l / Math.max(0.05, dom.l) }));
-    scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    return { scene, size, tex, data, W, H, paintTexels, flipY: tex.flipY, colorSpace: tex.colorSpace };
-  }));
-}
+  if (models[name]) {
+    return models[name];
+  }
 
-// A palette clone with the paint texels set to `color`, shaded like the original.
-function paintTexture(name, m, color) {
-  const key = name + ':' + color;
-  if (paints[key]) return paints[key];
-  const cv = document.createElement('canvas'); cv.width = m.W; cv.height = m.H; const cx = cv.getContext('2d');
-  const d = new ImageData(new Uint8ClampedArray(m.data.data), m.W, m.H), c = new THREE.Color(color), base = {}; c.getHSL(base);
-  for (const t of m.paintTexels) { const cc = new THREE.Color().setHSL(base.h, base.s, THREE.MathUtils.clamp(base.l * t.l, 0.03, 0.97)); const o = (t.y * m.W + t.x) * 4; d.data[o] = cc.r * 255; d.data[o + 1] = cc.g * 255; d.data[o + 2] = cc.b * 255; }
-  cx.putImageData(d, 0, 0);
-  const tex = new THREE.CanvasTexture(cv); tex.flipY = m.flipY; tex.colorSpace = m.colorSpace; tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.LinearMipmapLinearFilter;
-  return paints[key] = tex;
-}
+  const path = assetPathFor(name);
 
-// Swaps the primitive parts of `g` for the model when it arrives. `color` is the paint (null keeps the model's own).
-export function attachModel(g, type, name, color, { lightbar = null } = {}) {
-  loadVehicleModel(name).then(m => {
-    const spec = VEH[type], s = spec.len / m.size.z;
-    for (const c of [...g.children]) if (!c.userData.keep) g.remove(c);
-    const model = m.scene.clone();
-    model.rotation.y = Math.PI; model.scale.setScalar(s);
-    const wheels = [];
-    model.traverse(o => {
-      if (!o.isMesh) return;
-      o.material = o.material.clone();
-      if (color !== null && color !== undefined) o.material.map = paintTexture(name, m, color);
-      o.material.metalness = 0.15; o.material.roughness = 0.55;
-      if (/wheel/i.test(o.name)) wheels.push(o);
+  models[name] = loader
+    .loadAsync(path)
+    .then(gltf => {
+      const scene = gltf.scene;
+
+      // Try to find a sensible body mesh.
+      // Custom GLBs may not have a mesh literally named "body".
+      let body = scene.getObjectByName('body');
+
+      if (!body || !body.isMesh) {
+        scene.traverse(object => {
+          if (
+            !body &&
+            object.isMesh &&
+            object.geometry
+          ) {
+            body = object;
+          }
+        });
+      }
+
+      const box = new THREE.Box3().setFromObject(scene);
+      const size = box.getSize(new THREE.Vector3());
+
+      // -----------------------------------------------------------------------
+      // Find paint texture information.
+      //
+      // Custom Danfo/Keke models do not need recolouring because they already
+      // have their correct Lagos livery. Therefore texture analysis is optional.
+      // -----------------------------------------------------------------------
+
+      let tex = null;
+      let data = null;
+      let W = 0;
+      let H = 0;
+      let paintTexels = [];
+
+      if (
+        body &&
+        body.material &&
+        !Array.isArray(body.material) &&
+        body.material.map &&
+        body.material.map.image
+      ) {
+        tex = body.material.map;
+
+        const img = tex.image;
+
+        W = img.width;
+        H = img.height;
+
+        if (W > 0 && H > 0) {
+          const cv = document.createElement('canvas');
+
+          cv.width = W;
+          cv.height = H;
+
+          const cx = cv.getContext('2d');
+
+          if (cx) {
+            cx.drawImage(img, 0, 0);
+
+            try {
+              data = cx.getImageData(
+                0,
+                0,
+                W,
+                H
+              );
+
+              const geo = body.geometry;
+              const uv = geo.attributes?.uv;
+              const position = geo.attributes?.position;
+              const index = geo.index;
+
+              if (uv && position) {
+                const hist = {};
+
+                const A = new THREE.Vector3();
+                const B = new THREE.Vector3();
+                const C = new THREE.Vector3();
+
+                const count = index
+                  ? index.count
+                  : position.count;
+
+                for (let i = 0; i < count; i += 3) {
+                  const a = index
+                    ? index.getX(i)
+                    : i;
+
+                  const b = index
+                    ? index.getX(i + 1)
+                    : i + 1;
+
+                  const c = index
+                    ? index.getX(i + 2)
+                    : i + 2;
+
+                  if (
+                    a >= position.count ||
+                    b >= position.count ||
+                    c >= position.count
+                  ) {
+                    continue;
+                  }
+
+                  A.fromBufferAttribute(position, a);
+                  B.fromBufferAttribute(position, b);
+                  C.fromBufferAttribute(position, c);
+
+                  const area = B
+                    .clone()
+                    .sub(A)
+                    .cross(
+                      C.clone().sub(A)
+                    )
+                    .length();
+
+                  const u =
+                    (
+                      uv.getX(a) +
+                      uv.getX(b) +
+                      uv.getX(c)
+                    ) / 3;
+
+                  const v =
+                    (
+                      uv.getY(a) +
+                      uv.getY(b) +
+                      uv.getY(c)
+                    ) / 3;
+
+                  const x = THREE.MathUtils.clamp(
+                    Math.floor(u * W),
+                    0,
+                    W - 1
+                  );
+
+                  const y = THREE.MathUtils.clamp(
+                    Math.floor(
+                      (tex.flipY ? 1 - v : v) * H
+                    ),
+                    0,
+                    H - 1
+                  );
+
+                  const key = `${x},${y}`;
+
+                  hist[key] =
+                    (hist[key] || 0) + area;
+                }
+
+                const dominant = Object.entries(
+                  hist
+                ).sort(
+                  (a, b) => b[1] - a[1]
+                )[0];
+
+                if (dominant) {
+                  const [dx, dy] =
+                    dominant[0]
+                      .split(',')
+                      .map(Number);
+
+                  const offset =
+                    (dy * W + dx) * 4;
+
+                  const dom = hsl(
+                    data.data[offset],
+                    data.data[offset + 1],
+                    data.data[offset + 2]
+                  );
+
+                  paintTexels = Object.keys(hist)
+                    .map(key =>
+                      key.split(',').map(Number)
+                    )
+                    .filter(([x, y]) => {
+                      const offset =
+                        (y * W + x) * 4;
+
+                      const h = hsl(
+                        data.data[offset],
+                        data.data[offset + 1],
+                        data.data[offset + 2]
+                      );
+
+                      const hueDistance = Math.min(
+                        Math.abs(h.h - dom.h),
+                        1 -
+                          Math.abs(h.h - dom.h)
+                      );
+
+                      return (
+                        h.s > 0.18 &&
+                        hueDistance < 0.07
+                      );
+                    })
+                    .map(([x, y]) => {
+                      const offset =
+                        (y * W + x) * 4;
+
+                      const h = hsl(
+                        data.data[offset],
+                        data.data[offset + 1],
+                        data.data[offset + 2]
+                      );
+
+                      return {
+                        x,
+                        y,
+                        l:
+                          h.l /
+                          Math.max(
+                            0.05,
+                            dom.l
+                          ),
+                      };
+                    });
+                }
+              }
+            } catch (error) {
+              console.warn(
+                `[vehicles] texture analysis skipped for ${name}:`,
+                error.message
+              );
+            }
+          }
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Shadows
+      // -----------------------------------------------------------------------
+
+      scene.traverse(object => {
+        if (!object.isMesh) return;
+
+        object.castShadow = true;
+        object.receiveShadow = true;
+      });
+
+      return {
+        scene,
+        size,
+        tex,
+        data,
+        W,
+        H,
+        paintTexels,
+        flipY: tex?.flipY ?? true,
+        colorSpace: tex?.colorSpace,
+      };
+    })
+    .catch(error => {
+      delete models[name];
+
+      console.warn(
+        `[vehicles] Failed to load ${name} from ${path}:`,
+        error.message
+      );
+
+      throw error;
     });
-    g.add(model); g.userData.model = model; g.userData.wheels = wheels; g.userData.wheelR = 0.3 * s;
-    g.userData.repaint = c => model.traverse(o => { if (o.isMesh) o.material.map = paintTexture(name, m, c); });
-    // headlights for the night + the roof light bar on emergency vehicles
-    const w = m.size.x * s, h = m.size.y * s;
-    for (const sx of [-0.3, 0.3]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.06), new THREE.MeshStandardMaterial({ color: 0xffe7ad })); l.position.set(sx * w, h * 0.42, -spec.len / 2 - 0.02); l.userData.keep = true; g.add(l); lamps.push(l.material); }
-    if (lightbar) { const bar = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.18, 0.4), new THREE.MeshStandardMaterial({ color: lightbar, emissive: lightbar, emissiveIntensity: 0.4 })); bar.position.set(0, h + 0.08, 0); bar.userData.keep = true; g.add(bar); g.userData.lightbar = bar.material; }
-  }).catch(e => console.warn(`[vehicles] ${name}: ${e.message}`));
+
+  return models[name];
 }
 
-// Rolls the wheels of a model vehicle by the distance it travelled this frame.
-export function spinWheels(g, speed, dt) {
-  const ws = g.userData.wheels; if (!ws) return;
-  const a = speed * dt / (g.userData.wheelR || 0.4);
-  for (const w of ws) w.rotation.x -= a;
+// -----------------------------------------------------------------------------
+// Paint texture
+// -----------------------------------------------------------------------------
+
+function paintTexture(name, model, color) {
+  if (
+    !model.data ||
+    !model.W ||
+    !model.H ||
+    !model.paintTexels?.length
+  ) {
+    return null;
+  }
+
+  const key = `${name}:${color}`;
+
+  if (paints[key]) {
+    return paints[key];
+  }
+
+  const canvas =
+    document.createElement('canvas');
+
+  canvas.width = model.W;
+  canvas.height = model.H;
+
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return null;
+  }
+
+  const image = new ImageData(
+    new Uint8ClampedArray(
+      model.data.data
+    ),
+    model.W,
+    model.H
+  );
+
+  const target = new THREE.Color(color);
+  const base = {};
+
+  target.getHSL(base);
+
+  for (const texel of model.paintTexels) {
+    const shade =
+      new THREE.Color().setHSL(
+        base.h,
+        base.s,
+        THREE.MathUtils.clamp(
+          base.l * texel.l,
+          0.03,
+          0.97
+        )
+      );
+
+    const offset =
+      (texel.y * model.W + texel.x) * 4;
+
+    image.data[offset] =
+      shade.r * 255;
+
+    image.data[offset + 1] =
+      shade.g * 255;
+
+    image.data[offset + 2] =
+      shade.b * 255;
+  }
+
+  ctx.putImageData(image, 0, 0);
+
+  const texture =
+    new THREE.CanvasTexture(canvas);
+
+  texture.flipY = model.flipY;
+
+  if (model.colorSpace) {
+    texture.colorSpace =
+      model.colorSpace;
+  }
+
+  texture.magFilter =
+    THREE.NearestFilter;
+
+  texture.minFilter =
+    THREE.LinearMipmapLinearFilter;
+
+  paints[key] = texture;
+
+  return texture;
+}
+
+// -----------------------------------------------------------------------------
+// Attach real model
+// -----------------------------------------------------------------------------
+
+export function attachModel(
+  g,
+  type,
+  name,
+  color,
+  { lightbar = null } = {}
+) {
+  loadVehicleModel(name)
+    .then(modelData => {
+      const spec = VEH[type];
+
+      if (!spec) {
+        console.warn(
+          `[vehicles] Unknown vehicle type: ${type}`
+        );
+
+        return;
+      }
+
+      if (!modelData.size.z) {
+        console.warn(
+          `[vehicles] Invalid model depth for ${name}`
+        );
+
+        return;
+      }
+
+      // Scale the GLB to the runtime vehicle length.
+      const scale =
+        spec.len / modelData.size.z;
+
+      // Remove procedural placeholder geometry.
+      for (const child of [...g.children]) {
+        if (!child.userData.keep) {
+          g.remove(child);
+        }
+      }
+
+      const model =
+        modelData.scene.clone(true);
+
+      // GLB convention: +Z forward.
+      // NAIJA RISE convention: -Z forward.
+      model.rotation.y = Math.PI;
+
+      model.scale.setScalar(scale);
+
+      const wheels = [];
+
+      // Only apply recolouring if a colour was explicitly supplied.
+      const shouldPaint =
+        color !== null &&
+        color !== undefined;
+
+      let paintMap = null;
+
+      if (shouldPaint) {
+        paintMap = paintTexture(
+          name,
+          modelData,
+          color
+        );
+      }
+
+      model.traverse(object => {
+        if (!object.isMesh) {
+          return;
+        }
+
+        if (Array.isArray(object.material)) {
+          object.material =
+            object.material.map(material =>
+              material.clone()
+            );
+        } else if (object.material) {
+          object.material =
+            object.material.clone();
+        }
+
+        // Do NOT overwrite glass/chrome/light materials.
+        // Only use the paint map when the source model actually supports
+        // texture-based recolouring.
+        if (
+          paintMap &&
+          modelData.paintTexels?.length &&
+          object.userData.paintable
+        ) {
+          if (
+            Array.isArray(object.material)
+          ) {
+            for (const material of object.material) {
+              material.map = paintMap;
+            }
+          } else if (object.material) {
+            object.material.map =
+              paintMap;
+          }
+        }
+
+        if (
+          /wheel/i.test(object.name)
+        ) {
+          wheels.push(object);
+        }
+
+        object.castShadow = true;
+        object.receiveShadow = true;
+      });
+
+      // ---------------------------------------------------------------------
+      // Wheel setup
+      // ---------------------------------------------------------------------
+
+      g.userData.wheels = wheels;
+
+      g.userData.wheelR =
+        Math.max(
+          0.22,
+          0.3 * scale
+        );
+
+      // ---------------------------------------------------------------------
+      // Model reference
+      // ---------------------------------------------------------------------
+
+      g.add(model);
+
+      g.userData.model = model;
+
+      // ---------------------------------------------------------------------
+      // Repaint API
+      // ---------------------------------------------------------------------
+
+      g.userData.repaint = nextColor => {
+        const texture =
+          paintTexture(
+            name,
+            modelData,
+            nextColor
+          );
+
+        if (!texture) {
+          return;
+        }
+
+        model.traverse(object => {
+          if (
+            !object.isMesh ||
+            !object.userData.paintable
+          ) {
+            return;
+          }
+
+          if (
+            Array.isArray(object.material)
+          ) {
+            for (const material of object.material) {
+              material.map = texture;
+              material.needsUpdate = true;
+            }
+          } else if (object.material) {
+            object.material.map =
+              texture;
+
+            object.material.needsUpdate =
+              true;
+          }
+        });
+      };
+
+      // ---------------------------------------------------------------------
+      // Dimensions
+      // ---------------------------------------------------------------------
+
+      const width =
+        modelData.size.x * scale;
+
+      const height =
+        modelData.size.y * scale;
+
+      // ---------------------------------------------------------------------
+      // Headlights
+      // ---------------------------------------------------------------------
+
+      for (const sx of [-0.3, 0.3]) {
+        const light =
+          new THREE.Mesh(
+            new THREE.BoxGeometry(
+              0.34,
+              0.16,
+              0.06
+            ),
+            new THREE.MeshStandardMaterial({
+              color: 0xffe7ad,
+              emissive: 0xffe7ad,
+              emissiveIntensity: 0.15,
+            })
+          );
+
+        light.position.set(
+          sx * width,
+          height * 0.42,
+          -spec.len / 2 - 0.02
+        );
+
+        light.userData.keep = true;
+
+        g.add(light);
+
+        lamps.push(light.material);
+      }
+
+      // ---------------------------------------------------------------------
+      // Emergency lightbar
+      // ---------------------------------------------------------------------
+
+      if (lightbar) {
+        const bar =
+          new THREE.Mesh(
+            new THREE.BoxGeometry(
+              1.1,
+              0.18,
+              0.4
+            ),
+            new THREE.MeshStandardMaterial({
+              color: lightbar,
+              emissive: lightbar,
+              emissiveIntensity: 0.4,
+            })
+          );
+
+        bar.position.set(
+          0,
+          height + 0.08,
+          0
+        );
+
+        bar.userData.keep = true;
+
+        g.add(bar);
+
+        g.userData.lightbar =
+          bar.material;
+      }
+
+      // ---------------------------------------------------------------------
+      // Flag successful custom model load.
+      // ---------------------------------------------------------------------
+
+      g.userData.realModel = true;
+      g.userData.modelName = name;
+
+      console.info(
+        `[vehicles] Loaded ${name} for ${type}`
+      );
+    })
+    .catch(error => {
+      // Procedural vehicle remains in place.
+      // This means a missing GLB will NOT break traffic.
+      console.warn(
+        `[vehicles] Keeping procedural ${type}; ${name} failed to load.`,
+        error.message
+      );
+    });
+}
+
+// -----------------------------------------------------------------------------
+// Wheel animation
+// -----------------------------------------------------------------------------
+
+export function spinWheels(
+  g,
+  speed,
+  dt
+) {
+  const wheels =
+    g.userData.wheels;
+
+  if (!wheels?.length) {
+    return;
+  }
+
+  const radius =
+    g.userData.wheelR || 0.4;
+
+  const rotation =
+    (speed * dt) / radius;
+
+  for (const wheel of wheels) {
+    wheel.rotation.x -= rotation;
+  }
 }
