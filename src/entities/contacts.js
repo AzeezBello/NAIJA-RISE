@@ -55,8 +55,6 @@ export function spawnContacts() {
   }
   // Speedy is the racer already standing at the Stadium bus stop
   const racer = SERVICE_NPCS.find(s => s.u === 'racer'); if (racer) { G.contactPos.speedy = { x: racer.x, z: racer.z }; G.contacts.push({ id: 'speedy', name: 'Speedy', g: null, arrow: arrowMesh(), x: racer.x, z: racer.z }); }
-}
-
   // Family compound (Alpha 1.1)
   for (const f of FAMILY) {
     const at = { x: FAMILY_HOME.x + f.offset.x, z: FAMILY_HOME.z + f.offset.z };
@@ -70,6 +68,7 @@ export function spawnContacts() {
     G.contacts.push({ id: f.id, name: f.name, g: ch.group, c: ch, arrow: arrowMesh(), x: at.x, z: at.z });
     G.contactPos[f.id] = at;
   }
+}
 
 export const missionWho = m => m.who || (typeof m.lines === 'function' ? m.lines()[0]?.s : null);
 

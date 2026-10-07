@@ -16,6 +16,10 @@ export const JOBS = [
   { id: 'lekki', title: 'Lekki Dispatch Rider', where: 'Lekki Toll Gate', at: 'lekkitoll', pay: 30000, xp: 32, dur: 5, by: 'amaka', skill: 'driving', min: 15, far: true },
   { id: 'yabarun', title: 'Campus Courier', where: 'Yaba College of Technology', at: 'yabatech', pay: 22000, xp: 26, dur: 4, by: 'nkechi', skill: 'driving', min: 10, far: true },
   { id: 'ikorodu', title: 'Ikorodu Haulage', where: 'Ikorodu Garage', at: 'ikorodu', pay: 35000, xp: 36, dur: 6, by: 'dayo', skill: 'driving', min: 25, far: true },
+  // Education unlocks (Alpha 1.1 C2) — need the certificate from the cyber café
+  { id: 'webdev', title: 'Web Freelancer', where: 'Cyber Café · Surulere', at: 'cafe', pay: 28000, xp: 28, dur: 4, by: 'cafeguy', skill: 'business', min: 12, needCourse: 'web' },
+  { id: 'designer', title: 'Graphics Freelancer', where: 'Cyber Café · Surulere', at: 'cafe', pay: 24000, xp: 24, dur: 4, by: 'cafeguy', skill: 'business', min: 8, needCourse: 'graphic' },
+  { id: 'coder', title: 'Junior Coder', where: 'Yaba · Tech errands', at: 'yaba', pay: 35000, xp: 32, dur: 5, by: 'cafeguy', skill: 'business', min: 15, needCourse: 'code' },
 ];
 export const jobOf = id => JOBS.find(j => j.id === id) || null;
 export const jobPay = (j, skills) => Math.round(j.pay * (1 + (skills?.[j.skill] || 0) * 0.01));   // +1% per skill point

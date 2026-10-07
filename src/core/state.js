@@ -33,6 +33,7 @@ export function loadState() {
       Object.assign(st, s);
       st.familyRel = Object.assign({}, DEFAULT.familyRel, s.familyRel || {});
       st.familyDone = Object.assign({}, DEFAULT.familyDone, s.familyDone || {});
+      st.digital = Object.assign({}, DEFAULT.digital, s.digital || {});
       if (st.familyReq === undefined) st.familyReq = null;
       if (st.familyReqDay === undefined) st.familyReqDay = 0;
       st.settings = Object.assign({}, DEFAULT.settings, s.settings || {});

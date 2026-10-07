@@ -100,6 +100,7 @@ function completeRequest(req) {
   if (s.waypoint?.label?.startsWith('Family')) setWaypoint(null);
   toast(req.done);
   msg(req.who, req.done, true);
+  if (req.id === 'school_levy') msg('sibling', 'School no go chase me again. Thank you. Evening class go give you extra credit now.');
   emit('hud');
 }
 

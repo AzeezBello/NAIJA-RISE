@@ -1,6 +1,7 @@
 # Design QA — Alpha 1.0
 
 ## Implemented
+- Education: five café courses with hours, stamina, skills, XP and certificates; certificate-gated jobs with locked pills in the Jobs app; school evening class with the family levy bonus. Verified headless: POS course taken (business +7, certificate stored), Web Freelancer locked until its certificate, school class +3 business.
 - Natural look restored (neutral grade, 08:30 start, original day palette, brighter moonlit night), original yellow danfo and korope, muted work-wear tints on single-material bodies, root motion locked on every animation clip (hips x/z fixed) so walk and run cycles never slide and snap back.
 - Corridors: Falomo and Third Mainland decks, VI / Lekki / Yaba / Ebute Metta / Ikorodu blocks and landmarks, five water bodies, toll plaza, footbridges, danfo queues, road-works diversions, long-distance jobs, data-driven roads and lights, region rectangles, bigger minimap and phone map.
 - Graphics levels (Auto/Low/Medium/High) with GPU detection, adaptive step-down, 8-bit fallback for the HDR target, half-res bloom, frustum-culled characters, near-only character shadows, crowd and traffic caps. Story contacts spawned as characters with an objective arrow; missions, GPS and prompts target the person.

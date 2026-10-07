@@ -71,7 +71,19 @@ export const PLACES_CFG = {
   food: [['Jollof rice & chicken', 3500, 60, 10], ['Shawarma', 2500, 40, 5], ['Chapman', 1500, 20, 0], ['Business lunch', 8000, 50, 5]],
   mall: { outfit: 15000, laptop: 250000, groceries: 6000, barber: 2000 },
   cinema: { ticket: 5000, movies: ['King of Boys III', 'Danfo Chronicles', 'Lagos Never Sleeps'] },
-  cafe: { browse: 500, courses: [['web', 'Web design', 40000], ['graphic', 'Graphic design', 30000], ['code', 'Coding', 60000]], gig: 25000 },
+  cafe: {
+    browse: 500, gig: 25000,
+    // id, name, cost, hours, skill gains, unlocks job ids
+    courses: [
+      ['web', 'Web design', 40000, 3, { business: 6, charisma: 2 }, ['webdev']],
+      ['graphic', 'Graphic design', 30000, 3, { business: 5, charisma: 3 }, ['designer']],
+      ['code', 'Coding', 60000, 4, { business: 8 }, ['webdev', 'coder']],
+      ['pos', 'POS & bookkeeping', 25000, 2, { business: 7 }, ['posagent']],
+      ['driving', 'Defensive driving', 35000, 3, { driving: 10 }, ['courier', 'tanker']],
+    ],
+  },
+  // Training centre at Community Grammar School: evening adult classes, extra credit if you paid Chioma's levy
+  school: { levyHelp: 2000, eveningClass: 15000, eveningSkill: { business: 3 } },
   football: { wager: 5000, tiers: ['Quick match', 'Neighbourhood tournament', 'Lagos championship'], prizes: [0, 20000, 100000] },
 };
 export const RENT = { agentFeeRate: 0.1, leaseDays: 30, tenantShare: 1 / 30 };   // tenants pay rent/30 per game day

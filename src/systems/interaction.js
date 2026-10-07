@@ -22,7 +22,7 @@ import { startRace } from './racing.js';
 import { nearPlace, openPlace, placePrompt } from './places.js';
 import { LIVERIES, SLOGANS } from '../data/vehicles.js';
 import { CHARACTER } from '../data/config.js';
-import { familyPrompt, tryFamilyInteract, maybeIssueFamilyRequest } from './family.js';
+import { familyPrompt, tryFamilyInteract } from './family.js';
 
 export function nearestCar() {
   let best = null, d0 = 5;
@@ -32,9 +32,6 @@ export function nearestCar() {
 const nearKind = (kind, r) => LANDMARKS.find(l => l.kind === kind && dist(pos(), l) < r);
 const nearKiosk = () => !G.inCar && KIOSKS.some(([x, z]) => dist(G.player.position, { x, z }) < 4);
 const nearNight = () => !G.inCar && G.state.settings.mature !== false && venueOpen() && (G.nightlife || []).find(n => dist(G.player.position, n) < 3.5);
-
-  const fp = familyPrompt();
-  if (fp) return fp;
 
 export const nearHome = () => { const h = homeProp(); return !!h && !G.inCar && dist(G.player.position, h.door) < 6; };
 const nearGate = () => !G.inCar && PROPERTIES.find(p => p.id !== G.state.home && dist(G.player.position, p.door) < 6);
@@ -249,6 +246,7 @@ export function interact() {
   if (j && dist(p, jobPos(j)) < 9) { G.working = { job: j, t: 0 }; return; }
   if (nearHome()) { sleep(homeProp()); return; }
   if (!G.inCar) {
+    if (tryFamilyInteract()) return;
     const gate = nearGate(); if (gate) { agentDialog(gate); return; }
     const night = nearNight(); if (night) { hookupDialog(night); return; }
     if (nearKiosk()) { posDialog(); return; }
@@ -307,6 +305,7 @@ export function promptFor() {
   if (j && dist(p, jobPos(j)) < 9) return { key: 'E', text: `Start shift as ${j.title}` };
   if (nearHome()) return { key: 'E', text: 'Enter home · sleep' };
   if (!G.inCar) {
+    const fp = familyPrompt(); if (fp) return fp;
     const gate = nearGate(); if (gate) return { key: 'E', text: `Talk to Agent Kunle · ${gate.type}${G.state.props.includes(gate.id) || G.state.rented?.id === gate.id ? ' (yours)' : ' to let'}` };
     const night = nearNight(); if (night) return { key: 'E', text: `Talk to ${night.name}` };
     if (nearKiosk()) return { key: 'E', text: 'Use POS kiosk' };

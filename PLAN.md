@@ -69,7 +69,7 @@ Falomo Bridge → Victoria Island → Lekki toll gate and Lekki Phase 1; Third M
 
 **Corridors — remaining:** Ikoyi proper between the Island and VI, Lekki beyond Phase 1 (Ajah, Eleko), Ikorodu town, Apapa port road; interchange ramps at Costain and Falomo; BRT dedicated lanes on Ikorodu Road.
 
-**Living City Phase 3 — Life:** family system (mum, sibling, uncle with needs, requests and storylines), education tree (training centre, computer institute, polytechnic) that unlocks careers, fitness as recovery/strength, businesses v4 (employees with schedules).
+**Living City Phase 3 — Life:** family system (mum, sibling, uncle with needs, requests and storylines — first version shipped: family compound, requests and relationships), education tree (shipped C2: five cyber café courses with certificates that gate jobs, school evening classes; polytechnic and Yaba Tech enrolment next), fitness as recovery/strength, businesses v4 (employees with schedules).
 
 **Living City Phase 4 — Social:** NPC relationship model (trust, respect, affection, reputation), friendships and romance, Egbon Adugbo as the neighbourhood network manager who hands out jobs and missions by local reputation.
 

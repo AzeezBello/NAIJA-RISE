@@ -6,20 +6,21 @@ import { LANDMARKS, VENDORS } from '../data/locations.js';
 import { toast } from '../ui/feedback.js';
 import { pay, tx, xp, addItem, addRep, gainSkill, msg } from './economy.js';
 import { startDialog } from './dialogue.js';
+import { cafeCourseRows, completeCourse } from './education.js';
 
 // Living City places (Phase 2): gym, restaurant, mall + cinema, cyber café, football pitch, roadside vendors.
 // Every activity moves the player model: money, stamina (energy), skills, reputation, time — and opens opportunities.
 const s = () => G.state;
 const nearKind = (kind, r) => LANDMARKS.find(l => l.kind === kind && dist(pos(), l) < r);
-export const nearPlace = () => (G.inCar ? null : nearKind('gym', 12) || nearKind('restaurant', 12) || nearKind('mall', 18) || nearKind('cafe', 12) || nearKind('pitch', 20) || (VENDORS.some(([x, z]) => dist(pos(), { x, z }) < 3.5) ? { kind: 'vendor', name: 'Roadside vendor' } : null));
+export const nearPlace = () => (G.inCar ? null : nearKind('gym', 12) || nearKind('restaurant', 12) || nearKind('mall', 18) || nearKind('cafe', 12) || nearKind('pitch', 20) || nearKind('school', 12) || (VENDORS.some(([x, z]) => dist(pos(), { x, z }) < 3.5) ? { kind: 'vendor', name: 'Roadside vendor' } : null));
 const hours = h => { s().clock = Math.min(23.95, s().clock + h); emit('clock'); };
 const done = ch => { ch.apply?.(); emit('hud'); };
 
 export function placePrompt(p) {
-  return { gym: 'Enter gym', restaurant: `Enter ${p.name}`, mall: 'Enter mall', cafe: 'Enter cyber café', pitch: 'Join the football', vendor: 'Buy from vendor' }[p.kind];
+  return { gym: 'Enter gym', restaurant: `Enter ${p.name}`, mall: 'Enter mall', cafe: 'Enter cyber café', pitch: 'Join the football', school: 'Visit school · evening class', vendor: 'Buy from vendor' }[p.kind];
 }
 
-export function openPlace(p) { ({ gym: gymMenu, restaurant: foodMenu, mall: mallMenu, cafe: cafeMenu, pitch: footballMenu, vendor: vendorMenu })[p.kind](p); }
+export function openPlace(p) { ({ gym: gymMenu, restaurant: foodMenu, mall: mallMenu, cafe: cafeMenu, pitch: footballMenu, school: schoolMenu, vendor: vendorMenu })[p.kind](p); }
 
 /* ---------- gym ---------- */
 export const gymMember = () => s().gym.until > s().day;
@@ -83,14 +84,34 @@ function cinemaMenu() {
 
 /* ---------- cyber café ---------- */
 function cafeMenu() {
-  const c = PLACES_CFG.cafe, d = s().digital;
-  const skilled = Object.keys(d).length, gig = c.gig * (s().inv.laptop ? 2 : 1);
-  startDialog([{ s: 'cafeguy', t: skilled ? `You get ${skilled} digital skill${skilled > 1 ? 's' : ''}. Freelance gig dey, ${fmt(gig)}.` : 'Learn web design, graphics or coding. Skills unlock freelance money.' }], [
-    ...c.courses.filter(([id]) => !d[id]).map(([id, name, cost]) => ({ label: `Learn ${name} · ${fmt(cost)}`, apply() { if (!pay(cost, `Course · ${name}`)) return toast('Not enough money'); d[id] = true; hours(3); gainSkill('business', 5); xp(20); toast(`${name} learned — freelance gigs unlocked`); msg('cafeguy', `${name} certificate ready. Clients dey ask for people like you.`); } })),
-    ...(skilled ? [{ label: `Freelance gig · ${fmt(gig)}`, apply() { if (s().stamina < 25) return toast('Too tired to focus'); s().cash += gig; tx('Freelance gig', gig); hours(2); s().stamina -= 25; gainSkill('business', 3); addRep('business', 2); xp(12); toast(`Gig delivered · +${fmt(gig)}`); } }] : []),
-    { label: `Browse & apply for jobs · ${fmt(c.browse)}`, apply() { if (!pay(c.browse, 'Cyber café')) return toast('No money'); hours(0.5); gainSkill('business', 1); toast('Applications sent — check Jobs on your phone'); } },
+  const c = PLACES_CFG.cafe, st = s(), rows = cafeCourseRows();
+  const skilled = rows.filter(r => r.done).length, gig = c.gig * (st.inv.laptop ? 2 : 1);
+  startDialog([{ s: 'cafeguy', t: skilled ? `You get ${skilled} certificate${skilled > 1 ? 's' : ''}. Freelance gig ${fmt(gig)}. Courses still dey.` : 'Learn a trade for the digital economy. Certificates open better jobs.' }], [
+    ...rows.filter(r => !r.done).map(r => ({ label: `Learn ${r.name} · ${fmt(r.cost)} · ${r.hrs}h`, apply() {
+      if (st.stamina < 20) return toast('Too tired to study — rest first');
+      if (!pay(r.cost, `Course · ${r.name}`)) return toast('Not enough money');
+      st.stamina -= 20; hours(r.hrs || 3); completeCourse(r.id, r.name, r.hrs, r.skills);
+    } })),
+    ...(skilled ? [{ label: `Freelance gig · ${fmt(gig)}`, apply() { if (st.stamina < 25) return toast('Too tired to focus'); st.cash += gig; tx('Freelance gig', gig); hours(2); st.stamina -= 25; gainSkill('business', 3); addRep('business', 2); xp(12); toast(`Gig delivered · +${fmt(gig)}`); } }] : []),
+    { label: `Browse jobs · ${fmt(c.browse)}`, apply() { if (!pay(c.browse, 'Cyber café')) return toast('No money'); hours(0.5); gainSkill('business', 1); toast('Applications sent — check Jobs on your phone'); } },
     { label: 'Leave', apply() {} },
-  ].slice(0, 6), done);
+  ].slice(0, 8), done);
+}
+
+/* ---------- Community Grammar School: evening adult classes ---------- */
+function schoolMenu() {
+  const cfg = PLACES_CFG.school, st = s(), helped = st.familyDone?.school_levy != null;
+  startDialog([{ s: 'cafeguy', t: helped ? 'Chioma school levy don clear. Evening adult class dey open for you.' : 'Community Grammar School. Evening adult classes — or support a student.' }], [
+    { label: `Evening class · ${fmt(cfg.eveningClass)}`, apply() {
+      if (st.stamina < 15) return toast('Too tired');
+      if (!pay(cfg.eveningClass, 'School · evening class')) return toast('Not enough money');
+      st.stamina -= 15; hours(2);
+      for (const [k, v] of Object.entries(cfg.eveningSkill || {})) gainSkill(k, v);
+      xp(helped ? 12 : 8); if (helped) addRep('social', 2);
+      toast(helped ? 'Class done · extra credit for helping family' : 'Class done');
+    } },
+    { label: 'Leave', apply() {} },
+  ], done);
 }
 
 /* ---------- street football ---------- */
