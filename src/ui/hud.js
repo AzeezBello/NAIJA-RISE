@@ -67,7 +67,10 @@ export function buildHud(root) {
     </div>
     <div class="dialog glass" id="dialog"></div>
     <div id="toast" class="toast"></div>
-    <div class="notif-stack" id="notifStack"></div>
+    <div id="toast" class="toast"></div>
+      <div class="notif-stack" id="notifStack"></div>
+      <div id="notif" class="notif glass" style="display:none"></div>
+
   </div>`);
   on('hud', refreshHud);
   on('key', k => { if (k === 'h') { G.state.settings.hints = !G.state.settings.hints; refreshHud(); } });
@@ -79,6 +82,35 @@ export function refreshHud() {
   const s = G.state;
   $('cash').textContent = fmt(s.cash); $('bank').textContent = `Bank ${fmt(s.bank)}`;
   $('heat').innerHTML = [0, 1, 2, 3, 4].map(i => `<i class="${i < s.heat ? 'on' : ''}"></i>`).join('');
+    const card = $('objCard');
+  card.classList.remove('state-active', 'state-free', 'state-fail', 'state-done', 'state-family', 'state-job');
+  if (s.done) {
+    card.classList.add('state-done');
+    $('objkicker') && ($('objkicker').textContent = 'Complete');
+  } else if (paused) {
+    card.classList.add('state-free');
+  } else if (s.familyReq) {
+    card.classList.add('state-family');
+  } else if (s.job) {
+    card.classList.add('state-job');
+  } else if (missionActive()) {
+    card.classList.add('state-active');
+  } else {
+    card.classList.add('state-free');
+  }
+
+  // Prefer family objective text when a request is active and story is paused/idle
+  if (s.familyReq && (paused || !missionActive())) {
+    // optional: import requestOf from family data
+    // $('missionTitle').textContent = 'Family';
+    // $('objective').textContent = request blurb
+  }
+
+  $('heatLabel').classList.toggle('wanted', wanted());
+  $('heatLabel').textContent = wanted() ? 'Wanted' : 'Heat';
+
+
+
   const isWanted = wanted();
   $('heat').classList.toggle('hot', isWanted || s.heat >= 3);
   $('heatLabel').textContent = isWanted ? 'Wanted' : 'Heat';
@@ -140,20 +172,48 @@ function localeName(p) {
 // Per-frame HUD updates: prompt, distances, bars, speedometer.
 export function hudFrame() {
   const s = G.state, p = pos();
+  
+    // Prompt with optional sub
   const pr = promptFor(), e = $('prompt');
-  const sig = pr ? (pr.key || '') + pr.text + (pr.bar !== undefined ? '#' : '') : '';
-
+  const sig = pr ? (pr.key || '') + pr.text + (pr.sub || '') + (pr.bar !== undefined ? '#' : '') : '';
   if (sig !== lastPrompt) {
     lastPrompt = sig;
     if (!pr) e.classList.remove('show');
     else {
-      const sub = pr.sub ? `<span class="sub">${esc(pr.sub)}</span>` : '';
-      e.innerHTML = (pr.key ? Key(pr.key) : '') +
-        `<span class="ptext">${esc(pr.text)}${sub}</span>` +
-        (pr.bar !== undefined ? '<span class="bar"><i></i></span>' : '');
+      e.innerHTML =
+        `<div class="prow">${pr.key ? Key(pr.key) : ''}<span class="ptext">${esc(pr.text)}</span>` +
+        (pr.bar !== undefined ? '<span class="bar"><i></i></span>' : '') +
+        `</div>` +
+        (pr.sub ? `<div class="psub">${esc(pr.sub)}</div>` : '');
       e.classList.add('show');
     }
   }
+  if (pr && pr.bar !== undefined) {
+    const i = e.querySelector('.bar i');
+    if (i) i.style.width = (pr.bar * 100) + '%';
+  }
+
+  // … existing target / locale / gps / vitals …
+
+  if (G.inCar) {
+    // … existing speed / fuel / gear …
+
+    const veh = $('vehicle');
+    const fuelLow = s.fuel < 20;
+    const cond = G.car.userData.cond ?? 100;
+    const condLow = cond < 35;
+    veh.classList.toggle('warn-fuel', fuelLow);
+    veh.classList.toggle('warn-cond', condLow);
+
+    // One-shot flash when condition drops (track previous)
+    if (G._lastCond != null && cond < G._lastCond - 0.5) {
+      veh.classList.remove('dmgFlash');
+      void veh.offsetWidth;
+      veh.classList.add('dmgFlash');
+    }
+    G._lastCond = cond;
+  }
+
 
   if (pr && pr.bar !== undefined) { const i = e.querySelector('.bar i'); if (i) i.style.width = (pr.bar * 100) + '%'; }
   if (G.race && !G.race.finished && G.race.obj) $('objective').textContent = G.race.obj;
@@ -192,4 +252,6 @@ export function hudFrame() {
   } else {
     G._lastCond = undefined;
   }
+  
 }
+

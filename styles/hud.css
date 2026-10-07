@@ -200,3 +200,113 @@ body.touch-ui .dialog{bottom:210px}
   .prompt .key{min-width:30px;height:30px;font-size:13px}
   .notif-stack{top:56px}
 }
+
+
+
+
+/* ========== Track A · HUD polish ========== */
+
+/* Objective states */
+.objective.state-active { border-left-color: var(--green); }
+.objective.state-free   { border-left-color: var(--blue); }
+.objective.state-fail   { border-left-color: var(--red); }
+.objective.state-done   { border-left-color: var(--gold); opacity: .92; }
+.objective.state-family { border-left-color: #e8b86d; }
+.objective.state-job    { border-left-color: var(--blue); }
+
+.objective.state-active .objkicker { color: var(--green); }
+.objective.state-free   .objkicker { color: var(--blue); }
+.objective.state-family .objkicker { color: #e8b86d; }
+.objective.state-job    .objkicker { color: var(--blue); }
+
+/* Wanted pulse on label */
+.wl.wanted {
+  color: var(--red);
+  animation: wantedPulse 0.85s ease-in-out infinite alternate;
+}
+@keyframes wantedPulse {
+  from { opacity: 0.55; text-shadow: none; }
+  to   { opacity: 1; text-shadow: 0 0 10px var(--red); }
+}
+
+/* Prompt polish + optional sub-line */
+.prompt {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.prompt .prow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.prompt .psub {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+  padding-left: 36px;
+}
+.prompt.show {
+  animation: promptIn 0.2s ease-out;
+}
+@keyframes promptIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Vehicle warnings */
+.vehicle.warn-fuel .fuelfill {
+  background: linear-gradient(90deg, #b53a1f, #ff5d3d);
+  animation: fuelBlink 0.7s infinite alternate;
+}
+.vehicle.warn-cond .fuel .row:last-child b {
+  color: var(--red);
+}
+@keyframes fuelBlink {
+  from { opacity: 0.55; }
+  to   { opacity: 1; }
+}
+.vehicle.dmgFlash {
+  animation: dmgFlash 0.35s ease-out;
+}
+@keyframes dmgFlash {
+  0%   { box-shadow: 0 0 0 0 #ff3d3d00; }
+  40%  { box-shadow: 0 0 24px 4px #ff3d3d88; }
+  100% { box-shadow: 0 0 0 0 #ff3d3d00; }
+}
+
+/* Notification stack */
+.notif-stack {
+  position: absolute;
+  left: 50%;
+  top: 64px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  pointer-events: none;
+  z-index: 40;
+  max-width: min(420px, 90vw);
+}
+.notif-stack .notif {
+  position: static;
+  transform: none;
+  opacity: 0;
+  animation: notifIn 0.28s ease-out forwards;
+}
+.notif-stack .notif.show { opacity: 1; }
+.notif-stack .notif.kind-warn b { color: var(--gold); }
+.notif-stack .notif.kind-bad b  { color: var(--red); }
+.notif-stack .notif.kind-good b { color: var(--green); }
+@keyframes notifIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (max-width: 900px), (max-height: 560px) {
+  .notif-stack { top: 56px; }
+  .prompt .psub { padding-left: 28px; font-size: 8px; }
+}
