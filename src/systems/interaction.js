@@ -23,8 +23,9 @@ import { nearPlace, openPlace, placePrompt } from './places.js';
 import { LIVERIES, SLOGANS } from '../data/vehicles.js';
 import { CHARACTER } from '../data/config.js';
 import { familyPrompt, tryFamilyInteract } from './family.js';
+import { frozen } from '../core/context.js';
 import { bumpRel, rewardContact, talkToContact, getRel } from './relationships.js';
-
+import { nearCrew, runCrewDialog } from './crew.js';
 function nearStoryContact(r = 4) {
   if (G.inCar || !G.contacts) return null;
   const p = G.player.position;
@@ -63,90 +64,130 @@ const ENTER_EXIT_T = () => CHARACTER.enterExit ?? 0.85;
  * G.vehicleT > 0  → blend in progress (movement frozen via frozen()).
  * G.vehicleMode   → 'enter' | 'exit'
  */
+/**
+ * Start enter or exit. Does not flip G.inCar until blend completes.
+ * mode: 'enter' | 'exit'
+ */
 export function toggleCar() {
-  if (frozen() || G.vehicleT > 0) return;
+  if (frozen() || G.vehicleT != null) return; // already blending
 
   if (G.inCar) {
-    // ---- EXIT ----
+    // EXIT
     const car = G.car;
     const f = vForward(car);
-    _side.set(f.z, 0, -f.x).normalize();
-    const door = car.position.clone().addScaledVector(_side, -2.6);
+    const door = car.position.clone().add(doorOffset(car, -1));
     door.y = car.position.y;
 
+    G.vehicleT = 0;
     G.vehicleMode = 'exit';
-    G.vehicleT = ENTER_EXIT_T();
-    G.vehicleFrom = car.position.clone();
+    G.vehicleFrom = G.player.position.clone();
     G.vehicleTo = door;
+    G.vehicleCar = car;
     G.player.visible = true;
-    G.player.position.copy(car.position);
-    G.player.position.y = door.y;
     G.playerChar?.setState('exit', 0);
+    G.camBlend = 1;
     return;
   }
 
-  // ---- ENTER ----
   const c = nearestCar();
   if (!c) return;
 
+  // ENTER
+  const door = c.position.clone().add(doorOffset(c, -1));
+  door.y = c.position.y;
+
+  G.vehicleT = 0;
   G.vehicleMode = 'enter';
-  G.vehicleT = ENTER_EXIT_T();
   G.vehicleFrom = G.player.position.clone();
-  G.vehicleTo = c.position.clone();
+  G.vehicleTo = door;
   G.vehicleCar = c;
   G.playerChar?.setState('enter', 0);
+  G.camBlend = 1;
+
   // Face the car
   const dx = c.position.x - G.player.position.x;
   const dz = c.position.z - G.player.position.z;
   if (Math.hypot(dx, dz) > 0.1) G.player.rotation.y = Math.atan2(dx, dz);
 }
 
-/** Call once per frame from city update (or movement). */
+function smoothstep(t) {
+  return t * t * (3 - 2 * t);
+}
+
+/** Call every frame from city update, after movement when not blending foot control. */
 export function updateVehicleTransition(dt) {
-  if (!(G.vehicleT > 0)) return;
+  if (G.vehicleT == null) return;
 
   const dur = ENTER_EXIT_T();
-  G.vehicleT = Math.max(0, G.vehicleT - dt);
-  const u = 1 - G.vehicleT / dur;           // 0 → 1
-  const ease = u * u * (3 - 2 * u);         // smoothstep
+  G.vehicleT = Math.min(1, G.vehicleT + dt / dur);
+  const t = smoothstep(G.vehicleT);
+  const car = G.vehicleCar;
+  const from = G.vehicleFrom;
+  const to = G.vehicleTo;
 
   if (G.vehicleMode === 'enter') {
-    const from = G.vehicleFrom, to = G.vehicleTo;
-    G.player.position.lerpVectors(from, to, ease);
-    G.player.position.y = from.y + (to.y - from.y) * ease;
-    if (G.vehicleT <= 0) {
-      const c = G.vehicleCar;
-      G.inCar = true;
-      G.player.visible = false;
-      G.car = c;
-      G.carSpeed = 0;
-      G.camBlend = 1;
-      if (!c.userData.owned && !c.userData.stolen) {
-        c.userData.stolen = true;
-        addHeat(1, 'Stolen vehicle');
-        addRep('street', 2);
-        addRep('public', -2);
-      }
-      toast(`${VEH[c.userData.type].name}${c.userData.owned ? ' · yours' : ' · not yours'} · W gas · S brake · A/D steer`);
-      G.vehicleCar = null;
-      G.vehicleMode = null;
-      G.playerChar?.setState('idle', 0);
+    // Walk toward door, then seat
+    const mid = to;
+    const seat = car.position.clone();
+    seat.y = car.position.y;
+    const p = t < 0.55
+      ? from.clone().lerp(mid, t / 0.55)
+      : mid.clone().lerp(seat, (t - 0.55) / 0.45);
+    G.player.position.copy(p);
+    G.playerChar?.setState(t < 0.55 ? 'walk' : 'enter', t < 0.55 ? 3 : 0);
+
+    if (G.vehicleT >= 1) {
+      finishEnter(car);
     }
-  } else if (G.vehicleMode === 'exit') {
-    const from = G.vehicleFrom, to = G.vehicleTo;
-    G.player.position.lerpVectors(from, to, ease);
-    G.player.position.y = to.y;
-    // Slide opacity-style: scale down then up is overkill; just move out
-    if (G.vehicleT <= 0) {
-      G.inCar = false;
-      G.player.visible = true;
-      G.car = null;
-      G.carSpeed = 0;
-      G.vehicleMode = null;
-      toast('Back on foot');
-      G.playerChar?.setState('idle', 0);
+  } else {
+    // Exit: seat → door → stand
+    const seat = car.position.clone();
+    const p = t < 0.4
+      ? seat.clone().lerp(to, t / 0.4)
+      : to.clone();
+    G.player.position.copy(p);
+    G.player.visible = true;
+    G.playerChar?.setState(t < 0.5 ? 'exit' : 'idle', 0);
+
+    if (G.vehicleT >= 1) {
+      finishExit(car);
     }
   }
+}
+
+function finishEnter(car) {
+  G.inCar = true;
+  G.player.visible = false;
+  G.car = car;
+  G.carSpeed = 0;
+  G.player.position.copy(car.position);
+
+  if (!car.userData.owned && !car.userData.stolen) {
+    car.userData.stolen = true;
+    addHeat(1, 'Stolen vehicle');
+    addRep('street', 2);
+    addRep('public', -2);
+  }
+  toast(`${VEH[car.userData.type].name}${car.userData.owned ? ' · yours' : ' · not yours'} · W gas · S brake · A/D steer`);
+  clearVehicleBlend();
+}
+
+function finishExit(car) {
+  G.inCar = false;
+  G.player.visible = true;
+  G.car = null;
+  G.carSpeed = 0;
+  // Stay at door world pos (already set)
+  toast('Back on foot');
+  clearVehicleBlend();
+}
+
+function clearVehicleBlend() {
+  G.vehicleT = null;
+  G.vehicleMode = null;
+  G.vehicleFrom = null;
+  G.vehicleTo = null;
+  G.vehicleCar = null;
 }
 
 /* ---------- small vendor dialogues reuse the mission dialogue box ---------- */
@@ -260,7 +301,11 @@ export function interact() {
   if (nearHome()) { sleep(homeProp()); return; }
   if (!G.inCar) {
     if (tryFamilyInteract()) return;
-
+    const crew = nearCrew();
+    if (crew) {
+      runCrewDialog(crew);
+      return;
+    }
     const sc = nearStoryContact(4);
     if (sc && contactOf(sc.id)) {
       const missionTalk = missionAvailable() && !G.task && dist(pos(), missionPos()) < curMission().r;
@@ -320,7 +365,17 @@ export function interact() {
 export function promptFor() {
   const p = pos(), s = G.state;
   if (G.sleeping) return { text: '…' };
-  if (G.dialog) return null;
+    if (G.dialog) return null;
+
+  // Crew proximity prompt
+  const crew = nearCrew();
+  if (crew) {
+    return {
+      key: 'E',
+      text: `${crew.name} · ${crew.vehType}`,
+      sub: `${crew.traitLabel} ${crew.role} · ${fmt(crew.fare)}`,
+    };
+  }
   if (G.working) return { text: `Working · ${G.working.job.title}`, bar: G.working.t / G.working.job.dur };
   if (G.task && !G.race) { const d = missionPos(); if (d && dist(p, d) < 13 && (G.task.type !== 'steal' || G.inCar)) return { key: 'E', text: G.task.type === 'steal' ? 'Hand over the sedan' : `Deliver ${G.task.item === 'coldbox' ? 'the vaccine box' : G.task.item === 'cargo' ? 'the glassware' : 'the package'}` }; }
   if (missionAvailable() && !G.task && dist(p, missionPos()) < curMission().r) { const who = contactOf(curMission().lines()[0].s)?.name || 'contact'; return { key: 'E', text: s.storyPaused ? `Resume with ${who}` : `Talk to ${who}` }; }
@@ -330,14 +385,7 @@ export function promptFor() {
   if (!G.inCar) {
     const fp = familyPrompt(); if (fp) return fp;
     
-    const sc = nearStoryContact(4);
-    if (sc && contactOf(sc.id)) {
-      // Don't steal mission talk prompt
-      const missionTalk = missionAvailable() && !G.task && dist(pos(), missionPos()) < curMission().r;
-      if (!missionTalk) {
-        return { key: 'E', text: `Talk to ${sc.name}` };
-      }
-    }
+
 
     const gate = nearGate(); if (gate) return { key: 'E', text: `Talk to Agent Kunle · ${gate.type}${G.state.props.includes(gate.id) || G.state.rented?.id === gate.id ? ' (yours)' : ' to let'}` };
     const night = nearNight(); if (night) return { key: 'E', text: `Talk to ${night.name}` };
