@@ -23,7 +23,6 @@ import { nearPlace, openPlace, placePrompt } from './places.js';
 import { LIVERIES, SLOGANS } from '../data/vehicles.js';
 import { CHARACTER } from '../data/config.js';
 import { familyPrompt, tryFamilyInteract } from './family.js';
-import { frozen } from '../core/context.js';
 import { bumpRel, rewardContact, talkToContact, getRel } from './relationships.js';
 import { nearCrew, runCrewDialog } from './crew.js';
 function nearStoryContact(r = 4) {

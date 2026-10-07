@@ -3,9 +3,9 @@ import { emit } from '../core/events.js';
 import { fmt } from '../core/utils.js';
 import { TRAITS } from '../data/crew.js';
 import { startDialog } from './dialogue.js';
-import { pay, tx, addRep, xp } from './economy.js';
+import { pay, tx, addRep, xp, addHeat} from './economy.js';
 import { toast } from '../ui/feedback.js';
-import { addHeat } from './police.js'; // adjust import path if different
+
 
 function greeting(c) {
   const call = c.route?.call || 'Enter!';
