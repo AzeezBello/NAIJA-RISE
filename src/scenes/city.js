@@ -35,6 +35,7 @@ import { buildPhone, phoneOpen } from '../ui/phone.js';
 import { buildTouch, updateTouch } from '../ui/touch.js';
 import { mapDraw, phoneMapDraw } from '../ui/minimap.js';
 import { toggleColliderDebug } from '../world/builders.js';
+import { updateVehicleTransition } from '../systems/interaction.js';
 
 // The playable city. World geometry and traffic are built once in main.js; this scene adds the player,
 // NPCs, HUD and phone, then runs the per-frame systems.
@@ -67,6 +68,8 @@ export const CityScene = {
   exit() { $('hud')?.classList.remove('show'); },
   update(dt) {
     updateGamepad(dt);
+    updateMovement(dt);
+    updateVehicleTransition(dt);
     updateMovement(dt);
     updatePlayer(); updateTraffic(dt); updateNpcs(dt); updateContacts(dt); updateCharacters(dt); updateAnimals(dt); updateMarkers(dt); updateClouds(dt);
     updateVitals(dt); updateEconomy(dt); updateLaw(dt); updateEvents(dt); updateWeather(dt); updateMissions(dt); updateRace(dt); updateTrafficLights(dt); updateTolls(); updateClock(dt); updateAudio();

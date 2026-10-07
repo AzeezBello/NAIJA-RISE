@@ -22,3 +22,19 @@ Recommended pipelines:
 1. **Ready Player Me** avatar (`?quality=low&meshLod=1`) + Mixamo animations retargeted in Blender → export GLB.
 2. **Custom Blender rig** for proper Nigerian faces, hair (afro, braids, fade) and outfits (ankara, agbada,
    buba and sokoto) — rig with Mixamo auto-rigger or Rigify, bake Idle/Walk/Run, export GLB.
+
+
+## Animation clips (Alpha 1.1)
+
+| Key | Required | Notes |
+|-----|----------|--------|
+| Idle | yes | Loop, in place |
+| Walk | yes | Loop, in place, no root motion |
+| Run | yes | Loop, in place |
+| Turn | optional | Falls back to Walk |
+| Stop | optional | Falls back to Idle/Walk |
+| Enter | optional | Vehicle enter; falls back to Idle |
+| Exit | optional | Vehicle exit; falls back to Idle |
+| Jump | optional | Not wired to input yet |
+
+Bake clips **in place** (lock root XZ). Name them exactly as in the table (or aliases listed in `CHARACTER.rigs[].clips`).

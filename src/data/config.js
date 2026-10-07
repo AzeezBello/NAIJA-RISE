@@ -16,15 +16,50 @@ export const PERF = { lowEnd: typeof matchMedia !== 'undefined' && (matchMedia('
 const CDN = 'https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/models/gltf/', RPM_ANIM = 'https://raw.githubusercontent.com/readyplayerme/animation-library/master/masculine/glb/';
 export const CHARACTER = {
   height: 2.3, blend: 0.25, animRange: 120,
+  // Enter/exit vehicle blend duration (seconds). Clips optional — pose holds if missing.
+  enterExit: 0.85,
   rigs: [
-    { id: 'rpm', urls: ['assets/characters/player.glb', CDN + 'readyplayer.me.glb'],
-      anims: [{ key: 'idle', url: RPM_ANIM + 'idle/M_Standing_Idle_001.glb' }, { key: 'walk', url: RPM_ANIM + 'locomotion/M_Walk_001.glb' }, { key: 'run', url: RPM_ANIM + 'locomotion/M_Run_001.glb' }],
-      clips: { idle: ['idle', 'Idle'], walk: ['walk', 'Walk'], run: ['run', 'Run'] }, headBone: 'Head', facing: 0,
-      slots: { top: /Outfit_Top/, bottom: /Outfit_Bottom/, shoes: /Footwear/, skin: /Wolf3D_Body|Wolf3D_Skin/, beard: /Beard/, cap: /Headwear/ }, street: true, weight: 0.7 },
-    { id: 'cesium', urls: ['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMan/glTF-Binary/CesiumMan.glb'],
-      clips: { idle: ['animation_0'], walk: ['animation_0'], run: ['animation_0'] }, idleFreeze: true, headBone: 'Skeleton_neck_joint_1', facing: 0, slots: { top: /Cesium/ }, tintOnly: true, street: true, weight: 0.3 },
+    {
+      id: 'rpm',
+      urls: ['assets/characters/player.glb', CDN + 'readyplayer.me.glb'],
+      anims: [
+        { key: 'idle', url: RPM_ANIM + 'idle/M_Standing_Idle_001.glb' },
+        { key: 'walk', url: RPM_ANIM + 'locomotion/M_Walk_001.glb' },
+        { key: 'run',  url: RPM_ANIM + 'locomotion/M_Run_001.glb' },
+        // Optional — drop files when you have them; ignored if URL 404s
+        // { key: 'turn', url: RPM_ANIM + 'locomotion/M_TurnLeft_001.glb' },
+        // { key: 'stop', url: RPM_ANIM + 'locomotion/M_WalkStop_001.glb' },
+      ],
+      clips: {
+        idle:  ['idle', 'Idle', 'Idle_Neutral'],
+        walk:  ['walk', 'Walk', 'Walking'],
+        run:   ['run', 'Run', 'Running'],
+        turn:  ['turn', 'Turn', 'TurnLeft', 'turn_left', 'LeftTurn'],
+        stop:  ['stop', 'Stop', 'WalkStop', 'walk_stop'],
+        enter: ['enter', 'Enter', 'EnterCar', 'enter_car'],
+        exit:  ['exit', 'Exit', 'ExitCar', 'exit_car'],
+        jump:  ['jump', 'Jump'],
+      },
+      headBone: 'Head', facing: 0,
+      slots: {
+        top: /Outfit_Top/, bottom: /Outfit_Bottom/, shoes: /Footwear/,
+        skin: /Wolf3D_Body|Wolf3D_Skin/, beard: /Beard/, cap: /Headwear/,
+      },
+      street: true, weight: 0.7,
+    },
+    {
+      id: 'cesium',
+      urls: ['https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CesiumMan/glTF-Binary/CesiumMan.glb'],
+      clips: {
+        idle: ['animation_0'], walk: ['animation_0'], run: ['animation_0'],
+        turn: ['animation_0'], stop: ['animation_0'],
+      },
+      idleFreeze: true, headBone: 'Skeleton_neck_joint_1', facing: 0,
+      slots: { top: /Cesium/ }, tintOnly: true, street: true, weight: 0.3,
+    },
   ],
 };
+
 export const LAW = { pursuitHeat: 3, bustSeconds: 2.5, ticketKmh: 90, checkpointKmh: 60 };
 // Life Level titles (PRD §6). Apps and content can require a level via minLevel.
 export const LEVELS = [[1, 'Newcomer'], [3, 'Hustler'], [6, 'Entrepreneur'], [10, 'Mogul']];

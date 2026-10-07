@@ -67,7 +67,7 @@ export function buildHud(root) {
     </div>
     <div class="dialog glass" id="dialog"></div>
     <div id="toast" class="toast"></div>
-    <div id="notif" class="notif glass"></div>
+    <div class="notif-stack" id="notifStack"></div>
   </div>`);
   on('hud', refreshHud);
   on('key', k => { if (k === 'h') { G.state.settings.hints = !G.state.settings.hints; refreshHud(); } });
@@ -79,15 +79,48 @@ export function refreshHud() {
   const s = G.state;
   $('cash').textContent = fmt(s.cash); $('bank').textContent = `Bank ${fmt(s.bank)}`;
   $('heat').innerHTML = [0, 1, 2, 3, 4].map(i => `<i class="${i < s.heat ? 'on' : ''}"></i>`).join('');
-  $('heat').classList.toggle('hot', wanted()); $('heatLabel').textContent = wanted() ? 'Wanted' : 'Heat'; $('status').classList.toggle('heat0', s.heat === 0);
-  $('pName').textContent = s.name; $('pLevel').textContent = s.level; $('pTitle').textContent = levelTitle(s.level); $('pXpNum').textContent = `${s.xp} / 100 XP`; $('pXp').style.width = s.xp + '%';
+  const isWanted = wanted();
+  $('heat').classList.toggle('hot', isWanted || s.heat >= 3);
+  $('heatLabel').textContent = isWanted ? 'Wanted' : 'Heat';
+  $('heatLabel').classList.toggle('wanted', isWanted);
+  $('status').classList.toggle('heat0', s.heat === 0);
+  $('status').classList.toggle('wanted', isWanted);
+
+  $('pName').textContent = s.name; $('pLevel').textContent = s.level;
+  $('pTitle').textContent = levelTitle(s.level);
+  $('pXpNum').textContent = `${s.xp} / 100 XP`; $('pXp').style.width = s.xp + '%';
+
   const m = curMission(), paused = s.storyPaused && !s.done;
-  $('missionTitle').textContent = s.done ? 'Slice complete' : paused ? 'Free hustle' : m.title;
-  $('objective').textContent = s.done ? 'Lagos is yours. Work, bank, build.' : paused ? `Jobs on your phone, courses at the cyber café, the gym, football. ${m.at === 'marina' ? 'Amaka' : 'Baba K'} go wait.` : m.obj();
+  const obj = $('objCard');
+  obj.classList.remove('state-active', 'state-free', 'state-fail', 'state-done');
+  if (s.done) {
+    obj.classList.add('state-done');
+    $('missionTitle').textContent = 'Slice complete';
+    $('objective').textContent = 'Lagos is yours. Work, bank, build.';
+    obj.querySelector('.objkicker').textContent = 'Complete';
+  } else if (s.missionFailed) {
+    obj.classList.add('state-fail');
+    $('missionTitle').textContent = m.title;
+    $('objective').textContent = m.failObj?.() || 'Mission failed. Retry from the contact.';
+    obj.querySelector('.objkicker').textContent = 'Failed';
+  } else if (paused) {
+    obj.classList.add('state-free');
+    $('missionTitle').textContent = 'Free hustle';
+    $('objective').textContent = `Jobs on your phone, courses at the cyber café, the gym, football. ${m.at === 'marina' ? 'Amaka' : 'Baba K'} go wait.`;
+    obj.querySelector('.objkicker').textContent = 'Open world';
+  } else {
+    obj.classList.add('state-active');
+    $('missionTitle').textContent = m.title;
+    $('objective').textContent = m.obj();
+    obj.querySelector('.objkicker').textContent = 'Objective';
+  }
   $('objPips').innerHTML = MISSIONS.map((_, i) => `<i class="${i < s.mission || s.done ? 'done' : ''}"></i>`).join('');
+
   const b = s.unread ? String(s.unread) : '';
   $('hintBadge').textContent = b; const mb = $('msgBadge'); if (mb) mb.textContent = b;
-  $('hints').classList.toggle('hide', !s.settings.hints);
+  // Hints: off by default on coarse pointers
+  const coarse = typeof matchMedia !== 'undefined' && matchMedia('(pointer:coarse)').matches;
+  $('hints').classList.toggle('hide', !s.settings.hints || coarse);
   G.sun.castShadow = s.settings.shadows && (QUALITY[G.quality]?.shadows ?? 1) > 0;
   renderApp();
   saveState(s);
@@ -109,11 +142,19 @@ export function hudFrame() {
   const s = G.state, p = pos();
   const pr = promptFor(), e = $('prompt');
   const sig = pr ? (pr.key || '') + pr.text + (pr.bar !== undefined ? '#' : '') : '';
+
   if (sig !== lastPrompt) {
     lastPrompt = sig;
     if (!pr) e.classList.remove('show');
-    else { e.innerHTML = (pr.key ? Key(pr.key) : '') + `<span class="ptext">${esc(pr.text)}</span>` + (pr.bar !== undefined ? '<span class="bar"><i></i></span>' : ''); e.classList.add('show'); }
+    else {
+      const sub = pr.sub ? `<span class="sub">${esc(pr.sub)}</span>` : '';
+      e.innerHTML = (pr.key ? Key(pr.key) : '') +
+        `<span class="ptext">${esc(pr.text)}${sub}</span>` +
+        (pr.bar !== undefined ? '<span class="bar"><i></i></span>' : '');
+      e.classList.add('show');
+    }
   }
+
   if (pr && pr.bar !== undefined) { const i = e.querySelector('.bar i'); if (i) i.style.width = (pr.bar * 100) + '%'; }
   if (G.race && !G.race.finished && G.race.obj) $('objective').textContent = G.race.obj;
   const target = (G.race && !G.race.finished) ? gpsTarget() : missionActive() ? missionPos() : missionAvailable() && s.storyPaused ? null : gpsTarget();
@@ -127,12 +168,28 @@ export function hudFrame() {
   $('gpsTarget').textContent = t ? t.label : 'No route'; $('gpsDist').textContent = t ? fmtDist(G.routeLen) : '';
   $('hp').style.width = s.health + '%'; $('sta').style.width = s.stamina + '%';
   $('vitals').classList.toggle('hide', G.inCar); $('vehicle').classList.toggle('show', G.inCar); $('hints').classList.toggle('incar', G.inCar);
-  if (G.inCar) {
+    if (G.inCar) {
     const kmh = Math.round(Math.abs(G.carSpeed) * 3.6);
     $('speed').textContent = kmh;
     $('speedArc').style.strokeDasharray = `${Math.min(1, kmh / 130) * 188.5} 251.3`;
-    $('fuel').style.width = s.fuel + '%'; $('fuelNum').textContent = Math.round(s.fuel) + '%';
+    const fuel = s.fuel, cond = G.car.userData.cond ?? 100;
+    $('fuel').style.width = fuel + '%'; $('fuelNum').textContent = Math.round(fuel) + '%';
+    $('fuel').classList.toggle('low', fuel < 20);
     $('gear').textContent = G.carSpeed < -0.5 ? 'R' : kmh < 2 ? 'P' : kmh < 30 ? '1' : kmh < 60 ? '2' : kmh < 90 ? '3' : '4';
-    $('vname').textContent = VEH[G.car.userData.type].name.toUpperCase() + (G.car.userData.owned ? '' : ' ·⚠'); $('condNum').textContent = Math.round(G.car.userData.cond ?? 100) + '%';
+    $('vname').textContent = VEH[G.car.userData.type].name.toUpperCase() + (G.car.userData.owned ? '' : ' ·⚠');
+    $('condNum').textContent = Math.round(cond) + '%';
+
+    const veh = $('vehicle');
+    veh.classList.toggle('warn-fuel', fuel < 20);
+    veh.classList.toggle('warn-cond', cond < 35);
+    // one-shot damage flash when condition drops
+    if (G._lastCond !== undefined && cond < G._lastCond - 0.5) {
+      veh.classList.remove('flash-damage');
+      void veh.offsetWidth;
+      veh.classList.add('flash-damage');
+    }
+    G._lastCond = cond;
+  } else {
+    G._lastCond = undefined;
   }
 }

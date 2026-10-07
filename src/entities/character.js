@@ -90,14 +90,44 @@ export function createCharacter({ look = G.state?.look || {}, build, placeholder
   inst._rebuild = () => { if (inst._placeholder) group.remove(inst._placeholder); inst._placeholder = build ? build(inst.look, tint) : placeholder || null; if (inst._placeholder) group.add(inst._placeholder); };
   inst._rebuild();
   inst.setLook = l => { Object.assign(inst.look, l); if (inst.rig) applyLookTo(inst); else inst._rebuild(); };
-  inst.setState = (state, speed = 0) => {
-    if (!inst.rig) return;
-    const want = state === 'run' ? 'run' : (state === 'walk' || state === 'turn' || (state === 'stop' && speed > 1.5)) ? 'walk' : 'idle';
-    const a = inst.actions[want]; if (!a) return;
-    if (inst.current !== a) { a.reset().setEffectiveWeight(1).play(); if (inst.current) inst.current.crossFadeTo(a, CHARACTER.blend, false); inst.current = a; }
-    if (inst.base.rig.idleFreeze && want === 'idle') { a.setEffectiveTimeScale(0); return; }
-    if (want === 'walk') a.setEffectiveTimeScale(THREE.MathUtils.clamp(speed / 4.6, 0.6, 1.6)); else if (want === 'run') a.setEffectiveTimeScale(THREE.MathUtils.clamp(speed / 8.5, 0.7, 1.4));
-  };
+  
+    inst.setState = (state, speed = 0) => {
+      if (!inst.rig) return;
+      // Map controller / interaction states → clip keys. Missing clips fall back safely.
+      let want = 'idle';
+      if (state === 'run') want = 'run';
+      else if (state === 'walk' || state === 'turn' || (state === 'stop' && speed > 1.2)) want = 'walk';
+      else if (state === 'turn') want = 'turn';
+      else if (state === 'stop') want = 'stop';
+      else if (state === 'enter') want = 'enter';
+      else if (state === 'exit') want = 'exit';
+      else if (state === 'jump') want = 'jump';
+      else want = 'idle';
+
+      // Fallbacks when the production rig has not shipped that clip yet
+      if (!inst.actions[want]) {
+        if (want === 'turn' || want === 'stop') want = speed > 0.4 ? 'walk' : 'idle';
+        else if (want === 'enter' || want === 'exit' || want === 'jump') want = 'idle';
+        else if (want === 'run' && !inst.actions.run) want = 'walk';
+      }
+      const a = inst.actions[want];
+      if (!a) return;
+
+      if (inst.current !== a) {
+        a.reset().setEffectiveWeight(1).play();
+        if (inst.current) inst.current.crossFadeTo(a, CHARACTER.blend, false);
+        inst.current = a;
+      }
+      if (inst.base.rig.idleFreeze && want === 'idle') {
+        a.setEffectiveTimeScale(0);
+        return;
+      }
+      if (want === 'walk') a.setEffectiveTimeScale(THREE.MathUtils.clamp(speed / 4.6, 0.55, 1.6));
+      else if (want === 'run') a.setEffectiveTimeScale(THREE.MathUtils.clamp(speed / 8.5, 0.65, 1.45));
+      else if (want === 'turn') a.setEffectiveTimeScale(1);
+      else a.setEffectiveTimeScale(1);
+    };
+
   inst.update = dt => { if (inst.mixer) inst.mixer.update(dt); };
   inst.dispose = () => { instances.delete(inst); };
   inst._swap = () => {

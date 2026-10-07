@@ -54,6 +54,13 @@ export function mapDraw() {
   ctx.clearRect(0, 0, W, W); ctx.fillStyle = '#0a1612'; ctx.fillRect(0, 0, W, W);
   ctx.save(); ctx.translate(R, R); ctx.rotate(rot); ctx.scale(s, s); ctx.translate(-p.x, -p.z); drawWorld(ctx); ctx.restore();
   arrow(ctx, R, R, rot + heading(), 9, '#fff');
+  // soft ring under player
+  ctx.beginPath(); ctx.arc(R, R, 14, 0, Math.PI * 2);
+  ctx.strokeStyle = '#ffffff44'; ctx.lineWidth = 2; ctx.stroke();
+
+  // GPS edge arrow already exists; ensure mission kind stays brightest:
+  // (no change required if t.kind === 'mission' uses #ffc52f)
+  
   const t = gpsTarget();
   if (t) {
     const rel = { x: (t.x - p.x) * s, y: (t.z - p.z) * s };

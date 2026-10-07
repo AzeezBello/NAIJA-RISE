@@ -21,6 +21,7 @@ import { tryCompleteTask } from './missions.js';
 import { startRace } from './racing.js';
 import { nearPlace, openPlace, placePrompt } from './places.js';
 import { LIVERIES, SLOGANS } from '../data/vehicles.js';
+import { CHARACTER } from '../data/config.js';
 
 export function nearestCar() {
   let best = null, d0 = 5;
@@ -38,18 +39,99 @@ const nearYaba = () => !G.inCar && !missionActive() && dist(pos(), placeOf('yaba
 const nearDealer = () => !G.inCar && dist(pos(), placeOf('ladipo')) < 13;
 const nearRacer = () => !G.race && !G.task && dist(pos(), placeOf('stadstop')) < 10 && !(missionActive() && curMission().at === 'stadstop');
 
+
+const _side = new THREE.Vector3();
+const ENTER_EXIT_T = () => CHARACTER.enterExit ?? 0.85;
+
+/**
+ * Animated vehicle enter/exit.
+ * G.vehicleT > 0  → blend in progress (movement frozen via frozen()).
+ * G.vehicleMode   → 'enter' | 'exit'
+ */
 export function toggleCar() {
-  if (frozen()) return;
+  if (frozen() || G.vehicleT > 0) return;
+
   if (G.inCar) {
-    const f = vForward(G.car);
-    G.player.position.copy(G.car.position).add(new THREE.Vector3(f.z, 0, -f.x).multiplyScalar(-2.6));
-    G.inCar = false; G.player.visible = true; G.car = null; G.carSpeed = 0;
-    toast('Back on foot'); return;
+    // ---- EXIT ----
+    const car = G.car;
+    const f = vForward(car);
+    _side.set(f.z, 0, -f.x).normalize();
+    const door = car.position.clone().addScaledVector(_side, -2.6);
+    door.y = car.position.y;
+
+    G.vehicleMode = 'exit';
+    G.vehicleT = ENTER_EXIT_T();
+    G.vehicleFrom = car.position.clone();
+    G.vehicleTo = door;
+    G.player.visible = true;
+    G.player.position.copy(car.position);
+    G.player.position.y = door.y;
+    G.playerChar?.setState('exit', 0);
+    return;
   }
-  const c = nearestCar(); if (!c) return;
-  G.inCar = true; G.player.visible = false; G.car = c; G.carSpeed = 0; G.camBlend = 1;
-  if (!c.userData.owned && !c.userData.stolen) { c.userData.stolen = true; addHeat(1, 'Stolen vehicle'); addRep('street', 2); addRep('public', -2); }
-  toast(`${VEH[c.userData.type].name}${c.userData.owned ? ' · yours' : ' · not yours'} · W gas · S brake · A/D steer`);
+
+  // ---- ENTER ----
+  const c = nearestCar();
+  if (!c) return;
+
+  G.vehicleMode = 'enter';
+  G.vehicleT = ENTER_EXIT_T();
+  G.vehicleFrom = G.player.position.clone();
+  G.vehicleTo = c.position.clone();
+  G.vehicleCar = c;
+  G.playerChar?.setState('enter', 0);
+  // Face the car
+  const dx = c.position.x - G.player.position.x;
+  const dz = c.position.z - G.player.position.z;
+  if (Math.hypot(dx, dz) > 0.1) G.player.rotation.y = Math.atan2(dx, dz);
+}
+
+/** Call once per frame from city update (or movement). */
+export function updateVehicleTransition(dt) {
+  if (!(G.vehicleT > 0)) return;
+
+  const dur = ENTER_EXIT_T();
+  G.vehicleT = Math.max(0, G.vehicleT - dt);
+  const u = 1 - G.vehicleT / dur;           // 0 → 1
+  const ease = u * u * (3 - 2 * u);         // smoothstep
+
+  if (G.vehicleMode === 'enter') {
+    const from = G.vehicleFrom, to = G.vehicleTo;
+    G.player.position.lerpVectors(from, to, ease);
+    G.player.position.y = from.y + (to.y - from.y) * ease;
+    if (G.vehicleT <= 0) {
+      const c = G.vehicleCar;
+      G.inCar = true;
+      G.player.visible = false;
+      G.car = c;
+      G.carSpeed = 0;
+      G.camBlend = 1;
+      if (!c.userData.owned && !c.userData.stolen) {
+        c.userData.stolen = true;
+        addHeat(1, 'Stolen vehicle');
+        addRep('street', 2);
+        addRep('public', -2);
+      }
+      toast(`${VEH[c.userData.type].name}${c.userData.owned ? ' · yours' : ' · not yours'} · W gas · S brake · A/D steer`);
+      G.vehicleCar = null;
+      G.vehicleMode = null;
+      G.playerChar?.setState('idle', 0);
+    }
+  } else if (G.vehicleMode === 'exit') {
+    const from = G.vehicleFrom, to = G.vehicleTo;
+    G.player.position.lerpVectors(from, to, ease);
+    G.player.position.y = to.y;
+    // Slide opacity-style: scale down then up is overkill; just move out
+    if (G.vehicleT <= 0) {
+      G.inCar = false;
+      G.player.visible = true;
+      G.car = null;
+      G.carSpeed = 0;
+      G.vehicleMode = null;
+      toast('Back on foot');
+      G.playerChar?.setState('idle', 0);
+    }
+  }
 }
 
 /* ---------- small vendor dialogues reuse the mission dialogue box ---------- */
