@@ -6,7 +6,7 @@ import { PERF } from '../data/config.js';
 import { buildTrafficLights } from '../systems/trafficlights.js';
 import { asphaltTexture, groundTexture, concreteTexture, cloudTexture, glowTexture } from './textures.js';
 import { ROADS, ROAD_NAMES, ROAD_WIDTHS, ROAD_EXTENT, roadExtent, LANDMARKS, BUSSTOPS, PROPERTIES, KIOSKS, RESERVED, WATER, WATERS, inWater, onBridge, VENDORS, ISLAND_CELLS, VI_CELLS, LEKKI_CELLS, YABA_CELLS, EBUTE_CELLS, TOLLS, FOOTBRIDGES, JUNCTIONS, roadRules, roadClass } from '../data/locations.js';
-import { addDeck, heightAt } from './terrain.js';
+import { addDeck, heightAt, deckHeightAt } from './terrain.js';
 import { registerSidewalks } from './walkables.js';
 
 const PALETTE = [0x6f7d84, 0x8a7d6a, 0x9c8f7a, 0x7a8ba0, 0x8f6b63, 0x6e8a8a, 0xa08866, 0xb9a98f];
@@ -230,7 +230,7 @@ function deckMesh(deck) {
       ? deckHeightAt(mid, deck.k)
       : deckHeightAt(deck.k, mid);
       if (!(h > 0.05)) continue;
-      
+
     if (deck.axis === 'h') {
       staticBox('deck', mid, deck.k, step + 0.1, w, 0.8, h - 0.8);
       staticBox('medians', mid, deck.k - deck.halfW + 0.3, step + 0.1, 0.5, 1.1, h);

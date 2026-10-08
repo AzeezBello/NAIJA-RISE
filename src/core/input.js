@@ -19,6 +19,19 @@ export function setupInput(canvas) {
   });
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); G.keys[ALIAS[k] || k] = false; });
   addEventListener('blur', () => { for (const k in G.keys) G.keys[k] = false; });
+  
+  addEventListener('keydown', e => {
+    if (e.target?.matches?.('input,textarea,select')) return;
+    let k = e.key.toLowerCase();
+    if (ALIAS[k]) { e.preventDefault(); k = ALIAS[k]; }
+    G.keys[k] = true;
+    if (k === ' ') {
+      e.preventDefault();
+      // Edge-trigger for on-foot jump (movement also latches Space)
+      if (!e.repeat) G.keys.jumpPressed = true;
+    }
+    if (!e.repeat) emit('key', k, e);
+  });
 
   let last = { x: 0, y: 0 }; const touches = new Map(); let pinch = 0;
   canvas.addEventListener('contextmenu', e => e.preventDefault());
