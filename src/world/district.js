@@ -225,7 +225,12 @@ const STATIC_MATS = () => ({
 function deckMesh(deck) {
   const step = 5, w = deck.halfW * 2;
   for (let a = deck.from; a < deck.to; a += step) {
-    const mid = a + step / 2, h = deck.axis === 'h' ? heightAt(mid, deck.k) : heightAt(deck.k, mid);
+    const mid = a + step / 2;
+    const { height: h } = deck.axis === 'h'
+      ? deckHeightAt(mid, deck.k)
+      : deckHeightAt(deck.k, mid);
+      if (!(h > 0.05)) continue;
+      
     if (deck.axis === 'h') {
       staticBox('deck', mid, deck.k, step + 0.1, w, 0.8, h - 0.8);
       staticBox('medians', mid, deck.k - deck.halfW + 0.3, step + 0.1, 0.5, 1.1, h);

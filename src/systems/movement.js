@@ -49,6 +49,9 @@ let grounded = true;
 const JUMP_FORCE = 7.5;
 const GRAVITY = 20;
 
+// movement.js
+const jumpPressed = !!k.jumpPressed || !!G.pad?.jump;
+
 // -----------------------------------------------------------------------------
 // COLLISION
 // -----------------------------------------------------------------------------
