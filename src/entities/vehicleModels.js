@@ -535,10 +535,24 @@ export function attachModel(
 
       // -----------------------------------------------------------------------
       // Scale the GLB to the runtime vehicle length.
+      //
+      // Some third-party models have proportions that make them visually
+      // oversized even after matching their nominal length. Keep the gameplay
+      // dimensions in VEH unchanged and apply a visual-only correction here.
       // -----------------------------------------------------------------------
 
-      const scale =
+      const MODEL_SCALE = {
+        keke_bajaj_re: 0.74,
+      };
+
+      const baseScale =
         spec.len / modelData.size.z;
+
+      const scale =
+        baseScale *
+        (MODEL_SCALE[name] ?? 1);
+      
+
 
       // Remove procedural placeholder geometry.
       for (const child of [...g.children]) {
@@ -609,6 +623,82 @@ export function attachModel(
         );
       }
 
+      // -----------------------------------------------------------------------
+      // Keke Napep visual treatment
+      // -----------------------------------------------------------------------
+      //
+      // The source Keke model has darker materials than the Lagos commercial
+      // fleet. Unlike the texture-based paint system, this applies directly to
+      // suitable body materials so the Keke consistently reads as yellow.
+      //
+      // Glass, wheels, tyres, lights and other dark components are preserved.
+      // -----------------------------------------------------------------------
+
+      const isKeke =
+        name === 'keke_bajaj_re';
+
+      const kekeYellow =
+        new THREE.Color(0xf5c518);
+
+      const kekeYellowLight =
+        new THREE.Color(0xffd52a);
+
+      const kekeDark =
+        new THREE.Color(0x171918);
+
+      const kekeGlass =
+        new THREE.Color(0x243437);
+
+      const applyKekeMaterial =
+        material => {
+          if (!material) return;
+
+          const materialName =
+            String(material.name || '').toLowerCase();
+
+          if (
+            /wheel|tyre|tire|rubber|tread|black/.test(
+              materialName
+            )
+          ) {
+            material.color =
+              kekeDark;
+
+            return;
+          }
+
+          if (
+            /glass|window|windshield|windscreen/.test(
+              materialName
+            )
+          ) {
+            material.color =
+              kekeGlass;
+
+            material.roughness = 0.2;
+            material.metalness = 0.15;
+
+            return;
+          }
+
+          if (
+            /light|lamp|head|indicator|brake/.test(
+              materialName
+            )
+          ) {
+            return;
+          }
+
+          // Keke body.
+          material.color =
+            kekeYellow;
+
+          material.roughness = 0.48;
+          material.metalness = 0.08;
+        };
+
+
+
       model.traverse(object => {
         if (!object.isMesh) {
           return;
@@ -622,6 +712,14 @@ export function attachModel(
         } else if (object.material) {
           object.material =
             object.material.clone();
+        }
+
+        if (isKeke) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(applyKekeMaterial);
+          } else if (object.material) {
+            applyKekeMaterial(object.material);
+          }
         }
 
         // Do NOT overwrite glass/chrome/light materials.
