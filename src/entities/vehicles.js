@@ -353,99 +353,174 @@ export function rejoinTraffic(t) {
 
 
 // ============================================================
-// Traffic update — distance-banded (large map, 100 m active)
+// Traffic update — quality-aware active bubble
 // ============================================================
 //
-// Spawn still covers the full road network (large area).
-// Simulation and rendering focus on a bubble around the player:
+// LOW:
+//   80m  = full simulation
+//   120m = throttled simulation
+//   160m = cull
 //
-//   < 100 m  ACTIVE  full AI every frame + visible + wheel spin
-//  100–160 m  SOFT    AI ~15 Hz, visible, no wheel spin
-//  160–220 m  SLEEP   AI ~5 Hz, visible (cheap presence)
-//   > 220 m  CULL    hidden, no simulation
+// MEDIUM:
+//   100m = full simulation
+//   160m = throttled simulation
+//   220m = cull
 //
-// Pursuit vehicles always stay ACTIVE.
-
-const ACTIVE_R = 100;
-const SOFT_R = 160;
-const CULL_R = 220;
-
-const ACTIVE2 = ACTIVE_R * ACTIVE_R;
-const SOFT2 = SOFT_R * SOFT_R;
-const CULL2 = CULL_R * CULL_R;
+// HIGH:
+//   120m = full simulation
+//   180m = throttled simulation
+//   260m = cull
+//
+// Vehicles beyond the cull radius are hidden and stop simulating.
+// Vehicles inside the active radius receive full-frame simulation.
+// Vehicles between active and cull remain visible with reduced AI.
+// ============================================================
 
 export function updateTraffic(dt) {
   const q = G.quality || 'medium';
-const activeR = q === 'low' ? 80 : q === 'high' ? 120 : 100;
-const cullR = q === 'low' ? 160 : q === 'high' ? 260 : 220;
-// then use activeR*activeR / cullR*cullR instead of ACTIVE2 / CULL2
+
+  const activeR =
+    q === 'low'
+      ? 80
+      : q === 'high'
+        ? 120
+        : 100;
+
+  const softR =
+    q === 'low'
+      ? 120
+      : q === 'high'
+        ? 180
+        : 160;
+
+  const cullR =
+    q === 'low'
+      ? 160
+      : q === 'high'
+        ? 260
+        : 220;
+
+  const active2 = activeR * activeR;
+  const soft2 = softR * softR;
+  const cull2 = cullR * cullR;
+
   const pp = pos();
+
   if (!pp) return;
 
   for (const t of G.traffic) {
+    if (!t?.g) continue;
+
+    // Hidden vehicles remain completely inactive.
     if (t.hidden) {
       t.g.visible = false;
       continue;
     }
 
-    // Pursuit always full detail
+    // Police pursuits always remain active.
     if (t.pursuit) {
       t.far = false;
       t.g.visible = true;
       t.acc = 0;
+
       stepTraffic(t, dt, pp);
       spinWheels(t.g, t.speed, dt);
+
       continue;
     }
 
     const p = t.g.position;
+
     const dx = p.x - pp.x;
     const dz = p.z - pp.z;
+
     const d2 = dx * dx + dz * dz;
 
-    // ---- CULL: outside bubble ----
-    if (d2 > CULL2) {
+    // --------------------------------------------------------
+    // OUTSIDE CULL RADIUS
+    // --------------------------------------------------------
+    // Hide the vehicle and stop expensive simulation.
+    // --------------------------------------------------------
+
+    if (d2 > cull2) {
       t.far = true;
       t.g.visible = false;
       t.acc = 0;
+
       continue;
     }
 
+    // Vehicle is inside the visible world bubble.
     t.far = false;
     t.g.visible = true;
 
-    // ---- ACTIVE: < 100 m ----
-    if (d2 <= ACTIVE2) {
+    // --------------------------------------------------------
+    // ACTIVE RADIUS
+    // --------------------------------------------------------
+    // Full AI + movement + wheel animation.
+    // --------------------------------------------------------
+
+    if (d2 <= active2) {
       t.acc = 0;
+
       stepTraffic(t, dt, pp);
       spinWheels(t.g, t.speed, dt);
+
       continue;
     }
 
-    // ---- SOFT / SLEEP: throttled AI ----
+    // --------------------------------------------------------
+    // SOFT / THROTTLED RADIUS
+    // --------------------------------------------------------
+    // Keep vehicles visible, but reduce simulation frequency.
+    // --------------------------------------------------------
+
     t.acc = (t.acc || 0) + dt;
-    const interval = d2 > SOFT2 ? 0.2 : 1 / 15; // ~5 Hz beyond 160 m, ~15 Hz 100–160 m
+
+    const interval =
+      d2 > soft2
+        ? 0.2       // ~5 Hz
+        : 1 / 15;   // ~15 Hz
+
     if (t.acc < interval) continue;
-    const sdt = t.acc;
+
+    const simDt = t.acc;
+
     t.acc = 0;
-    stepTraffic(t, sdt, pp);
-    // no spinWheels in soft/sleep — saves CPU far away
+
+    stepTraffic(t, simDt, pp);
   }
 }
 
 export function updateParkedVisibility() {
   const pp = pos();
+
   if (!pp || !G.parked?.length) return;
-  const R2 = CULL2; // same 220 m cull as traffic
+
+  const q = G.quality || 'medium';
+
+  const cullR =
+    q === 'low'
+      ? 160
+      : q === 'high'
+        ? 260
+        : 220;
+
+  const cull2 = cullR * cullR;
+
   for (const g of G.parked) {
     if (!g?.position) continue;
+
+    // Always keep the player's owned vehicles available.
     if (g.userData?.owned) {
-      g.visible = true; // always show owned
+      g.visible = true;
       continue;
     }
+
     const dx = g.position.x - pp.x;
     const dz = g.position.z - pp.z;
-    g.visible = dx * dx + dz * dz <= R2;
+
+    g.visible = dx * dx + dz * dz <= cull2;
   }
 }
 
