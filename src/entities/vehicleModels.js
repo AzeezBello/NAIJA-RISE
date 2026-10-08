@@ -3,51 +3,56 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VEH, MODEL_BASE } from '../data/vehicles.js';
 import { lamps } from '../world/builders.js';
 
-// -----------------------------------------------------------------------------
-// Vehicle asset paths
-// -----------------------------------------------------------------------------
+// ============================================================
+// NAIJA RISE — Vehicle GLB Loader
+// ============================================================
 //
-// The loader supports BOTH:
+// Runtime asset locations:
 //
-//   1. New public vehicle assets:
-//      web/public/vehicles/<model>.glb
-//      Runtime URL: /vehicles/<model>.glb
+//   /assets/vehicles/<file>.glb
+//   /assets/vehicles/<folder>/<file>.glb
 //
-//   2. Existing Kenney assets:
-//      web/public/assets/vehicles/kenney/<model>.glb
-//      Runtime URL: /assets/vehicles/kenney/<model>.glb
+// The repository sync script copies:
 //
-// It also keeps support for the existing custom Danfo/Keke folders:
+//   ../assets -> web/public/assets
 //
-//   /assets/vehicles/danfo/...
-//   /assets/vehicles/keke/...
-//
-// IMPORTANT:
-// Models should face +Z in the GLB.
-// The game uses -Z as vehicle forward, so attachModel() rotates
-// the model by PI unless a model has a custom rotation.
-// -----------------------------------------------------------------------------
+// Therefore the browser MUST load the GLBs from /assets/vehicles/...
+// ============================================================
 
 const CUSTOM_ASSETS = {
   danfo: [
-    // New public/vehicles location
-    '/vehicles/danfo_vanagon.glb',
+    '/assets/vehicles/danfo/danfo_vanagon.glb',
+    '/assets/vehicles/danfo/danfo.glb',
+    '/assets/vehicles/danfo/lagos_danfo.glb',
+    '/assets/vehicles/danfo/danfo-bus.glb',
 
-    // Existing custom location
-    'assets/vehicles/danfo/danfo_vanagon.glb',
-    'assets/vehicles/danfo/danfo.glb',
-    'assets/vehicles/danfo/lagos_danfo.glb',
-    'assets/vehicles/danfo/danfo-bus.glb',
+    // Compatibility fallback
+    '/vehicles/danfo_vanagon.glb',
   ],
 
   keke: [
-    // New public/vehicles location
-    '/vehicles/keke_bajaj_re.glb',
+    '/assets/vehicles/keke/keke_bajaj_re.glb',
+    '/assets/vehicles/keke/keke.glb',
+    '/assets/vehicles/keke/keke_napep.glb',
 
-    // Existing custom location
-    'assets/vehicles/keke/keke_bajaj_re.glb',
-    'assets/vehicles/keke/keke.glb',
-    'assets/vehicles/keke/keke_napep.glb',
+    // Compatibility fallback
+    '/vehicles/keke_bajaj_re.glb',
+  ],
+
+  korope: [
+    '/assets/vehicles/korope/suzuki_carry_minivan.glb',
+    '/assets/vehicles/suzuki_carry_minivan.glb',
+
+    // Compatibility fallback
+    '/vehicles/suzuki_carry_minivan.glb',
+  ],
+
+  okada: [
+    '/assets/vehicles/okada/suzuki_gsx-r750.glb',
+    '/assets/vehicles/suzuki_gsx-r750.glb',
+
+    // Compatibility fallback
+    '/vehicles/suzuki_gsx-r750.glb',
   ],
 };
 
@@ -56,28 +61,11 @@ const loader = new GLTFLoader();
 const models = {};
 const paints = {};
 
-// -----------------------------------------------------------------------------
+// ============================================================
 // Helpers
-// -----------------------------------------------------------------------------
+// ============================================================
 
-const hsl = (r, g, b) => {
-  const c = new THREE.Color(
-    r / 255,
-    g / 255,
-    b / 255
-  );
-
-  const o = {};
-  c.getHSL(o);
-
-  return o;
-};
-
-// -----------------------------------------------------------------------------
-// Asset path resolver
-// -----------------------------------------------------------------------------
-
-const assetPathsFor = name => {
+function assetPathsFor(name) {
   if (name === 'danfo_vanagon') {
     return CUSTOM_ASSETS.danfo;
   }
@@ -86,23 +74,44 @@ const assetPathsFor = name => {
     return CUSTOM_ASSETS.keke;
   }
 
-  // New public/vehicles path FIRST.
-  //
-  // Example:
-  //   web/public/vehicles/suzuki_carry_minivan.glb
-  // becomes:
-  //   /vehicles/suzuki_carry_minivan.glb
-  //
-  // Existing Kenney path remains as the fallback.
-  return [
-    `/vehicles/${name}.glb`,
-    `${MODEL_BASE}${name}.glb`,
-  ];
-};
+  if (name === 'suzuki_carry_minivan') {
+    return CUSTOM_ASSETS.korope;
+  }
 
-// -----------------------------------------------------------------------------
-// Load vehicle GLB
-// -----------------------------------------------------------------------------
+  if (name === 'suzuki_gsx-r750') {
+    return CUSTOM_ASSETS.okada;
+  }
+
+  // New assets stored directly under assets/vehicles/
+  return [
+    `/assets/vehicles/${name}.glb`,
+    `/assets/vehicles/kenney/${name}.glb`,
+
+    // Legacy / alternate location
+    `${MODEL_BASE}${name}.glb`,
+
+    // Previous runtime location
+    `/vehicles/${name}.glb`,
+  ];
+}
+
+function cloneMaterial(material) {
+  if (!material) return material;
+
+  if (Array.isArray(material)) {
+    return material.map(item =>
+      item?.clone ? item.clone() : item
+    );
+  }
+
+  return material.clone
+    ? material.clone()
+    : material;
+}
+
+// ============================================================
+// Load first available GLB
+// ============================================================
 
 export function loadVehicleModel(name) {
   if (models[name]) {
@@ -111,7 +120,7 @@ export function loadVehicleModel(name) {
 
   const paths = assetPathsFor(name);
 
-  const loadFirstAvailable = async () => {
+  const promise = (async () => {
     let lastError = null;
 
     for (const path of paths) {
@@ -119,7 +128,7 @@ export function loadVehicleModel(name) {
         const gltf = await loader.loadAsync(path);
 
         console.info(
-          `[vehicles] Loaded ${name} from ${path}`
+          `[vehicles] ✓ Loaded ${name} from ${path}`
         );
 
         return {
@@ -128,290 +137,147 @@ export function loadVehicleModel(name) {
         };
       } catch (error) {
         lastError = error;
+
+        console.warn(
+          `[vehicles] Asset miss: ${path}`
+        );
       }
     }
 
-    throw lastError ||
-      new Error(`No asset found for ${name}`);
-  };
+    throw (
+      lastError ||
+      new Error(
+        `No vehicle asset found for ${name}`
+      )
+    );
+  })();
 
-  models[name] = loadFirstAvailable()
-    .then(({ gltf, path }) => {
-      // -----------------------------------------------------------------------
-      // IMPORTANT:
-      // The loaded GLTF scene is the actual model root.
-      // -----------------------------------------------------------------------
+  models[name] = promise.catch(error => {
+    delete models[name];
 
-      const scene = gltf.scene;
+    console.warn(
+      `[vehicles] ✗ Could not load ${name}. Tried:\n${paths.join('\n')}`
+    );
 
-      // Try to find a sensible body mesh.
-      // Custom GLBs may not have a mesh literally named "body".
-      let body = scene.getObjectByName('body');
-
-      if (!body || !body.isMesh) {
-        scene.traverse(object => {
-          if (
-            !body &&
-            object.isMesh &&
-            object.geometry
-          ) {
-            body = object;
-          }
-        });
-      }
-
-      const box = new THREE.Box3().setFromObject(scene);
-      const size = box.getSize(new THREE.Vector3());
-
-      // -----------------------------------------------------------------------
-      // Find paint texture information.
-      //
-      // Custom Danfo/Keke models do not need recolouring because they already
-      // have their correct Lagos livery. Therefore texture analysis is optional.
-      // -----------------------------------------------------------------------
-
-      let tex = null;
-      let data = null;
-      let W = 0;
-      let H = 0;
-      let paintTexels = [];
-
-      if (
-        body &&
-        body.material &&
-        !Array.isArray(body.material) &&
-        body.material.map &&
-        body.material.map.image
-      ) {
-        tex = body.material.map;
-
-        const img = tex.image;
-
-        W = img.width;
-        H = img.height;
-
-        if (W > 0 && H > 0) {
-          const cv = document.createElement('canvas');
-
-          cv.width = W;
-          cv.height = H;
-
-          const cx = cv.getContext('2d');
-
-          if (cx) {
-            cx.drawImage(img, 0, 0);
-
-            try {
-              data = cx.getImageData(
-                0,
-                0,
-                W,
-                H
-              );
-
-              const geo = body.geometry;
-              const uv = geo.attributes?.uv;
-              const position = geo.attributes?.position;
-              const index = geo.index;
-
-              if (uv && position) {
-                const hist = {};
-
-                const A = new THREE.Vector3();
-                const B = new THREE.Vector3();
-                const C = new THREE.Vector3();
-
-                const count = index
-                  ? index.count
-                  : position.count;
-
-                for (let i = 0; i < count; i += 3) {
-                  const a = index
-                    ? index.getX(i)
-                    : i;
-
-                  const b = index
-                    ? index.getX(i + 1)
-                    : i + 1;
-
-                  const c = index
-                    ? index.getX(i + 2)
-                    : i + 2;
-
-                  if (
-                    a >= position.count ||
-                    b >= position.count ||
-                    c >= position.count
-                  ) {
-                    continue;
-                  }
-
-                  A.fromBufferAttribute(position, a);
-                  B.fromBufferAttribute(position, b);
-                  C.fromBufferAttribute(position, c);
-
-                  const area = B
-                    .clone()
-                    .sub(A)
-                    .cross(
-                      C.clone().sub(A)
-                    )
-                    .length();
-
-                  const u =
-                    (
-                      uv.getX(a) +
-                      uv.getX(b) +
-                      uv.getX(c)
-                    ) / 3;
-
-                  const v =
-                    (
-                      uv.getY(a) +
-                      uv.getY(b) +
-                      uv.getY(c)
-                    ) / 3;
-
-                  const x = THREE.MathUtils.clamp(
-                    Math.floor(u * W),
-                    0,
-                    W - 1
-                  );
-
-                  const y = THREE.MathUtils.clamp(
-                    Math.floor(
-                      (tex.flipY ? 1 - v : v) * H
-                    ),
-                    0,
-                    H - 1
-                  );
-
-                  const key = `${x},${y}`;
-
-                  hist[key] =
-                    (hist[key] || 0) + area;
-                }
-
-                const dominant = Object.entries(
-                  hist
-                ).sort(
-                  (a, b) => b[1] - a[1]
-                )[0];
-
-                if (dominant) {
-                  const [dx, dy] =
-                    dominant[0]
-                      .split(',')
-                      .map(Number);
-
-                  const offset =
-                    (dy * W + dx) * 4;
-
-                  const dom = hsl(
-                    data.data[offset],
-                    data.data[offset + 1],
-                    data.data[offset + 2]
-                  );
-
-                  paintTexels = Object.keys(hist)
-                    .map(key =>
-                      key.split(',').map(Number)
-                    )
-                    .filter(([x, y]) => {
-                      const offset =
-                        (y * W + x) * 4;
-
-                      const h = hsl(
-                        data.data[offset],
-                        data.data[offset + 1],
-                        data.data[offset + 2]
-                      );
-
-                      const hueDistance = Math.min(
-                        Math.abs(h.h - dom.h),
-                        1 -
-                          Math.abs(h.h - dom.h)
-                      );
-
-                      return (
-                        h.s > 0.18 &&
-                        hueDistance < 0.07
-                      );
-                    })
-                    .map(([x, y]) => {
-                      const offset =
-                        (y * W + x) * 4;
-
-                      const h = hsl(
-                        data.data[offset],
-                        data.data[offset + 1],
-                        data.data[offset + 2]
-                      );
-
-                      return {
-                        x,
-                        y,
-                        l:
-                          h.l /
-                          Math.max(
-                            0.05,
-                            dom.l
-                          ),
-                      };
-                    });
-                }
-              }
-            } catch (error) {
-              console.warn(
-                `[vehicles] Failed texture analysis for ${name}`,
-                error.message
-              );
-            }
-          }
-        }
-      }
-
-      // -----------------------------------------------------------------------
-      // Shadows
-      // -----------------------------------------------------------------------
-
-      scene.traverse(object => {
-        if (!object.isMesh) return;
-
-        object.castShadow = true;
-        object.receiveShadow = true;
-      });
-
-      return {
-        scene,
-        size,
-        tex,
-        data,
-        W,
-        H,
-        paintTexels,
-        flipY: tex?.flipY ?? true,
-        colorSpace: tex?.colorSpace,
-        path,
-      };
-    })
-    .catch(error => {
-      delete models[name];
-
-      console.warn(
-        `[vehicles] Failed to load ${name}. Tried: ${paths.join(', ')}`,
-        error.message
-      );
-
-      throw error;
-    });
+    throw error;
+  });
 
   return models[name];
 }
 
-// -----------------------------------------------------------------------------
+// ============================================================
+// Texture / material analysis
+// ============================================================
+
+function hsl(r, g, b) {
+  const c = new THREE.Color(
+    r / 255,
+    g / 255,
+    b / 255
+  );
+
+  const result = {};
+  c.getHSL(result);
+
+  return result;
+}
+
+function analyseTexture(body) {
+  if (
+    !body ||
+    !body.material ||
+    Array.isArray(body.material) ||
+    !body.material.map ||
+    !body.material.map.image
+  ) {
+    return {
+      tex: null,
+      data: null,
+      W: 0,
+      H: 0,
+      paintTexels: [],
+      flipY: true,
+      colorSpace: null,
+    };
+  }
+
+  const tex = body.material.map;
+  const img = tex.image;
+
+  const W = img.width || 0;
+  const H = img.height || 0;
+
+  if (!W || !H) {
+    return {
+      tex,
+      data: null,
+      W,
+      H,
+      paintTexels: [],
+      flipY: tex.flipY ?? true,
+      colorSpace: tex.colorSpace,
+    };
+  }
+
+  const canvas = document.createElement('canvas');
+
+  canvas.width = W;
+  canvas.height = H;
+
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return {
+      tex,
+      data: null,
+      W,
+      H,
+      paintTexels: [],
+      flipY: tex.flipY ?? true,
+      colorSpace: tex.colorSpace,
+    };
+  }
+
+  try {
+    ctx.drawImage(img, 0, 0);
+
+    const data = ctx.getImageData(
+      0,
+      0,
+      W,
+      H
+    );
+
+    return {
+      tex,
+      data,
+      W,
+      H,
+      paintTexels: [],
+      flipY: tex.flipY ?? true,
+      colorSpace: tex.colorSpace,
+    };
+  } catch (error) {
+    console.warn(
+      '[vehicles] Texture analysis unavailable:',
+      error
+    );
+
+    return {
+      tex,
+      data: null,
+      W,
+      H,
+      paintTexels: [],
+      flipY: tex.flipY ?? true,
+      colorSpace: tex.colorSpace,
+    };
+  }
+}
+
+// ============================================================
 // Paint texture
-// -----------------------------------------------------------------------------
+// ============================================================
 
 function paintTexture(name, model, color) {
   if (
@@ -429,8 +295,7 @@ function paintTexture(name, model, color) {
     return paints[key];
   }
 
-  const canvas =
-    document.createElement('canvas');
+  const canvas = document.createElement('canvas');
 
   canvas.width = model.W;
   canvas.height = model.H;
@@ -502,9 +367,214 @@ function paintTexture(name, model, color) {
   return texture;
 }
 
-// -----------------------------------------------------------------------------
-// Attach real model
-// -----------------------------------------------------------------------------
+// ============================================================
+// Material helpers
+// ============================================================
+
+function materialName(material) {
+  return String(
+    material?.name || ''
+  ).toLowerCase();
+}
+
+function applyKekeMaterial(material) {
+  if (!material) return;
+
+  const name =
+    materialName(material);
+
+  if (
+    /wheel|tyre|tire|rubber|tread|black/.test(
+      name
+    )
+  ) {
+    material.color.set(0x171918);
+    material.roughness = 0.6;
+    material.metalness = 0.05;
+    return;
+  }
+
+  if (
+    /glass|window|windshield|windscreen/.test(
+      name
+    )
+  ) {
+    material.color.set(0x243437);
+    material.roughness = 0.2;
+    material.metalness = 0.15;
+    return;
+  }
+
+  if (
+    /light|lamp|head|indicator|brake/.test(
+      name
+    )
+  ) {
+    return;
+  }
+
+  material.color.set(0xf5c518);
+  material.roughness = 0.48;
+  material.metalness = 0.08;
+}
+
+// ============================================================
+// Danfo black Lagos waist stripe
+// ============================================================
+//
+// The GLB itself may have different materials, so we create a
+// lightweight visual stripe around the model instead of trying
+// to modify the source GLB permanently.
+//
+// This keeps the familiar Lagos yellow + black appearance.
+// ============================================================
+
+function addDanfoStripe(
+  g,
+  model,
+  modelData,
+  scale
+) {
+  const stripeGroup =
+    new THREE.Group();
+
+  stripeGroup.name =
+    'LagosDanfoBlackStripe';
+
+  const black =
+    new THREE.MeshStandardMaterial({
+      color: 0x111111,
+      roughness: 0.42,
+      metalness: 0.08,
+    });
+
+  const width =
+    Math.max(
+      1.6,
+      Math.min(
+        modelData.size.x * scale * 1.04,
+        2.5
+      )
+    );
+
+  const length =
+    Math.max(
+      3.8,
+      Math.min(
+        modelData.size.z * scale * 1.01,
+        5.55
+      )
+    );
+
+  const height =
+    Math.max(
+      0.18,
+      Math.min(
+        modelData.size.y * scale * 0.12,
+        0.38
+      )
+    );
+
+  const minY =
+    modelData.box.min.y * scale;
+
+  const maxY =
+    modelData.box.max.y * scale;
+
+  const modelHeight =
+    maxY - minY;
+
+  const stripeY =
+    minY + modelHeight * 0.43;
+
+  // Side stripes
+  const left =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        0.035,
+        height,
+        length
+      ),
+      black
+    );
+
+  left.position.set(
+    -width / 2,
+    stripeY,
+    0
+  );
+
+  const right =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        0.035,
+        height,
+        length
+      ),
+      black.clone()
+    );
+
+  right.position.set(
+    width / 2,
+    stripeY,
+    0
+  );
+
+  // Front / rear sections
+  const front =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        width,
+        height,
+        0.035
+      ),
+      black.clone()
+    );
+
+  front.position.set(
+    0,
+    stripeY,
+    -length / 2
+  );
+
+  const rear =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        width,
+        height,
+        0.035
+      ),
+      black.clone()
+    );
+
+  rear.position.set(
+    0,
+    stripeY,
+    length / 2
+  );
+
+  for (const mesh of [
+    left,
+    right,
+    front,
+    rear,
+  ]) {
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.keep = true;
+
+    stripeGroup.add(mesh);
+  }
+
+  g.add(stripeGroup);
+
+  g.userData.danfoStripe =
+    stripeGroup;
+}
+
+// ============================================================
+// Attach model
+// ============================================================
 
 export function attachModel(
   g,
@@ -519,232 +589,190 @@ export function attachModel(
 
       if (!spec) {
         console.warn(
-          `[vehicles] Unknown vehicle type: ${type}`
+          `[vehicles] Unknown type: ${type}`
         );
-
         return;
       }
 
-      if (!modelData.size.z) {
+      const sourceScene =
+        modelData.gltf.scene;
+
+      // --------------------------------------------------------
+      // Calculate original bounds
+      // --------------------------------------------------------
+
+      const originalBox =
+        new THREE.Box3().setFromObject(
+          sourceScene
+        );
+
+      const originalSize =
+        new THREE.Vector3();
+
+      originalBox.getSize(
+        originalSize
+      );
+
+      if (
+        originalSize.x <= 0 ||
+        originalSize.y <= 0 ||
+        originalSize.z <= 0
+      ) {
         console.warn(
-          `[vehicles] Invalid model depth for ${name}`
+          `[vehicles] Invalid dimensions for ${name}`
         );
-
         return;
       }
 
-      // -----------------------------------------------------------------------
-      // Scale the GLB to the runtime vehicle length.
-      //
-      // Some third-party models have proportions that make them visually
-      // oversized even after matching their nominal length. Keep the gameplay
-      // dimensions in VEH unchanged and apply a visual-only correction here.
-      // -----------------------------------------------------------------------
+      // --------------------------------------------------------
+      // Visual model calibration
+      // --------------------------------------------------------
 
       const MODEL_SCALE = {
         keke_bajaj_re: 0.74,
+
+        // Motorcycles are visually delicate.
+        'suzuki_gsx-r750': 0.9,
+
+        // Carry is slightly compact.
+        suzuki_carry_minivan: 0.94,
+
+        // Large trucks need a little visual moderation.
+        '2003-gmc-topkick-c6500': 0.92,
+        heavy_commercial_vehicle_hcv: 0.9,
       };
 
       const baseScale =
-        spec.len / modelData.size.z;
+        spec.len /
+        originalSize.z;
+
+      const visualMultiplier =
+        MODEL_SCALE[name] ?? 1;
 
       const scale =
         baseScale *
-        (MODEL_SCALE[name] ?? 1);
-      
+        visualMultiplier;
 
-
+      // --------------------------------------------------------
       // Remove procedural placeholder geometry.
-      for (const child of [...g.children]) {
+      // --------------------------------------------------------
+
+      for (const child of [
+        ...g.children,
+      ]) {
         if (!child.userData.keep) {
           g.remove(child);
         }
       }
 
+      // --------------------------------------------------------
+      // Clone actual GLB
+      // --------------------------------------------------------
+
       const model =
-        modelData.scene.clone(true);
-
-      // -----------------------------------------------------------------------
-      // Model orientation
-      //
-      // Default:
-      //   +Z GLB forward -> -Z game forward
-      //
-      // Keke:
-      //   supplied GLB is oriented sideways, so rotate it 90 degrees.
-      // -----------------------------------------------------------------------
-
-      const MODEL_ROTATION = {
-        keke_bajaj_re: Math.PI / 2,
-
-        // Danfo GLB uses the normal +Z orientation.
-        danfo_vanagon: Math.PI,
-
-        // Newly added models.
-        'suzuki_carry_minivan': Math.PI,
-        'suzuki_gsx-r750': Math.PI,
-        'volkswagen_crafter': Math.PI,
-        '2003-gmc-topkick-c6500': Math.PI,
-        'heavy_commercial_vehicle_hcv': Math.PI,
-
-        // Future motorcycle variants.
-        '2008_kawasaki_ninja_zx-10r-em': Math.PI,
-        'suzuki_hayabusa_gsx-1300r-k8': Math.PI,
-
-        // Future pickup.
-        'lightbody_90_md_pickup_-_low_poly_model': Math.PI,
-
-        // Future van.
-        'volkswagen_id._buzz': Math.PI,
-      };
-
-      model.rotation.y =
-        MODEL_ROTATION[name] ?? Math.PI;
+        sourceScene.clone(true);
 
       model.scale.setScalar(scale);
 
-      const wheels = [];
+      // --------------------------------------------------------
+      // Vehicle orientation
+      // --------------------------------------------------------
 
-      // -----------------------------------------------------------------------
-      // Paint setup
-      // -----------------------------------------------------------------------
+      const MODEL_ROTATION = {
+        keke_bajaj_re:
+          Math.PI / 2,
 
-      const shouldPaint =
-        color !== null &&
-        color !== undefined;
+        danfo_vanagon:
+          Math.PI,
 
-      let paintMap = null;
+        suzuki_carry_minivan:
+          Math.PI,
 
-      if (shouldPaint) {
-        paintMap = paintTexture(
-          name,
-          modelData,
-          color
-        );
-      }
+        'suzuki_gsx-r750':
+          Math.PI,
 
-      // -----------------------------------------------------------------------
-      // Keke Napep visual treatment
-      // -----------------------------------------------------------------------
-      //
-      // The source Keke model has darker materials than the Lagos commercial
-      // fleet. Unlike the texture-based paint system, this applies directly to
-      // suitable body materials so the Keke consistently reads as yellow.
-      //
-      // Glass, wheels, tyres, lights and other dark components are preserved.
-      // -----------------------------------------------------------------------
+        volkswagen_crafter:
+          Math.PI,
+
+        '2003-gmc-topkick-c6500':
+          Math.PI,
+
+        heavy_commercial_vehicle_hcv:
+          Math.PI,
+
+        '2008_kawasaki_ninja_zx-10r-em':
+          Math.PI,
+
+        'suzuki_hayabusa_gsx-1300r-k8':
+          Math.PI,
+
+        'lightbody_90_md_pickup_-_low_poly_model':
+          Math.PI,
+
+        'volkswagen_id._buzz':
+          Math.PI,
+      };
+
+      model.rotation.y =
+        MODEL_ROTATION[name] ??
+        Math.PI;
+
+      // --------------------------------------------------------
+      // Material processing
+      // --------------------------------------------------------
 
       const isKeke =
         name === 'keke_bajaj_re';
 
-      const kekeYellow =
-        new THREE.Color(0xf5c518);
-
-      const kekeYellowLight =
-        new THREE.Color(0xffd52a);
-
-      const kekeDark =
-        new THREE.Color(0x171918);
-
-      const kekeGlass =
-        new THREE.Color(0x243437);
-
-      const applyKekeMaterial =
-        material => {
-          if (!material) return;
-
-          const materialName =
-            String(material.name || '').toLowerCase();
-
-          if (
-            /wheel|tyre|tire|rubber|tread|black/.test(
-              materialName
-            )
-          ) {
-            material.color =
-              kekeDark;
-
-            return;
-          }
-
-          if (
-            /glass|window|windshield|windscreen/.test(
-              materialName
-            )
-          ) {
-            material.color =
-              kekeGlass;
-
-            material.roughness = 0.2;
-            material.metalness = 0.15;
-
-            return;
-          }
-
-          if (
-            /light|lamp|head|indicator|brake/.test(
-              materialName
-            )
-          ) {
-            return;
-          }
-
-          // Keke body.
-          material.color =
-            kekeYellow;
-
-          material.roughness = 0.48;
-          material.metalness = 0.08;
-        };
-
-
+      const wheels = [];
 
       model.traverse(object => {
         if (!object.isMesh) {
           return;
         }
 
-        if (Array.isArray(object.material)) {
-          object.material =
-            object.material.map(material =>
-              material.clone()
-            );
-        } else if (object.material) {
-          object.material =
-            object.material.clone();
-        }
+        object.material =
+          cloneMaterial(
+            object.material
+          );
 
         if (isKeke) {
-          if (Array.isArray(object.material)) {
-            object.material.forEach(applyKekeMaterial);
-          } else if (object.material) {
-            applyKekeMaterial(object.material);
-          }
-        }
-
-        // Do NOT overwrite glass/chrome/light materials.
-        //
-        // Only use the paint map when the source model explicitly marks
-        // the mesh as paintable.
-        if (
-          paintMap &&
-          modelData.paintTexels?.length &&
-          object.userData.paintable
-        ) {
           if (
-            Array.isArray(object.material)
+            Array.isArray(
+              object.material
+            )
           ) {
-            for (const material of object.material) {
-              material.map = paintMap;
-            }
-          } else if (object.material) {
-            object.material.map =
-              paintMap;
+            object.material.forEach(
+              applyKekeMaterial
+            );
+          } else {
+            applyKekeMaterial(
+              object.material
+            );
           }
         }
 
+        // Find wheels using both mesh and material names.
+        const objectName =
+          String(
+            object.name || ''
+          ).toLowerCase();
+
+        const matNames =
+          Array.isArray(
+            object.material
+          )
+            ? object.material
+                .map(materialName)
+                .join(' ')
+            : materialName(
+                object.material
+              );
+
         if (
-          /wheel/i.test(object.name)
+          /wheel|tyre|tire/.test(
+            `${objectName} ${matNames}`
+          )
         ) {
           wheels.push(object);
         }
@@ -753,11 +781,26 @@ export function attachModel(
         object.receiveShadow = true;
       });
 
-      // -----------------------------------------------------------------------
-      // Wheel setup
-      // -----------------------------------------------------------------------
+      // --------------------------------------------------------
+      // Add real model
+      // --------------------------------------------------------
 
-      g.userData.wheels = wheels;
+      g.add(model);
+
+      g.userData.model =
+        model;
+
+      g.userData.realModel =
+        true;
+
+      g.userData.modelName =
+        name;
+
+      g.userData.modelPath =
+        modelData.path;
+
+      g.userData.wheels =
+        wheels;
 
       g.userData.wheelR =
         Math.max(
@@ -765,70 +808,42 @@ export function attachModel(
           0.3 * scale
         );
 
-      // -----------------------------------------------------------------------
-      // Model reference
-      // -----------------------------------------------------------------------
+      // --------------------------------------------------------
+      // Danfo Lagos stripe
+      // --------------------------------------------------------
 
-      g.add(model);
+      if (type === 'danfo') {
+        addDanfoStripe(
+          g,
+          model,
+          modelData,
+          scale
+        );
+      }
 
-      g.userData.model = model;
-
-      // -----------------------------------------------------------------------
-      // Repaint API
-      // -----------------------------------------------------------------------
-
-      g.userData.repaint = nextColor => {
-        const texture =
-          paintTexture(
-            name,
-            modelData,
-            nextColor
-          );
-
-        if (!texture) {
-          return;
-        }
-
-        model.traverse(object => {
-          if (
-            !object.isMesh ||
-            !object.userData.paintable
-          ) {
-            return;
-          }
-
-          if (
-            Array.isArray(object.material)
-          ) {
-            for (const material of object.material) {
-              material.map = texture;
-              material.needsUpdate = true;
-            }
-          } else if (object.material) {
-            object.material.map =
-              texture;
-
-            object.material.needsUpdate =
-              true;
-          }
-        });
-      };
-
-      // -----------------------------------------------------------------------
-      // Dimensions
-      // -----------------------------------------------------------------------
-
-      const width =
-        modelData.size.x * scale;
-
-      const height =
-        modelData.size.y * scale;
-
-      // -----------------------------------------------------------------------
+      // --------------------------------------------------------
       // Headlights
-      // -----------------------------------------------------------------------
+      // --------------------------------------------------------
 
-      for (const sx of [-0.3, 0.3]) {
+      const finalBox =
+        new THREE.Box3().setFromObject(
+          model
+        );
+
+      const finalSize =
+        new THREE.Vector3();
+
+      finalBox.getSize(
+        finalSize
+      );
+
+      const finalMin =
+        finalBox.min;
+
+      for (const sx of [
+        -0.3,
+        0.3,
+      ]) {
         const light =
           new THREE.Mesh(
             new THREE.BoxGeometry(
@@ -844,21 +859,29 @@ export function attachModel(
           );
 
         light.position.set(
-          sx * width,
-          height * 0.42,
+          sx *
+            Math.min(
+              finalSize.x * 0.4,
+              0.8
+            ),
+          finalMin.y +
+            finalSize.y * 0.42,
           -spec.len / 2 - 0.02
         );
 
-        light.userData.keep = true;
+        light.userData.keep =
+          true;
 
         g.add(light);
 
-        lamps.push(light.material);
+        lamps.push(
+          light.material
+        );
       }
 
-      // -----------------------------------------------------------------------
+      // --------------------------------------------------------
       // Emergency lightbar
-      // -----------------------------------------------------------------------
+      // --------------------------------------------------------
 
       if (lightbar) {
         const bar =
@@ -877,11 +900,14 @@ export function attachModel(
 
         bar.position.set(
           0,
-          height + 0.08,
+          finalMin.y +
+            finalSize.y +
+            0.08,
           0
         );
 
-        bar.userData.keep = true;
+        bar.userData.keep =
+          true;
 
         g.add(bar);
 
@@ -889,31 +915,79 @@ export function attachModel(
           bar.material;
       }
 
-      // -----------------------------------------------------------------------
-      // Flag successful custom model load.
-      // -----------------------------------------------------------------------
+      // --------------------------------------------------------
+      // Repaint API
+      // --------------------------------------------------------
 
-      g.userData.realModel = true;
-      g.userData.modelName = name;
-      g.userData.modelPath = modelData.path;
+      g.userData.repaint =
+        nextColor => {
+          const texture =
+            paintTexture(
+              name,
+              modelData,
+              nextColor
+            );
+
+          if (!texture) {
+            return;
+          }
+
+          model.traverse(
+            object => {
+              if (
+                !object.isMesh ||
+                !object.userData
+                  .paintable
+              ) {
+                return;
+              }
+
+              if (
+                Array.isArray(
+                  object.material
+                )
+              ) {
+                for (const material of
+                  object.material) {
+                  material.map =
+                    texture;
+                  material.needsUpdate =
+                    true;
+                }
+              } else if (
+                object.material
+              ) {
+                object.material.map =
+                  texture;
+
+                object.material.needsUpdate =
+                  true;
+              }
+            }
+          );
+        };
 
       console.info(
-        `[vehicles] Loaded ${name} for ${type} from ${modelData.path}`
+        `[vehicles] ✓ ${type} using GLB ${name}`
       );
     })
     .catch(error => {
-      // Procedural vehicle remains in place.
-      // This means a missing GLB will NOT break traffic.
+      // --------------------------------------------------------
+      // IMPORTANT:
+      // Keep procedural vehicle if GLB fails.
+      // --------------------------------------------------------
+
       console.warn(
-        `[vehicles] Keeping procedural ${type}; ${name} failed to load.`,
-        error.message
+        `[vehicles] Keeping procedural ${type}; GLB ${name} failed:`,
+        error?.message ||
+          error
       );
     });
 }
 
-// -----------------------------------------------------------------------------
+// ============================================================
 // Wheel animation
-// -----------------------------------------------------------------------------
+// ============================================================
 
 export function spinWheels(
   g,
@@ -928,13 +1002,15 @@ export function spinWheels(
   }
 
   const radius =
-    g.userData.wheelR || 0.4;
+    g.userData.wheelR ||
+    0.4;
 
   const rotation =
-    (speed * dt) / radius;
+    (speed * dt) /
+    radius;
 
   for (const wheel of wheels) {
-    wheel.rotation.x -= rotation;
+    wheel.rotation.x -=
+      rotation;
   }
 }
-
