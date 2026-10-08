@@ -6,16 +6,34 @@ import { lamps } from '../world/builders.js';
 // -----------------------------------------------------------------------------
 // Vehicle asset paths
 // -----------------------------------------------------------------------------
-// Kenney assets continue to live under assets/vehicles/kenney/.
-// Custom Lagos vehicles live in their own folders.
+//
+// The loader supports BOTH:
+//
+//   1. New public vehicle assets:
+//      web/public/vehicles/<model>.glb
+//      Runtime URL: /vehicles/<model>.glb
+//
+//   2. Existing Kenney assets:
+//      web/public/assets/vehicles/kenney/<model>.glb
+//      Runtime URL: /assets/vehicles/kenney/<model>.glb
+//
+// It also keeps support for the existing custom Danfo/Keke folders:
+//
+//   /assets/vehicles/danfo/...
+//   /assets/vehicles/keke/...
 //
 // IMPORTANT:
 // Models should face +Z in the GLB.
-// The game uses -Z as vehicle forward, so attachModel() rotates the model PI.
+// The game uses -Z as vehicle forward, so attachModel() rotates
+// the model by PI unless a model has a custom rotation.
 // -----------------------------------------------------------------------------
 
 const CUSTOM_ASSETS = {
   danfo: [
+    // New public/vehicles location
+    '/vehicles/danfo_vanagon.glb',
+
+    // Existing custom location
     'assets/vehicles/danfo/danfo_vanagon.glb',
     'assets/vehicles/danfo/danfo.glb',
     'assets/vehicles/danfo/lagos_danfo.glb',
@@ -23,12 +41,15 @@ const CUSTOM_ASSETS = {
   ],
 
   keke: [
+    // New public/vehicles location
+    '/vehicles/keke_bajaj_re.glb',
+
+    // Existing custom location
     'assets/vehicles/keke/keke_bajaj_re.glb',
     'assets/vehicles/keke/keke.glb',
     'assets/vehicles/keke/keke_napep.glb',
   ],
 };
-
 
 const loader = new GLTFLoader();
 
@@ -52,6 +73,10 @@ const hsl = (r, g, b) => {
   return o;
 };
 
+// -----------------------------------------------------------------------------
+// Asset path resolver
+// -----------------------------------------------------------------------------
+
 const assetPathsFor = name => {
   if (name === 'danfo_vanagon') {
     return CUSTOM_ASSETS.danfo;
@@ -61,9 +86,19 @@ const assetPathsFor = name => {
     return CUSTOM_ASSETS.keke;
   }
 
-  return [`${MODEL_BASE}${name}.glb`];
+  // New public/vehicles path FIRST.
+  //
+  // Example:
+  //   web/public/vehicles/suzuki_carry_minivan.glb
+  // becomes:
+  //   /vehicles/suzuki_carry_minivan.glb
+  //
+  // Existing Kenney path remains as the fallback.
+  return [
+    `/vehicles/${name}.glb`,
+    `${MODEL_BASE}${name}.glb`,
+  ];
 };
-
 
 // -----------------------------------------------------------------------------
 // Load vehicle GLB
@@ -74,34 +109,40 @@ export function loadVehicleModel(name) {
     return models[name];
   }
 
-      const paths = assetPathsFor(name);
+  const paths = assetPathsFor(name);
 
-      const loadFirstAvailable = async () => {
-        let lastError = null;
+  const loadFirstAvailable = async () => {
+    let lastError = null;
 
-        for (const path of paths) {
-          try {
-            const gltf = await loader.loadAsync(path);
+    for (const path of paths) {
+      try {
+        const gltf = await loader.loadAsync(path);
 
-            console.info(
-              `[vehicles] Loaded ${name} from ${path}`
-            );
+        console.info(
+          `[vehicles] Loaded ${name} from ${path}`
+        );
 
-            return {
-              gltf,
-              path,
-            };
-          } catch (error) {
-            lastError = error;
-          }
-        }
+        return {
+          gltf,
+          path,
+        };
+      } catch (error) {
+        lastError = error;
+      }
+    }
 
-        throw lastError ||
-          new Error(`No asset found for ${name}`);
-      };
+    throw lastError ||
+      new Error(`No asset found for ${name}`);
+  };
 
-      models[name] = loadFirstAvailable()
-        .then(({ gltf, path }) => {
+  models[name] = loadFirstAvailable()
+    .then(({ gltf, path }) => {
+      // -----------------------------------------------------------------------
+      // IMPORTANT:
+      // The loaded GLTF scene is the actual model root.
+      // -----------------------------------------------------------------------
+
+      const scene = gltf.scene;
 
       // Try to find a sensible body mesh.
       // Custom GLBs may not have a mesh literally named "body".
@@ -322,7 +363,7 @@ export function loadVehicleModel(name) {
               }
             } catch (error) {
               console.warn(
-                `[vehicles] Failed to load ${name}. Tried: ${paths.join(', ')}`,
+                `[vehicles] Failed texture analysis for ${name}`,
                 error.message
               );
             }
@@ -351,13 +392,14 @@ export function loadVehicleModel(name) {
         paintTexels,
         flipY: tex?.flipY ?? true,
         colorSpace: tex?.colorSpace,
+        path,
       };
     })
     .catch(error => {
       delete models[name];
 
       console.warn(
-        `[vehicles] Failed to load ${name} from ${path}:`,
+        `[vehicles] Failed to load ${name}. Tried: ${paths.join(', ')}`,
         error.message
       );
 
@@ -491,7 +533,10 @@ export function attachModel(
         return;
       }
 
+      // -----------------------------------------------------------------------
       // Scale the GLB to the runtime vehicle length.
+      // -----------------------------------------------------------------------
+
       const scale =
         spec.len / modelData.size.z;
 
@@ -505,11 +550,38 @@ export function attachModel(
       const model =
         modelData.scene.clone(true);
 
-      // GLB convention: +Z forward.
-      // NAIJA RISE convention: -Z forward.
+      // -----------------------------------------------------------------------
+      // Model orientation
+      //
+      // Default:
+      //   +Z GLB forward -> -Z game forward
+      //
+      // Keke:
+      //   supplied GLB is oriented sideways, so rotate it 90 degrees.
+      // -----------------------------------------------------------------------
+
       const MODEL_ROTATION = {
         keke_bajaj_re: Math.PI / 2,
+
+        // Danfo GLB uses the normal +Z orientation.
         danfo_vanagon: Math.PI,
+
+        // Newly added models.
+        suzuki_carry_minivan: Math.PI,
+        suzuki_gsx-r750: Math.PI,
+        volkswagen_crafter: Math.PI,
+        '2003-gmc-topkick-c6500': Math.PI,
+        heavy_commercial_vehicle_hcv: Math.PI,
+
+        // Future motorcycle variants.
+        '2008_kawasaki_ninja_zx-10r-em': Math.PI,
+        'suzuki_hayabusa_gsx-1300r-k8': Math.PI,
+
+        // Future pickup.
+        'lightbody_90_md_pickup_-_low_poly_model': Math.PI,
+
+        // Future van.
+        'volkswagen_id._buzz': Math.PI,
       };
 
       model.rotation.y =
@@ -519,7 +591,10 @@ export function attachModel(
 
       const wheels = [];
 
-      // Only apply recolouring if a colour was explicitly supplied.
+      // -----------------------------------------------------------------------
+      // Paint setup
+      // -----------------------------------------------------------------------
+
       const shouldPaint =
         color !== null &&
         color !== undefined;
@@ -550,8 +625,9 @@ export function attachModel(
         }
 
         // Do NOT overwrite glass/chrome/light materials.
-        // Only use the paint map when the source model actually supports
-        // texture-based recolouring.
+        //
+        // Only use the paint map when the source model explicitly marks
+        // the mesh as paintable.
         if (
           paintMap &&
           modelData.paintTexels?.length &&
@@ -579,9 +655,9 @@ export function attachModel(
         object.receiveShadow = true;
       });
 
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
       // Wheel setup
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
 
       g.userData.wheels = wheels;
 
@@ -591,17 +667,17 @@ export function attachModel(
           0.3 * scale
         );
 
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
       // Model reference
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
 
       g.add(model);
 
       g.userData.model = model;
 
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
       // Repaint API
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
 
       g.userData.repaint = nextColor => {
         const texture =
@@ -640,9 +716,9 @@ export function attachModel(
         });
       };
 
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
       // Dimensions
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
 
       const width =
         modelData.size.x * scale;
@@ -650,9 +726,9 @@ export function attachModel(
       const height =
         modelData.size.y * scale;
 
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
       // Headlights
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
 
       for (const sx of [-0.3, 0.3]) {
         const light =
@@ -682,9 +758,9 @@ export function attachModel(
         lamps.push(light.material);
       }
 
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
       // Emergency lightbar
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
 
       if (lightbar) {
         const bar =
@@ -715,15 +791,16 @@ export function attachModel(
           bar.material;
       }
 
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
       // Flag successful custom model load.
-      // ---------------------------------------------------------------------
+      // -----------------------------------------------------------------------
 
       g.userData.realModel = true;
       g.userData.modelName = name;
+      g.userData.modelPath = modelData.path;
 
       console.info(
-        `[vehicles] Loaded ${name} for ${type}`
+        `[vehicles] Loaded ${name} for ${type} from ${modelData.path}`
       );
     })
     .catch(error => {
@@ -762,3 +839,4 @@ export function spinWheels(
     wheel.rotation.x -= rotation;
   }
 }
+

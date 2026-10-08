@@ -1,5 +1,6 @@
 // Commercial vehicle crew: danfo / BRT drivers + conductors (Alpha 1.1).
 // Traits affect fare, patience, and dialogue tone.
+import { VEH } from './vehicles.js';
 
 export const TRAITS = {
   patient:   { label: 'Patient',   fareMul: 1.0,  cool: 8,  heatOnRefuse: 0 },
@@ -44,8 +45,7 @@ export function pickTrait() {
 }
 
 export function fareFor(type, traitId) {
-  const { VEH } = require('./vehicles.js'); // or import at top in real file
-  const base = VEH[type]?.fare ?? 300;
+  const base = VEH[type]?.fare ?? 300;  
   const mul = TRAITS[traitId]?.fareMul ?? 1;
   return Math.round(base * mul / 50) * 50; // snap to ₦50
 }
