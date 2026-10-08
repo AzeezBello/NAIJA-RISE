@@ -9,8 +9,10 @@ import {
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 
+type VehicleType = 'danfo' | 'keke' | 'car';
+
 type VehicleProps = {
-  type: 'danfo' | 'keke' | 'car';
+  type: VehicleType;
   position: [number, number, number];
   rotation?: number;
   speed?: number;
@@ -33,7 +35,7 @@ function Road() {
       </mesh>
 
       {/* Sidewalks */}
-      {[-12, 12].map(x => (
+      {[-12, 12].map((x) => (
         <mesh
           key={x}
           position={[x, 0.08, 0]}
@@ -48,7 +50,7 @@ function Road() {
       ))}
 
       {/* Road lane markings */}
-      {[-12, -7, -2, 3, 8, 13].map(z => (
+      {[-12, -7, -2, 3, 8, 13].map((z) => (
         <mesh
           key={z}
           position={[0, 0.015, z]}
@@ -63,7 +65,7 @@ function Road() {
       ))}
 
       {/* Yellow road edge lines */}
-      {[-9.2, 9.2].map(x => (
+      {[-9.2, 9.2].map((x) => (
         <mesh
           key={x}
           position={[x, 0.018, 0]}
@@ -93,12 +95,19 @@ function Building({
 }) {
   const windows = useMemo(
     () =>
-      Array.from({ length: Math.max(4, Math.floor(height)) }, (_, row) =>
-        Array.from({ length: 3 }, (_, col) => ({
-          row,
-          col,
-        })),
-      ),
+      Array.from(
+        {
+          length: Math.max(4, Math.floor(height)),
+        },
+        (_, row) =>
+          Array.from(
+            { length: 3 },
+            (_, col) => ({
+              row,
+              col,
+            }),
+          ),
+      ).flat(),
     [height],
   );
 
@@ -107,6 +116,7 @@ function Building({
       position={position}
       scale={[scale, scale, scale]}
     >
+      {/* Main building */}
       <mesh
         position={[0, height / 2, 0]}
         castShadow
@@ -132,7 +142,7 @@ function Building({
       </mesh>
 
       {/* Windows */}
-      {windows.map(window => (
+      {windows.map((window) => (
         <mesh
           key={`${window.row}-${window.col}`}
           position={[
@@ -155,9 +165,7 @@ function Building({
       ))}
 
       {/* Shop fascia */}
-      <mesh
-        position={[0, 0.95, 2.56]}
-      >
+      <mesh position={[0, 0.95, 2.56]}>
         <boxGeometry args={[4.7, 0.7, 0.08]} />
         <meshStandardMaterial
           color="#d8a72c"
@@ -177,6 +185,7 @@ function StreetLight({
 }) {
   return (
     <group position={position}>
+      {/* Pole */}
       <mesh
         position={[0, 2.1, 0]}
         castShadow
@@ -185,6 +194,7 @@ function StreetLight({
         <meshStandardMaterial color="#252b28" />
       </mesh>
 
+      {/* Arm */}
       <mesh
         position={[side * 0.65, 4.15, 0]}
         rotation={[0, 0, side * -0.18]}
@@ -194,6 +204,7 @@ function StreetLight({
         <meshStandardMaterial color="#252b28" />
       </mesh>
 
+      {/* Lamp */}
       <mesh
         position={[side * 1.28, 4.08, 0]}
       >
@@ -220,6 +231,7 @@ function Tree({
       position={position}
       scale={[scale, scale, scale]}
     >
+      {/* Trunk */}
       <mesh
         position={[0, 1.2, 0]}
         castShadow
@@ -228,6 +240,7 @@ function Tree({
         <meshStandardMaterial color="#51412d" />
       </mesh>
 
+      {/* Main canopy */}
       <mesh
         position={[0, 2.65, 0]}
         castShadow
@@ -239,6 +252,7 @@ function Tree({
         />
       </mesh>
 
+      {/* Secondary canopy */}
       <mesh
         position={[0.55, 2.45, 0.1]}
         castShadow
@@ -256,16 +270,17 @@ function Tree({
 function Danfo({
   position,
   rotation = 0,
+  speed = 1.6,
 }: VehicleProps) {
   const group = useRef<THREE.Group>(null);
 
   useFrame((_, delta) => {
-    if (group.current) {
-      group.current.position.z += delta * 1.6;
+    if (!group.current) return;
 
-      if (group.current.position.z > 18) {
-        group.current.position.z = -18;
-      }
+    group.current.position.z += delta * speed;
+
+    if (group.current.position.z > 18) {
+      group.current.position.z = -18;
     }
   });
 
@@ -311,9 +326,7 @@ function Danfo({
       </mesh>
 
       {/* Front windshield */}
-      <mesh
-        position={[0, 1.65, -2.37]}
-      >
+      <mesh position={[0, 1.65, -2.37]}>
         <boxGeometry args={[1.78, 0.7, 0.06]} />
         <meshStandardMaterial
           color="#17272b"
@@ -323,7 +336,7 @@ function Danfo({
       </mesh>
 
       {/* Side windows */}
-      {[-1.09, 1.09].map(x => (
+      {[-1.09, 1.09].map((x) => (
         <mesh
           key={x}
           position={[x, 1.63, 0]}
@@ -338,8 +351,8 @@ function Danfo({
       ))}
 
       {/* Wheels */}
-      {[-1, 1].flatMap(x =>
-        [-1.55, 1.55].map(z => (
+      {[-1, 1].flatMap((x) =>
+        [-1.55, 1.55].map((z) => (
           <mesh
             key={`${x}-${z}`}
             position={[x * 1.05, 0.45, z]}
@@ -355,7 +368,7 @@ function Danfo({
       )}
 
       {/* Headlights */}
-      {[-0.68, 0.68].map(x => (
+      {[-0.68, 0.68].map((x) => (
         <mesh
           key={x}
           position={[x, 1.22, -2.4]}
@@ -375,13 +388,14 @@ function Danfo({
 function Keke({
   position,
   rotation = 0,
+  speed = 1.1,
 }: VehicleProps) {
   const group = useRef<THREE.Group>(null);
 
   useFrame((_, delta) => {
     if (!group.current) return;
 
-    group.current.position.z -= delta * 1.1;
+    group.current.position.z -= delta * speed;
 
     if (group.current.position.z < -18) {
       group.current.position.z = 18;
@@ -450,13 +464,14 @@ function Keke({
 function Car({
   position,
   rotation = 0,
+  speed = 0.95,
 }: VehicleProps) {
   const group = useRef<THREE.Group>(null);
 
   useFrame((_, delta) => {
     if (!group.current) return;
 
-    group.current.position.z += delta * 0.95;
+    group.current.position.z += delta * speed;
 
     if (group.current.position.z > 18) {
       group.current.position.z = -18;
@@ -470,6 +485,7 @@ function Car({
       rotation={[0, rotation, 0]}
       scale={0.72}
     >
+      {/* Body */}
       <mesh
         position={[0, 0.7, 0]}
         castShadow
@@ -482,6 +498,7 @@ function Car({
         />
       </mesh>
 
+      {/* Cabin */}
       <mesh
         position={[0, 1.15, 0.25]}
         castShadow
@@ -494,8 +511,9 @@ function Car({
         />
       </mesh>
 
-      {[-0.82, 0.82].flatMap(x =>
-        [-1.1, 1.1].map(z => (
+      {/* Wheels */}
+      {[-0.82, 0.82].flatMap((x) =>
+        [-1.1, 1.1].map((z) => (
           <mesh
             key={`${x}-${z}`}
             position={[x, 0.38, z]}
@@ -538,7 +556,7 @@ function Flyover() {
       </mesh>
 
       {/* Supports */}
-      {[-8, -2.5, 3, 8.5].map(x => (
+      {[-8, -2.5, 3, 8.5].map((x) => (
         <mesh
           key={x}
           position={[x, -2.5, 0]}
@@ -656,23 +674,31 @@ function LagosScene() {
 
       {/* Traffic */}
       <Danfo
+        type="danfo"
         position={[-3.8, 0, -14]}
         rotation={Math.PI}
+        speed={1.6}
       />
 
       <Keke
+        type="keke"
         position={[3.7, 0, 14]}
         rotation={0}
+        speed={1.1}
       />
 
       <Car
+        type="car"
         position={[3.8, 0, -7]}
         rotation={Math.PI}
+        speed={0.95}
       />
 
       <Car
+        type="car"
         position={[-3.8, 0, 6]}
         rotation={0}
+        speed={0.95}
       />
 
       <ContactShadows
