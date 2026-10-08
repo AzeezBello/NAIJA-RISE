@@ -37,6 +37,7 @@ import { mapDraw, phoneMapDraw } from '../ui/minimap.js';
 import { toggleColliderDebug } from '../world/builders.js';
 import { updateVehicleTransition } from '../systems/interaction.js';
 import { setupFamily, maybeIssueFamilyRequest, updateFamily } from '../systems/family.js';
+import { updateWorldAssets } from '../world/assets.js';
 
 
 // The playable city. World geometry and traffic are built once in main.js; this scene adds the player,
@@ -81,6 +82,7 @@ export const CityScene = {
     updateNpcs(dt);
     updateCharacters(dt);
     updateAnimals(dt);
+    updateWorldAssets(dt);         // Alpha 1.1: ambient dog/cat wander + stadium GLB streaming
     updateMarkers(dt);
     updateClouds(dt);
     updateVitals(dt);

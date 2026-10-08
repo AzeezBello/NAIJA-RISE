@@ -87,6 +87,7 @@ export function spawnCrew() {
         role: 'conductor',
         vehType,
         name: pick(CONDUCTOR_NAMES),
+        name: pick(CONDUCTOR_NAMES),
         trait: cTrait,
         traitLabel: TRAITS[cTrait].label,
         route,
@@ -157,6 +158,9 @@ const PLAYER_SEP = 2.4;
 const SPEED = 1.55;
 const CROSS_CHANCE = 0.28;   // chance to start a crossing when near a junction
 const CROSS_SPEED = 2.1;     // slightly brisker across the road
+// Alpha 1.1 perf: distance bands for pedestrian simulation. Within 60 m every frame, 60–120 m every
+// other frame, 120–200 m every fourth, beyond 200 m they stand idle (still visible, just not thinking).
+const NEAR2 = 60 * 60, MID2 = 120 * 120, FAR2 = 200 * 200;
 
 // Scratch vectors — no per-frame allocations in the hot path.
 const _old = new THREE.Vector3();
@@ -262,9 +266,16 @@ export function updateNpcs(dt) {
   const schoolTime = h >= 7 && h < 14;
     const marketHour = h >= 10 && h < 16; // keep for backwards compat
   const lateNight = h >= 23 || h < 5;
+  const playerPos = G.player?.position;
 
   for (const n of G.npcs) {
     if (n.hidden) { n.g.visible = false; continue; }
+
+    // Distance band (cheap squared test, computed once per NPC per frame).
+    const pdx = playerPos ? n.g.position.x - playerPos.x : 0, pdz = playerPos ? n.g.position.z - playerPos.z : 0;
+    const pd2 = pdx * pdx + pdz * pdz;
+    n.far = pd2 > FAR2;
+    n.band = n.far ? 4 : pd2 > MID2 ? 2 : pd2 > NEAR2 ? 1 : 0;
 
     // Schedule drives intent; fall back to old market pull / random
     const steered = applyScheduleSteer(n, h);
@@ -284,7 +295,7 @@ export function updateNpcs(dt) {
       }
     }
 
-    n.g.position.addScaledVector(n.v, dt);
+    if (!n.far) n.g.position.addScaledVector(n.v, dt);   // far pedestrians hold position until the player is closer
     const sp = Math.hypot(n.v.x, n.v.z);
     if (sp > 0.2) n.g.rotation.y = Math.atan2(n.v.x, n.v.z);
     n.g.userData.c?.setState(sp > 0.2 ? 'walk' : 'idle', sp);
@@ -302,10 +313,14 @@ export function updateNpcs(dt) {
   const positions = G._npcPos || (G._npcPos = []);
   positions.length = 0;
   for (const n of G.npcs) if (n.g.visible) positions.push(n.g.position);
-  const playerPos = G.player?.position;
 
   for (const n of G.npcs) {
     if (!n.g.visible) continue;
+    if (n.far) { n.g.userData.c?.setState('idle', 0); continue; }   // beyond 200 m: visible, idle, zero sim cost
+
+    // Frame-skip by band: 60–120 m think every other frame, 120–200 m every fourth.
+    n._f = (n._f || 0) + 1;
+    if ((n.band === 2 && n._f % 4) || (n.band === 1 && n._f % 2)) continue;
     const pos = n.g.position;
 
     // ---- market pull ----
