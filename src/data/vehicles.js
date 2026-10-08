@@ -47,7 +47,7 @@ export const VEH = {
 
   keke: {
     name: 'Keke Napep',
-    len: 2.6,
+    len: 2.75,
     wid: 1.45,
     max: 12,
     boost: 15,
@@ -58,7 +58,7 @@ export const VEH = {
 
   okada: {
     name: 'Okada',
-    len: 2.1,
+    len: 2.35,
     wid: 0.7,
     max: 26,
     boost: 36,
@@ -186,6 +186,7 @@ export const MODEL_PAINT = {
   danfo: 0xf5c518,
   korope: 0xf5c518,
   keke: 0xf5c518,
+  okada: 0xf5c518,
 
   // Lagos BRT blue
   brt: 0x1c4fa0,

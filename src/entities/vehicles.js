@@ -1045,14 +1045,11 @@ export function makeVehicle(
     // --------------------------------------------------------
 
     const modelColor =
-      type === 'danfo' ||
-      type === 'keke'
+      type === 'danfo' || type === 'keke'
         ? null
-        : (
-            type in MODEL_PAINT
-              ? MODEL_PAINT[type]
-              : color
-          );
+        : type === 'okada'
+          ? (MODEL_PAINT.okada ?? 0xf5c518)   // Lagos yellow / commercial
+          : (type in MODEL_PAINT ? MODEL_PAINT[type] : color);
 
     attachModel(
       g,

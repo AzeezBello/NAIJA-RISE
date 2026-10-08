@@ -404,8 +404,8 @@ export function attachModel(
 
         const MODEL_SCALE = {
           danfo_vanagon: 1.0,
-          keke_bajaj_re: 0.74,
-          'suzuki_gsx-r750': 0.72,
+          keke_bajaj_re: 0.95,
+          'suzuki_gsx-r750': 1.15,
           suzuki_carry_minivan: 0.94,
           volkswagen_crafter: 0.95,
           '2003-gmc-topkick-c6500': 0.92,
@@ -597,4 +597,86 @@ export function spinWheels(g, speed, dt) {
   for (const wheel of wheels) {
     wheel.rotation.x -= rotation;
   }
+}
+
+
+
+/** Clamp PBR so bodies stay visible with weak/no environment map. */
+function makeReadable(material) {
+  if (!material) return;
+  if (material.metalness != null) {
+    material.metalness = Math.min(material.metalness ?? 0.2, 0.25);
+  }
+  if (material.roughness != null) {
+    material.roughness = Math.max(material.roughness ?? 0.5, 0.45);
+  }
+  // Unlit / too-dark maps still multiply with color
+  if (material.color && material.color.getHex() < 0x222222) {
+    // leave pure black rubber alone if caller set it
+  }
+  material.needsUpdate = true;
+}
+
+function applyKekeMaterial(material) {
+  if (!material) return;
+  const name = materialName(material);
+
+  // Do NOT match bare "black" — too many generic mat names hit this
+  if (/wheel|tyre|tire|rubber|tread|rim/.test(name)) {
+    material.color.set(0x1a1a1a);
+    material.roughness = 0.85;
+    material.metalness = 0.05;
+    material.needsUpdate = true;
+    return;
+  }
+  if (/glass|window|windshield|windscreen/.test(name)) {
+    material.color.set(0x243437);
+    material.roughness = 0.25;
+    material.metalness = 0.1;
+    material.needsUpdate = true;
+    return;
+  }
+  if (/light|lamp|head|indicator|brake/.test(name)) return;
+
+  material.color.set(0xf5c518);
+  material.roughness = 0.55;
+  material.metalness = 0.08;
+  material.needsUpdate = true;
+}
+
+function applyBodyColor(model, bodyHex) {
+  model.traverse(object => {
+    if (!object.isMesh) return;
+    const mats = Array.isArray(object.material)
+      ? object.material
+      : [object.material];
+    for (const m of mats) {
+      if (!m?.color) continue;
+      const n = `${object.name || ''} ${m.name || ''}`.toLowerCase();
+      if (isSkipPaintName(n)) {
+        makeReadable(m);
+        continue;
+      }
+      m.color.setHex(bodyHex);
+      makeReadable(m);
+    }
+  });
+}
+
+/** Okada / generic bike: force yellow-orange commercial look. */
+function applyOkadaMaterial(material) {
+  if (!material) return;
+  const name = materialName(material);
+  if (/wheel|tyre|tire|rubber|tread|rim|chain|exhaust/.test(name)) {
+    material.color.set(0x1a1a1a);
+    material.roughness = 0.85;
+    material.metalness = 0.1;
+    material.needsUpdate = true;
+    return;
+  }
+  if (/glass|visor|wind/.test(name)) return;
+  material.color.set(0xf5c518);
+  material.roughness = 0.5;
+  material.metalness = 0.12;
+  material.needsUpdate = true;
 }
