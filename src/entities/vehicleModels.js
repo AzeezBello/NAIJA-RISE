@@ -567,11 +567,11 @@ export function attachModel(
         danfo_vanagon: Math.PI,
 
         // Newly added models.
-        suzuki_carry_minivan: Math.PI,
-        suzuki_gsx-r750: Math.PI,
-        volkswagen_crafter: Math.PI,
+        'suzuki_carry_minivan': Math.PI,
+        'suzuki_gsx-r750': Math.PI,
+        'volkswagen_crafter': Math.PI,
         '2003-gmc-topkick-c6500': Math.PI,
-        heavy_commercial_vehicle_hcv: Math.PI,
+        'heavy_commercial_vehicle_hcv': Math.PI,
 
         // Future motorcycle variants.
         '2008_kawasaki_ninja_zx-10r-em': Math.PI,
