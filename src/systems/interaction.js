@@ -25,6 +25,7 @@ import { CHARACTER } from '../data/config.js';
 import { familyPrompt, tryFamilyInteract } from './family.js';
 import { bumpRel, rewardContact, talkToContact, getRel } from './relationships.js';
 import { nearCrew, runCrewDialog } from './crew.js';
+
 function nearStoryContact(r = 4) {
   if (G.inCar || !G.contacts) return null;
   const p = G.player.position;
@@ -37,11 +38,19 @@ function nearStoryContact(r = 4) {
   return best;
 }
 
+/** Parked vehicles only. Radius 7 helps long GLBs (BRT / danfo). */
 export function nearestCar() {
-  let best = null, d0 = 5;
-  for (const c of G.parked) { const d = c.position.distanceTo(G.player.position); if (d < d0) { d0 = d; best = c; } }
+  let best = null, d0 = 7;
+  if (!G.parked?.length) return null;
+  for (const c of G.parked) {
+    if (!c?.position || c.userData?.enterable === false) continue;
+    if (!c.userData?.type || !VEH[c.userData.type]) continue;
+    const d = c.position.distanceTo(G.player.position);
+    if (d < d0) { d0 = d; best = c; }
+  }
   return best;
 }
+
 const nearKind = (kind, r) => LANDMARKS.find(l => l.kind === kind && dist(pos(), l) < r);
 const nearKiosk = () => !G.inCar && KIOSKS.some(([x, z]) => dist(G.player.position, { x, z }) < 4);
 const nearNight = () => !G.inCar && G.state.settings.mature !== false && venueOpen() && (G.nightlife || []).find(n => dist(G.player.position, n) < 3.5);
@@ -54,26 +63,42 @@ const nearYaba = () => !G.inCar && !missionActive() && dist(pos(), placeOf('yaba
 const nearDealer = () => !G.inCar && dist(pos(), placeOf('ladipo')) < 13;
 const nearRacer = () => !G.race && !G.task && dist(pos(), placeOf('stadstop')) < 10 && !(missionActive() && curMission().at === 'stadstop');
 
-
 const _side = new THREE.Vector3();
-const ENTER_EXIT_T = () => CHARACTER.enterExit ?? 0.85;
+const ENTER_EXIT_T = () => CHARACTER.enterExit ?? CHARACTER.enterExitT ?? 0.85;
+
+/**
+ * Door stand position relative to vehicle group origin.
+ * side = -1 left (driver in RHD Lagos), +1 right.
+ */
+function doorOffset(car, side = -1) {
+  const type = car?.userData?.type;
+  const spec = (type && VEH[type]) || { wid: 2.4 };
+  const half = (spec.wid || 2.4) * 0.55 + 0.35;
+  const f = vForward(car);
+  _side.set(f.z, 0, -f.x).normalize();
+  return _side.clone().multiplyScalar(side * half);
+}
+
+function isVehicleBlending() {
+  return G.vehicleMode === 'enter' || G.vehicleMode === 'exit';
+}
 
 /**
  * Animated vehicle enter/exit.
- * G.vehicleT > 0  → blend in progress (movement frozen via frozen()).
- * G.vehicleMode   → 'enter' | 'exit'
- */
-/**
- * Start enter or exit. Does not flip G.inCar until blend completes.
- * mode: 'enter' | 'exit'
+ * Blend runs while G.vehicleMode is 'enter' | 'exit'.
+ * G.vehicleT is 0→1 progress; cleared to null when done.
+ * Do NOT gate on `G.vehicleT != null` alone — a stuck 0 blocks all future F presses.
  */
 export function toggleCar() {
-  if (frozen() || G.vehicleT != null) return; // already blending
+  if (frozen() || isVehicleBlending()) return;
 
   if (G.inCar) {
-    // EXIT
     const car = G.car;
-    const f = vForward(car);
+    if (!car) {
+      G.inCar = false;
+      return;
+    }
+
     const door = car.position.clone().add(doorOffset(car, -1));
     door.y = car.position.y;
 
@@ -91,7 +116,6 @@ export function toggleCar() {
   const c = nearestCar();
   if (!c) return;
 
-  // ENTER
   const door = c.position.clone().add(doorOffset(c, -1));
   door.y = c.position.y;
 
@@ -103,7 +127,6 @@ export function toggleCar() {
   G.playerChar?.setState('enter', 0);
   G.camBlend = 1;
 
-  // Face the car
   const dx = c.position.x - G.player.position.x;
   const dz = c.position.z - G.player.position.z;
   if (Math.hypot(dx, dz) > 0.1) G.player.rotation.y = Math.atan2(dx, dz);
@@ -113,19 +136,23 @@ function smoothstep(t) {
   return t * t * (3 - 2 * t);
 }
 
-/** Call every frame from city update, after movement when not blending foot control. */
+/** Call every frame from city update. */
 export function updateVehicleTransition(dt) {
-  if (G.vehicleT == null) return;
+  if (!isVehicleBlending() || G.vehicleT == null) return;
 
-  const dur = ENTER_EXIT_T();
-  G.vehicleT = Math.min(1, G.vehicleT + dt / dur);
-  const t = smoothstep(G.vehicleT);
   const car = G.vehicleCar;
   const from = G.vehicleFrom;
   const to = G.vehicleTo;
+  if (!car || !from || !to) {
+    clearVehicleBlend();
+    return;
+  }
+
+  const dur = Math.max(0.2, ENTER_EXIT_T());
+  G.vehicleT = Math.min(1, G.vehicleT + dt / dur);
+  const t = smoothstep(G.vehicleT);
 
   if (G.vehicleMode === 'enter') {
-    // Walk toward door, then seat
     const mid = to;
     const seat = car.position.clone();
     seat.y = car.position.y;
@@ -135,11 +162,8 @@ export function updateVehicleTransition(dt) {
     G.player.position.copy(p);
     G.playerChar?.setState(t < 0.55 ? 'walk' : 'enter', t < 0.55 ? 3 : 0);
 
-    if (G.vehicleT >= 1) {
-      finishEnter(car);
-    }
+    if (G.vehicleT >= 1) finishEnter(car);
   } else {
-    // Exit: seat → door → stand
     const seat = car.position.clone();
     const p = t < 0.4
       ? seat.clone().lerp(to, t / 0.4)
@@ -148,9 +172,7 @@ export function updateVehicleTransition(dt) {
     G.player.visible = true;
     G.playerChar?.setState(t < 0.5 ? 'exit' : 'idle', 0);
 
-    if (G.vehicleT >= 1) {
-      finishExit(car);
-    }
+    if (G.vehicleT >= 1) finishExit(car);
   }
 }
 
@@ -167,7 +189,9 @@ function finishEnter(car) {
     addRep('street', 2);
     addRep('public', -2);
   }
-  toast(`${VEH[car.userData.type].name}${car.userData.owned ? ' · yours' : ' · not yours'} · W gas · S brake · A/D steer`);
+
+  const name = VEH[car.userData.type]?.name || 'Vehicle';
+  toast(`${name}${car.userData.owned ? ' · yours' : ' · not yours'} · W gas · S brake · A/D steer`);
   clearVehicleBlend();
 }
 
@@ -176,7 +200,6 @@ function finishExit(car) {
   G.player.visible = true;
   G.car = null;
   G.carSpeed = 0;
-  // Stay at door world pos (already set)
   toast('Back on foot');
   clearVehicleBlend();
 }
@@ -294,7 +317,7 @@ export function interact() {
   if (G.dialog) { advanceDialog(); return; }
   const p = pos(), s = G.state;
   if (tryCompleteTask()) return;
-  if (missionAvailable() && !G.task && dist(p, missionPos()) < curMission().r) { runMission(); return; }   // paused stories resume here
+  if (missionAvailable() && !G.task && dist(p, missionPos()) < curMission().r) { runMission(); return; }
   const j = jobOf(s.job);
   if (j && dist(p, jobPos(j)) < 9) { G.working = { job: j, t: 0 }; return; }
   if (nearHome()) { sleep(homeProp()); return; }
@@ -360,13 +383,11 @@ export function interact() {
   }
 }
 
-// What the bottom-centre prompt should show right now, or null.
 export function promptFor() {
   const p = pos(), s = G.state;
   if (G.sleeping) return { text: '…' };
-    if (G.dialog) return null;
+  if (G.dialog) return null;
 
-  // Crew proximity prompt
   const crew = nearCrew();
   if (crew) {
     return {
@@ -383,8 +404,6 @@ export function promptFor() {
   if (nearHome()) return { key: 'E', text: 'Enter home · sleep' };
   if (!G.inCar) {
     const fp = familyPrompt(); if (fp) return fp;
-    
-
 
     const gate = nearGate(); if (gate) return { key: 'E', text: `Talk to Agent Kunle · ${gate.type}${G.state.props.includes(gate.id) || G.state.rented?.id === gate.id ? ' (yours)' : ' to let'}` };
     const night = nearNight(); if (night) return { key: 'E', text: `Talk to ${night.name}` };
@@ -402,12 +421,18 @@ export function promptFor() {
     const nepa = nearKind('nepa', 12); if (nepa) return { key: 'E', text: G.outage ? 'Pay for diesel · ₦5,000' : 'Enter PHCN office' };
   }
   if (nearPump()) return { key: 'E', text: `Refuel · ${fmt(ECON.refuel)}` };
-  if (G.inCar) return { key: 'F', text: `Exit ${VEH[G.car.userData.type].name}` };
-  const c = nearestCar(); if (c) return { key: 'F', text: `Enter ${VEH[c.userData.type].name}` };
+  if (G.inCar) {
+    const name = VEH[G.car?.userData?.type]?.name || 'Vehicle';
+    return { key: 'F', text: `Exit ${name}` };
+  }
+  const c = nearestCar();
+  if (c) {
+    const name = VEH[c.userData.type]?.name || 'Vehicle';
+    return { key: 'F', text: `Enter ${name}` };
+  }
   return null;
 }
 
-// Sleep at a property (perks apply) or a hotel room (prop = null).
 export function sleep(prop) {
   fadeOut(() => {
     const s = G.state;
