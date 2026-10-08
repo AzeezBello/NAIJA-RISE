@@ -6,12 +6,7 @@ import { lamps } from '../world/builders.js';
 // ============================================================
 // NAIJA RISE — Vehicle GLB Loader
 // ============================================================
-//
-// Runtime asset locations:
-//   /assets/vehicles/<file>.glb
-//   /assets/vehicles/<folder>/<file>.glb
-//
-// sync-engine copies: ../assets → web/public/assets
+// Runtime: /assets/vehicles/...  (sync-engine: ../assets → web/public/assets)
 // ============================================================
 
 const CUSTOM_ASSETS = {
@@ -38,6 +33,30 @@ const CUSTOM_ASSETS = {
     '/assets/vehicles/suzuki_gsx-r750.glb',
     '/vehicles/suzuki_gsx-r750.glb',
   ],
+};
+
+const MODEL_SCALE = {
+  danfo_vanagon: 1.0,
+  keke_bajaj_re: 0.95,
+  'suzuki_gsx-r750': 1.15,
+  suzuki_carry_minivan: 0.94,
+  volkswagen_crafter: 0.95,
+  '2003-gmc-topkick-c6500': 0.92,
+  heavy_commercial_vehicle_hcv: 0.9,
+};
+
+const MODEL_ROTATION = {
+  keke_bajaj_re: Math.PI / 2,
+  danfo_vanagon: Math.PI,
+  suzuki_carry_minivan: Math.PI,
+  'suzuki_gsx-r750': Math.PI,
+  volkswagen_crafter: Math.PI,
+  '2003-gmc-topkick-c6500': Math.PI,
+  heavy_commercial_vehicle_hcv: Math.PI,
+  '2008_kawasaki_ninja_zx-10r-em': Math.PI,
+  'suzuki_hayabusa_gsx-1300r-k8': Math.PI,
+  'lightbody_90_md_pickup_-_low_poly_model': Math.PI,
+  'volkswagen_id._buzz': Math.PI,
 };
 
 const loader = new GLTFLoader();
@@ -75,9 +94,93 @@ function materialName(material) {
 }
 
 function isSkipPaintName(n) {
-  return /wheel|tyre|tire|rubber|tread|glass|window|windshield|windscreen|light|lamp|head|indicator|brake|chrome|interior|seat|mirror/.test(
+  return /wheel|tyre|tire|rubber|tread|rim|whl|chain|exhaust|glass|window|windshield|windscreen|visor|light|lamp|head|indicator|brake|chrome|interior|seat|mirror/.test(
     n
   );
+}
+
+function eachMaterial(object, fn) {
+  if (!object?.material) return;
+  const mats = Array.isArray(object.material)
+    ? object.material
+    : [object.material];
+  for (const m of mats) fn(m);
+}
+
+/** Keep bodies visible with weak / no environment map (low quality). */
+function makeReadable(material) {
+  if (!material) return;
+  if (material.metalness != null) {
+    material.metalness = Math.min(Number(material.metalness) || 0, 0.25);
+  }
+  if (material.roughness != null) {
+    material.roughness = Math.max(Number(material.roughness) || 0.5, 0.45);
+  }
+  material.needsUpdate = true;
+}
+
+function applyKekeMaterial(material) {
+  if (!material) return;
+  const name = materialName(material);
+
+  // Do not match bare "black" — too many generic material names
+  if (/wheel|tyre|tire|rubber|tread|rim/.test(name)) {
+    material.color?.set(0x1a1a1a);
+    material.roughness = 0.85;
+    material.metalness = 0.05;
+    material.needsUpdate = true;
+    return;
+  }
+  if (/glass|window|windshield|windscreen/.test(name)) {
+    material.color?.set(0x243437);
+    material.roughness = 0.25;
+    material.metalness = 0.1;
+    material.needsUpdate = true;
+    return;
+  }
+  if (/light|lamp|head|indicator|brake/.test(name)) return;
+
+  material.color?.set(0xf5c518);
+  material.roughness = 0.55;
+  material.metalness = 0.08;
+  material.needsUpdate = true;
+}
+
+function applyOkadaMaterial(material) {
+  if (!material) return;
+  const name = materialName(material);
+
+  if (/wheel|tyre|tire|rubber|tread|rim|chain|exhaust/.test(name)) {
+    material.color?.set(0x1a1a1a);
+    material.roughness = 0.85;
+    material.metalness = 0.1;
+    material.needsUpdate = true;
+    return;
+  }
+  if (/glass|visor|wind/.test(name)) return;
+  if (/light|lamp|head|indicator|brake/.test(name)) return;
+
+  material.color?.set(0xf5c518);
+  material.roughness = 0.5;
+  material.metalness = 0.12;
+  material.needsUpdate = true;
+}
+
+/** Solid body tint (BRT, army, okada fallback, etc.). */
+function applyBodyColor(model, bodyHex) {
+  model.traverse(object => {
+    if (!object.isMesh) return;
+    eachMaterial(object, m => {
+      if (!m?.color) return;
+      const n = `${object.name || ''} ${m.name || ''}`.toLowerCase();
+      if (isSkipPaintName(n)) {
+        makeReadable(m);
+        return;
+      }
+      m.color.setHex(bodyHex);
+      makeReadable(m);
+    });
+  });
 }
 
 // ============================================================
@@ -91,7 +194,6 @@ export function loadVehicleModel(name) {
 
   const promise = (async () => {
     let lastError = null;
-
     for (const path of paths) {
       try {
         const gltf = await loader.loadAsync(path);
@@ -102,7 +204,6 @@ export function loadVehicleModel(name) {
         console.warn(`[vehicles] Asset miss: ${path}`);
       }
     }
-
     throw lastError || new Error(`No vehicle asset found for ${name}`);
   })();
 
@@ -118,94 +219,8 @@ export function loadVehicleModel(name) {
 }
 
 // ============================================================
-// Texture / material analysis (optional repaint path)
+// Optional texture repaint path (liveries)
 // ============================================================
-
-function hsl(r, g, b) {
-  const c = new THREE.Color(r / 255, g / 255, b / 255);
-  const result = {};
-  c.getHSL(result);
-  return result;
-}
-
-function analyseTexture(body) {
-  if (
-    !body ||
-    !body.material ||
-    Array.isArray(body.material) ||
-    !body.material.map ||
-    !body.material.map.image
-  ) {
-    return {
-      tex: null,
-      data: null,
-      W: 0,
-      H: 0,
-      paintTexels: [],
-      flipY: true,
-      colorSpace: null,
-    };
-  }
-
-  const tex = body.material.map;
-  const img = tex.image;
-  const W = img.width || 0;
-  const H = img.height || 0;
-
-  if (!W || !H) {
-    return {
-      tex,
-      data: null,
-      W,
-      H,
-      paintTexels: [],
-      flipY: tex.flipY ?? true,
-      colorSpace: tex.colorSpace,
-    };
-  }
-
-  const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return {
-      tex,
-      data: null,
-      W,
-      H,
-      paintTexels: [],
-      flipY: tex.flipY ?? true,
-      colorSpace: tex.colorSpace,
-    };
-  }
-
-  try {
-    ctx.drawImage(img, 0, 0);
-    const data = ctx.getImageData(0, 0, W, H);
-    return {
-      tex,
-      data,
-      W,
-      H,
-      paintTexels: [],
-      flipY: tex.flipY ?? true,
-      colorSpace: tex.colorSpace,
-    };
-  } catch (error) {
-    console.warn('[vehicles] Texture analysis unavailable:', error);
-    return {
-      tex,
-      data: null,
-      W,
-      H,
-      paintTexels: [],
-      flipY: tex.flipY ?? true,
-      colorSpace: tex.colorSpace,
-    };
-  }
-}
 
 function paintTexture(name, model, color) {
   if (!model.data || !model.W || !model.H || !model.paintTexels?.length) {
@@ -255,49 +270,8 @@ function paintTexture(name, model, color) {
   return texture;
 }
 
-function applyKekeMaterial(material) {
-  if (!material) return;
-  const name = materialName(material);
-
-  if (/wheel|tyre|tire|rubber|tread|black/.test(name)) {
-    material.color.set(0x171918);
-    material.roughness = 0.6;
-    material.metalness = 0.05;
-    return;
-  }
-  if (/glass|window|windshield|windscreen/.test(name)) {
-    material.color.set(0x243437);
-    material.roughness = 0.2;
-    material.metalness = 0.15;
-    return;
-  }
-  if (/light|lamp|head|indicator|brake/.test(name)) return;
-
-  material.color.set(0xf5c518);
-  material.roughness = 0.48;
-  material.metalness = 0.08;
-}
-
-/** Solid body tint (BRT blue, army green, etc.). Skips wheels/glass/lights. */
-function applyBodyColor(model, bodyHex) {
-  model.traverse(object => {
-    if (!object.isMesh) return;
-    const mats = Array.isArray(object.material)
-      ? object.material
-      : [object.material];
-    for (const m of mats) {
-      if (!m?.color) continue;
-      const n = `${object.name || ''} ${m.name || ''}`.toLowerCase();
-      if (isSkipPaintName(n)) continue;
-      m.color.setHex(bodyHex);
-      m.needsUpdate = true;
-    }
-  });
-}
-
 // ============================================================
-// Danfo black Lagos waist stripe
-// Uses live mesh bbox — never modelData.size / modelData.box
+// Danfo black Lagos waist stripe (live bbox only)
 // ============================================================
 
 function addDanfoStripe(g, model) {
@@ -360,7 +334,7 @@ function addDanfoStripe(g, model) {
 }
 
 // ============================================================
-// Attach model
+// Attach model — visual layer only; never replaces vehicle group / userData identity
 // ============================================================
 
 export function attachModel(
@@ -385,7 +359,6 @@ export function attachModel(
           return;
         }
 
-        // ---- Original bounds (pre-scale) ----
         const originalBox = new THREE.Box3().setFromObject(sourceScene);
         const originalSize = new THREE.Vector3();
         originalBox.getSize(originalSize);
@@ -399,49 +372,30 @@ export function attachModel(
           return;
         }
 
-        // Longest horizontal axis ≈ vehicle length (axis-safe)
+        // Longest horizontal axis ≈ vehicle length
         const lengthGuess = Math.max(originalSize.x, originalSize.z);
-
-        const MODEL_SCALE = {
-          danfo_vanagon: 1.0,
-          keke_bajaj_re: 0.95,
-          'suzuki_gsx-r750': 1.15,
-          suzuki_carry_minivan: 0.94,
-          volkswagen_crafter: 0.95,
-          '2003-gmc-topkick-c6500': 0.92,
-          heavy_commercial_vehicle_hcv: 0.9,
-        };
-
         const scale =
           (spec.len / lengthGuess) * (MODEL_SCALE[name] ?? 1);
 
-        // ---- Strip procedural placeholder ----
+        // Strip procedural visuals only — preserve keep + non-visual children
         for (const child of [...g.children]) {
-          if (!child.userData.keep) g.remove(child);
+          if (child.userData?.keep) continue;
+          if (
+            child.userData?.proceduralVisual ||
+            child.isMesh ||
+            child.isGroup
+          ) {
+            // Remove placeholder meshes; leave markers/sprites with keep
+            if (!child.userData?.keep) g.remove(child);
+          }
         }
 
-        // ---- Clone + orient ----
         const model = sourceScene.clone(true);
         model.scale.setScalar(scale);
-
-        const MODEL_ROTATION = {
-          keke_bajaj_re: Math.PI / 2,
-          danfo_vanagon: Math.PI,
-          suzuki_carry_minivan: Math.PI,
-          'suzuki_gsx-r750': Math.PI,
-          volkswagen_crafter: Math.PI,
-          '2003-gmc-topkick-c6500': Math.PI,
-          heavy_commercial_vehicle_hcv: Math.PI,
-          '2008_kawasaki_ninja_zx-10r-em': Math.PI,
-          'suzuki_hayabusa_gsx-1300r-k8': Math.PI,
-          'lightbody_90_md_pickup_-_low_poly_model': Math.PI,
-          'volkswagen_id._buzz': Math.PI,
-        };
-
         model.rotation.y = MODEL_ROTATION[name] ?? Math.PI;
 
-        // ---- Materials / wheels ----
-        const isKeke = name === 'keke_bajaj_re';
+        const isKeke = name === 'keke_bajaj_re' || type === 'keke';
+        const isOkada = name === 'suzuki_gsx-r750' || type === 'okada';
         const wheels = [];
 
         model.traverse(object => {
@@ -450,11 +404,11 @@ export function attachModel(
           object.material = cloneMaterial(object.material);
 
           if (isKeke) {
-            if (Array.isArray(object.material)) {
-              object.material.forEach(applyKekeMaterial);
-            } else {
-              applyKekeMaterial(object.material);
-            }
+            eachMaterial(object, applyKekeMaterial);
+          } else if (isOkada) {
+            eachMaterial(object, applyOkadaMaterial);
+          } else {
+            eachMaterial(object, makeReadable);
           }
 
           const objectName = String(object.name || '').toLowerCase();
@@ -470,8 +424,9 @@ export function attachModel(
           object.receiveShadow = true;
         });
 
-        // ---- Attach ----
         g.add(model);
+
+        // Assign fields only — never replace g.userData
         g.userData.model = model;
         g.userData.realModel = true;
         g.userData.modelName = name;
@@ -479,7 +434,7 @@ export function attachModel(
         g.userData.wheels = wheels;
         g.userData.wheelR = Math.max(0.22, 0.3 * scale);
 
-        // ---- Ground snap (after scale + rotation) ----
+        // Ground snap after scale + rotation
         {
           const grounded = new THREE.Box3().setFromObject(model);
           if (Number.isFinite(grounded.min.y)) {
@@ -487,44 +442,49 @@ export function attachModel(
           }
         }
 
-        // ---- Danfo stripe (live bbox only) ----
         if (type === 'danfo') {
           addDanfoStripe(g, model);
         }
 
-        // ---- Body paint (BRT blue, etc.) — not keke/danfo ----
+        // Body paint for painted types (okada already yellow via applyOkadaMaterial;
+        // still apply if color passed for consistency / liveries)
         if (color != null && type !== 'keke' && type !== 'danfo') {
           const bodyHex =
-            typeof color === 'number' ? color : 0x1c4fa0;
-          applyBodyColor(model, bodyHex);
+            typeof color === 'number' ? color : 0xf5c518;
+          if (!isOkada) {
+            applyBodyColor(model, bodyHex);
+          } else if (bodyHex !== 0xf5c518) {
+            applyBodyColor(model, bodyHex);
+          }
         }
 
-        // ---- Headlights ----
         const finalBox = new THREE.Box3().setFromObject(model);
         const finalSize = new THREE.Vector3();
         finalBox.getSize(finalSize);
         const finalMin = finalBox.min;
 
-        for (const sx of [-0.3, 0.3]) {
-          const light = new THREE.Mesh(
-            new THREE.BoxGeometry(0.34, 0.16, 0.06),
-            new THREE.MeshStandardMaterial({
-              color: 0xffe7ad,
-              emissive: 0xffe7ad,
-              emissiveIntensity: 0.15,
-            })
-          );
-          light.position.set(
-            sx * Math.min(finalSize.x * 0.4, 0.8),
-            finalMin.y + finalSize.y * 0.42,
-            -spec.len / 2 - 0.02
-          );
-          light.userData.keep = true;
-          g.add(light);
-          lamps.push(light.material);
+        // Headlights (skip tiny bikes — they look wrong)
+        if (!isOkada && !isKeke) {
+          for (const sx of [-0.3, 0.3]) {
+            const light = new THREE.Mesh(
+              new THREE.BoxGeometry(0.34, 0.16, 0.06),
+              new THREE.MeshStandardMaterial({
+                color: 0xffe7ad,
+                emissive: 0xffe7ad,
+                emissiveIntensity: 0.15,
+              })
+            );
+            light.position.set(
+              sx * Math.min(finalSize.x * 0.4, 0.8),
+              finalMin.y + finalSize.y * 0.42,
+              -spec.len / 2 - 0.02
+            );
+            light.userData.keep = true;
+            g.add(light);
+            lamps.push(light.material);
+          }
         }
 
-        // ---- Emergency lightbar ----
         if (lightbar) {
           const bar = new THREE.Mesh(
             new THREE.BoxGeometry(1.1, 0.18, 0.4),
@@ -534,31 +494,25 @@ export function attachModel(
               emissiveIntensity: 0.4,
             })
           );
-          bar.position.set(
-            0,
-            finalMin.y + finalSize.y + 0.08,
-            0
-          );
+          bar.position.set(0, finalMin.y + finalSize.y + 0.08, 0);
           bar.userData.keep = true;
           g.add(bar);
           g.userData.lightbar = bar.material;
         }
 
-        // ---- Optional texture repaint API ----
         g.userData.repaint = nextColor => {
+          applyBodyColor(
+            model,
+            typeof nextColor === 'number' ? nextColor : 0xf5c518
+          );
           const texture = paintTexture(name, modelData, nextColor);
           if (!texture) return;
           model.traverse(object => {
             if (!object.isMesh || !object.userData.paintable) return;
-            if (Array.isArray(object.material)) {
-              for (const material of object.material) {
-                material.map = texture;
-                material.needsUpdate = true;
-              }
-            } else if (object.material) {
-              object.material.map = texture;
-              object.material.needsUpdate = true;
-            }
+            eachMaterial(object, material => {
+              material.map = texture;
+              material.needsUpdate = true;
+            });
           });
         };
 
@@ -566,8 +520,6 @@ export function attachModel(
           `[vehicles] ✓ ${type} using GLB ${name} (${modelData.path})`
         );
       } catch (err) {
-        // Calibration failed — do not kill traffic. Procedural may already
-        // have been stripped; next spawn retries. Log clearly.
         console.warn(
           `[vehicles] Calibration failed for ${type}/${name} (non-fatal):`,
           err?.message || err
@@ -575,7 +527,6 @@ export function attachModel(
       }
     })
     .catch(error => {
-      // GLB missing / network — keep procedural mesh already on `g`
       console.warn(
         `[vehicles] Keeping procedural ${type}; GLB ${name} failed:`,
         error?.message || error
@@ -597,86 +548,4 @@ export function spinWheels(g, speed, dt) {
   for (const wheel of wheels) {
     wheel.rotation.x -= rotation;
   }
-}
-
-
-
-/** Clamp PBR so bodies stay visible with weak/no environment map. */
-function makeReadable(material) {
-  if (!material) return;
-  if (material.metalness != null) {
-    material.metalness = Math.min(material.metalness ?? 0.2, 0.25);
-  }
-  if (material.roughness != null) {
-    material.roughness = Math.max(material.roughness ?? 0.5, 0.45);
-  }
-  // Unlit / too-dark maps still multiply with color
-  if (material.color && material.color.getHex() < 0x222222) {
-    // leave pure black rubber alone if caller set it
-  }
-  material.needsUpdate = true;
-}
-
-function applyKekeMaterial(material) {
-  if (!material) return;
-  const name = materialName(material);
-
-  // Do NOT match bare "black" — too many generic mat names hit this
-  if (/wheel|tyre|tire|rubber|tread|rim/.test(name)) {
-    material.color.set(0x1a1a1a);
-    material.roughness = 0.85;
-    material.metalness = 0.05;
-    material.needsUpdate = true;
-    return;
-  }
-  if (/glass|window|windshield|windscreen/.test(name)) {
-    material.color.set(0x243437);
-    material.roughness = 0.25;
-    material.metalness = 0.1;
-    material.needsUpdate = true;
-    return;
-  }
-  if (/light|lamp|head|indicator|brake/.test(name)) return;
-
-  material.color.set(0xf5c518);
-  material.roughness = 0.55;
-  material.metalness = 0.08;
-  material.needsUpdate = true;
-}
-
-function applyBodyColor(model, bodyHex) {
-  model.traverse(object => {
-    if (!object.isMesh) return;
-    const mats = Array.isArray(object.material)
-      ? object.material
-      : [object.material];
-    for (const m of mats) {
-      if (!m?.color) continue;
-      const n = `${object.name || ''} ${m.name || ''}`.toLowerCase();
-      if (isSkipPaintName(n)) {
-        makeReadable(m);
-        continue;
-      }
-      m.color.setHex(bodyHex);
-      makeReadable(m);
-    }
-  });
-}
-
-/** Okada / generic bike: force yellow-orange commercial look. */
-function applyOkadaMaterial(material) {
-  if (!material) return;
-  const name = materialName(material);
-  if (/wheel|tyre|tire|rubber|tread|rim|chain|exhaust/.test(name)) {
-    material.color.set(0x1a1a1a);
-    material.roughness = 0.85;
-    material.metalness = 0.1;
-    material.needsUpdate = true;
-    return;
-  }
-  if (/glass|visor|wind/.test(name)) return;
-  material.color.set(0xf5c518);
-  material.roughness = 0.5;
-  material.metalness = 0.12;
-  material.needsUpdate = true;
 }
