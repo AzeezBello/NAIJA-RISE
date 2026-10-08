@@ -15,9 +15,20 @@ import { lamps } from '../world/builders.js';
 // -----------------------------------------------------------------------------
 
 const CUSTOM_ASSETS = {
-  danfo: 'assets/vehicles/danfo/danfo_vanagon.glb',
-  keke: 'assets/vehicles/keke/keke_bajaj_re.glb',
+  danfo: [
+    'assets/vehicles/danfo/danfo_vanagon.glb',
+    'assets/vehicles/danfo/danfo.glb',
+    'assets/vehicles/danfo/lagos_danfo.glb',
+    'assets/vehicles/danfo/danfo-bus.glb',
+  ],
+
+  keke: [
+    'assets/vehicles/keke/keke_bajaj_re.glb',
+    'assets/vehicles/keke/keke.glb',
+    'assets/vehicles/keke/keke_napep.glb',
+  ],
 };
+
 
 const loader = new GLTFLoader();
 
@@ -41,7 +52,7 @@ const hsl = (r, g, b) => {
   return o;
 };
 
-const assetPathFor = name => {
+const assetPathsFor = name => {
   if (name === 'danfo_vanagon') {
     return CUSTOM_ASSETS.danfo;
   }
@@ -50,8 +61,9 @@ const assetPathFor = name => {
     return CUSTOM_ASSETS.keke;
   }
 
-  return `${MODEL_BASE}${name}.glb`;
+  return [`${MODEL_BASE}${name}.glb`];
 };
+
 
 // -----------------------------------------------------------------------------
 // Load vehicle GLB
@@ -62,12 +74,34 @@ export function loadVehicleModel(name) {
     return models[name];
   }
 
-  const path = assetPathFor(name);
+      const paths = assetPathsFor(name);
 
-  models[name] = loader
-    .loadAsync(path)
-    .then(gltf => {
-      const scene = gltf.scene;
+      const loadFirstAvailable = async () => {
+        let lastError = null;
+
+        for (const path of paths) {
+          try {
+            const gltf = await loader.loadAsync(path);
+
+            console.info(
+              `[vehicles] Loaded ${name} from ${path}`
+            );
+
+            return {
+              gltf,
+              path,
+            };
+          } catch (error) {
+            lastError = error;
+          }
+        }
+
+        throw lastError ||
+          new Error(`No asset found for ${name}`);
+      };
+
+      models[name] = loadFirstAvailable()
+        .then(({ gltf, path }) => {
 
       // Try to find a sensible body mesh.
       // Custom GLBs may not have a mesh literally named "body".
@@ -288,7 +322,7 @@ export function loadVehicleModel(name) {
               }
             } catch (error) {
               console.warn(
-                `[vehicles] texture analysis skipped for ${name}:`,
+                `[vehicles] Failed to load ${name}. Tried: ${paths.join(', ')}`,
                 error.message
               );
             }
@@ -473,7 +507,13 @@ export function attachModel(
 
       // GLB convention: +Z forward.
       // NAIJA RISE convention: -Z forward.
-      model.rotation.y = Math.PI;
+      const MODEL_ROTATION = {
+        keke_bajaj_re: Math.PI / 2,
+        danfo_vanagon: Math.PI,
+      };
+
+      model.rotation.y =
+        MODEL_ROTATION[name] ?? Math.PI;
 
       model.scale.setScalar(scale);
 
