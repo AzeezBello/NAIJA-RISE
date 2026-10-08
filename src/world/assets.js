@@ -58,6 +58,57 @@ async function instantiate(key) {
   return { obj, animations: gltf.animations };
 }
 
+/**
+ * Deep-dispose a scene graph. Only call after removing from the scene
+ * AND after dropping the matching cache entry (or the whole cache).
+ */
+function disposeGroupDeep(root) {
+  if (!root) return;
+  root.traverse(o => {
+    if (o.geometry) {
+      o.geometry.dispose();
+      o.geometry = undefined;
+    }
+    const mats = o.material
+      ? (Array.isArray(o.material) ? o.material : [o.material])
+      : [];
+    for (const m of mats) {
+      if (!m) continue;
+      m.map?.dispose?.();
+      m.normalMap?.dispose?.();
+      m.roughnessMap?.dispose?.();
+      m.metalnessMap?.dispose?.();
+      m.emissiveMap?.dispose?.();
+      m.aoMap?.dispose?.();
+      m.dispose?.();
+    }
+  });
+}
+
+/** Drop a cached GLTF so the next load fetches a fresh copy. */
+function evictCachedUrl(url) {
+  cache.delete(url);
+}
+
+/**
+ * Unload all streamed landmarks and optionally free GPU memory.
+ * Use when dropping quality tier or leaving the city — not on routine distance unload.
+ */
+export function purgeStreamedLandmarks({ freeGpu = false } = {}) {
+  for (const s of landmarkSlots) {
+    if (!s.group) continue;
+    G.scene.remove(s.group);
+    if (freeGpu) {
+      const url = ASSETS[s.key]?.url;
+      if (url) evictCachedUrl(url);
+      disposeGroupDeep(s.group);
+    }
+    s.group = null;
+    s.loading = false;
+    setProceduralVisible(s, true);
+  }
+}
+
 // Skip models the current tier can't afford. Returns true if the asset may load.
 function withinBudget(key) {
   const tier = G.quality || 'medium';
@@ -260,8 +311,9 @@ async function streamLandmarks() {
       } catch (e) { console.warn(`[assets] failed to stream ${s.key}`, e); }
       s.loading = false;
     } else if (d > UNLOAD_R && s.group) {
+      // Clones share geometry/materials with the cached GLTF.
+      // Disposing here poisons the cache — next visit renders broken/invisible.
       G.scene.remove(s.group);
-      s.group.traverse?.(o => { o.geometry?.dispose?.(); });
       s.group = null;
       setProceduralVisible(s, true);
       console.info(`[assets] streamed out ${s.key}`);
