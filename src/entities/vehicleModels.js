@@ -78,13 +78,31 @@ const MODEL_ROTATION = {
 // Helpers
 // ============================================================
 
+
 function assetPathsFor(name) {
   if (name === 'danfo_vanagon') return CUSTOM_ASSETS.danfo;
-  if (name === 'keke_bajaj_re') return CUSTOM_ASSETS.keke;
+
+  if (name === 'keke_bajaj_re') {
+    return [
+      '/assets/vehicles/keke/keke_bajaj_re-compressed.glb',
+      ...CUSTOM_ASSETS.keke,
+    ];
+  }
+
   if (name === 'suzuki_carry_minivan') return CUSTOM_ASSETS.korope;
   if (name === 'suzuki_gsx-r750') return CUSTOM_ASSETS.okada;
 
+  const compressed = {
+    volkswagen_crafter:
+      '/assets/vehicles/volkswagen_crafter.compressed.glb',
+    'volkswagen_id._buzz':
+      '/assets/vehicles/volkswagen_id._buzz-compressed.glb',
+    '2008_kawasaki_ninja_zx-10r-em':
+      '/assets/vehicles/2008_kawasaki_ninja_zx-10r-em-compressed.glb',
+  }[name];
+
   return [
+    ...(compressed ? [compressed] : []),
     `/assets/vehicles/${name}.glb`,
     `/assets/vehicles/kenney/${name}.glb`,
     `${MODEL_BASE}${name}.glb`,

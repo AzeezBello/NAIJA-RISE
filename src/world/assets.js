@@ -38,9 +38,23 @@ export const ASSETS = {
   treeTropical: { url: 'assets/vegetation/jabami_anime_tree-grass_v1.glb', size: 2.7 * MB, category: 'vegetation' },
   treeMaple:    { url: 'assets/vegetation/maple_tree.glb',                 size: 5.8 * MB, category: 'vegetation' },
   treePine:     { url: 'assets/vegetation/tree_spruce_pine.glb',           size: 4.8 * MB, category: 'vegetation' },
+ 
+ 
   // landmarks — streamed by distance, never loaded at boot
-  nationalStadium:    { url: 'assets/landmarks/stadiums/national_stadium.glb',     size: 20.2 * MB, category: 'landmark', scale: 1 },
-  teslimStadium:      { url: 'assets/landmarks/stadiums/teslim_balogun_stadium.glb', size: 34.4 * MB, category: 'landmark', scale: 1 },
+  nationalStadium: {
+    url: 'assets/landmarks/stadiums/national_stadium-compressed.glb',
+    fallbackUrl: 'assets/landmarks/stadiums/national_stadium.glb',
+    size: 20.2 * MB,
+    category: 'landmark',
+    scale: 1,
+  },
+  teslimStadium: {
+    url: 'assets/landmarks/stadiums/teslim_balogun_stadium-compressed.glb',
+    fallbackUrl: 'assets/landmarks/stadiums/teslim_balogun_stadium.glb',
+    size: 34.4 * MB,
+    category: 'landmark',
+    scale: 1,
+  },
 };
 
 // ---- cached loader ----
@@ -50,11 +64,57 @@ function loadGLTF(url) {
   if (!cache.has(url)) cache.set(url, new Promise((res, rej) => loader.load(url, res, undefined, rej)));
   return cache.get(url);
 }
-// Instantiate a cached GLB. SkeletonUtils.clone handles skinned meshes (dog/cat); it is safe for static ones too.
+
+const loader = new GLTFLoader();
+const cache = new Map();
+
+function loadGLTF(url) {
+  if (!cache.has(url)) {
+    cache.set(
+      url,
+      new Promise((resolve, reject) => {
+        loader.load(url, resolve, undefined, reject);
+      })
+    );
+  }
+  return cache.get(url);
+}
+
+async function loadAsset(key) {
+  const asset = ASSETS[key];
+  const paths = [...new Set([asset.url, asset.fallbackUrl].filter(Boolean))];
+  let lastError;
+
+  for (const url of paths) {
+    try {
+      const gltf = await loadGLTF(url);
+
+      if (url !== asset.url) {
+        console.warn(`[assets] Using original fallback for ${key}: ${url}`);
+      }
+
+      return { gltf, url };
+    } catch (error) {
+      lastError = error;
+      cache.delete(url);
+      console.warn(`[assets] Failed to load ${key} from ${url}`);
+    }
+  }
+
+  throw lastError || new Error(`No GLB asset available for ${key}`);
+}
+
 async function instantiate(key) {
-  const gltf = await loadGLTF(ASSETS[key].url);
+  const { gltf } = await loadAsset(key);
   const obj = skClone(gltf.scene);
-  obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+
+  obj.traverse(o => {
+    if (o.isMesh) {
+      o.castShadow = true;
+      o.receiveShadow = true;
+    }
+  });
+
   return { obj, animations: gltf.animations };
 }
 
