@@ -98,22 +98,132 @@ function buildBlocks() {
   }
 }
 
+
 function buildStadium(l) {
-  const outer = cyl(l.x, l.z, 22, 9, 0x8a8f93, 'landmark', 0, 40);
-  occluders.push(outer); colliders.push({ x: l.x, z: l.z, w: 44, d: 44 });
-  const inner = cyl(l.x, l.z, 16, 11, 0x4a5055, 'prop', 0, 40);
-  solidAt(l.x, l.z, 32.4, 32.4);                                   // Alpha 1.1: inner bowl wall
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(20, 1.4, 8, 40), mat(0xd8dde0));
-  ring.rotation.x = Math.PI / 2; ring.position.set(l.x, 9.6, l.z); ring.castShadow = true;
+  const proceduralMeshes = [];
+
+  // Hollow exterior shell: unlike a solid cylinder, this allows entry.
+  const outer = new THREE.Mesh(
+    new THREE.CylinderGeometry(25, 25, 9, 40, 1, true),
+    mat(0x8a8f93),
+  );
+
+  outer.position.set(l.x, 4.5, l.z);
+  outer.castShadow = true;
+  outer.receiveShadow = true;
+  outer.userData.name = 'landmark';
+
+  G.scene.add(outer);
+  occluders.push(outer);
+  proceduralMeshes.push(outer);
+
+  // Exterior collision segments. The south-facing entrance is left open.
+  colliders.push(
+    { x: l.x, z: l.z - 24, w: 48, d: 3 },
+    { x: l.x - 24, z: l.z, w: 3, d: 44 },
+    { x: l.x + 24, z: l.z, w: 3, d: 44 },
+    { x: l.x - 16, z: l.z + 24, w: 14, d: 3 },
+    { x: l.x + 16, z: l.z + 24, w: 14, d: 3 },
+  );
+
+  // Open-ended inner bowl, with an entrance aligned to the outer entrance.
+  const inner = new THREE.Mesh(
+    new THREE.CylinderGeometry(16, 16, 11, 40, 1, true),
+    mat(0x4a5055),
+  );
+
+  inner.position.set(l.x, 5.5, l.z);
+  inner.castShadow = true;
+  inner.receiveShadow = true;
+  inner.userData.name = 'prop';
+
+  G.scene.add(inner);
+  proceduralMeshes.push(inner);
+
+  // Inner-bowl collision segments. Leave a central entrance gap.
+  colliders.push(
+    { x: l.x, z: l.z - 15.5, w: 29, d: 2.5 },
+    { x: l.x - 15.5, z: l.z, w: 2.5, d: 28 },
+    { x: l.x + 15.5, z: l.z, w: 2.5, d: 28 },
+    { x: l.x - 10, z: l.z + 15.5, w: 9, d: 2.5 },
+    { x: l.x + 10, z: l.z + 15.5, w: 9, d: 2.5 },
+  );
+
+  // Playable field.
+  const field = new THREE.Mesh(
+    new THREE.CircleGeometry(13.7, 40),
+    mat(0x397b3d),
+  );
+
+  field.rotation.x = -Math.PI / 2;
+  field.position.set(l.x, 0.08, l.z);
+  field.receiveShadow = true;
+
+  G.scene.add(field);
+  proceduralMeshes.push(field);
+
+  // Roof ring.
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(23, 1.4, 8, 40),
+    mat(0xd8dde0),
+  );
+
+  ring.rotation.x = Math.PI / 2;
+  ring.position.set(l.x, 9.6, l.z);
+  ring.castShadow = true;
+
   G.scene.add(ring);
-  for (const [ox, oz] of [[-24, -24], [24, -24], [-24, 24], [24, 24]]) {
-    cyl(l.x + ox, l.z + oz, 0.35, 18, 0x9aa0a6, 'pole');
-    lamps.push(box(l.x + ox, l.z + oz, 2.4, 0.6, 1.2, 0xfff2c8, 'prop', 18).material);
+  proceduralMeshes.push(ring);
+
+  // Floodlights: register both poles and lamp meshes so the whole
+  // procedural stadium can be hidden or restored as a single unit.
+  for (const [ox, oz] of [
+    [-27, -24],
+    [27, -24],
+    [-27, 24],
+    [27, 24],
+  ]) {
+    const pole = cyl(
+      l.x + ox,
+      l.z + oz,
+      0.35,
+      18,
+      0x9aa0a6,
+      'pole',
+    );
+
+    proceduralMeshes.push(pole);
+
+    const lamp = box(
+      l.x + ox,
+      l.z + oz,
+      2.4,
+      0.6,
+      1.2,
+      0xfff2c8,
+      'prop',
+      18,
+    );
+
+    lamps.push(lamp.material);
+    proceduralMeshes.push(lamp);
   }
-  const nameSign = sign(l.name.toUpperCase(), l.x, 13, l.z + 23, l.sign, 16, 4, 'rgba(10,40,30,.95)');
-  // Alpha 1.1 (asset streaming): record the procedural stand-in so WorldAssetManager can
-  // hide it while the real stadium GLB is streamed in, and restore it on unload.
-  (G.landmarkMeshes ??= {})[l.id] = [outer, inner, ring, nameSign];
+
+  const nameSign = sign(
+    l.name.toUpperCase(),
+    l.x,
+    13,
+    l.z + 26,
+    l.sign,
+    16,
+    4,
+    'rgba(10,40,30,.95)',
+  );
+
+  proceduralMeshes.push(nameSign);
+
+  // Used by WorldAssetManager to switch the fallback as a single unit.
+  (G.landmarkMeshes ??= {})[l.id] = proceduralMeshes;
 }
 
 function buildCheckpoint(l) {
