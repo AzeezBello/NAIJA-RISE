@@ -1,10 +1,15 @@
+
 import * as THREE from 'three';
+
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js';
+
 import { G } from '../core/context.js';
 import { PERF } from '../data/config.js';
+
 import { colliders, solidAt } from './builders.js';
 import { heightAt } from './terrain.js';
+
 import {
   ROADS,
   ROAD_WIDTHS,
@@ -18,29 +23,28 @@ import {
 // ============================================================
 // WorldAssetManager
 //
-// Manages non-vehicle GLBs:
+// Manages:
 //   - Ambient animals: dogs and cats
-//   - Vegetation: tropical trees, maple trees and pine trees
-//   - Landmarks: National Stadium and Teslim Balogun Stadium
+//   - Vegetation: tropical, maple and pine trees
+//   - Stadium landmarks: National Stadium and Teslim Balogun Stadium
 //
-// Stadiums are streamed by distance. Compressed assets are attempted first,
-// with original GLBs as fallbacks.
+// Stadiums are streamed by distance. Compressed GLBs are preferred;
+// original GLBs are allowed only when they fit the active tier budget.
 //
-// buildWorldAssets() initializes the manager.
-// updateWorldAssets(dt) updates ambient AI and landmark streaming.
+// Procedural stadiums remain visible until their GLBs load successfully.
 // ============================================================
 
 const MB = 1024 * 1024;
 
-// Per-tier asset size budgets.
 const SIZE_BUDGET = {
   low: 2 * MB,
-  medium: 8 * MB,
+  medium: 16 * MB,
   high: 40 * MB,
 };
 
 export const ASSETS = {
   // Ambient animals
+
   dog: {
     url: 'assets/animals/dogs/dog.glb',
     size: 1.6 * MB,
@@ -54,6 +58,7 @@ export const ASSETS = {
   },
 
   // Vegetation
+
   treeTropical: {
     url: 'assets/vegetation/jabami_anime_tree-grass_v1.glb',
     size: 2.7 * MB,
@@ -75,32 +80,49 @@ export const ASSETS = {
     scale: 0.5,
   },
 
-  // Stadiums: try compressed assets first, then original files.
+  // Stadiums
+  //
+  // size = compressed GLB budget estimate.
+  // fallbackSize = original GLB budget estimate.
+  //
+  // targetFootprint dimensions are approximate world-space
+  // limits, not claims about real-world stadium dimensions.
+
   nationalStadium: {
     url: 'assets/landmarks/stadiums/national_stadium-compressed.glb',
     fallbackUrl: 'assets/landmarks/stadiums/national_stadium.glb',
-    size: 20.2 * MB,
+    size: 3.3 * MB,
+    fallbackSize: 20.2 * MB,
     category: 'landmark',
-    scale: 0.65,
+    targetFootprint: {
+      x: 54,
+      z: 50,
+      maxHeight: 25,
+    },
   },
 
   teslimStadium: {
     url: 'assets/landmarks/stadiums/teslim_balogun_stadium-compressed.glb',
     fallbackUrl: 'assets/landmarks/stadiums/teslim_balogun_stadium.glb',
-    size: 34.4 * MB,
+    size: 12.4 * MB,
+    fallbackSize: 34.4 * MB,
     category: 'landmark',
-    scale: 0.6,
+    targetFootprint: {
+      x: 50,
+      z: 46,
+      maxHeight: 23,
+    },
   },
 };
 
 // ============================================================
 // Cached GLTF loader
-// IMPORTANT: Declare the loader, cache and loadGLTF only once.
 // ============================================================
 
 const loader = new GLTFLoader();
 
-// URL -> Promise<GLTF>. Concurrent requests for the same URL share a load.
+// URL -> Promise<GLTF>.
+// Concurrent requests for the same URL share one download.
 const cache = new Map();
 
 function loadGLTF(url) {
@@ -120,10 +142,58 @@ function loadGLTF(url) {
   return cache.get(url);
 }
 
+// ============================================================
+// Asset quality budgets
+// ============================================================
+
+function getQualityTier() {
+  const tier = G.quality || 'medium';
+
+  return Object.hasOwn(SIZE_BUDGET, tier)
+    ? tier
+    : 'medium';
+}
+
+function getBudget() {
+  return SIZE_BUDGET[getQualityTier()];
+}
+
+function withinBudget(key) {
+  const asset = ASSETS[key];
+
+  if (!asset) {
+    console.warn(`[assets] Unknown asset key: ${key}`);
+    return false;
+  }
+
+  const tier = getQualityTier();
+  const budget = SIZE_BUDGET[tier];
+
+  if (asset.size > budget) {
+    console.info(
+      `[assets] Skipping ${key} (` +
+        `${(asset.size / MB).toFixed(1)} MB > ` +
+        `${tier} tier budget ${(budget / MB).toFixed(0)} MB)`,
+    );
+
+    return false;
+  }
+
+  return true;
+}
+
+// ============================================================
+// Load assets with quality-aware fallbacks
+// ============================================================
+
 /**
- * Load an asset, trying its primary URL before its fallback URL.
+ * Load an asset, trying its compressed/primary URL first.
  *
- * Failed promises are removed from the cache so later attempts can retry.
+ * An original fallback is attempted only when its declared size
+ * fits the active quality tier's budget.
+ *
+ * Rejected promises are removed from the cache so a later request
+ * can retry.
  */
 async function loadAsset(key) {
   const asset = ASSETS[key];
@@ -132,11 +202,16 @@ async function loadAsset(key) {
     throw new Error(`[assets] Unknown asset key: ${key}`);
   }
 
+  const budget = getBudget();
+
   const paths = [
-    ...new Set(
-      [asset.url, asset.fallbackUrl].filter(Boolean),
-    ),
-  ];
+    asset.url,
+
+    ...(asset.fallbackUrl &&
+    (asset.fallbackSize ?? asset.size) <= budget
+      ? [asset.fallbackUrl]
+      : []),
+  ].filter((url, index, all) => all.indexOf(url) === index);
 
   let lastError;
 
@@ -154,7 +229,7 @@ async function loadAsset(key) {
     } catch (error) {
       lastError = error;
 
-      // A rejected promise must not remain cached.
+      // Remove only the failed URL's rejected promise.
       cache.delete(url);
 
       console.warn(
@@ -166,12 +241,13 @@ async function loadAsset(key) {
 
   throw (
     lastError ||
-    new Error(`[assets] No GLB asset available for ${key}`)
+    new Error(`[assets] No permitted GLB asset available for ${key}`)
   );
 }
 
 /**
- * Clone a loaded GLTF scene without modifying the cached source scene.
+ * Create a separate scene instance from a cached GLTF.
+ * SkeletonUtils.clone preserves skinned-model structures.
  */
 async function instantiate(key) {
   const { gltf, url } = await loadAsset(key);
@@ -191,12 +267,19 @@ async function instantiate(key) {
   };
 }
 
+// ============================================================
+// Resource disposal
+// ============================================================
+
 /**
  * Deep-dispose a scene graph.
  *
- * Only use this when the associated cached resources are no longer needed
- * by any scene objects. Ordinary distance-based unloading must NOT dispose
- * shared cached geometry or materials.
+ * IMPORTANT:
+ * Do not call this during ordinary distance-based unloading.
+ * Cached GLTF resources may be shared by other instances.
+ *
+ * Only use when you know no other scene object depends on these
+ * geometries, materials or textures.
  */
 function disposeGroupDeep(root) {
   if (!root) return;
@@ -229,35 +312,14 @@ function disposeGroupDeep(root) {
 }
 
 /**
- * Evict a cached GLTF URL.
+ * Evict a cached URL.
+ *
+ * Only use this when it is safe to release its shared resources.
  */
 function evictCachedUrl(url) {
-  if (url) cache.delete(url);
-}
-
-// ============================================================
-// Quality-tier asset budget
-// ============================================================
-
-function withinBudget(key) {
-  const asset = ASSETS[key];
-
-  if (!asset) return false;
-
-  const tier = G.quality || 'medium';
-  const budget = SIZE_BUDGET[tier] ?? SIZE_BUDGET.medium;
-
-  if (asset.size > budget) {
-    console.info(
-      `[assets] Skipping ${key} (` +
-        `${(asset.size / MB).toFixed(1)} MB > ` +
-        `${tier} tier budget ${(budget / MB).toFixed(0)} MB)`,
-    );
-
-    return false;
+  if (url) {
+    cache.delete(url);
   }
-
-  return true;
 }
 
 // ============================================================
@@ -349,7 +411,7 @@ function sampleSpot(x0, x1, z0, z1, tries = 24) {
 const vegetation = [];
 
 async function spawnVegetation() {
-  const low = PERF.lowEnd || G.quality === 'low';
+  const low = PERF.lowEnd || getQualityTier() === 'low';
 
   const plan = [
     ['treeTropical', low ? 8 : 18],
@@ -357,7 +419,7 @@ async function spawnVegetation() {
     ['treePine', low ? 2 : 5],
   ];
 
-  // Surulere core and the existing coastal planting strip.
+  // Surulere core and existing coastal planting strip.
   const zones = [
     [-120, 120, -120, 120],
     [346, 614, 315, 330],
@@ -376,8 +438,9 @@ async function spawnVegetation() {
     }
 
     for (let i = 0; i < count; i++) {
-      const zone =
-        zones[Math.floor(Math.random() * zones.length)];
+      const zone = zones[
+        Math.floor(Math.random() * zones.length)
+      ];
 
       const spot = sampleSpot(
         zone[0],
@@ -390,17 +453,17 @@ async function spawnVegetation() {
 
       const tree = skClone(inst.obj);
 
-      // Apply the asset-specific scale, then vary individual tree sizes.
       const baseScale = ASSETS[key].scale ?? 1;
       const scale = baseScale * (0.8 + Math.random() * 0.35);
 
       tree.scale.setScalar(scale);
-      
+
       tree.position.set(
         spot.x,
         heightAt(spot.x, spot.z),
         spot.z,
       );
+
       tree.rotation.y = Math.random() * Math.PI * 2;
 
       G.scene.add(tree);
@@ -432,7 +495,7 @@ const ambient = [];
 const SLEEP2 = 100 * 100;
 
 async function spawnAmbientAnimals() {
-  const low = PERF.lowEnd || G.quality === 'low';
+  const low = PERF.lowEnd || getQualityTier() === 'low';
 
   const plan = [
     ['dog', low ? 3 : 6, 1.35],
@@ -458,7 +521,6 @@ async function spawnAmbientAnimals() {
 
       if (!spot) continue;
 
-      // Each animal needs its own scene object.
       const obj = skClone(inst.obj);
 
       obj.position.set(
@@ -466,6 +528,7 @@ async function spawnAmbientAnimals() {
         heightAt(spot.x, spot.z),
         spot.z,
       );
+
       obj.rotation.y = Math.random() * Math.PI * 2;
 
       G.scene.add(obj);
@@ -480,6 +543,7 @@ async function spawnAmbientAnimals() {
 
       if (inst.animations?.length) {
         record.mixer = new THREE.AnimationMixer(obj);
+
         record.mixer
           .clipAction(inst.animations[0])
           .play();
@@ -525,10 +589,10 @@ function updateAmbient(dt) {
       animal.t = 2 + Math.random() * 5;
       animal.target = null;
 
-      // Find a nearby walkable target.
       for (let i = 0; i < 8 && !animal.target; i++) {
         const x =
           position.x + (Math.random() - 0.5) * 24;
+
         const z =
           position.z + (Math.random() - 0.5) * 24;
 
@@ -544,10 +608,7 @@ function updateAmbient(dt) {
 
     if (!animal.target) continue;
 
-    const direction = animal.target
-      .clone()
-      .sub(position);
-
+    const direction = animal.target.clone().sub(position);
     direction.y = 0;
 
     const length = direction.length();
@@ -562,6 +623,7 @@ function updateAmbient(dt) {
     );
 
     position.y = heightAt(position.x, position.z);
+
     animal.g.rotation.y = Math.atan2(
       direction.x,
       direction.z,
@@ -570,11 +632,80 @@ function updateAmbient(dt) {
 }
 
 // ============================================================
+// Stadium model normalization
+// ============================================================
+
+/**
+ * Fit a detailed stadium GLB into a shared world-space envelope.
+ *
+ * The helper:
+ *   - Preserves the model's aspect ratio.
+ *   - Limits width, depth and height.
+ *   - Grounds the visible model at y = 0.
+ *
+ * Terrain elevation is added later during streaming.
+ */
+function fitStadiumToFootprint(object, key) {
+  const target = ASSETS[key]?.targetFootprint;
+
+  if (!target) return;
+
+  object.updateMatrixWorld(true);
+
+  const initial = new THREE.Box3().setFromObject(object);
+  const size = new THREE.Vector3();
+
+  initial.getSize(size);
+
+  if (
+    !Number.isFinite(size.x) ||
+    !Number.isFinite(size.y) ||
+    !Number.isFinite(size.z) ||
+    size.x <= 0 ||
+    size.y <= 0 ||
+    size.z <= 0
+  ) {
+    console.warn(
+      `[assets] Invalid stadium bounds for ${key}; using unnormalized model`,
+    );
+
+    return;
+  }
+
+  // One uniform factor preserves the model's proportions.
+  const fit = Math.min(
+    target.x / size.x,
+    target.z / size.z,
+    target.maxHeight / size.y,
+  );
+
+  object.scale.multiplyScalar(fit);
+  object.updateMatrixWorld(true);
+
+  const fitted = new THREE.Box3().setFromObject(object);
+
+  // Move the visible bottom of the model to y = 0.
+  object.position.y -= fitted.min.y;
+  object.updateMatrixWorld(true);
+
+  const finalSize = new THREE.Vector3();
+
+  fitted.getSize(finalSize);
+
+  console.info(
+    `[assets] Stadium ${key} normalized: ` +
+      `${finalSize.x.toFixed(1)}w × ` +
+      `${finalSize.y.toFixed(1)}h × ` +
+      `${finalSize.z.toFixed(1)}d`,
+  );
+}
+
+// ============================================================
 // Stadium landmark streaming
 // ============================================================
 
-// Procedural stadiums remain visible until their detailed GLBs load.
-// Detailed GLBs are loaded within LOAD_R and unloaded beyond UNLOAD_R.
+// Procedural stadiums remain visible until detailed GLBs load.
+// Models load near the player and unload farther away.
 
 const LOAD_R = 260;
 const UNLOAD_R = 380;
@@ -590,6 +721,7 @@ async function initLandmarks() {
     console.info(
       '[assets] No stadium landmarks found; streaming disabled',
     );
+
     return;
   }
 
@@ -649,31 +781,31 @@ async function streamLandmarks() {
       try {
         const inst = await instantiate(slot.key);
 
-        inst.obj.scale.setScalar(
-          ASSETS[slot.key].scale || 1,
-        );
+        // Normalize before applying world position.
+        fitStadiumToFootprint(inst.obj, slot.key);
 
-        inst.obj.position.set(
-          slot.x,
-          heightAt(slot.x, slot.z),
-          slot.z,
-        );
+        inst.obj.position.x = slot.x;
+        inst.obj.position.z = slot.z;
+
+        // fitStadiumToFootprint grounded the model at y = 0.
+        inst.obj.position.y += heightAt(slot.x, slot.z);
 
         G.scene.add(inst.obj);
 
         slot.group = inst.obj;
         slot.loadedUrl = inst.url;
 
-        // Hide the procedural stand-in only after the GLB loads.
+        // Hide the procedural fallback only after the detailed
+        // model has loaded and been added to the scene.
         setProceduralVisible(slot, false);
 
         console.info(
           `[assets] Streamed in ${slot.key} using ${inst.url}`,
         );
       } catch (error) {
-        // Keep the procedural stadium visible if both files fail.
+        // The procedural stadium remains visible on failure.
         console.warn(
-          `[assets] Failed to stream ${slot.key}`,
+          `[assets] Failed to stream ${slot.key}; keeping procedural fallback`,
           error,
         );
       } finally {
@@ -683,7 +815,7 @@ async function streamLandmarks() {
       distance > UNLOAD_R &&
       slot.group
     ) {
-      // Do not dispose shared geometry during routine distance unloading.
+      // Do not dispose shared cached geometry or materials here.
       G.scene.remove(slot.group);
 
       slot.group = null;
@@ -692,7 +824,7 @@ async function streamLandmarks() {
       setProceduralVisible(slot, true);
 
       console.info(
-        `[assets] Streamed out ${slot.key}`,
+        `[assets] Streamed out ${slot.key}; restored procedural fallback`,
       );
     }
   }
@@ -706,13 +838,14 @@ async function streamLandmarks() {
  * Remove currently streamed stadiums.
  *
  * freeGpu=false:
- *   Remove the scene objects but preserve shared cached GLTF resources.
+ *   Remove scene objects but preserve cached GLTF resources.
  *
  * freeGpu=true:
- *   Evict the loaded GLTF cache entry and dispose the scene resources.
+ *   Evict and dispose the resources for the loaded model.
  *
- * Only use freeGpu when no other scene objects depend on the same cached
- * geometry/materials.
+ * IMPORTANT:
+ * freeGpu=true is safe only if the disposed geometry, materials
+ * and textures are not shared by other scene objects.
  */
 export function purgeStreamedLandmarks({
   freeGpu = false,
@@ -723,7 +856,6 @@ export function purgeStreamedLandmarks({
     G.scene.remove(slot.group);
 
     if (freeGpu) {
-      // Use the actual URL loaded, including the original fallback if used.
       evictCachedUrl(slot.loadedUrl);
       disposeGroupDeep(slot.group);
     }
@@ -749,7 +881,8 @@ export async function buildWorldAssets() {
 
   await initLandmarks();
 
-  // Spawn these asynchronously; the world remains playable while loading.
+  // Load optional world assets asynchronously so the world
+  // remains playable while downloads complete.
   void spawnVegetation();
   void spawnAmbientAnimals();
 }
@@ -757,6 +890,7 @@ export async function buildWorldAssets() {
 export function updateWorldAssets(dt) {
   updateAmbient(dt);
 
-  // Distance streaming is asynchronous and guarded against duplicate loads.
+  // Distance streaming is asynchronous and guarded against
+  // duplicate loads for each landmark slot.
   void streamLandmarks();
 }
