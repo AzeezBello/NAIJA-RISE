@@ -11,30 +11,36 @@ import { vForward } from '../entities/vehicles.js';
 import { toast } from '../ui/feedback.js';
 import { heightAt } from '../world/terrain.js';
 
-const UP = new THREE.Vector3(0, 1, 0);
+// -----------------------------------------------------------------------------
+// SHARED SCRATCH VALUES
+// -----------------------------------------------------------------------------
 
+const UP = new THREE.Vector3(0, 1, 0);
 const lastDir = new THREE.Vector3(0, 0, -1);
 
-// Scratch vectors: no per-frame allocations in the hot path.
 const _in = new THREE.Vector3();
 const _old = new THREE.Vector3();
 const _target = new THREE.Vector3();
 const _offset = new THREE.Vector3();
 const _desired = new THREE.Vector3();
 const _dir = new THREE.Vector3();
-
 const _ray = new THREE.Raycaster();
 const _look = new THREE.Vector3();
 
 let bob = 0;
 let camHit = 0;
 let fovNow = 58;
+let firstFrame = true;
 
-// Animation-ready controller states:
-// idle · walk · run · turn · stop · jump
-const setState = s => {
-  if (G.moveState !== s) {
-    G.moveState = s;
+// -----------------------------------------------------------------------------
+// MOVEMENT STATE
+// -----------------------------------------------------------------------------
+
+// Supported states: idle, walk, run, turn, stop, jump.
+
+const setState = (state) => {
+  if (G.moveState !== state) {
+    G.moveState = state;
     G.stateT = 0;
   }
 };
@@ -49,55 +55,68 @@ let grounded = true;
 const JUMP_FORCE = 7.5;
 const GRAVITY = 20;
 
-
 // -----------------------------------------------------------------------------
 // COLLISION
 // -----------------------------------------------------------------------------
 
-// Buildings, traffic and other parked vehicles block movement.
-//
-// p.y is important here. A bridge can occupy the same X/Z space as a road
-// underneath it, so collision level must be evaluated using the object's
-// current elevation.
-//
-// The test is square-vs-AABB on purpose. With the axis-separated resolution
-// in moveFoot/driveCar it slides cleanly along walls.
-export function blockedAt(p, r, self) {
+/**
+ * Checks whether a position overlaps a world collider, traffic vehicle,
+ * or parked vehicle.
+ *
+ * The Y coordinate allows vertically separated roads and bridges to coexist.
+ *
+ * @param {THREE.Vector3} p Candidate position.
+ * @param {number} r Collision radius.
+ * @param {THREE.Object3D|null} self Object excluded from parked-vehicle tests.
+ * @returns {boolean} Whether the position is blocked.
+ */
+export function blockedAt(p, r, self = null) {
   const y = p.y ?? 0;
 
+  // Buildings and static world objects.
   for (const c of colliders) {
+    if (!c) continue;
+
     if (c.minY !== undefined && y < c.minY) continue;
     if (c.maxY !== undefined && y > c.maxY) continue;
 
+    const halfW = Math.max(0, c.w ?? 0) / 2;
+    const halfD = Math.max(0, c.d ?? 0) / 2;
+
     if (
-      Math.abs(p.x - c.x) < c.w / 2 + r &&
-      Math.abs(p.z - c.z) < c.d / 2 + r
+      Math.abs(p.x - c.x) < halfW + r &&
+      Math.abs(p.z - c.z) < halfD + r
     ) {
       return true;
     }
   }
 
-  for (const t of G.traffic) {
+  // Moving traffic.
+  for (const t of G.traffic ?? []) {
+    if (!t?.g || t.hidden || !t.g.visible) continue;
+
+    const vehicleWidth = VEH[t.type]?.wid ?? 2;
+    const trafficRadius = r + vehicleWidth * 0.6 + 0.6;
+
     if (
       Math.hypot(
         p.x - t.g.position.x,
         p.z - t.g.position.z
-      ) <
-      r + VEH[t.type].wid * 0.6 + 0.6
+      ) < trafficRadius
     ) {
       return true;
     }
   }
 
-  for (const c of G.parked) {
+  // Parked vehicles, including the player's vehicle when walking.
+  for (const c of G.parked ?? []) {
+    if (!c?.visible || c === self) continue;
+
     if (
-      c !== self &&
-      c !== G.car &&
       Math.hypot(
         p.x - c.position.x,
         p.z - c.position.z
-      ) <
-      r + 1.4
+      ) < r + 1.4
     ) {
       return true;
     }
@@ -110,16 +129,18 @@ export function blockedAt(p, r, self) {
 // INPUT
 // -----------------------------------------------------------------------------
 
-// Keyboard or joystick → movement vector in camera space.
-// x = right
-// y = forward/back
+/**
+ * Returns keyboard or joystick input.
+ *
+ * X = left/right
+ * Z = forward/backward
+ */
 function inputVector() {
   const k = G.keys;
   const st = G.stick;
 
   if (
-    st &&
-    st.active &&
+    st?.active &&
     (
       Math.abs(st.x) > 0.12 ||
       Math.abs(st.y) > 0.12
@@ -143,56 +164,40 @@ export function moveFoot(dt) {
   const k = G.keys;
   const pl = G.player;
 
-  const input = inputVector();
+  if (!pl) return;
 
+  const input = inputVector();
   const mag = Math.min(1, input.length());
 
-  const has =
-    mag > 0 &&
-    !frozen();
+  const has = mag > 0 && !frozen();
 
   const sprint =
-    (k.shift || G.pad?.sprint) &&
-    G.state.stamina > 0;
+    !!(k.shift || G.pad?.sprint) &&
+    (G.state.stamina ?? 0) > 0;
 
-  const max =
+  const maxSpeed =
     (sprint ? 8.5 : 4.6) *
     (G.stick?.active ? mag : 1);
 
-  G.stateT =
-    (G.stateT || 0) + dt;
+  G.stateT = (G.stateT || 0) + dt;
 
-    // ---------------------------------------------------------------------------
-  // JUMP
   // ---------------------------------------------------------------------------
-  //
-  // Spacebar triggers a jump when the player is on foot and grounded.
-  //
-  // jumpPressed should be set by the keyboard handler on keydown.
-  // This prevents holding Space from repeatedly jumping.
-  //
-  // G.pad?.jump is also supported if you later map a controller button to jump.
-  //
+  // JUMP INPUT
+  // ---------------------------------------------------------------------------
 
   const jumpPressed =
     !!k.jumpPressed ||
     !!G.pad?.jump;
 
-  if (
-    jumpPressed &&
-    grounded &&
-    !frozen()
-  ) {
+  if (jumpPressed && grounded && !frozen()) {
     jumpVelocity = JUMP_FORCE;
     grounded = false;
 
     setState('jump');
 
-    // Consume keyboard jump input.
+    // Consume edge-triggered jump input.
     k.jumpPressed = false;
 
-    // Consume controller jump input if the controller implementation
-    // exposes it as an edge-triggered value.
     if (G.pad) {
       G.pad.jump = false;
     }
@@ -204,9 +209,7 @@ export function moveFoot(dt) {
 
   if (!grounded) {
     jumpVelocity -= GRAVITY * dt;
-
-    pl.position.y +=
-      jumpVelocity * dt;
+    pl.position.y += jumpVelocity * dt;
 
     const groundY = heightAt(
       pl.position.x,
@@ -216,16 +219,11 @@ export function moveFoot(dt) {
 
     if (pl.position.y <= groundY) {
       pl.position.y = groundY;
-
       jumpVelocity = 0;
       grounded = true;
 
       if (has) {
-        setState(
-          sprint
-            ? 'run'
-            : 'walk'
-        );
+        setState(sprint ? 'run' : 'walk');
       } else {
         setState('idle');
       }
@@ -233,38 +231,26 @@ export function moveFoot(dt) {
   }
 
   // ---------------------------------------------------------------------------
-  // HORIZONTAL MOVEMENT
+  // HORIZONTAL DIRECTION AND SPEED
   // ---------------------------------------------------------------------------
 
   if (has) {
     input
       .normalize()
-      .applyAxisAngle(
-        UP,
-        G.camYaw
-      );
+      .applyAxisAngle(UP, G.camYaw);
 
-    const turn =
-      lastDir.angleTo(input);
+    const turn = lastDir.angleTo(input);
 
-    // Sharp turn: pivot first, then move.
-    if (
-      turn > 1.9 &&
-      G.curSpeed > 2
-    ) {
+    // Slow down before making a sharp turn.
+    if (turn > 1.9 && G.curSpeed > 2) {
       setState('turn');
 
-      G.curSpeed =
-        Math.max(
-          1.5,
-          G.curSpeed - 30 * dt
-        );
-    } else if (grounded) {
-      setState(
-        sprint
-          ? 'run'
-          : 'walk'
+      G.curSpeed = Math.max(
+        1.5,
+        G.curSpeed - 30 * dt
       );
+    } else if (grounded) {
+      setState(sprint ? 'run' : 'walk');
     }
 
     lastDir
@@ -272,160 +258,127 @@ export function moveFoot(dt) {
         input,
         Math.min(
           1,
-          dt *
-            (
-              G.moveState === 'turn'
-                ? 16
-                : 9
-            )
+          dt * (G.moveState === 'turn' ? 16 : 9)
         )
       )
       .normalize();
 
-    G.curSpeed =
-      Math.min(
-        max,
-        G.curSpeed +
-          (
-            G.curSpeed < 2
-              ? 14
-              : 22
-          ) * dt
-      );
+    G.curSpeed = Math.min(
+      maxSpeed,
+      G.curSpeed +
+        (G.curSpeed < 2 ? 14 : 22) * dt
+    );
   } else {
-    G.curSpeed =
-      Math.max(
-        0,
-        G.curSpeed - 16 * dt
-      );
+    G.curSpeed = Math.max(
+      0,
+      G.curSpeed - 16 * dt
+    );
 
     if (grounded) {
       setState(
-        G.curSpeed > 0.4
-          ? 'stop'
-          : 'idle'
+        G.curSpeed > 0.4 ? 'stop' : 'idle'
       );
     }
   }
 
   // ---------------------------------------------------------------------------
-  // WALK / RUN BOB
+  // WALK / RUN ANIMATION BOB
   // ---------------------------------------------------------------------------
 
   bob +=
     dt *
     G.curSpeed *
-    (
-      G.moveState === 'run'
-        ? 2.6
-        : 2.1
-    );
+    (G.moveState === 'run' ? 2.6 : 2.1);
 
   const amp =
-    G.moveState === 'run'
-      ? 0.085
-      : 0.055;
+    G.moveState === 'run' ? 0.085 : 0.055;
 
-  const rig =
-    !!G.playerChar?.rig;
+  const rig = !!G.playerChar?.rig;
 
-  // Do not overwrite the vertical jump arc.
-  // Ground height is only applied while grounded.
+  // Apply ground height only when grounded.
+  // Never overwrite the vertical jump arc.
   if (grounded) {
-    const footHeight =
-      heightAt(
-        pl.position.x,
-        pl.position.z,
-        pl.position.y
-      );
+    const footHeight = heightAt(
+      pl.position.x,
+      pl.position.z,
+      pl.position.y
+    );
 
     pl.position.y =
       footHeight +
       (
-        !rig &&
-        G.curSpeed > 0.3
-          ? Math.abs(
-              Math.sin(bob)
-            ) * amp
+        !rig && G.curSpeed > 0.3
+          ? Math.abs(Math.sin(bob)) * amp
           : 0
       );
   }
 
   // Sprint lean.
-  pl.rotation.x =
-    THREE.MathUtils.lerp(
-      pl.rotation.x,
-      !rig &&
-      G.moveState === 'run'
-        ? -0.1
-        : 0,
-      Math.min(
-        1,
-        dt * 6
-      )
-    );
-
-  // ---------------------------------------------------------------------------
-  // HORIZONTAL COLLISION
-  // ---------------------------------------------------------------------------
-
-  if (G.curSpeed < 0.05) {
-    return;
-  }
-
-  const old =
-    _old.copy(pl.position);
-
-  pl.position.addScaledVector(
-    lastDir,
-    G.curSpeed * dt
+  pl.rotation.x = THREE.MathUtils.lerp(
+    pl.rotation.x,
+    !rig && G.moveState === 'run' ? -0.1 : 0,
+    Math.min(1, dt * 6)
   );
 
-  if (
-    blockedAt(
-      pl.position,
-      0.65
-    )
-  ) {
-    // Try sliding along Z.
-    const nx = pl.position.x;
-    const nz = pl.position.z;
+  // ---------------------------------------------------------------------------
+  // COLLISION-SAFE HORIZONTAL MOVEMENT
+  // ---------------------------------------------------------------------------
 
-    pl.position.set(
-      old.x,
-      pl.position.y,
-      nz
-    );
-
-    if (
-      blockedAt(
-        pl.position,
-        0.65
-      )
-    ) {
-      // Try sliding along X.
-      pl.position.set(
-        nx,
-        pl.position.y,
-        old.z
-      );
-
-      if (
-        blockedAt(
-          pl.position,
-          0.65
-        )
-      ) {
-        pl.position.copy(old);
-      }
-    }
-  }
-
-  pl.rotation.y =
-    Math.atan2(
+  if (G.curSpeed < 0.05 || dt <= 0) {
+    pl.rotation.y = Math.atan2(
       lastDir.x,
       lastDir.z
     );
+    return;
+  }
+
+  // Divide movement into small increments to reduce tunnelling through
+  // thin colliders during fast movement or frame-rate drops.
+  const distance = G.curSpeed * dt;
+  const steps = Math.max(
+    1,
+    Math.ceil(distance / 0.2)
+  );
+
+  const stepX = lastDir.x * distance / steps;
+  const stepZ = lastDir.z * distance / steps;
+
+  for (let i = 0; i < steps; i++) {
+    const fromX = pl.position.x;
+    const fromZ = pl.position.z;
+
+    // Resolve X independently.
+    pl.position.x = fromX + stepX;
+
+    if (blockedAt(pl.position, 0.65)) {
+      pl.position.x = fromX;
+    }
+
+    // Resolve Z independently.
+    // If one axis is blocked, the player can still slide along the other.
+    pl.position.z = fromZ + stepZ;
+
+    if (blockedAt(pl.position, 0.65)) {
+      pl.position.z = fromZ;
+    }
+
+    const movedX =
+      Math.abs(pl.position.x - fromX) > 1e-6;
+
+    const movedZ =
+      Math.abs(pl.position.z - fromZ) > 1e-6;
+
+    // Stop trying if neither axis can advance.
+    if (!movedX && !movedZ) {
+      break;
+    }
+  }
+
+  // Face the direction of travel.
+  pl.rotation.y = Math.atan2(
+    lastDir.x,
+    lastDir.z
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -434,7 +387,15 @@ export function moveFoot(dt) {
 
 export function driveCar(dt) {
   const car = G.car;
+
+  if (!car) return;
+
   const S = VEH[car.userData.type];
+
+  if (!S) {
+    G.carSpeed = 0;
+    return;
+  }
 
   const k = G.keys;
   const st = G.stick || {};
@@ -442,9 +403,9 @@ export function driveCar(dt) {
   const th = G.touchHold || {};
 
   const gas =
-    k.w ||
-    th.gas ||
-    pad.gas > 0.1 ||
+    !!k.w ||
+    !!th.gas ||
+    (pad.gas ?? 0) > 0.1 ||
     (
       st.active &&
       !th.gas &&
@@ -453,9 +414,9 @@ export function driveCar(dt) {
     );
 
   const brake =
-    k.s ||
-    th.brake ||
-    pad.brake > 0.1 ||
+    !!k.s ||
+    !!th.brake ||
+    (pad.brake ?? 0) > 0.1 ||
     (
       st.active &&
       !th.gas &&
@@ -463,102 +424,73 @@ export function driveCar(dt) {
       st.y > 0.35
     );
 
-  const boost =
-    k.shift ||
-    pad.sprint;
+  const boost = !!(k.shift || pad.sprint);
 
-  // Space remains vehicle handbrake.
-  const hand =
-    k[' '] ||
-    pad.hand;
+  // Spacebar remains the vehicle handbrake.
+  const hand = !!(k[' '] || pad.hand);
 
   if (frozen()) {
-    G.carSpeed =
-      approach(
-        G.carSpeed,
-        0,
-        20 * dt
-      );
+    G.carSpeed = approach(
+      G.carSpeed,
+      0,
+      20 * dt
+    );
   } else {
     const jam = G.jam;
 
     const flooded =
-      jam?.flood &&
-      Math.abs(
-        car.position.z - jam.k
-      ) < 9 &&
+      !!jam?.flood &&
+      Math.abs(car.position.z - jam.k) < 9 &&
       car.position.x > jam.from &&
       car.position.x < jam.to;
 
-    const cond =
-      car.userData.cond ?? 100;
+    const cond = car.userData.cond ?? 100;
 
     const wet =
       (G.rain ? 0.7 : 1) *
-      (
-        flooded
-          ? 0.45
-          : 1
-      );
+      (flooded ? 0.45 : 1);
 
     const maxF =
-      (
-        boost
-          ? S.boost
-          : S.max
-      ) *
-      (
-        G.state.fuel > 0
-          ? 1
-          : 0.2
-      ) *
-      (
-        cond < 30
-          ? 0.5
-          : 1
-      ) *
+      (boost ? S.boost : S.max) *
+      (G.state.fuel > 0 ? 1 : 0.2) *
+      (cond < 30 ? 0.5 : 1) *
       wet;
 
     if (hand) {
-      G.carSpeed =
-        approach(
-          G.carSpeed,
-          0,
-          45 * dt
-        );
+      G.carSpeed = approach(
+        G.carSpeed,
+        0,
+        45 * dt
+      );
     } else if (gas) {
-      G.carSpeed =
-        Math.min(
-          maxF,
-          G.carSpeed +
-            (
-              G.carSpeed < 0
-                ? 30
-                : boost
-                  ? S.accel * 1.3
-                  : S.accel
-            ) * dt
-        );
+      G.carSpeed = Math.min(
+        maxF,
+        G.carSpeed +
+          (
+            G.carSpeed < 0
+              ? 30
+              : boost
+                ? S.accel * 1.3
+                : S.accel
+          ) * dt
+      );
     } else if (brake) {
       G.carSpeed =
         G.carSpeed > 0.5
           ? Math.max(
               0,
-              G.carSpeed -
-                28 * wet * dt
+              G.carSpeed - 28 * wet * dt
             )
           : Math.max(
               -7,
-              G.carSpeed -
-                10 * dt
+              G.carSpeed - 10 * dt
             );
     } else {
-      G.carSpeed =
-        approach(
-          G.carSpeed,
-          0,
-          6 * dt
-        );
+      G.carSpeed = approach(
+        G.carSpeed,
+        0,
+        6 * dt
+      );
     }
 
     let steer =
@@ -572,98 +504,109 @@ export function driveCar(dt) {
       steer = -st.x;
     }
 
-    if (
-      Math.abs(G.carSpeed) > 0.3
-    ) {
+    if (Math.abs(G.carSpeed) > 0.3) {
       car.rotation.y +=
         steer *
         2.3 *
         wet *
-        (
-          0.6 +
-          0.4 * cond / 100
-        ) *
+        (0.6 + 0.4 * cond / 100) *
         Math.min(
           1,
-          Math.abs(
-            G.carSpeed
-          ) / 9
+          Math.abs(G.carSpeed) / 9
         ) *
         dt *
-        Math.sign(
-          G.carSpeed
-        );
+        Math.sign(G.carSpeed);
     }
   }
 
-  // Vehicle is stationary.
-  if (
-    Math.abs(G.carSpeed) < 0.05
-  ) {
-    car.position.y =
-      heightAt(
-        car.position.x,
-        car.position.z,
-        car.position.y
-      );
+  // ---------------------------------------------------------------------------
+  // STATIONARY VEHICLE
+  // ---------------------------------------------------------------------------
 
-    return;
-  }
-
-  const old =
-    _old.copy(
-      car.position
-    );
-
-  car.position.addScaledVector(
-    vForward(car),
-    G.carSpeed * dt
-  );
-
-  car.position.y =
-    heightAt(
+  if (Math.abs(G.carSpeed) < 0.05) {
+    car.position.y = heightAt(
       car.position.x,
       car.position.z,
       car.position.y
     );
 
-  // Vehicle collision.
-  if (
-    blockedAt(
-      car.position,
-      S.wid * 0.75,
-      car
-    )
-  ) {
-    car.position.copy(old);
+    return;
+  }
+
+  if (dt <= 0) return;
+
+  // Preserve the last safe vehicle position.
+  _old.copy(car.position);
+
+  const distance = G.carSpeed * dt;
+  const steps = Math.max(
+    1,
+    Math.ceil(Math.abs(distance) / 0.3)
+  );
+
+  const stepDistance = distance / steps;
+  const forward = vForward(car);
+
+  let collided = false;
+
+  // Substep vehicle movement to reduce tunnelling through obstacles.
+  for (let i = 0; i < steps; i++) {
+    const fromX = car.position.x;
+    const fromZ = car.position.z;
+    const fromY = car.position.y;
+
+    car.position.x += forward.x * stepDistance;
+    car.position.z += forward.z * stepDistance;
+
+    car.position.y = heightAt(
+      car.position.x,
+      car.position.z,
+      fromY
+    );
 
     if (
-      Math.abs(
-        G.carSpeed
-      ) > 18
+      blockedAt(
+        car.position,
+        S.wid * 0.75,
+        car
+      )
     ) {
-      G.state.health =
-        Math.max(
-          0,
-          G.state.health - 8
-        );
+      // Restore the last safe position.
+      car.position.set(fromX, fromY, fromZ);
 
-      car.userData.cond =
-        Math.max(
-          0,
-          (
-            car.userData.cond ?? 100
-          ) -
-          (
-            G.state.vehicles.find(
-              o =>
-                o.id ===
-                car.userData.ownedId
-            )?.insured
-              ? 6
-              : 12
-          )
-        );
+      collided = true;
+      break;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // COLLISION RESPONSE
+  // ---------------------------------------------------------------------------
+
+  if (collided) {
+    // Keep the vehicle grounded at its restored position.
+    car.position.y = heightAt(
+      car.position.x,
+      car.position.z,
+      car.position.y
+    );
+
+    if (Math.abs(G.carSpeed) > 18) {
+      G.state.health = Math.max(
+        0,
+        G.state.health - 8
+      );
+
+      const ownedVehicle = G.state.vehicles?.find(
+        (o) => o.id === car.userData.ownedId
+      );
+
+      const damage = ownedVehicle?.insured ? 6 : 12;
+
+      car.userData.cond = Math.max(
+        0,
+        (car.userData.cond ?? 100) - damage
+      );
 
       emit('crash');
 
@@ -674,8 +617,8 @@ export function driveCar(dt) {
       );
     }
 
-    G.carSpeed =
-      -G.carSpeed * 0.2;
+    // Small rebound away from the obstacle.
+    G.carSpeed = -G.carSpeed * 0.2;
   }
 }
 
@@ -684,74 +627,55 @@ export function driveCar(dt) {
 // -----------------------------------------------------------------------------
 
 export function clampWorld(o) {
+  if (!o?.position || !WORLD?.bounds) return;
+
   const b = WORLD.bounds;
 
-  o.position.x =
-    THREE.MathUtils.clamp(
-      o.position.x,
-      b.x[0],
-      b.x[1]
-    );
+  o.position.x = THREE.MathUtils.clamp(
+    o.position.x,
+    b.x[0],
+    b.x[1]
+  );
 
-  o.position.z =
-    THREE.MathUtils.clamp(
-      o.position.z,
-      b.z[0],
-      b.z[1]
-    );
+  o.position.z = THREE.MathUtils.clamp(
+    o.position.z,
+    b.z[0],
+    b.z[1]
+  );
 }
 
 // -----------------------------------------------------------------------------
 // THIRD-PERSON CAMERA
 // -----------------------------------------------------------------------------
 
-// Third-person chase camera with occlusion.
-// Auto-follows the car heading when not dragging.
-
-let firstFrame = true;
-
 export function updateCamera(dt) {
-  const t =
-    G.inCar
-      ? G.car
-      : G.player;
-
+  const t = G.inCar ? G.car : G.player;
   const cam = G.camera;
 
+  if (!t || !cam) return;
+
   if (G.camBlend > 0) {
-    G.camBlend =
-      Math.max(
-        0,
-        G.camBlend -
-          dt * 0.8
-      );
+    G.camBlend = Math.max(
+      0,
+      G.camBlend - dt * 0.8
+    );
   }
 
-  if (
-    G.inCar &&
-    !G.dragging
-  ) {
-    G.camYaw =
-      lerpAngle(
-        G.camYaw,
-        G.car.rotation.y,
-        1 -
-          Math.pow(
-            G.camBlend > 0
-              ? 0.02
-              : 0.08,
-            dt
-          )
-      );
+  // Follow the vehicle heading unless the player is rotating the camera.
+  if (G.inCar && !G.dragging) {
+    G.camYaw = lerpAngle(
+      G.camYaw,
+      G.car.rotation.y,
+      1 - Math.pow(
+        G.camBlend > 0 ? 0.02 : 0.08,
+        dt
+      )
+    );
   }
 
-  const wantDist =
-    G.inCar
-      ? Math.max(
-          G.camDistance,
-          11.5
-        )
-      : G.camDistance;
+  const wantDist = G.inCar
+    ? Math.max(G.camDistance, 11.5)
+    : G.camDistance;
 
   const sprinting =
     !G.inCar &&
@@ -759,196 +683,108 @@ export function updateCamera(dt) {
 
   const fast =
     G.inCar &&
-    Math.abs(
-      G.carSpeed
-    ) > 20;
+    Math.abs(G.carSpeed) > 20;
 
   const fovTarget =
-    sprinting
-      ? 66
-      : fast
-        ? 64
-        : 58;
+    sprinting ? 66 : fast ? 64 : 58;
 
-  if (
-    Math.abs(
-      fovNow - fovTarget
-    ) > 0.05
-  ) {
-    fovNow =
-      THREE.MathUtils.lerp(
-        fovNow,
-        fovTarget,
-        Math.min(
-          1,
-          dt * 3
-        )
-      );
+  if (Math.abs(fovNow - fovTarget) > 0.05) {
+    fovNow = THREE.MathUtils.lerp(
+      fovNow,
+      fovTarget,
+      Math.min(1, dt * 3)
+    );
 
-    cam.fov =
-      fovNow;
-
+    cam.fov = fovNow;
     cam.updateProjectionMatrix();
   }
 
-  const target =
-    _target.copy(
-      t.position
-    );
+  const target = _target.copy(t.position);
 
-  // Slightly higher camera target while jumping.
-  target.y +=
-    G.moveState === 'jump'
-      ? 1.45
-      : 1.25;
+  // Raise the camera target slightly while jumping.
+  target.y += G.moveState === 'jump' ? 1.45 : 1.25;
 
-  const offset =
-    _offset
-      .set(
-        0,
-        Math.sin(
-          G.camPitch
-        ) * wantDist,
-        Math.cos(
-          G.camPitch
-        ) * wantDist
-      )
-      .applyAxisAngle(
-        UP,
-        G.camYaw
-      );
+  const offset = _offset
+    .set(
+      0,
+      Math.sin(G.camPitch) * wantDist,
+      Math.cos(G.camPitch) * wantDist
+    )
+    .applyAxisAngle(UP, G.camYaw);
 
-  const desired =
-    _desired
-      .copy(target)
-      .add(offset);
+  const desired = _desired
+    .copy(target)
+    .add(offset);
 
-  const dir =
-    _dir
-      .copy(desired)
-      .sub(target)
-      .normalize();
+  const dir = _dir
+    .copy(desired)
+    .sub(target)
+    .normalize();
 
-  _ray.set(
-    target,
-    dir
+  _ray.set(target, dir);
+  _ray.far = wantDist;
+
+  const hits = _ray.intersectObjects(
+    occluders,
+    false
   );
 
-  _ray.far =
-    wantDist;
+  const hitDist = hits.length
+    ? Math.max(3.2, hits[0].distance - 0.5)
+    : wantDist;
 
-  _ray.camera =
-    cam;
-
-  const hits =
-    _ray.intersectObjects(
-      occluders,
-      false
-    );
-
-  const hitDist =
-    hits.length
-      ? Math.max(
-          3.2,
-          hits[0].distance - 0.5
+  camHit = camHit === 0
+    ? hitDist
+    : THREE.MathUtils.lerp(
+        camHit,
+        hitDist,
+        Math.min(
+          1,
+          dt * (hitDist < camHit ? 10 : 3)
         )
-      : wantDist;
-
-  camHit =
-    camHit === 0
-      ? hitDist
-      : THREE.MathUtils.lerp(
-          camHit,
-          hitDist,
-          Math.min(
-            1,
-            dt *
-              (
-                hitDist < camHit
-                  ? 10
-                  : 3
-              )
-          )
-        );
-
-  if (
-    camHit <
-    wantDist - 0.05
-  ) {
-    desired.copy(target)
-      .addScaledVector(
-        dir,
-        camHit
       );
+
+  if (camHit < wantDist - 0.05) {
+    desired
+      .copy(target)
+      .addScaledVector(dir, camHit);
   }
 
-  // Position: subtle lag on foot,
-  // tighter when driving.
-  const follow =
-    G.inCar
-      ? 1 -
-        Math.pow(
-          0.0005,
-          dt
-        )
-      : 1 -
-        Math.pow(
-          0.004,
-          dt
-        );
+  // Tighter follow while driving, smoother follow on foot.
+  const follow = G.inCar
+    ? 1 - Math.pow(0.0005, dt)
+    : 1 - Math.pow(0.004, dt);
 
   if (firstFrame) {
-    cam.position.copy(
-      desired
-    );
-
-    _look.copy(
-      target
-    );
-
+    cam.position.copy(desired);
+    _look.copy(target);
     firstFrame = false;
   } else {
-    cam.position.lerp(
-      desired,
-      follow
-    );
+    cam.position.lerp(desired, follow);
 
     _look.lerp(
       target,
-      1 -
-        Math.pow(
-          0.0008,
-          dt
-        )
+      1 - Math.pow(0.0008, dt)
     );
   }
 
-  cam.lookAt(
-    _look
-  );
+  cam.lookAt(_look);
 
   if (G.sky) {
-    G.sky.position.copy(
-      cam.position
-    );
+    G.sky.position.copy(cam.position);
   }
 
-  // Shadow frustum follows the player.
-  if (
-    G.sun &&
-    G.sunDir
-  ) {
+  // Keep the directional-light shadow target near the active character.
+  if (G.sun && G.sunDir && G.sun.target) {
     G.sun.target.position.set(
       t.position.x,
       0,
       t.position.z
     );
 
-    G.sun.position.copy(
-      G.sunDir
-    ).add(
-      G.sun.target.position
-    );
+    G.sun.position
+      .copy(G.sunDir)
+      .add(G.sun.target.position);
   }
 }
 
@@ -958,19 +794,17 @@ export function updateCamera(dt) {
 
 export function updateMovement(dt) {
   if (G.inCar) {
-    // Make sure the player cannot retain jump state after entering a vehicle.
+    // Reset the jump state when entering a vehicle.
     grounded = true;
     jumpVelocity = 0;
 
     driveCar(dt);
 
-    clampWorld(
-      G.car
-    );
+    clampWorld(G.car);
 
-    G.player.position.copy(
-      G.car.position
-    );
+    if (G.player && G.car) {
+      G.player.position.copy(G.car.position);
+    }
 
     spinWheels(
       G.car,
@@ -979,10 +813,7 @@ export function updateMovement(dt) {
     );
   } else {
     moveFoot(dt);
-
-    clampWorld(
-      G.player
-    );
+    clampWorld(G.player);
   }
 }
 
@@ -991,13 +822,12 @@ export function updateMovement(dt) {
 // -----------------------------------------------------------------------------
 
 export function setupMovement() {
-  on('key', k => {
-    // Reset camera.
+  on('key', (k) => {
+    // Reset the camera behind the player or vehicle.
     if (k === 'r') {
-      G.camYaw =
-        G.inCar
-          ? G.car.rotation.y
-          : 0;
+      G.camYaw = G.inCar
+        ? G.car.rotation.y
+        : 0;
 
       G.camPitch = 0.38;
       G.camDistance = 10.5;
