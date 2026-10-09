@@ -1,7 +1,21 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { VEH, MODEL_BASE } from '../data/vehicles.js';
 import { lamps } from '../world/builders.js';
+
+
+const dracoLoader = new DRACOLoader();
+// Official Google Draco decoders (or host under /draco/ yourself)
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+dracoLoader.setDecoderConfig({ type: 'js' }); // safe default; 'wasm' when available
+
+const loader = new GLTFLoader();
+loader.setDRACOLoader(dracoLoader);
+
+const models = {};
+const paints = {};
+
 
 // ============================================================
 // NAIJA RISE — Vehicle GLB Loader
@@ -59,9 +73,6 @@ const MODEL_ROTATION = {
   'volkswagen_id._buzz': Math.PI,
 };
 
-const loader = new GLTFLoader();
-const models = {};
-const paints = {};
 
 // ============================================================
 // Helpers
