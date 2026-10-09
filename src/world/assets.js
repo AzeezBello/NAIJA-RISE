@@ -58,18 +58,21 @@ export const ASSETS = {
     url: 'assets/vegetation/jabami_anime_tree-grass_v1.glb',
     size: 2.7 * MB,
     category: 'vegetation',
+    scale: 0.55,
   },
 
   treeMaple: {
     url: 'assets/vegetation/maple_tree.glb',
     size: 5.8 * MB,
     category: 'vegetation',
+    scale: 0.5,
   },
 
   treePine: {
     url: 'assets/vegetation/tree_spruce_pine.glb',
     size: 4.8 * MB,
     category: 'vegetation',
+    scale: 0.5,
   },
 
   // Stadiums: try compressed assets first, then original files.
@@ -78,7 +81,7 @@ export const ASSETS = {
     fallbackUrl: 'assets/landmarks/stadiums/national_stadium.glb',
     size: 20.2 * MB,
     category: 'landmark',
-    scale: 1,
+    scale: 0.65,
   },
 
   teslimStadium: {
@@ -86,7 +89,7 @@ export const ASSETS = {
     fallbackUrl: 'assets/landmarks/stadiums/teslim_balogun_stadium.glb',
     size: 34.4 * MB,
     category: 'landmark',
-    scale: 1,
+    scale: 0.6,
   },
 };
 
@@ -386,9 +389,13 @@ async function spawnVegetation() {
       if (!spot) continue;
 
       const tree = skClone(inst.obj);
-      const scale = 0.8 + Math.random() * 0.5;
+
+      // Apply the asset-specific scale, then vary individual tree sizes.
+      const baseScale = ASSETS[key].scale ?? 1;
+      const scale = baseScale * (0.8 + Math.random() * 0.35);
 
       tree.scale.setScalar(scale);
+      
       tree.position.set(
         spot.x,
         heightAt(spot.x, spot.z),
