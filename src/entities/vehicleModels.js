@@ -62,7 +62,10 @@ const MODEL_SCALE = {
 const MODEL_ROTATION = {
   keke_bajaj_re: Math.PI / 2,
   danfo_vanagon: Math.PI,
-  suzuki_carry_minivan: Math.PI,
+  
+  // Align the Korope with the game's forward direction.
+  suzuki_carry_minivan: 0,
+
   'suzuki_gsx-r750': Math.PI,
   volkswagen_crafter: Math.PI,
   '2003-gmc-topkick-c6500': Math.PI,
