@@ -155,6 +155,7 @@ export function buildHud(root) {
         <span class="foot">
           ${Key('WASD')} / ${Key('↑↓←→')} move
           ${Key('SHIFT')} sprint
+          ${Key('SPACE')} jump
           ${Key('E')} interact
           ${Key('F')} vehicle
         </span>

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js';
 
 import { G } from '../core/context.js';
@@ -30,26 +32,26 @@ const MB = 1024 * 1024;
 
 const SIZE_BUDGET = {
   low: 2 * MB,
-  medium: 16 * MB,
+  medium: 18 * MB,
   high: 40 * MB,
 };
 
 export const ASSETS = {
   dog: {
     url: 'assets/animals/dogs/dog.glb',
-    size: 1.6 * MB,
+    size: 0.93 * MB,
     category: 'ambient',
   },
 
   cat: {
     url: 'assets/animals/cats/cat.glb',
-    size: 5.0 * MB,
+    size: 3.33 * MB,
     category: 'ambient',
   },
 
   treeTropical: {
     url: 'assets/vegetation/jabami_anime_tree-grass_v1.glb',
-    size: 2.7 * MB,
+    size: 2.62 * MB,
     category: 'vegetation',
     scale: 0.28,
     targetHeight: 6.0,    // metres
@@ -57,7 +59,7 @@ export const ASSETS = {
 
   treeMaple: {
     url: 'assets/vegetation/maple_tree.glb',
-    size: 5.8 * MB,
+    size: 3.83 * MB,
     category: 'vegetation',
     scale: 0.25,
     targetHeight: 5.5,    // metres
@@ -65,26 +67,22 @@ export const ASSETS = {
 
   treePine: {
     url: 'assets/vegetation/tree_spruce_pine.glb',
-    size: 4.8 * MB,
+    size: 4.54 * MB,
     category: 'vegetation',
     scale: 0.28,
     targetHeight: 7.0
   },
 
   nationalStadium: {
-    url: 'assets/landmarks/stadiums/national_stadium-compressed.glb',
-    fallbackUrl: 'assets/landmarks/stadiums/national_stadium.glb',
-    size: 3.3 * MB,
-    fallbackSize: 20.2 * MB,
+    url: 'assets/landmarks/stadiums/national_stadium.glb',
+    size: 7.13 * MB,
     category: 'landmark',
     targetFootprint: { x: 54, z: 50, maxHeight: 25 },
   },
 
   teslimStadium: {
-    url: 'assets/landmarks/stadiums/teslim_balogun_stadium-compressed.glb',
-    fallbackUrl: 'assets/landmarks/stadiums/teslim_balogun_stadium.glb',
-    size: 12.4 * MB,
-    fallbackSize: 34.4 * MB,
+    url: 'assets/landmarks/stadiums/teslim_balogun_stadium.glb',
+    size: 16.78 * MB,
     category: 'landmark',
     targetFootprint: { x: 50, z: 46, maxHeight: 23 },
   },
@@ -95,6 +93,11 @@ export const ASSETS = {
 // ============================================================
 
 const loader = new GLTFLoader();
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+dracoLoader.setDecoderConfig({ type: 'js' });
+loader.setDRACOLoader(dracoLoader);
+loader.setMeshoptDecoder(MeshoptDecoder);
 const cache = new Map();
 
 function loadGLTF(url) {

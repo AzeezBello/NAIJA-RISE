@@ -56,7 +56,7 @@ import {
   roadRules,
   roadClass,
 } from '../data/locations.js';
-import { addDeck, heightAt } from './terrain.js';
+import { addDeck, deckHeightAt } from './terrain.js';
 import { buildWorldAssets } from './assets.js';
 
 const PALETTE = [
@@ -978,7 +978,9 @@ function deckMesh(deck) {
   for (let a = deck.from; a < deck.to; a += step) {
     const mid = a + step / 2;
     const h =
-      deck.axis === 'h' ? heightAt(mid, deck.k) : heightAt(deck.k, mid);
+      deck.axis === 'h'
+        ? deckHeightAt(mid, deck.k).height
+        : deckHeightAt(deck.k, mid).height;
     if (deck.axis === 'h') {
       staticBox('deck', mid, deck.k, step + 0.1, w, 0.8, h - 0.8);
       staticBox(

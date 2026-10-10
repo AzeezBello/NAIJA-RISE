@@ -9,9 +9,10 @@ import { emit } from './events.js';
  * Left Stick       Move
  * Right Stick      Camera
  * L3               Sprint
- * Cross / X        Interact / Confirm
- * Circle / O       Enter / Exit Vehicle
- * Triangle / △     Phone
+ * Square / X        Jump
+ * Cross / A         Interact / Confirm
+ * Circle / B        Enter / Exit Vehicle
+ * Triangle / Y      Phone
  * R1               Handbrake
  * Options          Pause
  * Share            Reset Camera
@@ -134,6 +135,7 @@ export function setupGamepad() {
 
     sprint: false,
     hand: false,
+    jump: false,
 
     camX: 0,
     camY: 0,
@@ -278,16 +280,27 @@ export function updateGamepad(dt) {
    * ---------------------------------------------------------
    *
    * L3 = sprint / boost
-   * X  = secondary sprint
+   * Square / X = jump (on foot)
    * R1 = handbrake
    */
 
   pad.sprint =
-    pressed(gp, BTN.L3) ||
-    pressed(gp, BTN.X);
+    pressed(gp, BTN.L3);
 
   pad.hand =
     pressed(gp, BTN.RB);
+
+  const jumpDown = pressed(gp, BTN.X);
+  if (
+    jumpDown &&
+    !prev[BTN.X] &&
+    !G.inCar &&
+    !G.vehicleMode &&
+    !G.paused
+  ) {
+    pad.jump = true;
+  }
+  prev[BTN.X] = jumpDown;
 
   pad.camX = rx;
   pad.camY = ry;
@@ -300,7 +313,8 @@ export function updateGamepad(dt) {
     pad.gas ||
     pad.brake ||
     pad.sprint ||
-    pad.hand
+    pad.hand ||
+    pad.jump
   );
 
   /*
@@ -373,6 +387,7 @@ export function updateGamepad(dt) {
     pad.brake = 0;
     pad.sprint = false;
     pad.hand = false;
+    pad.jump = false;
 
     pad.camX = 0;
     pad.camY = 0;

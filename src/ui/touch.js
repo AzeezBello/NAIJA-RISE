@@ -14,6 +14,7 @@ export function buildTouch(root) {
       <button class="tb tb-hold car" data-hold="brake">BRAKE</button>
       <button class="tb" data-key="e">E</button>
       <button class="tb" data-key="f">F</button>
+      <button class="tb foot" data-jump>JUMP</button>
       <button class="tb small" data-key="j">☎</button>
     </div>
   </div>`);
@@ -32,6 +33,7 @@ export function buildTouch(root) {
   for (const b of root.querySelectorAll('.tb')) {
     b.addEventListener('contextmenu', e => e.preventDefault());
     if (b.dataset.key) b.addEventListener('pointerdown', e => { e.preventDefault(); emit('key', b.dataset.key, { touch: true }); });
+    if (b.dataset.jump) b.addEventListener('pointerdown', e => { e.preventDefault(); if (!G.inCar && !G.vehicleMode) G.keys.jumpPressed = true; });
     if (b.dataset.hold) {
       const h = b.dataset.hold, down = e => { e.preventDefault(); b.classList.add('on'); if (h === 'shift') G.keys.shift = true; else G.touchHold[h] = true; };
       const up = () => { b.classList.remove('on'); if (h === 'shift') G.keys.shift = false; else G.touchHold[h] = false; };

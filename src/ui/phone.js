@@ -9,15 +9,15 @@ import { timeStr } from '../world/daynight.js';
 // The smartphone overlay. Apps register themselves in ui/apps/index.js with {id,title,tint,icon,render,actions}.
 import { toast } from './feedback.js';
 const locked = a => a.minLevel && G.state.level < a.minLevel;
-const ACTIONS = { open: id => { const a = APPS.find(a => a.id === id); if (locked(a)) return toast(`Reach Level ${a.minLevel} to unlock ${a.title}`); openApp(id); }, home: () => openApp('home') };
+const ACTIONS = { open: id => { const a = APPS.find(a => a.id === id); if (locked(a)) return toast(`Reach Level ${a.minLevel} to unlock ${a.title}`); openApp(id); }, home: () => openApp('home'), close: () => togglePhone(false) };
 for (const a of APPS) Object.assign(ACTIONS, a.actions || {});
 
 export function buildPhone(root) {
   const grid = APPS.map(a => `<button data-act="open" data-id="${a.id}" data-min="${a.minLevel || 1}" style="--tint:${a.tint}"><i>${a.icon}</i>${a.title}${a.id === 'messages' ? '<span class="badge" id="msgBadge"></span>' : ''}</button>`).join('');
-  const screens = APPS.map(a => `<div class="papp" id="app-${a.id}"><header><button class="back" data-act="home">‹</button><h5>${a.header || a.title}</h5>${a.headerExtra || ''}</header><div class="pbody" id="body-${a.id}"></div></div>`).join('');
+  const screens = APPS.map(a => `<div class="papp" id="app-${a.id}"><header><button class="back" data-act="home" aria-label="Back to phone home">‹</button><h5>${a.header || a.title}</h5>${a.headerExtra || ''}</header><div class="pbody" id="body-${a.id}"></div></div>`).join('');
   root.insertAdjacentHTML('beforeend', `
-  <div id="phone" class="phone"><div class="pframe"><div class="pnotch"></div>
-    <div class="pstatus"><span id="pTime">00:00</span><span class="sig">5G ▂▄▆ <i class="batt"></i></span></div>
+  <div id="phone" class="phone" role="region" aria-label="In-game phone"><div class="pframe"><div class="pnotch"></div>
+    <div class="pstatus"><span id="pTime">00:00</span><span class="sig">5G ▂▄▆ <i class="batt"></i></span><button class="pclose" data-act="close" aria-label="Close phone">×</button></div>
     <div class="pscreen">
       <div class="papp home show" id="app-home">
         <div class="ptop"><div class="plogo">NAIJA <b>RISE</b><small>${GAME.subtitle}</small></div><div class="pclock" id="pClock">00:00</div><div class="pdate" id="pDate"></div></div>
