@@ -773,6 +773,12 @@ function buildMakoko(l) {
   landingCanoe.rotation.y = 0.2;
   sign('CANOE LANDING', landingX, 3.1, landingZ + 4, '#f5c518', 5.5, 0.9, 'rgba(12,40,48,.94)');
   procedural.push(landingCanoe);
+  procedural.push(box(cx, cz + 48, 2.8, 78, 0.18, WOOD, 'prop', 0.2));
+  for (const x of [cx - 1, cx + 1]) {
+    for (let z = cz + 14; z <= cz + 84; z += 10) {
+      procedural.push(cyl(x, z, 0.1, 1.5, WOOD_DK, 'prop', -0.65, 6));
+    }
+  }
 
   sign('MAKOKO', cx + 8, 7.2, cz - 36, '#f5c518', 11, 1.8, 'rgba(12,40,48,.94)');
   sign(
@@ -1017,6 +1023,54 @@ function buildAirport(l) {
   (G.landmarkMeshes ??= {})[l.id] = [runway, terminal, tower, parkedA, parkedB, flying];
 }
 
+function marketStallFits(stall, l) {
+  const w = 4.2, d = 3.4;
+  if (inWater(stall.x, stall.z)) return false;
+  for (const z of ROADS.h) {
+    const [start, end] = roadExtent('h', z);
+    if (stall.x + w / 2 <= start || stall.x - w / 2 >= end) continue;
+    if (Math.abs(stall.z - z) < ROAD_W[z] / 2 + d / 2 + 1.2) return false;
+  }
+  for (const x of ROADS.v) {
+    const [start, end] = roadExtent('v', x);
+    if (stall.z + d / 2 <= start || stall.z - d / 2 >= end) continue;
+    if (Math.abs(stall.x - x) < VROAD_W[x] / 2 + w / 2 + 1.2) return false;
+  }
+  if (BUSSTOPS.some(stop => Math.hypot(stall.x - stop.x, stall.z - stop.z) < 8)) return false;
+  return !LANDMARKS.some(other => {
+    if (other === l || other.kind === 'waypoint' || other.kind === 'pitch') return false;
+    const otherW = other.big ? 26 : 18, otherD = other.big ? 20 : 14;
+    return Math.abs(stall.x - other.x) < (w + otherW) / 2 + 2 &&
+      Math.abs(stall.z - other.z) < (d + otherD) / 2 + 2;
+  });
+}
+
+function buildMarketStreetDetail(l, width, depth) {
+  const candidates = [
+    { x: l.x - width / 2 - 4.5, z: l.z + depth / 4 },
+    { x: l.x + width / 2 + 4.5, z: l.z + depth / 4 },
+    { x: l.x, z: l.z + depth / 2 + 4.5 },
+    { x: l.x, z: l.z - depth / 2 - 4.5 },
+  ];
+  let built = 0;
+  for (const stall of candidates) {
+    if (!marketStallFits(stall, l)) continue;
+    staticBox('marketTables', stall.x, stall.z, 3.4, 1.25, 0.88, 0.12);
+    staticBox('awnings', stall.x, stall.z, 4.8, 3.9, 0.16, 2.7);
+    for (const ox of [-1.85, 1.85]) {
+      for (const oz of [-1.45, 1.45]) {
+        staticBox('marketPoles', stall.x + ox, stall.z + oz, 0.12, 0.12, 2.65);
+      }
+    }
+    staticBox('marketGoods', stall.x - 0.9, stall.z, 0.8, 0.8, 0.55, 1.08);
+    staticBox('marketGoods', stall.x + 0.25, stall.z, 0.8, 0.8, 0.55, 1.08);
+    staticBox('marketGoods', stall.x + 1.15, stall.z, 0.65, 0.7, 0.45, 1.08);
+    colliders.push({ x: stall.x, z: stall.z, w: 3.4, d: 1.25, bottomY: 0.12, topY: 1 });
+    built++;
+    if (built === 2) break;
+  }
+}
+
 function buildLandmarks() {
   for (const l of LANDMARKS) {
     if (l.stadium) {
@@ -1077,6 +1131,7 @@ function buildLandmarks() {
       8,
       1.9
     );
+    if (l.kind === 'market') buildMarketStreetDetail(l, width, depth);
     if (l.kind === 'venue') {
       const neon = box(
         l.x,
@@ -1301,6 +1356,9 @@ const STATIC_MATS = () => ({
     return m;
   })(),
   panels: mat(0x1a2a4a, { metalness: 0.6, roughness: 0.3 }),
+  marketTables: mat(0x76553c),
+  marketPoles: mat(0x5a4030),
+  marketGoods: mat(0xd69c42),
   trunks: mat(0x6b4a2e),
   leaves: mat(0x2f7d49),
   medians: mat(0xb9b9b4, { roughness: 0.95 }),

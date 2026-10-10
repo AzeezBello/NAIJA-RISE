@@ -13,6 +13,7 @@ export const DISTRICT = createArea({
   roads: {
     h: [
       { k: 70, from: -500, to: -150, name: 'Creek Road', width: 18, class: 'commercial' },
+      { k: 110, from: -500, to: -150, name: 'Apapa Wharf Link', width: 12, class: 'residential' },
       { k: 142, from: -520, to: 150, name: 'Apapa–Oworonshoki Expressway', width: 24, class: 'expressway' },
       { k: 220, from: -500, to: -150, name: 'Warehouse Road', width: 18, class: 'highway' },
     ],

@@ -13,11 +13,12 @@ export const DISTRICT = createArea({
   roads: {
     h: [
       { k: -390, from: -500, to: -150, name: 'Ikorodu Town Road', width: 18, class: 'commercial' },
+      { k: -410, from: -500, to: -150, name: 'Itunmoja Community Link', width: 12, class: 'residential' },
       { k: -330, from: -520, to: 480, name: 'Ikorodu Road', width: 40, class: 'highway' },
       { k: -270, from: -500, to: -150, name: 'Itunmoja Road', width: 16, class: 'main' },
     ],
     v: [
-      { k: -450, from: -410, to: -250, name: 'Ita-Elewa Road', width: 16, class: 'commercial' },
+      { k: -480, from: -410, to: -250, name: 'Ita-Elewa Road', width: 16, class: 'commercial' },
       { k: -360, from: -410, to: -250, name: 'Ikorodu Garage Road', width: 18, class: 'main' },
       { k: -270, from: -410, to: -250, name: 'Ibeshe Road', width: 16, class: 'residential' },
     ],

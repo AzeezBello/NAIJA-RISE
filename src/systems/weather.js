@@ -38,6 +38,6 @@ export function updateWeather(dt) {
     a.needsUpdate = true; rain.position.set(cam.x, 0, cam.z);
   } else {
     nextCheck -= dt;
-    if (nextCheck <= 0) { nextCheck = rnd(120, 240); if (!isHarmattan() && Math.random() < WEATHER.rainChance) startRain(); }
+    if (nextCheck <= 0) { nextCheck = rnd(180, 300); if (!isHarmattan() && Math.random() < WEATHER.rainChance) startRain(); }
   }
 }

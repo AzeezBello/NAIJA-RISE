@@ -9,6 +9,7 @@ export const DISTRICT = createArea({
     h: [
       { k: 96, from: 340, to: 500, name: 'Awolowo Road', width: 18, class: 'main' },
       { k: 144, from: 340, to: 500, name: 'Gerrard Road', width: 16, class: 'commercial' },
+      { k: 176, from: 340, to: 500, name: 'Ikoyi Club Link Road', width: 12, class: 'residential' },
       { k: 208, from: 340, to: 500, name: 'Bourdillon Road', width: 18, class: 'main' },
     ],
     v: [

@@ -109,6 +109,36 @@ const HUSTLE_HUBS = {
       ['Set up a POS terminal at Ikeja City Centre', 'ikeja-city', 'pos_terminal', 35, 22000, 'POS Terminal', 'business'],
     ],
   },
+  balogun_osoanya: {
+    name: 'Balogun Market',
+    contact: 'balogun_osoanya',
+    at: 'balogun-market',
+    intro: 'Osoanya — also called Oso-ahia — are commission agents who connect shoppers with market traders. Pick a customer order and earn your cut on delivery.',
+    missions: [
+      ['Carry a fabric order from Balogun Market to Shitta Market', 'shitta', 'fabric_order', 30, 18000, 'Fabric Order', 'business'],
+      ['Deliver a customer parcel from Balogun Market to Yaba Market', 'yaba', 'market_basket', 35, 22000, 'Customer Parcel', 'business'],
+    ],
+  },
+  yaba_osoanya: {
+    name: 'Yaba Market',
+    contact: 'yaba_osoanya',
+    at: 'yaba',
+    intro: 'We connect Yaba shoppers with traders and earn commission for each completed order. Help us get this purchase to the buyer.',
+    missions: [
+      ['Deliver a Yaba Market order to Computer Village', 'ikeja-tech', 'phone_parts', 40, 26000, 'Electronics Order', 'business'],
+      ['Carry a clothing parcel from Yaba Market to Tejuosho Market', 'tejuosho', 'fabric_order', 25, 16000, 'Clothing Parcel', 'business'],
+    ],
+  },
+  computer_village_osoanya: {
+    name: 'Computer Village',
+    contact: 'computer_village_osoanya',
+    at: 'ikeja-tech',
+    intro: 'We be Osoanya, commission agents. We match customers with trusted phone and computer traders, then earn when the order reaches its buyer.',
+    missions: [
+      ['Deliver a phone repair order from Computer Village to Yaba Market', 'yaba', 'phone_parts', 40, 24000, 'Repair Order', 'business'],
+      ['Carry a laptop order from Computer Village to Ikeja City Centre', 'ikeja-city', 'laptop_parts', 25, 18000, 'Laptop Order', 'business'],
+    ],
+  },
   sisi: {
     name: 'AJ City',
     contact: 'sisi',
@@ -152,7 +182,7 @@ export function openHustleHub(contactId) {
   const hub = HUSTLE_HUBS[contactId];
   if (!hub) return false;
   const contact = hub.contact;
-  startDialog([{ s: contact, t: `Welcome to ${hub.name}. Choose a local run. Deliveries pay when you reach the destination before the deadline.` }], [
+  startDialog([{ s: contact, t: `${hub.intro || `Welcome to ${hub.name}.`} Choose a local run. Deliveries pay when you reach the destination before the deadline.` }], [
     ...(G.task ? [] : hub.missions.map(([description, dest, item, minutes, reward, deliveryLabel, rep]) => ({
       label: description,
       apply() {

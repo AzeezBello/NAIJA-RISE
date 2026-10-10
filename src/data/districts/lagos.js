@@ -10,8 +10,10 @@ import { DISTRICT as ajegunle } from './ajegunle.js';
 import { DISTRICT as makoko } from './makoko.js';
 import { DISTRICT as agege } from './agege.js';
 import { DISTRICT as ojoBadagry } from './ojo-badagry.js';
+import { DISTRICT as westMainland } from './west-mainland.js';
+import { DISTRICT as eastMainland } from './east-mainland.js';
 
-const areas = [ikoyi, lekki, ikorodu, apapa, ikeja, oyingbo, yaba, ajegunle, makoko, agege, ojoBadagry];
+const areas = [ikoyi, lekki, ikorodu, apapa, ikeja, oyingbo, yaba, ajegunle, makoko, agege, ojoBadagry, westMainland, eastMainland];
 const mergeAxisMap = (base, additions) => ({
   h: Object.assign({}, base.h, ...additions.map(map => map.h)),
   v: Object.assign({}, base.v, ...additions.map(map => map.v)),
@@ -92,12 +94,17 @@ ROAD_WIDTHS.v[1040] = 16;
 const LANDMARKS = [
   ...surulere.LANDMARKS.filter(l => !['ajegunle', 'ajpitch', 'makoko', 'ikorodu', 'tejuosho', 'yabatech', 'unilag'].includes(l.id)),
   ...areas.flatMap(area => area.LANDMARKS),
+  { id: 'obalende', name: 'Obalende', short: 'OBALENDE', x: 300, z: 60, c: '#8a7d6a', sign: '#ffc52f', h: 6, kind: 'landmark', region: 'obalende' },
+  { id: 'balogun-market', name: 'Balogun Market', short: 'BALOGUN MKT', x: 390, z: 42, c: '#6b4737', sign: '#ffc52f', h: 7, kind: 'market', big: true, region: 'island' },
   { id: 'bet9ja-surulere', name: 'Bet9ja Sports Betting', short: 'BET9JA', x: 12, z: -52, c: '#f2bd18', sign: '#ffffff', h: 4, kind: 'betshop' },
   { id: 'sportybet-yaba', name: 'SportyBet', short: 'SPORTYBET', x: 408, z: -318, c: '#111f3c', sign: '#47b54a', h: 4, kind: 'betshop', region: 'yaba' },
   { id: '1xbet-ikorodu', name: '1xBet Ikorodu', short: '1XBET', x: -270, z: -300, c: '#163f8c', sign: '#ffffff', h: 4, kind: 'betshop', region: 'ikorodu' },
 ];
 const BUSSTOPS = [...surulere.BUSSTOPS, ...areas.flatMap(area => area.BUSSTOPS)];
 const REGIONS = [
+  { id: 'obalende', name: 'Obalende', x: [260, 340], z: [0, 80] },
+  ...westMainland.REGIONS,
+  ...eastMainland.REGIONS,
   ...surulere.REGIONS.filter(r => !['falomo', 'lekki', 'ikorodu', 'yaba', 'ajegunle', 'vi'].includes(r.id)),
   ...agege.REGIONS,
   ...ojoBadagry.REGIONS,
@@ -156,6 +163,11 @@ export const META = {
   name: 'Lagos',
   bounds: { x: [-520, 1120], z: [-1000, 410] },
 };
+const REGION_PRIORITY = [...REGIONS].sort((a, b) =>
+  (a.x[1] - a.x[0]) * (a.z[1] - a.z[0]) -
+  (b.x[1] - b.x[0]) * (b.z[1] - b.z[0])
+);
+const LAGOS_REGION = { id: 'lagos', name: 'Lagos', x: META.bounds.x, z: META.bounds.z };
 export { REGIONS, ROADS, ROAD_EXTENT, ROAD_NAMES, ROAD_WIDTHS, LANDMARKS, BUSSTOPS, PROPERTIES, RESERVED, WATERS, JUNCTIONS };
 export const PLACES = [...LANDMARKS, ...BUSSTOPS];
 export { ROAD_CLASS };
@@ -165,7 +177,8 @@ export const roadClass = (axis, k) => ROAD_CLASS[axis][k] || 'main';
 export const roadRules = (axis, k) => surulere.CLASS_RULES[roadClass(axis, k)];
 export const roadName = (axis, k) => ROAD_NAMES[axis][k] || 'the main road';
 export const roadNameAt = (axis, k, along) => ROAD_SEGMENTS[axis][k]?.find(([a, b]) => along >= a && along < b)?.[2] || roadName(axis, k);
-export const regionAt = (x, z = 0) => REGIONS.find(r => x >= r.x[0] && x < r.x[1] && z >= r.z[0] && z < r.z[1]) || REGIONS[0];
+export const regionAt = (x, z = 0) =>
+  REGION_PRIORITY.find(r => x >= r.x[0] && x < r.x[1] && z >= r.z[0] && z < r.z[1]) || LAGOS_REGION;
 export const placeOf = id => LANDMARKS.find(l => l.id === id) || BUSSTOPS.find(b => b.id === id) || PROPERTIES.find(p => p.id === id);
 export const placesOfKind = kind => LANDMARKS.filter(l => l.kind === kind);
 export const inWater = (x, z) => WATERS.some(w => x >= w.x[0] && x <= w.x[1] && z >= w.z[0] && z <= w.z[1]);

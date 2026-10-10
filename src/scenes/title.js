@@ -205,7 +205,7 @@ export const TitleScene = {
           </div>
 
           <div class="title-footer">
-            SURULERE DISTRICT
+            LAGOS DISTRICTS
             <span>•</span>
             OPEN-WORLD LIFE SIMULATION
             <span>•</span>
@@ -232,8 +232,8 @@ export const TitleScene = {
           <span class="city-line"></span>
 
           <div>
-            <strong>SURULERE</strong>
-            <small>LAGOS, NIGERIA</small>
+            <strong>LAGOS</strong>
+            <small>NIGERIA · OPEN CITY</small>
           </div>
         </div>
 

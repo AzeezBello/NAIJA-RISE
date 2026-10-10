@@ -383,6 +383,7 @@ const fmtDist = metres =>
 
 let lastPrompt = '';
 let lastLocale = '';
+let lastRegion = '';
 let localeAt = 0;
 
 function localeName(p) {
@@ -519,13 +520,14 @@ export function hudFrame() {
   if (performance.now() - localeAt > 500) {
     localeAt = performance.now();
     const name = localeName(p);
-    if (name !== lastLocale) {
+    const region = regionAt(p.x, p.z);
+    if (name !== lastLocale || region.id !== lastRegion) {
       lastLocale = name;
+      lastRegion = region.id;
       const locale = $('locale');
       if (locale) {
         const primary = locale.querySelector('b');
         const secondary = locale.querySelector('span');
-        const region = regionAt(p.x, p.z);
         if (primary) primary.textContent = name;
         if (secondary) {
           secondary.textContent =

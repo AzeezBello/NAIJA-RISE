@@ -32,6 +32,6 @@ export function updateAudio() {
   const t = ctx.currentTime, kmh = G.inCar ? Math.abs(G.carSpeed) * 3.6 : 0;
   engine.frequency.setTargetAtTime(G.inCar ? 55 + kmh * 1.6 : 55, t, 0.1);
   engineGain.gain.setTargetAtTime(G.inCar ? 0.08 + Math.min(0.12, kmh / 600) : 0, t, 0.15);
-  rainGain.gain.setTargetAtTime(G.rain ? 0.12 : 0, t, 0.5);
+  rainGain.gain.setTargetAtTime(G.rain ? 0.035 : 0, t, 0.5);
   genGain.gain.setTargetAtTime(G.outage ? 0.07 : 0, t, 0.5);
 }

@@ -14,6 +14,7 @@ export const ITEMS = {
   fish_crate: { name: 'Fish Crate', desc: 'Fresh fish from Makoko, packed for a short canoe transfer.' },
   aj_envelope: { name: 'AJ Errand Envelope', desc: 'Cash for Sisi Kemi’s bus-stop errand.' },
   market_basket: { name: 'Market Basket', desc: 'A basket of market goods for a local customer.' },
+  fabric_order: { name: 'Fabric Order', desc: 'A customer order of fabric collected from a market trader.' },
   school_supplies: { name: 'School Supplies', desc: 'Learning materials for a community school.' },
   dock_manifest: { name: 'Dock Manifest', desc: 'Port paperwork that must reach the dispatch office.' },
   fresh_bread: { name: 'Fresh Bread', desc: 'Freshly baked bread for a nearby customer.' },

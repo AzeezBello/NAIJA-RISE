@@ -380,7 +380,7 @@ function spawnCityDemographics() {
     }, 24);
   }
   const busyCrowd = PERF.lowEnd ? 3 : 8;
-  for (const id of ['yaba', 'shitta', 'mushin', 'ajegunle', 'ikorodu-market', 'ikeja-tech', 'tejuosho', 'oyingbo-market', 'agege-market', 'apapa-market', 'ojo-market', 'ojo-alaba', 'sangotedo', 'ikoyi-market']) {
+  for (const id of ['yaba', 'shitta', 'mushin', 'ajegunle', 'ikorodu-market', 'ikeja-tech', 'tejuosho', 'oyingbo-market', 'agege-market', 'apapa-market', 'ojo-market', 'ojo-alaba', 'sangotedo', 'ikoyi-market', 'balogun-market']) {
     spawnGroup(
       placeOf(id),
       PERF.lowEnd ? 4 : busyCrowd,

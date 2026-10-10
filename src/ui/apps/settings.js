@@ -30,7 +30,7 @@ export default {
     $('setName').addEventListener('input', e => { s.name = e.target.value.trim() || 'Tunde Okafor'; $('pName').textContent = s.name; saveState(s); });
     $('setSens').addEventListener('input', e => { st.sens = +e.target.value; e.target.parentElement.firstChild.textContent = `CAMERA SENSITIVITY · ${st.sens.toFixed(1)}×`; saveState(s); });
     $('setRotate').addEventListener('change', e => { st.rotateMap = e.target.checked; saveState(s); });
-    $('setShadows').addEventListener('change', e => { st.shadows = e.target.checked; emit('hud'); });
+    $('setShadows').addEventListener('change', e => { st.shadows = e.target.checked; saveState(s); emit('hud'); });
     $('setQuality').addEventListener('change', e => { setQuality(e.target.value); emit('hud'); });
     $('setFx').addEventListener('change', e => { st.fx = e.target.checked; saveState(s); });
     $('setRig').addEventListener('change', e => { st.rig = e.target.checked; saveState(s); });

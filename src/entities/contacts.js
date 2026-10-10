@@ -36,6 +36,9 @@ const LOOKS = {
   yaba_connector: { rig: 0, look: { outfit: 5, shirt: 6, pants: 1, skin: 2, accessory: 3 } },
   agege_baker: { rig: 0, look: { outfit: 10, shirt: 0, pants: 5, skin: 3, hair: 3, bodyType: 2 } },
   ojo_trader: { rig: 0, look: { outfit: 2, shirt: 1, pants: 2, skin: 4, accessory: 2 } },
+  balogun_osoanya: { rig: 0, look: { outfit: 5, shirt: 4, pants: 2, skin: 3, hair: 1, accessory: 2 } },
+  yaba_osoanya: { rig: 0, look: { outfit: 5, shirt: 1, pants: 1, skin: 2, hair: 2, accessory: 2 } },
+  computer_village_osoanya: { rig: 0, look: { outfit: 8, shirt: 6, pants: 1, skin: 4, hair: 1, accessory: 3 } },
   mum:     { rig: 0, look: { outfit: 9, shirt: 0, pants: 5, skin: 3, hair: 3, bodyType: 2 } },
   sibling: { rig: 0, look: { outfit: 10, shirt: 1, pants: 0, skin: 2, hair: 3, bodyType: 0 } },
   egbon:   { rig: 0, look: { outfit: 1, shirt: 4, pants: 2, skin: 3, hair: 2, accessory: 1, bodyType: 2 } },
@@ -43,11 +46,11 @@ const LOOKS = {
 // Where a contact stands: on the street side of their building, by the shelter at a bus stop.
 function spotFor(c) {
   const p = placeOf(c.at); if (!p) return null;
-  if (p.stadium) return { x: p.x, z: p.z - 27 };
-  if (p.kind === 'pitch') return { x: p.x + 8, z: p.z - 13 };
-  if (p.agberos !== undefined) return { x: p.x + 5, z: p.z + 3 };
+  if (p.stadium) return { x: p.x + (c.offset?.x || 0), z: p.z - 27 + (c.offset?.z || 0) };
+  if (p.kind === 'pitch') return { x: p.x + 8 + (c.offset?.x || 0), z: p.z - 13 + (c.offset?.z || 0) };
+  if (p.agberos !== undefined) return { x: p.x + 5 + (c.offset?.x || 0), z: p.z + 3 + (c.offset?.z || 0) };
   const depth = p.big ? 20 : (p.kind === 'hotel' || p.kind === 'bank') ? 16 : 14;
-  return { x: p.x + 3, z: p.z - depth / 2 - 2 };
+  return { x: p.x + 3 + (c.offset?.x || 0), z: p.z - depth / 2 - 2 + (c.offset?.z || 0) };
 }
 function arrowMesh() {
   const g = new THREE.Group(), m = new THREE.MeshStandardMaterial({ color: 0xffc52f, emissive: 0xffc52f, emissiveIntensity: 0.9 });

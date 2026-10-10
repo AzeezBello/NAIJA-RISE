@@ -28,7 +28,10 @@ const GradeShader = {
 
 import { current } from './quality.js';
 // Cinematic look runs only when the quality level allows it; the Settings toggle can switch it off at any level.
-export const fxEnabled = () => { const s = G.state?.settings?.fx; return s === false ? false : current().fx; };
+export const fxEnabled = () => {
+  const setting = G.state?.settings?.fx;
+  return setting === undefined ? current().fx : setting;
+};
 
 export function setupPostFx() {
   const { renderer, scene, camera } = G;

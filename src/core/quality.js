@@ -10,7 +10,7 @@ import { saveState } from './state.js';
 export const LEVELS = ['low', 'medium', 'high'];
 export const QUALITY = {
   low:    { label: 'Low',    pixelRatio: 1,    shadows: 0,    fx: false, env: 0.2,  npcs: 24, traffic: 16, animRange: 60,  shadowRange: 25, fogScale: 0.75 },
-  medium: { label: 'Medium', pixelRatio: 1.25, shadows: 1024, fx: false, env: 0.35, npcs: 68, traffic: 28, animRange: 90,  shadowRange: 35, fogScale: 0.9 },
+  medium: { label: 'Medium', pixelRatio: 1.25, shadows: 1536, fx: true, env: 0.4, npcs: 68, traffic: 28, animRange: 90,  shadowRange: 35, fogScale: 0.9 },
   high:   { label: 'High',   pixelRatio: 1.5, shadows: 2048, fx: true,  env: 0.4,  npcs: 130, traffic: 99, animRange: 120, shadowRange: 50, fogScale: 1 },
 };
 export const current = () => QUALITY[G.quality || 'medium'];

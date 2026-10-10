@@ -12,6 +12,7 @@ export const DISTRICT = createArea({
   roads: {
     h: [
       { k: -360, from: 340, to: 480, name: 'Alagomeji Road', width: 16, class: 'commercial' },
+      { k: -330, from: 340, to: 480, name: 'Yaba Campus Link', width: 12, class: 'residential' },
       { k: -300, from: 340, to: 480, name: 'Herbert Macaulay Way', width: 18, class: 'commercial' },
     ],
     v: [

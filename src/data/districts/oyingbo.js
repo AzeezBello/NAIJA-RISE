@@ -15,6 +15,7 @@ export const DISTRICT = createArea({
       { k: -470, from: 100, to: 340, name: 'Empire Road', width: 18, class: 'main' },
     ],
     v: [
+      { k: 260, from: -490, to: -400, name: 'Oyingbo Market Link', width: 12, class: 'residential' },
       { k: 200, from: -490, to: -400, name: 'Lagos Street', width: 16, class: 'commercial' },
       { k: 320, from: -490, to: -400, name: 'Oyingbo Market Road', width: 18, class: 'market' },
     ],
