@@ -328,107 +328,19 @@ export const MODELS = {
 // ============================================================
 
 export const PARKED = [
-  {
-    type: 'car',
-    color: 0x172e35,
-    x: 10,
-    z: 32,
-    rot: 0,
-  },
-
-  {
-    type: 'danfo',
-    x: -32,
-    z: 7,
-    rot: -Math.PI / 2,
-  },
-
-  {
-    type: 'keke',
-    x: 48,
-    z: 13,
-    rot: Math.PI,
-  },
-
-  {
-    type: 'korope',
-    x: -15,
-    z: -34,
-    rot: 0,
-  },
-
-  {
-    type: 'fire',
-    x: 96,
-    z: -34,
-    rot: Math.PI / 2,
-  },
-
-  {
-    type: 'army',
-    x: 108,
-    z: -13,
-    rot: Math.PI / 2,
-  },
-
-  // Danfo queue — bus terminal
-  {
-    type: 'danfo',
-    x: 126,
-    z: 22,
-    rot: Math.PI / 2,
-  },
-
-  {
-    type: 'danfo',
-    x: 133,
-    z: 22,
-    rot: Math.PI / 2,
-  },
-
-  {
-    type: 'danfo',
-    x: 147,
-    z: 22,
-    rot: Math.PI / 2,
-  },
-
-  // Danfo queue — second terminal
-  {
-    type: 'danfo',
-    x: 380,
-    z: -24,
-    rot: Math.PI / 2,
-  },
-
-  {
-    type: 'danfo',
-    x: 387,
-    z: -24,
-    rot: Math.PI / 2,
-  },
-
-  {
-    type: 'danfo',
-    x: 394,
-    z: -24,
-    rot: Math.PI / 2,
-  },
-
-  // Danfo queue — third terminal
-  {
-    type: 'danfo',
-    x: 392,
-    z: -320,
-    rot: Math.PI / 2,
-  },
-
-  {
-    type: 'danfo',
-    x: 399,
-    z: -320,
-    rot: Math.PI / 2,
-  },
+  { type: 'car', color: 0x172e35, x: 8, z: 28, rot: 0 },
+  { type: 'danfo', x: -28, z: 10, rot: -Math.PI / 2 },
+  { type: 'keke', x: 46, z: 16, rot: Math.PI },
+  // Street kerb on Adeniran Ogunsanya — not inside compound walls
+  { type: 'korope', x: 6, z: 40, rot: Math.PI / 2 },
+  { type: 'fire', x: 100, z: -40, rot: Math.PI / 2 },
+  { type: 'army', x: 112, z: -18, rot: Math.PI / 2 },
+  { type: 'danfo', x: 126, z: 22, rot: Math.PI / 2 },
+  { type: 'danfo', x: 133, z: 22, rot: Math.PI / 2 },
+  { type: 'danfo', x: 147, z: 22, rot: Math.PI / 2 },
+  { type: 'danfo', x: 380, z: -24, rot: Math.PI / 2 },
+  { type: 'danfo', x: 387, z: -24, rot: Math.PI / 2 },
+  { type: 'danfo', x: 394, z: -24, rot: Math.PI / 2 },
 ];
 
 // ============================================================

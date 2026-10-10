@@ -1,10 +1,27 @@
 import * as THREE from 'three';
 import { G, pos } from '../core/context.js';
 import { approach, pick, rnd } from '../core/utils.js';
-import { mat, lamps } from '../world/builders.js';
-import { VEH, PARKED, TRAFFIC_MIX, TRAFFIC_COLORS, LANE_OFFSET, MODELS, MODEL_PAINT, USE_MODELS } from '../data/vehicles.js';
+import { mat, lamps, colliders } from '../world/builders.js';
+import {
+  VEH,
+  PARKED,
+  TRAFFIC_MIX,
+  TRAFFIC_COLORS,
+  LANE_OFFSET,
+  MODELS,
+  MODEL_PAINT,
+  USE_MODELS,
+} from '../data/vehicles.js';
 import { attachModel, spinWheels } from './vehicleModels.js';
-import { ROADS, roadRules, JUNCTIONS, roadExtent, BRIDGE_RUSH, onBridge } from '../data/locations.js';
+import {
+  ROADS,
+  roadRules,
+  JUNCTIONS,
+  roadExtent,
+  BRIDGE_RUSH,
+  onBridge,
+  inWater,
+} from '../data/locations.js';
 import { heightAt } from '../world/terrain.js';
 import { lightFor } from '../systems/trafficlights.js';
 import { PERF } from '../data/config.js';
@@ -22,13 +39,12 @@ export const vForward = o =>
 
 /**
  * Lagos-style tire: dark rubber + light rim.
- * Registers the mesh on g.userData.wheels so spinWheels works for procedural cars too.
+ * Registers on g.userData.wheels so spinWheels works for procedural cars.
  */
 function wheel(g, x, y, z, r = 0.38, width = 0.28) {
   const group = new THREE.Group();
   group.position.set(x, y, z);
 
-  // Rubber
   const tire = new THREE.Mesh(
     new THREE.CylinderGeometry(r, r, width, 16),
     new THREE.MeshStandardMaterial({
@@ -42,7 +58,6 @@ function wheel(g, x, y, z, r = 0.38, width = 0.28) {
   tire.receiveShadow = true;
   group.add(tire);
 
-  // Rim
   const rim = new THREE.Mesh(
     new THREE.CylinderGeometry(r * 0.55, r * 0.55, width * 1.08, 12),
     new THREE.MeshStandardMaterial({
@@ -54,7 +69,6 @@ function wheel(g, x, y, z, r = 0.38, width = 0.28) {
   rim.rotation.z = Math.PI / 2;
   group.add(rim);
 
-  // Hub
   const hub = new THREE.Mesh(
     new THREE.CylinderGeometry(r * 0.18, r * 0.18, width * 1.12, 8),
     new THREE.MeshStandardMaterial({
@@ -67,6 +81,7 @@ function wheel(g, x, y, z, r = 0.38, width = 0.28) {
   group.add(hub);
 
   group.userData.isWheel = true;
+  group.userData.proceduralVisual = true;
   g.add(group);
 
   if (!g.userData.wheels) g.userData.wheels = [];
@@ -76,16 +91,28 @@ function wheel(g, x, y, z, r = 0.38, width = 0.28) {
   return group;
 }
 
-
 function lamp(g, x, y, z) {
-  const l = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.18, 0.05), mat(0xffe7ad));
+  const l = new THREE.Mesh(
+    new THREE.BoxGeometry(0.38, 0.18, 0.05),
+    mat(0xffe7ad)
+  );
   l.position.set(x, y, z);
   g.add(l);
   lamps.push(l.material);
 }
 
-const body = c => new THREE.MeshStandardMaterial({ color: c, metalness: 0.35, roughness: 0.38 });
-const GLASS = () => new THREE.MeshStandardMaterial({ color: 0x152022, roughness: 0.15, metalness: 0.3 });
+const body = c =>
+  new THREE.MeshStandardMaterial({
+    color: c,
+    metalness: 0.35,
+    roughness: 0.38,
+  });
+const GLASS = () =>
+  new THREE.MeshStandardMaterial({
+    color: 0x152022,
+    roughness: 0.15,
+    metalness: 0.3,
+  });
 const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 
 // ============================================================
@@ -114,6 +141,10 @@ function truck(g, add, len, cabColor, bedColor, extra) {
 export function makeVehicle(type, color = 0x172e35) {
   const g = new THREE.Group();
   g.userData.type = type;
+  g.userData.enterable = true;
+  g.userData.wheels = [];
+
+  const glass = GLASS();
 
   const add = (geo, material, x, y, z) => {
     const o = new THREE.Mesh(geo, material);
@@ -127,57 +158,73 @@ export function makeVehicle(type, color = 0x172e35) {
       material.color.getHex() !== 0x111111 &&
       material.color.getHex() !== 0x101111
     );
+    o.userData.proceduralVisual = true;
     g.add(o);
     return o;
   };
 
-  const glass = GLASS();
-
   switch (type) {
-    // CAR / POLICE
     case 'car':
     case 'police': {
       const c = type === 'police' ? 0x14213d : color;
       add(B(2.55, 0.56, 4.75), body(c), 0, 0.65, 0);
       add(B(2.08, 0.72, 2.15), glass, 0, 1.1, 0.15);
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) wheel(g, sx * 1.16, 0.42, sz * 1.55);
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1, 1]) wheel(g, sx * 1.16, 0.42, sz * 1.55);
+      }
       lamp(g, -0.7, 0.72, -2.39);
       lamp(g, 0.7, 0.72, -2.39);
       if (type === 'police') {
         add(B(2.58, 0.2, 4.75), body(0xf0f0f0), 0, 0.78, 0);
-        const bar = add(B(1, 0.18, 0.4), new THREE.MeshStandardMaterial({ color: 0x2244ff, emissive: 0x2244ff, emissiveIntensity: 0.4 }), 0, 1.55, 0.1);
+        const bar = add(
+          B(1, 0.18, 0.4),
+          new THREE.MeshStandardMaterial({
+            color: 0x2244ff,
+            emissive: 0x2244ff,
+            emissiveIntensity: 0.4,
+          }),
+          0,
+          1.55,
+          0.1
+        );
         g.userData.lightbar = bar.material;
       }
       break;
     }
 
-    // DANFO
     case 'danfo': {
-      const Y = 0xf5c518, BLK = 0x111111;
-      add(B(2.35, 2.15, 5.4), body(Y), 0, 1.4, 0);                       // main yellow body
-      add(B(2.38, 0.55, 3.6), glass, 0, 1.95, 0.15);                     // side windows
-      add(B(2.38, 0.7, 0.08), glass, 0, 1.9, -2.68);                     // front windshield
-      add(B(2.38, 0.5, 0.08), glass, 0, 1.85, 2.68);                     // rear window
-      for (const sx of [-1, 1]) add(B(0.05, 0.32, 5.4), body(BLK), sx * 1.19, 1.05, 0);   // classic black waist stripe
+      const Y = 0xf5c518;
+      const BLK = 0x111111;
+      add(B(2.35, 2.15, 5.4), body(Y), 0, 1.4, 0);
+      add(B(2.38, 0.55, 3.6), glass, 0, 1.95, 0.15);
+      add(B(2.38, 0.7, 0.08), glass, 0, 1.9, -2.68);
+      add(B(2.38, 0.5, 0.08), glass, 0, 1.85, 2.68);
+      for (const sx of [-1, 1]) {
+        add(B(0.05, 0.32, 5.4), body(BLK), sx * 1.19, 1.05, 0);
+      }
       add(B(2.36, 0.32, 5.42), body(BLK), 0, 1.05, 0);
-      add(B(2.1, 0.7, 0.9), body(Y), 0, 0.95, 2.35);                     // rear engine bulge
-      add(B(2.2, 0.25, 0.15), body(0x333333), 0, 0.55, -2.72);           // bumper
-      for (const sx of [-1, 1]) for (const sz of [-1.6, 1.6]) wheel(g, sx * 1.05, 0.42, sz, 0.4);
+      add(B(2.1, 0.7, 0.9), body(Y), 0, 0.95, 2.35);
+      add(B(2.2, 0.25, 0.15), body(0x333333), 0, 0.55, -2.72);
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1.6, 1.6]) wheel(g, sx * 1.05, 0.42, sz, 0.4);
+      }
       lamp(g, -0.75, 0.95, -2.72);
       lamp(g, 0.75, 0.95, -2.72);
       g.userData.commercial = true;
       break;
     }
 
-    // KEKE
     case 'keke': {
-      const Y = 0xf5c518, GRN = 0x2bb34a;
+      const Y = 0xf5c518;
+      const GRN = 0x2bb34a;
       add(B(1.35, 0.9, 1.5), body(Y), 0, 0.85, -0.35);
       add(B(1.28, 0.75, 1.0), glass, 0, 1.45, -0.35);
       add(B(1.45, 0.08, 1.4), body(Y), 0, 1.9, -0.3);
       add(B(1.4, 0.55, 1.15), body(Y), 0, 0.7, 0.85);
       add(B(1.42, 0.5, 0.06), body(GRN), 0, 0.95, 1.4);
-      for (const sx of [-0.6, 0.6]) add(B(0.06, 0.7, 0.06), body(0x333333), sx, 1.35, 0.7);
+      for (const sx of [-0.6, 0.6]) {
+        add(B(0.06, 0.7, 0.06), body(0x333333), sx, 1.35, 0.7);
+      }
       add(B(1.3, 0.06, 0.06), body(0x333333), 0, 1.7, 0.7);
       wheel(g, 0, 0.32, -1.0, 0.28);
       wheel(g, -0.55, 0.32, 0.85, 0.28);
@@ -187,9 +234,9 @@ export function makeVehicle(type, color = 0x172e35) {
       break;
     }
 
-    // BRT
     case 'brt': {
-      const BLU = 0x1c4fa0, WHT = 0xf0f0f0;
+      const BLU = 0x1c4fa0;
+      const WHT = 0xf0f0f0;
       add(B(2.7, 3.1, 12), body(BLU), 0, 1.85, 0);
       add(B(2.74, 0.55, 12), body(WHT), 0, 1.35, 0);
       add(B(2.74, 0.95, 11.2), glass, 0, 2.55, 0);
@@ -198,125 +245,188 @@ export function makeVehicle(type, color = 0x172e35) {
       add(B(1.6, 0.35, 0.8), body(0x111111), 0, 3.5, -4.2);
       add(B(1.5, 0.25, 0.08), body(0xffc52f), 0, 3.5, -4.62);
       add(B(0.08, 1.8, 1.4), body(WHT), -1.36, 1.5, -2.5);
-      for (const sx of [-1, 1]) for (const sz of [-4.2, 0, 4.2]) wheel(g, sx * 1.2, 0.5, sz, 0.5);
+      for (const sx of [-1, 1]) {
+        for (const sz of [-4.2, 0, 4.2]) wheel(g, sx * 1.2, 0.5, sz, 0.5);
+      }
       lamp(g, -0.95, 1.05, -6.0);
       lamp(g, 0.95, 1.05, -6.0);
       g.userData.commercial = true;
       break;
     }
 
-    // KOROPE
     case 'korope': {
-    const Y = 0xf5c518;   // Lagos commercial yellow
-    const BLK = 0x1a1a1a;
-    const glass = GLASS();
+      const Y = 0xf5c518;
+      const BLK = 0x1a1a1a;
 
-    // Cab
-    add(B(1.7, 1.35, 1.5), body(Y), 0, 1.15, -1.05);
-    add(B(1.65, 0.55, 0.08), glass, 0, 1.55, -1.82); // windscreen
-    add(B(0.08, 0.45, 0.9), glass, 0.86, 1.5, -1.05);
-    add(B(0.08, 0.45, 0.9), glass, -0.86, 1.5, -1.05);
+      // Cab
+      add(B(1.7, 1.35, 1.5), body(Y), 0, 1.15, -1.05);
+      add(B(1.65, 0.55, 0.08), glass, 0, 1.55, -1.82);
+      add(B(0.08, 0.45, 0.9), glass, 0.86, 1.5, -1.05);
+      add(B(0.08, 0.45, 0.9), glass, -0.86, 1.5, -1.05);
 
-    // Passenger box
-    add(B(1.85, 1.55, 2.4), body(Y), 0, 1.25, 0.55);
-    // Side windows strip
-    add(B(0.06, 0.5, 1.8), glass, 0.94, 1.55, 0.55);
-    add(B(0.06, 0.5, 1.8), glass, -0.94, 1.55, 0.55);
-    // Black waist stripe (danfo-style commercial)
-    add(B(1.88, 0.18, 2.42), body(BLK), 0, 0.95, 0.55);
-    // Roof
-    add(B(1.9, 0.08, 2.5), body(0xe0a800), 0, 2.05, 0.5);
+      // Passenger box
+      add(B(1.85, 1.55, 2.4), body(Y), 0, 1.25, 0.55);
+      add(B(0.06, 0.5, 1.8), glass, 0.94, 1.55, 0.55);
+      add(B(0.06, 0.5, 1.8), glass, -0.94, 1.55, 0.55);
+      add(B(1.88, 0.18, 2.42), body(BLK), 0, 0.95, 0.55);
+      add(B(1.9, 0.08, 2.5), body(0xe0a800), 0, 2.05, 0.5);
 
-    // Bumper / grille
-    add(B(1.6, 0.35, 0.15), body(0x333333), 0, 0.55, -1.85);
-    lamp(g, -0.55, 0.7, -1.9);
-    lamp(g, 0.55, 0.7, -1.9);
+      // Bumper / grille
+      add(B(1.6, 0.35, 0.15), body(0x333333), 0, 0.55, -1.85);
+      lamp(g, -0.55, 0.7, -1.9);
+      lamp(g, 0.55, 0.7, -1.9);
 
-    // Tires — slightly smaller minibus wheels
-    for (const sx of [-1, 1]) {
-      for (const sz of [-1.15, 1.15]) {
-        wheel(g, sx * 0.92, 0.34, sz, 0.34, 0.26);
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1.15, 1.15]) {
+          wheel(g, sx * 0.92, 0.34, sz, 0.34, 0.26);
+        }
       }
+
+      add(B(1.2, 0.28, 0.06), body(0x111111), 0, 2.15, -1.7);
+      g.userData.commercial = true;
+      break;
     }
 
-    // Route board
-    add(B(1.2, 0.28, 0.06), body(0x111111), 0, 2.15, -1.7);
-    break;
-  }
-      add(B(1.9, 1.8, 3.6), body(0xf5c518), 0, 1.2, 0);
-      add(B(1.94, 0.55, 2.4), glass, 0, 1.65, 0.2);
-      add(B(1.94, 0.55, 0.1), glass, 0, 1.65, -1.76);
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) wheel(g, sx * 0.85, 0.36, sz * 1.2, 0.34);
-      lamp(g, -0.55, 0.8, -1.82);
-      lamp(g, 0.55, 0.8, -1.82);
-      break;
-
-    // OKADA
     case 'okada':
       add(B(0.3, 0.5, 1.8), body(color), 0, 0.65, 0);
       add(B(0.5, 0.12, 0.6), body(0x222222), 0, 0.95, 0.2);
       wheel(g, 0, 0.35, -0.85, 0.35);
       wheel(g, 0, 0.35, 0.85, 0.35);
-      add(new THREE.CapsuleGeometry(0.24, 0.55, 4, 8), mat(pick([0x356a50, 0x8b5a31, 0x4c5178])), 0, 1.3, 0.15);
+      add(
+        new THREE.CapsuleGeometry(0.24, 0.55, 4, 8),
+        mat(pick([0x356a50, 0x8b5a31, 0x4c5178])),
+        0,
+        1.3,
+        0.15
+      );
       add(new THREE.SphereGeometry(0.22, 10, 8), mat(0x1b1b1b), 0, 1.85, 0.05);
       lamp(g, 0, 0.85, -0.95);
+      g.userData.commercial = true;
       break;
 
-    // FIRE
     case 'fire':
       truck(g, add, 8, 0xc62828, 0xb71c1c, () => {
         add(B(0.5, 0.3, 4.5), body(0xdddddd), 0.6, 2.6, 1.6);
         add(B(0.5, 0.3, 4.5), body(0xdddddd), -0.6, 2.6, 1.6);
-        const bar = add(B(1.2, 0.18, 0.4), new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff2222, emissiveIntensity: 0.5 }), 0, 2.8, -2.8);
+        const bar = add(
+          B(1.2, 0.18, 0.4),
+          new THREE.MeshStandardMaterial({
+            color: 0xff2222,
+            emissive: 0xff2222,
+            emissiveIntensity: 0.5,
+          }),
+          0,
+          2.8,
+          -2.8
+        );
         g.userData.lightbar = bar.material;
       });
       break;
 
-    // LAWMA
     case 'lawma':
       truck(g, add, 7, 0xf07a1e, 0xd96a12, () => {
         add(B(2.2, 0.3, 3.4), body(0x4a4a4a), 0, 2.6, 1.5);
       });
       break;
 
-    // ARMY
     case 'army':
       truck(g, add, 7, 0x3f5a2a, 0x4e6b36, () => {
         add(B(2.5, 1.2, 4.2), body(0x5f7a45), 0, 3.0, 1.5);
       });
       break;
 
-    // TANKER
     case 'tanker': {
       truck(g, add, 10, 0xe0e0e0, 0x3a3a3a, () => {
-        const tank = add(new THREE.CylinderGeometry(1.25, 1.25, 6.8, 18), body(0xd9d9d9), 0, 2.1, 1.6);
+        const tank = add(
+          new THREE.CylinderGeometry(1.25, 1.25, 6.8, 18),
+          body(0xd9d9d9),
+          0,
+          2.1,
+          1.6
+        );
         tank.rotation.x = Math.PI / 2;
         add(B(0.2, 0.9, 5.5), body(0xc62828), 1.26, 2.1, 1.6);
         add(B(0.2, 0.9, 5.5), body(0xc62828), -1.26, 2.1, 1.6);
       });
       break;
     }
+
+    default: {
+      // Fallback sedan so unknown types never spawn empty groups
+      add(B(2.4, 0.5, 4.5), body(color), 0, 0.65, 0);
+      add(B(2.0, 0.7, 2.0), glass, 0, 1.1, 0.1);
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1, 1]) wheel(g, sx * 1.1, 0.4, sz * 1.5);
+      }
+      break;
+    }
   }
 
-  // REAL GLB MODEL
+  if (!g.userData.wheels) g.userData.wheels = [];
+  g.userData.wheelR = g.userData.wheelR || 0.38;
+
+  // Optional GLB visual (async). Procedural mesh stays until load.
   const names = USE_MODELS && MODELS[type];
   if (names?.length) {
     const modelName = pick(names);
-    // Danfo gets its own GLB livery/stripe; keke its yellow treatment; everything else MODEL_PAINT.
     const modelColor =
       type === 'danfo' || type === 'keke'
         ? null
         : type === 'okada'
           ? (MODEL_PAINT.okada ?? 0xf5c518)
-          : (type in MODEL_PAINT ? MODEL_PAINT[type] : color);
+          : type in MODEL_PAINT
+            ? MODEL_PAINT[type]
+            : color;
     attachModel(g, type, modelName, modelColor, {
-      lightbar: type === 'police' ? 0x2244ff : type === 'fire' ? 0xff2222 : null,
+      lightbar:
+        type === 'police' ? 0x2244ff : type === 'fire' ? 0xff2222 : null,
     });
   }
 
   if (VEH[type]?.commercial) g.userData.commercial = true;
+
   G.scene.add(g);
   return g;
+}
+
+// ============================================================
+// Park placement (avoid walls / water)
+// ============================================================
+
+function parkClear(x, z, wid, len, pad = 0.6) {
+  if (inWater(x, z)) return false;
+  const hw = wid * 0.5 + pad;
+  const hd = len * 0.5 + pad;
+  for (const c of colliders) {
+    if (
+      Math.abs(x - c.x) < c.w / 2 + hw &&
+      Math.abs(z - c.z) < c.d / 2 + hd
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function findParkSpot(x, z, wid, len, attempts = 16) {
+  if (parkClear(x, z, wid, len)) return { x, z };
+  for (let i = 1; i <= attempts; i++) {
+    const step = 1.2 * i;
+    const candidates = [
+      [x + step, z],
+      [x - step, z],
+      [x, z + step],
+      [x, z - step],
+      [x + step, z + step],
+      [x - step, z - step],
+      [x + step, z - step],
+      [x - step, z + step],
+    ];
+    for (const [nx, nz] of candidates) {
+      if (parkClear(nx, nz, wid, len)) return { x: nx, z: nz };
+    }
+  }
+  return null;
 }
 
 // ============================================================
@@ -324,13 +434,23 @@ export function makeVehicle(type, color = 0x172e35) {
 // ============================================================
 
 export function spawnParked() {
-  G.parked = PARKED.map(p => {
+  G.parked = [];
+  for (const p of PARKED) {
+    const spec = VEH[p.type] || { wid: 2.2, len: 4.5 };
+    const spot = findParkSpot(p.x, p.z, spec.wid, spec.len);
+    if (!spot) {
+      console.warn('[parked] skip (blocked)', p.type, p.x, p.z);
+      continue;
+    }
     const v = makeVehicle(p.type, p.color);
-    v.position.set(p.x, 0, p.z);
-    v.rotation.y = p.rot;
+    // makeVehicle already added to scene
+    v.position.set(spot.x, heightAt(spot.x, spot.z), spot.z);
+    v.rotation.y = p.rot || 0;
     v.userData.cond = 100;
-    return v;
-  });
+    v.userData.enterable = true;
+    v.userData.type = p.type;
+    G.parked.push(v);
+  }
 }
 
 // ============================================================
@@ -347,10 +467,12 @@ export function spawnOwned(home) {
     const base = home ? home.door : { x: -42, z: 62 };
     const i = G.parked.filter(v => v.userData.owned).length;
     if (o.pos) {
-      v.position.set(o.pos.x, 0, o.pos.z);
+      v.position.set(o.pos.x, heightAt(o.pos.x, o.pos.z), o.pos.z);
       v.rotation.y = o.pos.rot;
     } else {
-      v.position.set(base.x + 6 + i * 4, 0, base.z - 3);
+      const x = base.x + 6 + i * 4;
+      const z = base.z - 3;
+      v.position.set(x, heightAt(x, z), z);
       v.rotation.y = Math.PI / 2;
     }
     G.parked.push(v);
@@ -366,51 +488,62 @@ export function spawnOwned(home) {
 // ============================================================
 
 const poseFor = t =>
-  t.axis === 'h' ? (t.dir > 0 ? -Math.PI / 2 : Math.PI / 2) : (t.dir > 0 ? Math.PI : 0);
+  t.axis === 'h'
+    ? t.dir > 0
+      ? -Math.PI / 2
+      : Math.PI / 2
+    : t.dir > 0
+      ? Math.PI
+      : 0;
 
 const snapLane = t => {
   if (t.axis === 'h') t.g.position.z = t.k + t.dir * LANE_OFFSET;
   else t.g.position.x = t.k - t.dir * LANE_OFFSET;
 };
 
-// ============================================================
-// Spawn traffic
-// ============================================================
-
 export function spawnTraffic() {
-  G.traffic = TRAFFIC_MIX
-    .slice(0, PERF.lowEnd ? PERF.trafficCap.low : PERF.trafficCap.full)
-    .map(type => {
-      const axis = type === 'brt' || type === 'tanker' ? 'h' : pick(['h', 'v']);
-      const k = pick(axis === 'h' ? ROADS.h : ROADS.v);
-      const dir = pick([1, -1]);
-      const [ea, eb] = roadExtent(axis, k);
-      let c = rnd(ea + 10, eb - 10);
-      if (Math.abs(c) < 25 && Math.abs(k) < 1) c += 40;
-      const g = makeVehicle(type, pick(TRAFFIC_COLORS));
-      const t = {
-        g, type, axis, dir, k,
-        speed: 0,
-        cruise: VEH[type].max * rnd(0.5, 0.7),
-        cool: rnd(0, 2),
-        pursuit: false,
-        acc: 0,      // Alpha 1.1 perf: accumulator for distance-banded simulation
-        far: false,
-      };
-      if (type === 'brt') {
-        t.axis = 'h';
-        t.k = pick(ROADS.h.filter(z => Math.abs(z) < 5 || z === -330 || z === 240) || ROADS.h);
-      }
-      if (axis === 'h') g.position.set(c, 0, k + dir * LANE_OFFSET);
-      else g.position.set(k - dir * LANE_OFFSET, 0, c);
-      g.rotation.y = poseFor(t);
-      return t;
-    });
+  G.traffic = TRAFFIC_MIX.slice(
+    0,
+    PERF.lowEnd ? PERF.trafficCap.low : PERF.trafficCap.full
+  ).map(type => {
+    const axis =
+      type === 'brt' || type === 'tanker' ? 'h' : pick(['h', 'v']);
+    const k = pick(axis === 'h' ? ROADS.h : ROADS.v);
+    const dir = pick([1, -1]);
+    const [ea, eb] = roadExtent(axis, k);
+    let c = rnd(ea + 10, eb - 10);
+    if (Math.abs(c) < 25 && Math.abs(k) < 1) c += 40;
+    const g = makeVehicle(type, pick(TRAFFIC_COLORS));
+    const t = {
+      g,
+      type,
+      axis,
+      dir,
+      k,
+      speed: 0,
+      cruise: VEH[type].max * rnd(0.5, 0.7),
+      cool: rnd(0, 2),
+      pursuit: false,
+      acc: 0,
+      far: false,
+    };
+    if (type === 'brt') {
+      t.axis = 'h';
+      t.k = pick(
+        ROADS.h.filter(z => Math.abs(z) < 5 || z === -330 || z === 240) ||
+          ROADS.h
+      );
+    }
+    if (t.axis === 'h') {
+      g.position.set(c, 0, t.k + t.dir * LANE_OFFSET);
+    } else {
+      g.position.set(t.k - t.dir * LANE_OFFSET, 0, c);
+    }
+    g.position.y = heightAt(g.position.x, g.position.z);
+    g.rotation.y = poseFor(t);
+    return t;
+  });
 }
-
-// ============================================================
-// Rejoin traffic
-// ============================================================
 
 export function rejoinTraffic(t) {
   const p = t.g.position;
@@ -427,6 +560,7 @@ export function rejoinTraffic(t) {
     const d = Math.abs(p.x - x);
     if (!best || d < best.d) best = { d, axis: 'v', k: x };
   }
+  if (!best) return;
   t.axis = best.axis;
   t.k = best.k;
   t.dir = pick([1, -1]);
@@ -437,181 +571,84 @@ export function rejoinTraffic(t) {
   t.g.rotation.y = poseFor(t);
 }
 
-
-// ============================================================
-// Traffic update — quality-aware active bubble
-// ============================================================
-//
-// LOW:
-//   80m  = full simulation
-//   120m = throttled simulation
-//   160m = cull
-//
-// MEDIUM:
-//   100m = full simulation
-//   160m = throttled simulation
-//   220m = cull
-//
-// HIGH:
-//   120m = full simulation
-//   180m = throttled simulation
-//   260m = cull
-//
-// Vehicles beyond the cull radius are hidden and stop simulating.
-// Vehicles inside the active radius receive full-frame simulation.
-// Vehicles between active and cull remain visible with reduced AI.
-// ============================================================
-
 export function updateTraffic(dt) {
   const q = G.quality || 'medium';
-
-  const activeR =
-    q === 'low'
-      ? 80
-      : q === 'high'
-        ? 120
-        : 100;
-
-  const softR =
-    q === 'low'
-      ? 120
-      : q === 'high'
-        ? 180
-        : 160;
-
-  const cullR =
-    q === 'low'
-      ? 160
-      : q === 'high'
-        ? 260
-        : 220;
-
+  const activeR = q === 'low' ? 80 : q === 'high' ? 120 : 100;
+  const softR = q === 'low' ? 120 : q === 'high' ? 180 : 160;
+  const cullR = q === 'low' ? 160 : q === 'high' ? 260 : 220;
   const active2 = activeR * activeR;
   const soft2 = softR * softR;
   const cull2 = cullR * cullR;
-
   const pp = pos();
-
   if (!pp) return;
 
   for (const t of G.traffic) {
     if (!t?.g) continue;
-
-    // Hidden vehicles remain completely inactive.
     if (t.hidden) {
       t.g.visible = false;
       continue;
     }
 
-    // Police pursuits always remain active.
     if (t.pursuit) {
       t.far = false;
       t.g.visible = true;
       t.acc = 0;
-
       stepTraffic(t, dt, pp);
       spinWheels(t.g, t.speed, dt);
-
       continue;
     }
 
     const p = t.g.position;
-
     const dx = p.x - pp.x;
     const dz = p.z - pp.z;
-
     const d2 = dx * dx + dz * dz;
-
-    // --------------------------------------------------------
-    // OUTSIDE CULL RADIUS
-    // --------------------------------------------------------
-    // Hide the vehicle and stop expensive simulation.
-    // --------------------------------------------------------
 
     if (d2 > cull2) {
       t.far = true;
       t.g.visible = false;
       t.acc = 0;
-
       continue;
     }
 
-    // Vehicle is inside the visible world bubble.
     t.far = false;
     t.g.visible = true;
 
-    // --------------------------------------------------------
-    // ACTIVE RADIUS
-    // --------------------------------------------------------
-    // Full AI + movement + wheel animation.
-    // --------------------------------------------------------
-
     if (d2 <= active2) {
       t.acc = 0;
-
       stepTraffic(t, dt, pp);
       spinWheels(t.g, t.speed, dt);
-
       continue;
     }
 
-    // --------------------------------------------------------
-    // SOFT / THROTTLED RADIUS
-    // --------------------------------------------------------
-    // Keep vehicles visible, but reduce simulation frequency.
-    // --------------------------------------------------------
-
     t.acc = (t.acc || 0) + dt;
-
-    const interval =
-      d2 > soft2
-        ? 0.2       // ~5 Hz
-        : 1 / 15;   // ~15 Hz
-
+    const interval = d2 > soft2 ? 0.2 : 1 / 15;
     if (t.acc < interval) continue;
-
     const simDt = t.acc;
-
     t.acc = 0;
-
     stepTraffic(t, simDt, pp);
   }
 }
 
 export function updateParkedVisibility() {
   const pp = pos();
-
   if (!pp || !G.parked?.length) return;
 
   const q = G.quality || 'medium';
-
-  const cullR =
-    q === 'low'
-      ? 160
-      : q === 'high'
-        ? 260
-        : 220;
-
+  const cullR = q === 'low' ? 160 : q === 'high' ? 260 : 220;
   const cull2 = cullR * cullR;
 
   for (const g of G.parked) {
     if (!g?.position) continue;
-
-    // Always keep the player's owned vehicles available.
     if (g.userData?.owned) {
       g.visible = true;
       continue;
     }
-
     const dx = g.position.x - pp.x;
     const dz = g.position.z - pp.z;
-
     g.visible = dx * dx + dz * dz <= cull2;
   }
 }
 
-// One simulation step for a single traffic vehicle (identical logic to the old
-// per-frame body, now receiving an accumulated dt so distant vehicles keep real-time speed).
 function stepTraffic(t, dt, pp) {
   const fx = t.axis === 'h' ? t.dir : 0;
   const fz = t.axis === 'v' ? t.dir : 0;
@@ -628,7 +665,13 @@ function stepTraffic(t, dt, pp) {
   };
 
   for (const o of G.traffic) {
-    if (o !== t) check(o.g.position.x, o.g.position.z, VEH[t.type].len / 2 + VEH[o.type].len / 2 + 1.5);
+    if (o !== t) {
+      check(
+        o.g.position.x,
+        o.g.position.z,
+        VEH[t.type].len / 2 + VEH[o.type].len / 2 + 1.5
+      );
+    }
   }
   check(pp.x, pp.z, VEH[t.type].len / 2 + 3);
 
@@ -641,11 +684,16 @@ function stepTraffic(t, dt, pp) {
   if (G.rain) target *= 0.7;
   target *= roadRules(t.axis, t.k).speed;
 
-  if (onBridge(t.axis, t.k, t.axis === 'h' ? t.g.position.x : t.g.position.z)) {
+  if (
+    onBridge(
+      t.axis,
+      t.k,
+      t.axis === 'h' ? t.g.position.x : t.g.position.z
+    )
+  ) {
     target *= 1.4 * BRIDGE_RUSH(G.state.clock);
   }
 
-  // Red lights
   if (roadRules(t.axis, t.k).lights !== false && lightFor(t.axis) !== 'green') {
     for (const j of JUNCTIONS) {
       const jc = t.axis === 'h' ? j.x : j.z;
@@ -661,7 +709,6 @@ function stepTraffic(t, dt, pp) {
   }
 
   t.speed = approach(t.speed, target, (target < t.speed ? 22 : 7) * dt);
-
   t.g.position.x += fx * t.speed * dt;
   t.g.position.z += fz * t.speed * dt;
 
