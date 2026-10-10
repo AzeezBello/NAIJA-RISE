@@ -121,19 +121,31 @@ export function phoneMapDraw() {
   }
   addLabel('LAGOS LAGOON', WATER.x, 60, '#9fd8e6', 10, 40);
   addLabel('ATLANTIC', 480, 360, '#9fd8e6', 10, 40);
-  drawPhoneMapLabels(pctx, labels, W, pmap.height);
+  const mapRect = pmap.getBoundingClientRect();
+  const controlsRect = pmap.parentElement.querySelector('.map-zoom')?.getBoundingClientRect();
+  const controls = controlsRect && mapRect.width && mapRect.height
+    ? {
+        left: (controlsRect.left - mapRect.left) * W / mapRect.width - 4,
+        top: (controlsRect.top - mapRect.top) * pmap.height / mapRect.height - 4,
+        right: (controlsRect.right - mapRect.left) * W / mapRect.width + 4,
+        bottom: (controlsRect.bottom - mapRect.top) * pmap.height / mapRect.height + 4,
+      }
+    : null;
+  drawPhoneMapLabels(pctx, labels, W, pmap.height, controls);
 }
 
-function drawPhoneMapLabels(ctx, labels, width, height) {
-  const occupied = [{ left: width - 236, top: 0, right: width, bottom: 58 }];
+function drawPhoneMapLabels(ctx, labels, width, height, controls) {
+  const occupied = controls ? [{
+    left: controls.left, top: controls.top, right: controls.right, bottom: controls.bottom,
+  }] : [];
   const offsets = [[0, 0], [0, -12], [0, 12], [-14, 0], [14, 0], [0, -24], [0, 24]];
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
   for (const label of labels.sort((a, b) => b.priority - a.priority)) {
     ctx.font = `700 ${label.size}px Inter,sans-serif`;
-    const textWidth = ctx.measureText(label.text).width + 8;
-    const textHeight = label.size + 6;
+    const textWidth = ctx.measureText(label.text).width + 12;
+    const textHeight = label.size + 10;
     const boxWidth = Math.abs(label.rotation) > 0.1 ? textHeight : textWidth;
     const boxHeight = Math.abs(label.rotation) > 0.1 ? textWidth : textHeight;
     let placed = null;
