@@ -625,14 +625,10 @@ export function spawnParked() {
       console.warn('[parked] skip (blocked)', p.type, p.x, p.z);
       continue;
     }
-    // Parked commercial still look “alive” with a driver waiting
     const v = makeVehicle(p.type, p.color);
-    v.position.set(
-      spot.x,
-      vehicleSurfaceHeight(spot.x, spot.z, 0),
-      spot.z
-    );
-
+    // Never force deck for kerbside parking — ground only
+    const y = vehicleSurfaceHeight(spot.x, spot.z, 0, false);
+    v.position.set(spot.x, y, spot.z);
     v.rotation.y = p.rot || 0;
     v.userData.cond = 100;
     v.userData.enterable = true;
@@ -738,7 +734,8 @@ export function spawnTraffic() {
     // Only force bridge elevation when this road segment is actually
     // registered as a bridge and the vehicle is inside its deck footprint.
     const along = t.axis === 'h' ? g.position.x : g.position.z;
-    const deck = deckAt(g.position.x, g.position.z);
+    const deckY = deck ? deckHeightAt(g.position.x, g.position.z).height : 0;
+    const forceDeck = !!deck && deckY > 2.25 && onBridge(t.axis, t.k, along);
 
     const isBridgeRoad =
       !!deck &&
@@ -751,8 +748,8 @@ export function spawnTraffic() {
     g.position.y = vehicleSurfaceHeight(
       g.position.x,
       g.position.z,
-      0,
-      isBridgeRoad
+      forceDeck ? deckY : 0,
+      forceDeck
     );
 
     g.rotation.y = poseFor(t);

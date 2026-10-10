@@ -92,11 +92,12 @@ function road(x, z, w, d, asphalt) {
   box(x, z, w, d, 0.1, 0, 'road', 0, m);
   if (w > d) {
     for (let p = x - w / 2 + 8; p < x + w / 2 - 8; p += 14) {
-      staticBox('lanes', p, z, 0.65, 4, 0.11);
+      staticBox('lanes', p, z, 0.5, 3.2, 0.11);  // was 0.65 × 4
     }
   } else {
     for (let p = z - d / 2 + 8; p < z + d / 2 - 8; p += 14) {
       staticBox('lanes', x, p, 4, 0.65, 0.11);
+      
     }
   }
 }
@@ -948,7 +949,7 @@ function streetSigns() {
 }
 
 const STATIC_MATS = () => ({
-  lanes: mat(0xe6d58a),
+  lanes: mat(0xc4b87a, { roughness: 0.95 }),  // was 0xe6d58a — less neon at night
   fences: mat(0xbfb8a6, { roughness: 0.9 }),
   poles: mat(0x6c7378, { metalness: 0.4, roughness: 0.5 }),
   heads: (() => {

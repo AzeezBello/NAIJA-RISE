@@ -51,14 +51,16 @@ export const ASSETS = {
     url: 'assets/vegetation/jabami_anime_tree-grass_v1.glb',
     size: 2.7 * MB,
     category: 'vegetation',
-    scale: 0.35,
+    scale: 0.28,
+    targetHeight: 6.0,    // metres
   },
 
   treeMaple: {
     url: 'assets/vegetation/maple_tree.glb',
     size: 5.8 * MB,
     category: 'vegetation',
-    scale: 0.28,
+    scale: 0.25,
+    targetHeight: 5.5,    // metres
   },
 
   treePine: {
@@ -66,6 +68,7 @@ export const ASSETS = {
     size: 4.8 * MB,
     category: 'vegetation',
     scale: 0.28,
+    targetHeight: 7.0
   },
 
   nationalStadium: {
@@ -404,34 +407,24 @@ async function spawnVegetation() {
 
       const tree = skClone(inst.obj);
 
-      // Small natural variation without allowing enormous source models
-      // to dominate the city.
-      const targetHeight = 4.8 + Math.random() * 1.2;
-      const fittedBox = fitTreeToHeight(tree, targetHeight);
+      // Prefer bbox height-fit so author scale never produces giants
+      const targetH = ASSETS[key].targetHeight ?? 6;
+      tree.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(tree);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const h = size.y || 1;
+      const jitter = 0.85 + Math.random() * 0.3; // 0.85–1.15
+      const s = (targetH * jitter) / h;
+      tree.scale.setScalar(s);
 
-      if (!fittedBox) {
-        console.warn(`[assets] Skipping tree with invalid bounds: ${key}`);
-        continue;
-      }
-
-      const groundY = heightAt(spot.x, spot.z);
-
-      // The bounding box can have a non-zero local minimum, so offset
-      // the object until its lowest point meets the ground.
-      tree.position.set(
-        spot.x,
-        groundY - fittedBox.min.y,
-        spot.z
-      );
-
+      tree.updateMatrixWorld(true);
+      const box2 = new THREE.Box3().setFromObject(tree);
+      tree.position.set(spot.x, heightAt(spot.x, spot.z) - box2.min.y, spot.z);
       tree.rotation.y = Math.random() * Math.PI * 2;
 
       G.scene.add(tree);
-
-      // Use a modest ground footprint for the tree collider.
-      // This prevents oversized collision zones around small trees.
-      solidAt(spot.x, spot.z, 0.65, 0.65);
-
+      solidAt(spot.x, spot.z, 0.6, 0.6);
       vegetation.push(tree);
     }
   }
