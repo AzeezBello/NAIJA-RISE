@@ -34,13 +34,146 @@ export const vForward = o =>
   new THREE.Vector3(-Math.sin(o.rotation.y), 0, -Math.cos(o.rotation.y));
 
 // ============================================================
+// Occupants (drivers) — local meshes, no npcs.js import
+// ============================================================
+
+const DRIVER_SEAT = {
+  keke: { x: 0, y: 0.95, z: -0.4 },
+  danfo: { x: 0.55, y: 1.2, z: -1.85 },
+  korope: { x: 0.4, y: 1.1, z: -1.15 },
+  car: { x: 0.4, y: 1.0, z: -0.25 },
+  police: { x: 0.4, y: 1.0, z: -0.25 },
+  brt: { x: 0.55, y: 1.5, z: -4.8 },
+  // okada already has a procedural rider in makeVehicle
+};
+
+const SKINS = [0x5a3a28, 0x6a4a3a, 0x4a2e20, 0x7a5a40];
+const TOPS = [0x2bb34a, 0xc8d400, 0x1c4fa0, 0xf5c518, 0xd62828, 0x356a50];
+
+/** Simple seated figure parented to the vehicle. */
+function makeDriverMesh() {
+  const g = new THREE.Group();
+  g.name = 'driver';
+  g.userData.isOccupant = true;
+
+  const skin = pick(SKINS);
+  const top = pick(TOPS);
+
+  // Torso
+  const body = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.22, 0.4, 4, 8),
+    new THREE.MeshStandardMaterial({ color: top, roughness: 0.75 })
+  );
+  body.position.y = 0.45;
+  body.castShadow = true;
+  g.add(body);
+
+  // Head
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 10, 8),
+    new THREE.MeshStandardMaterial({ color: skin, roughness: 0.8 })
+  );
+  head.position.y = 0.95;
+  head.castShadow = true;
+  g.add(head);
+
+  // Cap (common for commercial drivers)
+  if (Math.random() < 0.55) {
+    const cap = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.2, 0.08, 10),
+      new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.7 })
+    );
+    cap.position.y = 1.08;
+    g.add(cap);
+  }
+
+  return g;
+}
+
+/**
+ * Seat a driver in commercial / traffic vehicles.
+ * Skip if already seated or type has no seat map (okada uses built-in rider).
+ */
+export function seatDriver(vehicle, { force = false } = {}) {
+  if (!vehicle?.userData) return null;
+  if (vehicle.userData.driver && !force) return vehicle.userData.driver;
+
+  const type = vehicle.userData.type;
+  const seat = DRIVER_SEAT[type];
+  if (!seat) return null;
+
+  // Remove previous if force-replace
+  if (vehicle.userData.driver) {
+    vehicle.remove(vehicle.userData.driver);
+    vehicle.userData.driver = null;
+  }
+
+  const d = makeDriverMesh();
+  d.position.set(seat.x, seat.y, seat.z);
+  // Face vehicle forward (local -Z in our vehicle convention)
+  d.rotation.y = Math.PI;
+  vehicle.add(d);
+  vehicle.userData.driver = d;
+  vehicle.userData.hasDriver = true;
+  return d;
+}
+
+/** Hide / show driver (enter vehicle / exit). */
+export function setDriverVisible(vehicle, visible) {
+  const d = vehicle?.userData?.driver;
+  if (d) d.visible = !!visible;
+}
+
+/**
+ * Eject driver into world at a side offset (hijack / hard exit).
+ * Returns world position used, or null.
+ */
+export function ejectDriver(vehicle, side = 1) {
+  const d = vehicle?.userData?.driver;
+  if (!d || !vehicle) return null;
+
+  vehicle.updateMatrixWorld(true);
+  const wp = new THREE.Vector3();
+  d.getWorldPosition(wp);
+
+  // Step to the right of the vehicle (Lagos RHD → passenger side is left; use +X local)
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(vehicle.quaternion);
+  wp.addScaledVector(right, 1.4 * side);
+  wp.y = heightAt(wp.x, wp.z);
+
+  vehicle.remove(d);
+  d.position.copy(wp);
+  d.rotation.y = vehicle.rotation.y + Math.PI;
+  d.visible = true;
+  G.scene.add(d);
+
+  vehicle.userData.driver = null;
+  vehicle.userData.hasDriver = false;
+
+  // Optional: track ejected figure briefly then remove
+  G._ejected = G._ejected || [];
+  G._ejected.push({ g: d, t: 8 });
+
+  return wp;
+}
+
+/** Tick ejected drivers (fade-out cleanup). Call from city update if desired. */
+export function updateEjected(dt) {
+  if (!G._ejected?.length) return;
+  for (let i = G._ejected.length - 1; i >= 0; i--) {
+    const e = G._ejected[i];
+    e.t -= dt;
+    if (e.t <= 0) {
+      G.scene.remove(e.g);
+      G._ejected.splice(i, 1);
+    }
+  }
+}
+
+// ============================================================
 // Procedural vehicle helpers
 // ============================================================
 
-/**
- * Lagos-style tire: dark rubber + light rim.
- * Registers on g.userData.wheels so spinWheels works for procedural cars.
- */
 function wheel(g, x, y, z, r = 0.38, width = 0.28) {
   const group = new THREE.Group();
   group.position.set(x, y, z);
@@ -115,10 +248,6 @@ const GLASS = () =>
   });
 const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 
-// ============================================================
-// Truck helper
-// ============================================================
-
 function truck(g, add, len, cabColor, bedColor, extra) {
   const glass = GLASS();
   add(B(2.4, 2.3, 2.4), body(cabColor), 0, 1.55, -len / 2 + 1.2);
@@ -138,7 +267,7 @@ function truck(g, add, len, cabColor, bedColor, extra) {
 // Make vehicle
 // ============================================================
 
-export function makeVehicle(type, color = 0x172e35) {
+export function makeVehicle(type, color = 0x172e35, opts = {}) {
   const g = new THREE.Group();
   g.userData.type = type;
   g.userData.enterable = true;
@@ -257,31 +386,23 @@ export function makeVehicle(type, color = 0x172e35) {
     case 'korope': {
       const Y = 0xf5c518;
       const BLK = 0x1a1a1a;
-
-      // Cab
       add(B(1.7, 1.35, 1.5), body(Y), 0, 1.15, -1.05);
       add(B(1.65, 0.55, 0.08), glass, 0, 1.55, -1.82);
       add(B(0.08, 0.45, 0.9), glass, 0.86, 1.5, -1.05);
       add(B(0.08, 0.45, 0.9), glass, -0.86, 1.5, -1.05);
-
-      // Passenger box
       add(B(1.85, 1.55, 2.4), body(Y), 0, 1.25, 0.55);
       add(B(0.06, 0.5, 1.8), glass, 0.94, 1.55, 0.55);
       add(B(0.06, 0.5, 1.8), glass, -0.94, 1.55, 0.55);
       add(B(1.88, 0.18, 2.42), body(BLK), 0, 0.95, 0.55);
       add(B(1.9, 0.08, 2.5), body(0xe0a800), 0, 2.05, 0.5);
-
-      // Bumper / grille
       add(B(1.6, 0.35, 0.15), body(0x333333), 0, 0.55, -1.85);
       lamp(g, -0.55, 0.7, -1.9);
       lamp(g, 0.55, 0.7, -1.9);
-
       for (const sx of [-1, 1]) {
         for (const sz of [-1.15, 1.15]) {
           wheel(g, sx * 0.92, 0.34, sz, 0.34, 0.26);
         }
       }
-
       add(B(1.2, 0.28, 0.06), body(0x111111), 0, 2.15, -1.7);
       g.userData.commercial = true;
       break;
@@ -302,6 +423,7 @@ export function makeVehicle(type, color = 0x172e35) {
       add(new THREE.SphereGeometry(0.22, 10, 8), mat(0x1b1b1b), 0, 1.85, 0.05);
       lamp(g, 0, 0.85, -0.95);
       g.userData.commercial = true;
+      g.userData.hasDriver = true; // procedural rider is the driver
       break;
 
     case 'fire':
@@ -352,7 +474,6 @@ export function makeVehicle(type, color = 0x172e35) {
     }
 
     default: {
-      // Fallback sedan so unknown types never spawn empty groups
       add(B(2.4, 0.5, 4.5), body(color), 0, 0.65, 0);
       add(B(2.0, 0.7, 2.0), glass, 0, 1.1, 0.1);
       for (const sx of [-1, 1]) {
@@ -365,7 +486,6 @@ export function makeVehicle(type, color = 0x172e35) {
   if (!g.userData.wheels) g.userData.wheels = [];
   g.userData.wheelR = g.userData.wheelR || 0.38;
 
-  // Optional GLB visual (async). Procedural mesh stays until load.
   const names = USE_MODELS && MODELS[type];
   if (names?.length) {
     const modelName = pick(names);
@@ -385,12 +505,17 @@ export function makeVehicle(type, color = 0x172e35) {
 
   if (VEH[type]?.commercial) g.userData.commercial = true;
 
+  // Default: put a driver in traffic / commercial seats (opt out with opts.noDriver)
+  if (!opts.noDriver && DRIVER_SEAT[type]) {
+    seatDriver(g);
+  }
+
   G.scene.add(g);
   return g;
 }
 
 // ============================================================
-// Park placement (avoid walls / water)
+// Park placement
 // ============================================================
 
 function parkClear(x, z, wid, len, pad = 0.6) {
@@ -429,10 +554,6 @@ function findParkSpot(x, z, wid, len, attempts = 16) {
   return null;
 }
 
-// ============================================================
-// Parked vehicles
-// ============================================================
-
 export function spawnParked() {
   G.parked = [];
   for (const p of PARKED) {
@@ -442,8 +563,8 @@ export function spawnParked() {
       console.warn('[parked] skip (blocked)', p.type, p.x, p.z);
       continue;
     }
+    // Parked commercial still look “alive” with a driver waiting
     const v = makeVehicle(p.type, p.color);
-    // makeVehicle already added to scene
     v.position.set(spot.x, heightAt(spot.x, spot.z), spot.z);
     v.rotation.y = p.rot || 0;
     v.userData.cond = 100;
@@ -453,14 +574,11 @@ export function spawnParked() {
   }
 }
 
-// ============================================================
-// Owned vehicles
-// ============================================================
-
 export function spawnOwned(home) {
   for (const o of G.state.vehicles || []) {
     if (G.parked.some(v => v.userData.ownedId === o.id)) continue;
-    const v = makeVehicle(o.type, 0x1f3a5a);
+    // Player-owned: no AI driver
+    const v = makeVehicle(o.type, 0x1f3a5a, { noDriver: true });
     v.userData.ownedId = o.id;
     v.userData.owned = true;
     v.userData.cond = o.cond ?? 100;
