@@ -55,10 +55,13 @@ const MODEL_SCALE = {
   danfo_vanagon: 1.0,
   keke_bajaj_re: 0.95,
   'suzuki_gsx-r750': 1.15,
-  suzuki_carry_minivan: 0.94,
   volkswagen_crafter: 0.95,
   '2003-gmc-topkick-c6500': 0.92,
   heavy_commercial_vehicle_hcv: 0.9,
+};
+
+const MODEL_DIMENSIONS = {
+  suzuki_carry_minivan: { length: 3.6, width: 1.9, height: 2.1 },
 };
 
 const MODEL_ROTATION = {
@@ -395,14 +398,16 @@ export function attachModel(
         const lengthGuess = Math.max(originalSize.x, originalSize.z);
         const scale =
           (spec.len / lengthGuess) * (MODEL_SCALE[name] ?? 1);
+        const rotation = MODEL_ROTATION[name] ?? Math.PI;
+        const dimensions = MODEL_DIMENSIONS[name];
 
         // Strip procedural visuals only — preserve keep + non-visual children
         for (const child of [...g.children]) {
           if (child.userData?.keep) continue;
+          if (child.userData?.isOccupant || child.userData?.isPassenger) continue;
           if (
             child.userData?.proceduralVisual ||
-            child.isMesh ||
-            child.isGroup
+            child.isMesh
           ) {
             // Remove placeholder meshes; leave markers/sprites with keep
             if (!child.userData?.keep) g.remove(child);
@@ -410,8 +415,19 @@ export function attachModel(
         }
 
         const model = sourceScene.clone(true);
-        model.scale.setScalar(scale);
-        model.rotation.y = MODEL_ROTATION[name] ?? Math.PI;
+        if (dimensions) {
+          const quarterTurn = Math.abs(Math.sin(rotation)) > Math.SQRT1_2;
+          const sourceWidth = quarterTurn ? originalSize.z : originalSize.x;
+          const sourceLength = quarterTurn ? originalSize.x : originalSize.z;
+          model.scale.set(
+            dimensions.width / sourceWidth,
+            dimensions.height / originalSize.y,
+            dimensions.length / sourceLength
+          );
+        } else {
+          model.scale.setScalar(scale);
+        }
+        model.rotation.y = rotation;
 
         const isKeke = name === 'keke_bajaj_re' || type === 'keke';
         const isOkada = name === 'suzuki_gsx-r750' || type === 'okada';

@@ -205,6 +205,19 @@ async function instantiate(key) {
   return { obj, animations: gltf.animations, url };
 }
 
+function placeOnGround(object, x, z, groundY = heightAt(x, z)) {
+  object.position.set(x, 0, z);
+  object.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(object);
+  if (!Number.isFinite(bounds.min.y)) {
+    console.warn('[assets] Could not ground GLB with invalid bounds');
+    object.position.y = groundY;
+    return;
+  }
+  object.position.y = groundY - bounds.min.y;
+  object.updateMatrixWorld(true);
+}
+
 // ============================================================
 // Disposal
 // ============================================================
@@ -421,10 +434,8 @@ async function spawnVegetation() {
       const s = (targetH * jitter) / h;
       tree.scale.setScalar(s);
 
-      tree.updateMatrixWorld(true);
-      const box2 = new THREE.Box3().setFromObject(tree);
-      tree.position.set(spot.x, heightAt(spot.x, spot.z) - box2.min.y, spot.z);
       tree.rotation.y = Math.random() * Math.PI * 2;
+      placeOnGround(tree, spot.x, spot.z);
 
       G.scene.add(tree);
       solidAt(spot.x, spot.z, 0.6, 0.6);
@@ -479,12 +490,8 @@ async function spawnAmbientAnimals() {
       if (!spot) continue;
 
       const obj = skClone(inst.obj);
-      obj.position.set(
-        spot.x,
-        heightAt(spot.x, spot.z),
-        spot.z
-      );
       obj.rotation.y = Math.random() * Math.PI * 2;
+      placeOnGround(obj, spot.x, spot.z);
       G.scene.add(obj);
 
       const record = {
@@ -619,21 +626,7 @@ function fitStadiumToFootprint(object, key) {
 }
 
 function placeStadiumOnGround(object, x, z) {
-  object.position.x = x;
-  object.position.z = z;
-  object.position.y = 0;
-  object.updateMatrixWorld(true);
-
-  const box = new THREE.Box3().setFromObject(object);
-  if (!Number.isFinite(box.min.y)) {
-    object.position.y = heightAt(x, z, 0);
-    return;
-  }
-
-  const groundY = heightAt(x, z, 0);
-  const SINK = 0.15;
-  object.position.y = groundY - box.min.y - SINK;
-  object.updateMatrixWorld(true);
+  placeOnGround(object, x, z, heightAt(x, z, 0));
 }
 
 // ============================================================

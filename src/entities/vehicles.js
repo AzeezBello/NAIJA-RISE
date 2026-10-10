@@ -84,7 +84,30 @@ const DRIVER_SEAT = {
   car: { x: 0.4, y: 1.0, z: -0.25 },
   police: { x: 0.4, y: 1.0, z: -0.25 },
   brt: { x: 0.55, y: 1.5, z: -4.8 },
+  tanker: { x: 0.55, y: 1.2, z: -3.2 },
+  lawma: { x: 0.55, y: 1.2, z: -2.5 },
+  fire: { x: 0.55, y: 1.2, z: -3.2 },
+  army: { x: 0.55, y: 1.2, z: -2.5 },
   // okada already has a procedural rider in makeVehicle
+};
+const PASSENGER_SEATS = {
+  danfo: [
+    { x: -0.48, y: 1.05, z: -0.8 }, { x: 0.48, y: 1.05, z: -0.1 },
+    { x: -0.48, y: 1.05, z: 0.65 }, { x: 0.48, y: 1.05, z: 1.15 },
+    { x: -0.48, y: 1.05, z: 1.8 },
+  ],
+  korope: [
+    { x: -0.42, y: 0.95, z: -0.35 }, { x: -0.4, y: 0.95, z: 0.45 },
+    { x: 0.4, y: 0.95, z: 0.45 }, { x: -0.4, y: 0.95, z: 1.15 },
+  ],
+  keke: [
+    { x: -0.35, y: 0.62, z: 0.45 }, { x: 0.35, y: 0.62, z: 0.45 },
+  ],
+  brt: [
+    { x: -0.62, y: 1.15, z: -3.1 }, { x: 0.62, y: 1.15, z: -2.1 },
+    { x: -0.62, y: 1.15, z: -0.9 }, { x: 0.62, y: 1.15, z: 0.3 },
+    { x: -0.62, y: 1.15, z: 1.5 }, { x: 0.62, y: 1.15, z: 2.8 },
+  ],
 };
 
 const SKINS = [0x5a3a28, 0x6a4a3a, 0x4a2e20, 0x7a5a40];
@@ -156,6 +179,31 @@ export function seatDriver(vehicle, { force = false } = {}) {
   vehicle.userData.driver = d;
   vehicle.userData.hasDriver = true;
   return d;
+}
+
+function fillTrafficPassengers(vehicle, type) {
+  const seats = PASSENGER_SEATS[type];
+  if (!seats) return;
+  for (const child of [...vehicle.children]) {
+    if (child.userData?.isPassenger) vehicle.remove(child);
+  }
+  const count = type === 'danfo' || type === 'brt'
+    ? 3 + Math.floor(Math.random() * (seats.length - 2))
+    : type === 'korope'
+      ? 2 + Math.floor(Math.random() * (seats.length - 1))
+      : 1 + Math.floor(Math.random() * seats.length);
+  const passengers = [];
+  for (const seat of seats.slice(0, Math.min(count, seats.length))) {
+    const passenger = makeDriverMesh();
+    passenger.name = 'passenger';
+    passenger.userData.isPassenger = true;
+    passenger.userData.role = 'passenger';
+    passenger.position.set(seat.x, seat.y, seat.z);
+    passenger.rotation.y = Math.PI;
+    vehicle.add(passenger);
+    passengers.push(passenger);
+  }
+  vehicle.userData.passengers = passengers;
 }
 
 /** Hide / show driver (enter vehicle / exit). */
@@ -599,6 +647,7 @@ export function makeVehicle(type, color = 0x172e35, opts = {}) {
   if (!opts.noDriver && DRIVER_SEAT[type]) {
     seatDriver(g);
   }
+  if (!opts.noDriver) fillTrafficPassengers(g, type);
 
   G.scene.add(g);
   return g;
@@ -738,8 +787,9 @@ const poseFor = t =>
       : 0;
 
 const snapLane = t => {
-  if (t.axis === 'h') t.g.position.z = t.k + t.dir * LANE_OFFSET;
-  else t.g.position.x = t.k - t.dir * LANE_OFFSET;
+  const offset = t.dedicatedLane ? 8.5 : LANE_OFFSET;
+  if (t.axis === 'h') t.g.position.z = t.k + t.dir * offset;
+  else t.g.position.x = t.k - t.dir * offset;
 };
 
 export function spawnTraffic() {
@@ -763,12 +813,7 @@ export function spawnTraffic() {
     // BRT vehicles must use a horizontal route.
     if (type === 'brt') {
       axis = 'h';
-
-      const busRoads = ROADS.h.filter(
-        z => Math.abs(z) < 5 || z === -330 || z === 240
-      );
-
-      k = pick(busRoads.length ? busRoads : ROADS.h);
+      k = ROADS.h.includes(-330) ? -330 : pick(ROADS.h);
     }
 
     const [start, end] = roadExtent(axis, k);
@@ -792,6 +837,7 @@ export function spawnTraffic() {
       pursuit: false,
       acc: 0,
       far: false,
+      dedicatedLane: type === 'brt' && axis === 'h' && k === -330,
     };
 
     // Establish horizontal position first.
@@ -800,6 +846,7 @@ export function spawnTraffic() {
     } else {
       g.position.set(k - dir * LANE_OFFSET, 0, along);
     }
+    snapLane(t);
 
     // FIX: declare and resolve the deck before reading its properties.
     const deck = deckAt(g.position.x, g.position.z);

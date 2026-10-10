@@ -44,6 +44,7 @@ import { nearPlace, openPlace, placePrompt } from './places.js';
 import { familyPrompt, tryFamilyInteract } from './family.js';
 import { talkToContact } from './relationships.js';
 import { nearCrew, runCrewDialog } from './crew.js';
+import { enterBuilding, interactInterior, interiorPrompt } from '../world/interior.js';
 
 function nearStoryContact(r = 4) {
   if (G.inCar || !G.contacts) return null;
@@ -87,6 +88,21 @@ const nearNight = () =>
   G.state.settings.mature !== false &&
   venueOpen() &&
   (G.nightlife || []).find(n => dist(G.player.position, n) < 3.5);
+const ENTERABLE_KINDS = new Set([
+  'airport', 'artisan', 'bank', 'betshop', 'cafe', 'garage', 'gym', 'hotel',
+  'mall', 'market', 'office', 'police', 'restaurant', 'school', 'service',
+  'venue', 'worship',
+]);
+const nearBuilding = () => {
+  if (G.inCar) return null;
+  let best = null, bestDistance = 11;
+  for (const building of LANDMARKS) {
+    if (!ENTERABLE_KINDS.has(building.kind) || building.stadium) continue;
+    const d = dist(G.player.position, building);
+    if (d < bestDistance) { best = building; bestDistance = d; }
+  }
+  return best;
+};
 
 export const nearHome = () => {
   const h = homeProp();
@@ -752,6 +768,17 @@ function fadeOut(then) {
 }
 
 export function interact() {
+  if (G.interior) {
+    const action = interactInterior();
+    if (action === 'sleep') sleep(homeProp());
+    else if (action === 'service') {
+      const place = G.interior.place;
+      if (place.kind === 'bank') emit('phone:open', 'bank');
+      else if (['cafe', 'gym', 'mall', 'restaurant', 'school'].includes(place.kind)) openPlace(place);
+      else toast(`${place.name} · ${place.profession || place.kind} workshop`);
+    }
+    return;
+  }
   if (G.working || G.sleeping) return;
   if (G.dialog) {
     advanceDialog();
@@ -774,7 +801,7 @@ export function interact() {
     return;
   }
   if (nearHome()) {
-    sleep(homeProp());
+    enterBuilding(homeProp(), 'home');
     return;
   }
   if (!G.inCar) {
@@ -811,6 +838,11 @@ export function interact() {
     }
     if (nearYaba()) {
       petDialog();
+      return;
+    }
+    const building = nearBuilding();
+    if (building) {
+      enterBuilding(building);
       return;
     }
     const place = nearPlace();
@@ -917,6 +949,7 @@ export function interact() {
 }
 
 export function promptFor() {
+  if (G.interior) return interiorPrompt();
   const p = pos();
   const s = G.state;
   if (G.sleeping) return { text: '…' };
@@ -971,7 +1004,7 @@ export function promptFor() {
   const j = jobOf(s.job);
   if (j && dist(p, jobPos(j)) < 9)
     return { key: 'E', text: `Start shift as ${j.title}` };
-  if (nearHome()) return { key: 'E', text: 'Enter home · sleep' };
+  if (nearHome()) return { key: 'E', text: 'Enter home' };
   if (!G.inCar) {
     const fp = familyPrompt();
     if (fp) return fp;
@@ -986,6 +1019,8 @@ export function promptFor() {
             : ' to let'
         }`,
       };
+    const building = nearBuilding();
+    if (building) return { key: 'E', text: `Enter ${building.name}` };
     const night = nearNight();
     if (night) return { key: 'E', text: `Talk to ${night.name}` };
     if (nearKiosk()) return { key: 'E', text: 'Use POS kiosk' };

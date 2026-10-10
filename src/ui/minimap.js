@@ -1,6 +1,6 @@
 import { G, pos } from '../core/context.js';
 import { $, clampN } from '../core/utils.js';
-import { ROADS, ROAD_NAMES, LANDMARKS, BUSSTOPS, PROPERTIES, WATER, WATERS, roadExtent, ROAD_WIDTHS, BRIDGES, META } from '../data/locations.js';
+import { ROADS, ROAD_NAMES, LANDMARKS, BUSSTOPS, PROPERTIES, WATER, WATERS, roadExtent, ROAD_WIDTHS, BRIDGES, META, REGIONS } from '../data/locations.js';
 import { BUSINESSES } from '../data/businesses.js';
 import { VEH } from '../data/vehicles.js';
 import { vForward } from '../entities/vehicles.js';
@@ -11,7 +11,7 @@ const KIND_COLORS = { police: '#2c3f70', army: '#3f5a2a', service: '#8a4a2a', ba
 
 // Shared world drawing in world units; callers set up the transform.
 function drawWorld(g) {
-  g.fillStyle = '#122820'; g.fillRect(-220, -440, 900, 880);
+  g.fillStyle = '#122820'; g.fillRect(META.bounds.x[0] - 40, META.bounds.z[0] - 40, META.bounds.x[1] - META.bounds.x[0] + 80, META.bounds.z[1] - META.bounds.z[0] + 80);
   g.fillStyle = '#0e5f72'; for (const w of WATERS) g.fillRect(w.x[0], w.z[0], w.x[1] - w.x[0], w.z[1] - w.z[0]);
   for (const z of ROADS.h) { const [a, b] = roadExtent('h', z), w = ROAD_WIDTHS.h[z] * 0.9; g.fillStyle = z === 142 ? '#3a4d46' : '#2b3f38'; g.fillRect(a, z - w / 2, b - a, w); }
   for (const x of ROADS.v) { const [a, b] = roadExtent('v', x), w = ROAD_WIDTHS.v[x] * 0.9; g.fillStyle = '#2b3f38'; g.fillRect(x - w / 2, a, w, b - a); }
@@ -74,7 +74,7 @@ export function mapDraw() {
 // Full district map inside the phone, north-up, with labels. Tap sets a waypoint.
 export function phoneMapDraw() {
   const pmap = $('pmap'); if (!pmap) return;
-  const pctx = pmap.getContext('2d'), W = pmap.width, s = W / 800, cx = W / 2 - 235 * s, cy = W / 2 + 35 * s;
+  const pctx = pmap.getContext('2d'), W = pmap.width, { cx, cy, s } = phoneMapTransform(W, pmap.height);
   pctx.clearRect(0, 0, W, W); pctx.fillStyle = '#0a1612'; pctx.fillRect(0, 0, W, W);
   pctx.save(); pctx.translate(cx, cy); pctx.scale(s, s); drawWorld(pctx); pctx.restore();
   const p = pos(); arrow(pctx, cx + p.x * s, cy + p.z * s, heading(), 9, '#fff');
@@ -92,12 +92,24 @@ export function phoneMapDraw() {
   for (const x of ROADS.v) { const [a] = roadExtent('v', x); pctx.save(); pctx.translate(cx + (x + 7) * s, cy + (a + 60) * s); pctx.rotate(-Math.PI / 2); pctx.fillText(ROAD_NAMES.v[x].toUpperCase().split(' · ')[0], 0, 0); pctx.restore(); }
   pctx.fillStyle = '#9fd8e6'; pctx.font = '700 10px Inter,sans-serif'; pctx.fillText('LAGOS LAGOON', cx + WATER.x * s, cy + 60 * s); pctx.fillText('ATLANTIC', cx + 480 * s, cy + 360 * s);
   pctx.fillStyle = '#ffffff'; pctx.font = '800 10px Inter,sans-serif';
-  for (const [t, x, z] of [['SURULERE', 0, -150], ['LAGOS ISLAND', 410, -100], ['VICTORIA ISLAND', 410, 195], ['LEKKI', 560, 195], ['YABA', 410, -395], ['EBUTE METTA', 200, -395], ['IKORODU', -120, -395]]) pctx.fillText(t, cx + x * s, cy + z * s);
+  for (const r of REGIONS) {
+    const x = (r.x[0] + r.x[1]) / 2, z = (r.z[0] + r.z[1]) / 2;
+    pctx.fillText(r.name.toUpperCase(), cx + x * s, cy + z * s);
+  }
+}
+function phoneMapTransform(width, height) {
+  const { x, z } = META.bounds;
+  const s = Math.min(width / (x[1] - x[0]), height / (z[1] - z[0])) * 0.92;
+  return {
+    s,
+    cx: width / 2 - (x[0] + x[1]) / 2 * s,
+    cy: height / 2 - (z[0] + z[1]) / 2 * s,
+  };
 }
 export function bindPhoneMap() {
   const pmap = $('pmap'); if (!pmap) return;
   pmap.addEventListener('click', e => {
-    const r = pmap.getBoundingClientRect(), s = pmap.width / 800, cx = pmap.width / 2 - 235 * s, cy = pmap.height / 2 + 35 * s;
+    const r = pmap.getBoundingClientRect(), { cx, cy, s } = phoneMapTransform(pmap.width, pmap.height);
     const x = ((e.clientX - r.left) * pmap.width / r.width - cx) / s, z = ((e.clientY - r.top) * pmap.height / r.height - cy) / s;
     const b = META.bounds; setWaypoint({ x: clampN(x, b.x[0], b.x[1]), z: clampN(z, b.z[0], b.z[1]), label: 'Waypoint' }); toast('GPS waypoint set');
   });

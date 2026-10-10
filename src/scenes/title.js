@@ -7,7 +7,7 @@ import { GAME } from '../data/config.js';
 import { placeOf } from '../data/locations.js';
 import { switchScene } from './manager.js';
 import { updateTraffic } from '../entities/vehicles.js';
-import { updateClouds } from '../world/district.js';
+import { updateWorldVisuals } from '../world/district.js';
 import { updateTrafficLights } from '../systems/trafficlights.js';
 import { Key } from '../ui/components.js';
 
@@ -318,7 +318,7 @@ export const TitleScene = {
     }
 
     updateTraffic(dt);
-    updateClouds(dt);
+    updateWorldVisuals(dt);
     updateTrafficLights(dt);
   },
 };

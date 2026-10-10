@@ -4,13 +4,14 @@ import { pick, dist } from '../core/utils.js';
 import {
   BUSSTOPS,
   SERVICE_NPCS,
+  ARTISAN_NPCS,
   UNIFORMS,
   NIGHTLIFE_NPCS,
   placeOf,
   inWater,
 } from '../data/locations.js';
 import { runAgbero } from '../systems/dialogue.js';
-import { PERF } from '../data/config.js';
+import { PERF, WORLD } from '../data/config.js';
 import { createCharacter, pickStreetRig } from './character.js';
 import { buildPrimitive } from './wardrobe.js';
 import { blockedAt } from '../systems/movement.js';
@@ -274,6 +275,7 @@ function steerAway(from, others, radius, force, out) {
 }
 
 export function spawnNpcs(count = 28) {
+  const demographicNpcs = spawnCityDemographics();
   G.npcs = [];
   for (let i = 0; i < count; i++) {
     const n = person();
@@ -308,6 +310,69 @@ export function spawnNpcs(count = 28) {
     bindSchedule(rec);
     G.npcs.push(rec);
   }
+  G.npcs.unshift(...demographicNpcs);
+}
+
+function spawnCityDemographics() {
+  const people = [];
+  const spawnGroup = (anchor, count, demographic, uniform, radius = 30) => {
+    if (!anchor) return;
+    for (let i = 0; i < count; i++) {
+      const look = {
+        ...streetLook(),
+        ...(uniform.look || {}),
+      };
+      const n = person({ look, tint: uniform.tint, scale: uniform.scale || 1 });
+      const offset = () => (Math.random() - 0.5) * Math.min(radius, 14);
+      const point = projectToWalk(anchor.x + offset(), anchor.z + offset(), 28) || randomWalkPoint();
+      n.position.set(point.x, heightAt(point.x, point.z), point.z);
+      G.scene.add(n);
+      const rec = {
+        g: n,
+        v: new THREE.Vector3((Math.random() - 0.5) * 1.2, 0, (Math.random() - 0.5) * 1.2),
+        turn: 2 + Math.random() * 4,
+        hitT: 0,
+        demographic,
+        anchor,
+        radius,
+        speed: 1.05,
+      };
+      bindSchedule(rec);
+      rec.archetype = 'wander';
+      people.push(rec);
+    }
+  };
+  const uniform = (top, bottom, options = {}) => ({
+    look: { outfit: 8, shirt: 8, pants: 3, accessory: options.accessory ?? 0, facialHair: options.facialHair ?? 0 },
+    tint: { top, bottom, skin: options.skin || '#5a3a28', shoes: '#1b1b1b' },
+    scale: options.scale || 0.98,
+  });
+
+  for (const id of ['bank1', 'bank2', 'marinabank', 'vibank']) {
+    const bank = placeOf(id);
+    spawnGroup(bank, 2, 'banker', uniform('#e8e4da', '#202630', { accessory: 3 }), 24);
+  }
+  for (const id of ['cafe', 'yabatech', 'vibank', 'lekkimart', 'alagomeji-tech', 'alagomeji-startups', 'ikeja-tech']) {
+    const hub = placeOf(id);
+    spawnGroup(hub, 2, 'tech-bro', uniform(pick(['#1c3152', '#2f5a4b', '#47365e', '#29343a']), '#252b32', { accessory: 3 }), 34);
+  }
+  const schools = [
+    ['school', '#f0ead7', '#263a60'],
+    ['yabatech', '#f1bf2d', '#183b32'],
+    ['unilag', '#f0ead7', '#386a42'],
+    ['ajah-school', '#d9e3ef', '#394b86'],
+    ['ikorodu-school', '#f2d778', '#5c312f'],
+    ['apapa-school', '#edf0e7', '#2e5b42'],
+    ['ikeja-school', '#f1d89b', '#4c376c'],
+  ];
+  for (const [id, top, bottom] of schools) {
+    const school = placeOf(id);
+    spawnGroup(school, 2, 'student', {
+      ...uniform(top, bottom, { scale: 0.78 }),
+      look: { outfit: 5, shirt: 8, pants: 3, bodyType: 0, accessory: 0, facialHair: 0 },
+    }, 24);
+  }
+  return people;
 }
 
 export function spawnAgberos() {
@@ -352,6 +417,24 @@ export function spawnServiceNpcs() {
     n.position.set(s.x, heightAt(s.x, s.z), s.z);
     G.scene.add(n);
     G.service.push({ g: n, x: s.x, z: s.z, u: s.u });
+  }
+}
+
+export function spawnArtisanNpcs() {
+  G.artisans = [];
+  const workwear = {
+    Carpenter: 0x8a5a32,
+    Tailor: 0x765b82,
+    Shoemaker: 0x654834,
+    Welder: 0x4e5960,
+    Painter: 0x6d7841,
+  };
+  for (const artisan of ARTISAN_NPCS) {
+    const color = workwear[artisan.profession] || 0x69523b;
+    const n = person({ ...uniform(color, color), scale: 1.02 });
+    n.position.set(artisan.x + 2.5, heightAt(artisan.x + 2.5, artisan.z - 6), artisan.z - 6);
+    G.scene.add(n);
+    G.artisans.push({ g: n, profession: artisan.profession, x: n.position.x, z: n.position.z });
   }
 }
 
@@ -574,7 +657,13 @@ export function updateNpcs(dt) {
     if (sp > 0.2) n.g.rotation.y = Math.atan2(n.v.x, n.v.z);
     n.g.userData.c?.setState(sp > 0.2 ? 'walk' : 'idle', sp);
 
-    if (Math.abs(n.g.position.x) > 200 || Math.abs(n.g.position.z) > 200) {
+    if (n.anchor && dist(n.g.position, n.anchor) > n.radius) {
+      n.v.set(n.anchor.x - n.g.position.x, 0, n.anchor.z - n.g.position.z).normalize().multiplyScalar(n.speed);
+    }
+    if (n.g.position.x < WORLD.bounds.x[0] || n.g.position.x > WORLD.bounds.x[1] ||
+        n.g.position.z < WORLD.bounds.z[0] || n.g.position.z > WORLD.bounds.z[1]) {
+      n.g.position.x = Math.max(WORLD.bounds.x[0], Math.min(WORLD.bounds.x[1], n.g.position.x));
+      n.g.position.z = Math.max(WORLD.bounds.z[0], Math.min(WORLD.bounds.z[1], n.g.position.z));
       n.v.x *= -1;
       n.v.z *= -1;
     }

@@ -53,6 +53,9 @@ export function loadRig(i = 0) {
         }
         for (const c of clips) lockRoot(c);   // in-place locomotion: the game moves the character, the clip must not
         const box = new THREE.Box3().setFromObject(gltf.scene), h = box.max.y - box.min.y;
+        if (!Number.isFinite(h) || h <= 0.001) {
+          throw new Error(`Rig has invalid height (${h})`);
+        }
         gltf.scene.traverse(o => { if (o.isMesh) o.castShadow = true; });
         bases[i] = { rig, scene: gltf.scene, clips, scale: CHARACTER.height / h, url };
         console.info(`[character] rig ${rig.id} loaded: ${url} (${clips.map(c => c.name).join(', ')})`);
@@ -136,6 +139,9 @@ export function createCharacter({ look = G.state?.look || {}, build, placeholder
     inst.base = base;
     const model = SkeletonUtils.clone(base.scene);
     model.rotation.y = base.rig.facing; model.scale.setScalar(base.scale * scale);
+    model.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(model);
+    if (Number.isFinite(bounds.min.y)) model.position.y -= bounds.min.y;
     inst.meshes = []; model.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.castShadow = true; inst.meshes.push(o); } });
     if (inst._placeholder) { group.remove(inst._placeholder); inst._placeholder = null; }
     group.add(model); inst.model = model; inst.rig = true;

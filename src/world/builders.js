@@ -196,5 +196,15 @@ export function compound(x, z, pw, pd, style, color, name = 'building', h) {
   }
 
   house.userData.door = { x, z: z - pd / 2 - 1.5 };
+  if (name === 'property') {
+    const hinge = new THREE.Group();
+    hinge.position.set(x - 0.6, 0, z + 1 - bd / 2 - 0.08);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.1, 0.14), mat(0x493120));
+    panel.position.set(0.6, 1.05, 0);
+    panel.castShadow = true;
+    hinge.add(panel);
+    G.scene.add(hinge);
+    house.userData.doorMesh = hinge;
+  }
   return house;
 }

@@ -4,8 +4,9 @@
 export const META = { id: 'surulere', name: 'Surulere', state: 'Lagos', spawn: { x: 0, z: 34 }, bounds: { x: [-145, 615], z: [-395, 325] } };
 // Regions of this world (PRD corridor map), as rectangles. The locale indicator names them.
 export const REGIONS = [
-  { id: 'surulere', name: 'Surulere', x: [-150, 135], z: [-150, 150] }, { id: 'costain', name: 'Costain · Iganmu', x: [135, 165], z: [-150, 150] },
-  { id: 'ajegunle', name: 'Ajegunle · AJ City', x: [-150, -60], z: [40, 150] },
+  { id: 'surulere', name: 'Surulere', x: [-60, 135], z: [-150, 150] },
+  { id: 'surulere-west', name: 'Surulere West', x: [-150, -60], z: [-150, 40] },
+  { id: 'costain', name: 'Costain · Iganmu', x: [135, 165], z: [-150, 150] },
   { id: 'lagoon', name: 'Eko Bridge · Lagos Lagoon', x: [165, 340], z: [-250, 330] }, { id: 'island', name: 'Lagos Island', x: [340, 480], z: [-85, 100] },
   { id: 'thirdmainland', name: 'Third Mainland Bridge', x: [340, 480], z: [-250, -85] }, { id: 'yaba', name: 'Yaba', x: [340, 480], z: [-400, -250] },
   { id: 'ebute', name: 'Ebute Metta · Ikorodu Road', x: [-100, 340], z: [-400, -250] }, { id: 'ikorodu', name: 'Ikorodu Road · Ikorodu Garage', x: [-150, -100], z: [-400, -250] },
@@ -34,12 +35,13 @@ export const ROAD_SEGMENTS = {
 // Bridge spans (rush-hour profile, no street lights at ground level).
 export const BRIDGES = [{ axis: 'h', k: 0, from: 155, to: 345 }, { axis: 'v', k: 360, from: -250, to: -85 }, { axis: 'v', k: 440, from: 80, to: 180 }];
 export const onBridge = (axis, k, along) => BRIDGES.some(b => b.axis === axis && b.k === k && along > b.from && along < b.to);
+export const U_TURNS = [{ axis: 'h', k: -330, at: 0, name: 'Ikorodu Road U-turn' }];
 export const roadNameAt = (axis, k, along) => { const seg = (ROAD_SEGMENTS[axis]?.[k] || []).find(([a, b]) => along >= a && along < b); return seg ? seg[2] : ROAD_NAMES[axis][k] || 'the main road'; };
 // Road classes drive traffic density, cruise speed, LASTMA speed limits and what lines the kerb.
 // class: expressway | highway | main | commercial | residential | market
 export const ROAD_CLASS = {
   h: { 0: 'main', '-66': 'market', 142: 'expressway', '-330': 'highway', '-300': 'commercial', 240: 'highway', 300: 'main' },
-  v: { 0: 'commercial', 72: 'highway', '-72': 'residential', 360: 'commercial', 440: 'main', 560: 'residential' },
+  v: { 0: 'commercial', 72: 'highway', '-72': 'residential', 360: 'highway', 440: 'main', 560: 'residential' },
 };
 export const CLASS_RULES = {
   expressway: { speed: 1.7, limit: 120, density: 1.3, lights: false, median: true },
@@ -59,7 +61,7 @@ export const ROAD_NAMES = {
   h: { 0: 'Bode Thomas Street', '-66': 'Itire Road · Ojuelegba Road', 142: 'Apapa–Oworonshoki Expressway', '-330': 'Ikorodu Road', '-300': 'Herbert Macaulay Way', 240: 'Adeola Odeku Street · Lekki–Epe Expressway', 300: 'Ahmadu Bello Way' },
   v: { 0: 'Adeniran Ogunsanya Street', 72: 'Funsho Williams Avenue', '-72': 'Ogunlana Drive · Shitta Bridge', 360: 'Broad Street · Third Mainland Bridge', 440: 'Marina · Falomo Bridge', 560: 'Admiralty Way' },
 };
-export const ROAD_WIDTHS = { h: { 0: 22, '-66': 18, 142: 24, '-330': 24, '-300': 18, 240: 24, 300: 22 }, v: { 0: 22, 72: 24, '-72': 16, 360: 18, 440: 22, 560: 18 } };
+export const ROAD_WIDTHS = { h: { 0: 22, '-66': 18, 142: 36, '-330': 40, '-300': 18, 240: 38, 300: 22 }, v: { 0: 22, 72: 24, '-72': 16, 360: 36, 440: 22, 560: 18 } };
 export const roadName = (axis, k) => ROAD_NAMES[axis][k] || 'the main road';
 
 // kind: landmark | market | police | army | service | bank | venue | hotel | checkpoint | post
@@ -82,6 +84,8 @@ export const LANDMARKS = [
   // banks
   { id: 'bank1', name: 'RiseBank Shitta', short: 'BANK', x: -120, z: -24, c: '#2d2d4a', sign: '#b7b7ff', h: 9, kind: 'bank' },
   { id: 'bank2', name: 'RiseBank Ojuelegba', short: 'BANK', x: 48, z: 24, c: '#2d2d4a', sign: '#b7b7ff', h: 9, kind: 'bank' },
+  { id: 'surulere-tailor', name: 'Surulere Tailoring Workshop', short: 'TAILOR', x: -120, z: 16, c: '#725c8a', sign: '#f4d3a4', h: 4, kind: 'artisan', profession: 'Tailor' },
+  { id: 'surulere-cobbler', name: 'Ojuelegba Shoe Repair', short: 'SHOE REPAIR', x: 130, z: 64, c: '#694b38', sign: '#ffc52f', h: 4, kind: 'artisan', profession: 'Shoemaker' },
   // nightlife and hotel
   { id: 'forties', name: 'Forties Bar', short: 'FORTIES', x: 24, z: -96, c: '#4a1f3a', sign: '#ff5d9e', h: 5, kind: 'venue', cost: 5000 },
   { id: 'lust', name: 'Lust Club', short: 'LUST', x: 120, z: -96, c: '#3a1a4a', sign: '#c77dff', h: 7, kind: 'venue', cost: 8000 },
@@ -121,47 +125,8 @@ export const LANDMARKS = [
   { id: 'ebutepolice', name: 'Ebute Metta Police Post', short: 'POLICE', x: 240, z: -360, c: '#1f2b45', sign: '#ffffff', h: 5, kind: 'police', region: 'ebute' },
   { id: 'ikorodu', name: 'Ikorodu Garage', short: 'IKORODU GARAGE', x: -120, z: -352, c: '#5c4933', sign: '#ffc52f', h: 5, kind: 'garage', region: 'ikorodu' },
 
-    // Makoko — lagoon stilts west of / under Third Mainland Bridge (k = 360)
-  {
-    id: 'makoko',
-    name: 'Makoko',
-    short: 'MAKOKO',
-    x: 300,          // inside lagoon x[165,339]
-    z: -185,         // inside lagoon z[-250,330] and lagoon-n band
-    c: '#5a6e72',
-    sign: '#f5c518',
-    h: 3,
-    kind: 'settlement',
-    waterfront: true,
-    region: 'thirdmainland',
-  },
-
-  // dense cosmopolitan neighbourhood (Ajeromi-Ifelodun / AJ City)
-  {
-    id: 'ajegunle',
-    name: 'Ajegunle · AJ City',
-    short: 'AJ CITY',
-    x: -108,
-    z: 96,
-    c: '#5c4a3a',
-    sign: '#ffc52f',
-    h: 4,
-    kind: 'settlement',
-    dense: true,
-    region: 'ajegunle',
-  },
-  {
-    id: 'ajpitch',
-    name: 'AJ City Street Pitch',
-    short: 'AJ PITCH',
-    x: -102,   // same yard as buildAjegunle open space
-    z: 92,
-    c: '#2f7d49',
-    sign: '#ffffff',
-    kind: 'pitch',
-    region: 'ajegunle',
-  },
 ];
+export const ARTISAN_NPCS = LANDMARKS.filter(l => l.kind === 'artisan');
 // Compound cells for the corridor districts. style: 'island' (towers) | 'vi' (towers and hotels) | 'yaba' (storey) | 'lekki' (duplexes) | 'ebute' (bungalow / storey)
 export const VI_CELLS = [[408, 210], [408, 270], [440, 270], [464, 270], [364, 318], [464, 318]];
 export const LEKKI_CELLS = [[520, 210], [520, 270], [600, 270], [520, 318], [600, 318]];
@@ -185,9 +150,6 @@ export const BUSSTOPS = [
   { id: 'ebutebus', name: 'Ebute Metta Bus Stop', short: 'EBUTE METTA', x: 200, z: -316, agberos: 1 },
   { id: 'lekkibus', name: 'Lekki Toll Bus Stop', short: 'LEKKI B/S', x: 540, z: 226, agberos: 1 },
   { id: 'vibus', name: 'Falomo Bus Stop', short: 'FALOMO B/S', x: 420, z: 226, agberos: 0 },
-  
-  // Ajegunle corridor (dense, cosmopolitan, low-income)
-  { id: 'ajstop', name: 'Ajegunle Bus Stop', short: 'AJ B/S', x: -100, z: 88, agberos: 2 },
 ];
 
 // Housing (PRD §10): rent through an agent or buy from the landlord; owned homes can be let to tenants.
@@ -211,13 +173,20 @@ export const ANIMALS = [
 ];
 
 // Uniformed NPCs standing at their posts.
-export const UNIFORMS = { police: 0x111318, army: 0x3f5a2a, fire: 0xb52a2a, lawma: 0xf07a1e, lastma: 0xd9b92e, frsc: 0xe4d14b, racer: 0xff5d9e };
+export const UNIFORMS = {
+  police: 0x111318, army: 0x3f5a2a, fire: 0xb52a2a, lawma: 0xf07a1e,
+  lastma: 0xd9b92e, frsc: 0xe4d14b, racer: 0xff5d9e, vio: 0x174a78,
+  kai: 0x8a2638, civildefence: 0x245a74,
+};
 export const SERVICE_NPCS = [
   { x: 92, z: -84, u: 'police' }, { x: 100, z: -84, u: 'police' },
   { x: 114, z: -12, u: 'army' }, { x: 124, z: -12, u: 'army' },
   { x: 90, z: -36, u: 'fire' },
   { x: -92, z: 84, u: 'lawma' }, { x: -30, z: 13, u: 'lawma' }, { x: 30, z: -13, u: 'lawma' },
   { x: -12, z: -56, u: 'lastma' },
+  { x: -84, z: 112, u: 'vio' },
+  { x: 40, z: -76, u: 'kai' },
+  { x: 100, z: 80, u: 'civildefence' },
   { x: 80, z: 30, u: 'frsc' }, { x: 64, z: 30, u: 'frsc' },
   { x: -80, z: -58, u: 'racer' },
 ];

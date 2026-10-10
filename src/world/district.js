@@ -28,12 +28,17 @@ import {
   concreteTexture,
   cloudTexture,
   glowTexture,
+  waterTexture,
+  waterNormalTexture,
 } from './textures.js';
 import {
+  META,
+  DISTRICT_AREAS,
   ROADS,
   ROAD_NAMES,
   ROAD_WIDTHS,
   ROAD_EXTENT,
+  U_TURNS,
   roadExtent,
   LANDMARKS,
   BUSSTOPS,
@@ -58,6 +63,7 @@ import {
 } from '../data/locations.js';
 import { addDeck, deckHeightAt } from './terrain.js';
 import { buildWorldAssets } from './assets.js';
+import { registerSidewalks } from './walkables.js';
 
 const PALETTE = [
   0x6f7d84, 0x8a7d6a, 0x9c8f7a, 0x7a8ba0, 0x8f6b63, 0x6e8a8a, 0xa08866,
@@ -79,8 +85,82 @@ const reserved = (x, z, pad = 0) =>
   RESERVED.some(r => Math.hypot(x - r.x, z - r.z) < r.r - pad);
 const ROAD_W = ROAD_WIDTHS.h;
 const VROAD_W = ROAD_WIDTHS.v;
+const waterMaterials = [];
 
-function road(x, z, w, d, asphalt) {
+function roadMedian(axis, k, start, end) {
+  const openings = U_TURNS
+    .filter(u => u.axis === axis && u.k === k && u.at > start + 8 && u.at < end - 8)
+    .map(u => u.at)
+    .sort((a, b) => a - b);
+  let cursor = start;
+  for (const at of openings) {
+    const openingStart = Math.max(cursor, at - 8);
+    if (openingStart > cursor) {
+      const length = openingStart - cursor;
+      if (axis === 'h') solidBox('medians', (cursor + openingStart) / 2, k, length, 1.2, 0.9);
+      else solidBox('medians', k, (cursor + openingStart) / 2, 1.2, length, 0.9);
+    }
+
+    function createExteriorDoor(x, z, depth) {
+      const hinge = new THREE.Group();
+      hinge.position.set(x - 0.75, 0, z - depth / 2 - 0.08);
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 0.14), mat(0x493120));
+      panel.position.set(0.75, 1.1, 0);
+      panel.castShadow = true;
+      hinge.add(panel);
+      G.scene.add(hinge);
+      return hinge;
+    }
+
+    function waterShoreline() {
+      const points = [];
+      const steps = 5;
+      for (const water of WATERS) {
+        const [x0, x1] = water.x, [z0, z1] = water.z;
+        const edges = [
+          { axis: 'x', fixed: x0, start: z0, end: z1, nx: -0.7, nz: 0 },
+          { axis: 'x', fixed: x1, start: z0, end: z1, nx: 0.7, nz: 0 },
+          { axis: 'z', fixed: z0, start: x0, end: x1, nx: 0, nz: -0.7 },
+          { axis: 'z', fixed: z1, start: x0, end: x1, nx: 0, nz: 0.7 },
+        ];
+        for (const edge of edges) {
+          const count = Math.ceil((edge.end - edge.start) / steps);
+          for (let i = 0; i < count; i++) {
+            const a = edge.start + (edge.end - edge.start) * i / count;
+            const b = edge.start + (edge.end - edge.start) * (i + 1) / count;
+            const mid = (a + b) / 2;
+            const x = edge.axis === 'x' ? edge.fixed + edge.nx : mid;
+            const z = edge.axis === 'z' ? edge.fixed + edge.nz : mid;
+            if (WATERS.some(other =>
+              other !== water &&
+              x >= other.x[0] && x <= other.x[1] &&
+              z >= other.z[0] && z <= other.z[1]
+            )) continue;
+            if (edge.axis === 'x') points.push(edge.fixed, 0.055, a, edge.fixed, 0.055, b);
+            else points.push(a, 0.055, edge.fixed, b, 0.055, edge.fixed);
+          }
+        }
+      }
+      if (!points.length) return;
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+      const foam = new THREE.LineSegments(
+        geometry,
+        new THREE.LineBasicMaterial({ color: 0xb9e6df, transparent: true, opacity: 0.28 })
+      );
+      foam.userData.name = 'water-shoreline';
+      G.scene.add(foam);
+    }
+    cursor = at + 8;
+  }
+  if (cursor < end) {
+    const length = end - cursor;
+    if (axis === 'h') solidBox('medians', (cursor + end) / 2, k, length, 1.2, 0.9);
+    else solidBox('medians', k, (cursor + end) / 2, 1.2, length, 0.9);
+  }
+}
+
+function road(x, z, w, d, asphalt, rules = {}) {
   const m = new THREE.MeshStandardMaterial({
     map: asphalt.clone(),
     roughness: 0.95,
@@ -91,13 +171,38 @@ function road(x, z, w, d, asphalt) {
   (G.roadMats = G.roadMats || []).push(m);
   box(x, z, w, d, 0.1, 0, 'road', 0, m);
   if (w > d) {
-    for (let p = x - w / 2 + 8; p < x + w / 2 - 8; p += 14) {
-      staticBox('lanes', p, z, 0.5, 3.2, 0.11);  // was 0.65 × 4
+    if (rules.median) {
+      const laneCount = d >= 36 ? 4 : d >= 28 ? 3 : 2;
+      const laneWidth = (d - 1.2) / (laneCount * 2);
+      for (const direction of [-1, 1]) {
+        for (let lane = 1; lane < laneCount; lane++) {
+          const laneZ = z + direction * (0.6 + laneWidth * lane);
+          for (let p = x - w / 2 + 8; p < x + w / 2 - 8; p += 14) {
+            staticBox('laneWhite', p, laneZ, 3.2, 0.16, 0.02, 0.11);
+          }
+        }
+      }
+    } else {
+      for (let p = x - w / 2 + 8; p < x + w / 2 - 8; p += 14) {
+        staticBox('lanes', p, z, 0.5, 3.2, 0.11);
+      }
     }
   } else {
-    for (let p = z - d / 2 + 8; p < z + d / 2 - 8; p += 14) {
-      staticBox('lanes', x, p, 4, 0.65, 0.11);
-      
+    if (rules.median) {
+      const laneCount = w >= 36 ? 4 : w >= 28 ? 3 : 2;
+      const laneWidth = (w - 1.2) / (laneCount * 2);
+      for (const direction of [-1, 1]) {
+        for (let lane = 1; lane < laneCount; lane++) {
+          const laneX = x + direction * (0.6 + laneWidth * lane);
+          for (let p = z - d / 2 + 8; p < z + d / 2 - 8; p += 14) {
+            staticBox('laneWhite', laneX, p, 0.16, 3.2, 0.02, 0.11);
+          }
+        }
+      }
+    } else {
+      for (let p = z - d / 2 + 8; p < z + d / 2 - 8; p += 14) {
+        staticBox('lanes', x, p, 4, 0.65, 0.11);
+      }
     }
   }
 }
@@ -213,13 +318,18 @@ function streetLights() {
 }
 
 function buildGround() {
+  const bounds = META.bounds;
+  const worldWidth = bounds.x[1] - bounds.x[0] + 140;
+  const worldDepth = bounds.z[1] - bounds.z[0] + 140;
+  const worldCenterX = (bounds.x[0] + bounds.x[1]) / 2;
+  const worldCenterZ = (bounds.z[0] + bounds.z[1]) / 2;
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(900, 880),
+    new THREE.PlaneGeometry(worldWidth, worldDepth),
     new THREE.MeshStandardMaterial({ map: groundTexture(), roughness: 1 })
   );
-  ground.material.map.repeat.set(90, 88);
+  ground.material.map.repeat.set(worldWidth / 10, worldDepth / 10);
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set(235, 0, -35);
+  ground.position.set(worldCenterX, 0, worldCenterZ);
   ground.receiveShadow = true;
   G.scene.add(ground);
 
@@ -227,62 +337,81 @@ function buildGround() {
   for (const z of ROADS.h) {
     const [a, b] = roadExtent('h', z);
     const w = ROAD_W[z];
-    road((a + b) / 2, z, b - a, w, asphalt);
     const r = roadRules('h', z);
-    if (r.median) {
-      solidBox('medians', (a + b) / 2, z, b - a, 1.2, 0.9);
-      for (let x = a + 12; x <= b - 12; x += 24) {
-        if (onBridge('h', z, x)) continue;
-        staticBox('poles', x, z, 0.3, 0.3, 9);
-        staticBox('heads', x, z, 2.6, 0.5, 0.3, 9);
-      }
-    }
+    road((a + b) / 2, z, b - a, w, asphalt, r);
+    if (r.median) roadMedian('h', z, a, b);
   }
   for (const x of ROADS.v) {
     const [a, b] = roadExtent('v', x);
     const w = VROAD_W[x];
-    road(x, (a + b) / 2, w, b - a, asphalt);
     const r = roadRules('v', x);
-    if (r.median) {
-      solidBox('medians', x, (a + b) / 2, 1, b - a, 0.9);
-      for (let z = a + 12; z <= b - 12; z += 24) {
-        if (onBridge('v', x, z)) continue;
-        staticBox('poles', x, z, 0.3, 0.3, 9);
-        staticBox('heads', x, z, 0.5, 2.6, 0.3, 9);
+    road(x, (a + b) / 2, w, b - a, asphalt, r);
+    if (r.median) roadMedian('v', x, a, b);
+  }
+  if (ROADS.h.includes(-330) && roadRules('h', -330).median) {
+    const [start, end] = roadExtent('h', -330);
+    for (const direction of [-1, 1]) {
+      const laneZ = -330 + direction * 8.5;
+      staticBox('buslanes', (start + end) / 2, laneZ, end - start, 5, 0.05, 0.1);
+      for (let x = start + 15; x < end - 5; x += 28) {
+        staticBox('lanes', x, laneZ, 4, 0.22, 0.02, 0.15);
       }
     }
   }
   road(152, 0, 30, 22, asphalt);
   sidewalks(concreteTexture());
 
-  const wm = new THREE.MeshStandardMaterial({
-    color: 0x14758e,
-    roughness: 0.22,
-    metalness: 0.45,
-  });
+  waterMaterials.length = 0;
   G.waters = WATERS.map(w => {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(w.x[1] - w.x[0], w.z[1] - w.z[0]),
-      wm
+    const width = w.x[1] - w.x[0], depth = w.z[1] - w.z[0];
+    const map = waterTexture();
+    map.repeat.set(width / 38, depth / 38);
+    const normalMap = waterNormalTexture();
+    normalMap.repeat.set(width / 38, depth / 38);
+    const material = new THREE.MeshPhysicalMaterial({
+      color: 0xc9e7e4,
+      map,
+      normalMap,
+      normalScale: new THREE.Vector2(0.38, 0.38),
+      roughness: 0.24,
+      metalness: 0.04,
+      clearcoat: 0.62,
+      clearcoatRoughness: 0.24,
+      envMapIntensity: 0.65,
+    });
+    waterMaterials.push({ map, normalMap });
+    const geometry = new THREE.PlaneGeometry(
+      width,
+      depth,
+      Math.max(2, Math.ceil(width / 20)),
+      Math.max(2, Math.ceil(depth / 20))
     );
+    const vertices = geometry.attributes.position;
+    for (let i = 0; i < vertices.count; i++) {
+      const x = vertices.getX(i), z = vertices.getY(i);
+      vertices.setZ(i, 0.025 * Math.sin(x * 0.16 + z * 0.09));
+    }
+    geometry.computeVertexNormals();
+    const m = new THREE.Mesh(geometry, material);
     m.rotation.x = -Math.PI / 2;
     m.position.set((w.x[0] + w.x[1]) / 2, 0.03, (w.z[0] + w.z[1]) / 2);
     G.scene.add(m);
     return m;
   });
   G.water = G.waters[0];
-  for (const sx of [WATER.x - WATER.w / 2 - 3, WATER.x + WATER.w / 2 + 3]) {
-    const sand = box(sx, 40, 6, 580, 0.08, 0xcbb98a, 'prop');
-    sand.receiveShadow = true;
-  }
-  {
-    const beach = box(480, 328, 280, 8, 0.1, 0xe3d3a6, 'prop');
-    beach.receiveShadow = true;
+  waterShoreline();
+  if (META.id === 'lagos' || META.id === 'surulere') {
+    for (const sx of [WATER.x - WATER.w / 2 - 3, WATER.x + WATER.w / 2 + 3]) {
+      const sand = box(sx, 40, 6, 580, 0.08, 0xcbb98a, 'prop');
+      sand.receiveShadow = true;
+    }
   }
 }
 
 function buildSky() {
-  const geo = new THREE.SphereGeometry(460, 24, 12);
+  const bounds = META.bounds;
+  const radius = Math.hypot(bounds.x[1] - bounds.x[0], bounds.z[1] - bounds.z[0]) * 0.9;
+  const geo = new THREE.SphereGeometry(Math.max(460, radius), 32, 16);
   const sky = new THREE.Mesh(
     geo,
     new THREE.ShaderMaterial({
@@ -327,9 +456,9 @@ function buildSky() {
       })
     );
     c.position.set(
-      (Math.random() - 0.5) * 520,
+      bounds.x[0] + Math.random() * (bounds.x[1] - bounds.x[0]),
       95 + Math.random() * 45,
-      (Math.random() - 0.5) * 520
+      bounds.z[0] + Math.random() * (bounds.z[1] - bounds.z[0])
     );
     const s = 50 + Math.random() * 60;
     c.scale.set(s, s * 0.45, 1);
@@ -371,6 +500,35 @@ function buildBlocks() {
           5,
           1.25
         );
+      }
+    }
+  }
+}
+
+function buildRegionalBlocks() {
+  const areas = DISTRICT_AREAS.length
+    ? DISTRICT_AREAS
+    : [{ META, RESERVED, WATER, WATERS }];
+  for (const area of areas) {
+    const { x: xb, z: zb } = area.META.bounds;
+    for (let x = Math.ceil((xb[0] + 10) / 24) * 24; x < xb[1] - 10; x += 24) {
+      for (let z = Math.ceil((zb[0] + 10) / 24) * 24; z < zb[1] - 10; z += 24) {
+        if (reserved(x, z) || inWater(x, z) || onAnyRoad(x, z, 8)) continue;
+        if (Math.random() > 0.3) continue;
+        const styleRoll = Math.random();
+        const style = styleRoll < 0.12 ? 'highrise' : styleRoll < 0.72 ? 'storey' : 'bungalow';
+        const b = compound(x, z, 20, 18, style, pick(PALETTE));
+        if (style !== 'bungalow' && Math.random() < 0.48) {
+          sign(
+            pick(SHOP_SIGNS),
+            b.position.x,
+            2.6,
+            b.position.z - 7.2,
+            Math.random() < 0.5 ? '#3dff79' : '#ffc52f',
+            5,
+            1.25
+          );
+        }
       }
     }
   }
@@ -698,6 +856,137 @@ function buildAjPitch() {
   );
 }
 
+function buildBeach(l) {
+  const sand = box(l.x, l.z + 1, 42, 30, 0.08, 0xd8c596, 'prop', 0.04);
+  sand.receiveShadow = true;
+  for (let i = 0; i < 4; i++) {
+    const x = l.x - 14 + i * 9;
+    const z = l.z - 4;
+    staticCyl('umbrellas', x, z, 1.5, 0.12, 2.1, 10, 0.2);
+    staticCyl('poles', x, z, 0.05, 2.1, 0, 8);
+    box(x + 2, z + 5, 2.8, 1.2, 0.16, i % 2 ? 0xffe2b1 : 0x8db7c8, 'prop', 0.2);
+  }
+  sign(l.name.toUpperCase(), l.x, 3.4, l.z - 13, '#ffffff', 8, 1.5, 'rgba(26,91,112,.94)');
+}
+
+function buildArtisanWorkshop(l) {
+  const width = 16, depth = 13;
+  building(l.x, l.z, width, depth, l.h, parseInt(l.c.slice(1), 16), 'landmark');
+  l.doorMesh = createExteriorDoor(l.x, l.z, depth);
+  sign(l.profession.toUpperCase(), l.x, l.h + 1.6, l.z - 7.2, l.sign, 7, 1.7, 'rgba(68,43,24,.94)');
+  box(l.x, l.z + 8, 8, 3.2, 0.14, 0x6e4d30, 'prop', 0.1);
+  if (l.profession === 'Carpenter') {
+    for (let i = 0; i < 4; i++) box(l.x - 4 + i * 2.5, l.z + 6, 5.2, 0.3, 0.25, i % 2 ? 0xc39155 : 0x9b6f3d, 'prop', 0.25 + i * 0.04);
+    box(l.x + 4, l.z + 8, 0.35, 1.7, 0.8, 0xb4a17a, 'prop', 0.2);
+  } else if (l.profession === 'Tailor') {
+    box(l.x - 3, l.z + 6, 2.4, 1.6, 1.2, 0x34414a, 'prop', 0.4);
+    cyl(l.x - 3, l.z + 6, 0.65, 0.12, 0xc7b19b, 'prop', 1.62, 16, 0.65);
+    box(l.x + 3, l.z + 7, 1.2, 2, 2.6, 0x926e87, 'prop', 0.15);
+    for (let i = 0; i < 3; i++) box(l.x + 3, l.z + 5.7 + i * 0.8, 1.35, 0.1, 0.12, [0xcc6474, 0x5b8b88, 0xe2b644][i], 'prop', 0.2);
+  } else if (l.profession === 'Shoemaker') {
+    box(l.x - 2, l.z + 6, 5, 1.6, 1.1, 0x5d4635, 'prop', 0.35);
+    for (let i = 0; i < 4; i++) box(l.x + 3, l.z + 5 + i * 0.8, 2.4, 0.35, 0.25, i % 2 ? 0x4e3426 : 0x9e6b3d, 'prop', 0.45);
+    for (let i = 0; i < 3; i++) box(l.x - 4 + i * 1.2, l.z + 8, 0.75, 0.32, 0.18, 0x342b26, 'prop', 0.2);
+  } else if (l.profession === 'Welder') {
+    box(l.x - 2, l.z + 6, 4.4, 1.8, 1.25, 0x515a60, 'prop', 0.4);
+    for (let i = 0; i < 3; i++) cyl(l.x + 3 + i * 1.2, l.z + 7, 0.35, 1.2, 0x59646a, 'prop', 0.12, 10);
+    const sparks = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffb52e }));
+    sparks.position.set(l.x, 1.8, l.z + 5.4);
+    G.scene.add(sparks);
+  } else if (l.profession === 'Painter') {
+    const easel = new THREE.Group();
+    for (const [x, z] of [[-1.2, 0], [1.2, 0], [0, -0.3]]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.2, 0.12), mat(0x795b3d));
+      leg.position.set(l.x + x, 1.5, l.z + 6 + z);
+      easel.add(leg);
+    }
+    const canvas = new THREE.Mesh(new THREE.BoxGeometry(2.3, 2, 0.12), mat(0xd5c7a0));
+    canvas.position.set(l.x, 1.8, l.z + 5.7);
+    easel.add(canvas);
+    G.scene.add(easel);
+    for (let i = 0; i < 3; i++) cyl(l.x + 4 + i * 0.8, l.z + 7, 0.28, 0.8, [0xc94639, 0x4686a2, 0xd6ae40][i], 'prop', 0.1, 10);
+  }
+}
+
+function createAirplane(color = 0xf4f3e9) {
+  const group = new THREE.Group();
+  const bodyMat = mat(color, { roughness: 0.42, metalness: 0.12 });
+  const trimMat = mat(0x226b8e, { roughness: 0.4, metalness: 0.15 });
+  const glassMat = mat(0x23485b, { roughness: 0.22, metalness: 0.18 });
+  const addBox = (w, h, d, material, x, y, z) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    group.add(mesh);
+    return mesh;
+  };
+  const fuselage = new THREE.Mesh(new THREE.CapsuleGeometry(0.82, 11.5, 4, 10), bodyMat);
+  fuselage.rotation.x = Math.PI / 2;
+  fuselage.position.y = 0.72;
+  fuselage.castShadow = true;
+  group.add(fuselage);
+  addBox(23, 0.28, 3.3, bodyMat, 0, 0.35, 0.3);
+  addBox(8.2, 0.2, 2, trimMat, 0, 0.68, 6.1);
+  addBox(0.24, 3.2, 1.8, bodyMat, 0, 1.45, 6.7);
+  addBox(1.4, 0.28, 5, trimMat, 0, 0.18, 0.4);
+  const engineGeo = new THREE.CylinderGeometry(0.48, 0.56, 2.7, 10);
+  for (const x of [-5.6, 5.6]) {
+    const engine = new THREE.Mesh(engineGeo, trimMat);
+    engine.rotation.x = Math.PI / 2;
+    engine.position.set(x, -0.12, 0.5);
+    group.add(engine);
+    const wheel = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), mat(0x202225));
+    wheel.position.set(x * 0.55, -0.82, 1.2);
+    group.add(wheel);
+  }
+  addBox(1.45, 0.55, 1.4, glassMat, 0, 1.26, -5.7);
+  for (const side of [-1, 1]) {
+    for (let z = -3.8; z <= 4.2; z += 1.6) {
+      const window = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.25, 0.75), glassMat);
+      window.position.set(side * 0.79, 0.92, z);
+      group.add(window);
+    }
+  }
+  return group;
+}
+
+function buildAirport(l) {
+  const runwayZ = l.z - 66;
+  const runway = box(l.x + 20, runwayZ, 260, 38, 0.16, 0x353a3d, 'prop', 0.04);
+  runway.receiveShadow = true;
+  box(l.x + 20, runwayZ + 20, 22, 48, 0.12, 0x55585a, 'prop', 0.04);
+  const terminal = building(l.x, l.z + 13, 58, 22, 8, 0x83959a, 'landmark');
+  l.doorMesh = createExteriorDoor(l.x, l.z + 13, 22);
+  box(l.x, l.z + 1.6, 46, 0.35, 3.2, 0x367b8d, 'prop', 2.4);
+  const tower = building(l.x + 31, l.z + 9, 9, 10, 17, 0x70868b, 'landmark');
+  box(l.x + 31, l.z + 9, 8.2, 8.5, 0.4, 0x24495b, 'prop', 14);
+  box(l.x + 20, l.z - 42, 78, 26, 0.1, 0x777a78, 'prop', 0.04);
+  for (let x = l.x - 100; x <= l.x + 140; x += 24) {
+    box(x, runwayZ, 12, 0.32, 0.025, 0xe5e5d6, 'prop', 0.13);
+  }
+  for (const x of [l.x - 128, l.x + 148]) {
+    for (const z of [runwayZ - 15, runwayZ + 15]) {
+      const lamp = box(x, z, 0.2, 0.2, 0.85, 0xf7edd0, 'prop', 0.13);
+      lamps.push(lamp.material);
+    }
+  }
+  const parkedA = createAirplane(0xf4f3e9);
+  parkedA.rotation.y = Math.PI / 2;
+  parkedA.position.set(l.x - 21, 1.1, l.z - 41);
+  G.scene.add(parkedA);
+  const parkedB = createAirplane(0xe8ecea);
+  parkedB.rotation.y = Math.PI / 2;
+  parkedB.position.set(l.x + 23, 1.1, l.z - 41);
+  G.scene.add(parkedB);
+  const flying = createAirplane(0xf4f3e9);
+  flying.rotation.y = Math.PI / 2;
+  flying.position.set(l.x - 145, 76, runwayZ - 4);
+  G.scene.add(flying);
+  G.airplanes = [{ mesh: flying, start: l.x - 145, end: l.x + 145, speed: 13, baseY: 76 }];
+  sign('MURTALA MUHAMMED AIRPORT', l.x, 10, l.z + 1, '#ffffff', 17, 2.1, 'rgba(28,65,78,.96)');
+  (G.landmarkMeshes ??= {})[l.id] = [runway, terminal, tower, parkedA, parkedB, flying];
+}
+
 function buildLandmarks() {
   for (const l of LANDMARKS) {
     if (l.stadium) {
@@ -722,17 +1011,32 @@ function buildLandmarks() {
       continue;
     }
     if (l.kind === 'pitch') continue;
+    if (l.kind === 'airport') {
+      buildAirport(l);
+      continue;
+    }
+    if (l.kind === 'beach' || (l.waterfront && l.kind === 'landmark')) {
+      buildBeach(l);
+      continue;
+    }
+    if (l.kind === 'artisan') {
+      buildArtisanWorkshop(l);
+      continue;
+    }
 
     const big = l.kind === 'hotel' || l.kind === 'bank' || l.big;
+    const width = l.big ? 26 : big ? 20 : 18;
+    const depth = l.big ? 20 : big ? 16 : 14;
     building(
       l.x,
       l.z,
-      l.big ? 26 : big ? 20 : 18,
-      l.big ? 20 : big ? 16 : 14,
+      width,
+      depth,
       l.h,
       parseInt(l.c.slice(1), 16),
       'landmark'
     );
+    l.doorMesh = createExteriorDoor(l.x, l.z, depth);
     sign(
       l.name.toUpperCase(),
       l.x,
@@ -769,6 +1073,7 @@ function buildLandmarks() {
       p.h
     );
     p.door = house.userData.door;
+    p.doorMesh = house.userData.doorMesh;
     sign(p.sign, p.x, p.h + 1.6, p.z - 9.4, '#ffffff', 7, 1.7, 'rgba(120,60,20,.95)');
   }
 
@@ -946,10 +1251,20 @@ function streetSigns() {
       'rgba(20,90,50,.96)'
     );
   }
+  for (const u of U_TURNS) {
+    const width = u.axis === 'h' ? ROAD_W[u.k] : VROAD_W[u.k];
+    const x = u.axis === 'h' ? u.at : u.k - width / 2 - 3;
+    const z = u.axis === 'h' ? u.k - width / 2 - 3 : u.at;
+    if (inWater(x, z)) continue;
+    cyl(x, z, 0.08, 3.4, 0x3a8a4a, 'pole');
+    sign('U-TURN', x, 3.2, z, '#ffffff', 4.4, 0.9, 'rgba(20,90,50,.96)');
+  }
 }
 
 const STATIC_MATS = () => ({
   lanes: mat(0xc4b87a, { roughness: 0.95 }),  // was 0xe6d58a — less neon at night
+  laneWhite: mat(0xe6e8df, { roughness: 0.95 }),
+  buslanes: mat(0x226b8e, { roughness: 0.9 }),
   fences: mat(0xbfb8a6, { roughness: 0.9 }),
   poles: mat(0x6c7378, { metalness: 0.4, roughness: 0.5 }),
   heads: (() => {
@@ -1045,6 +1360,47 @@ function deckMesh(deck) {
   }
 }
 
+function interchangeRamp(coords, width = 5.5) {
+  const path = new THREE.CatmullRomCurve3(
+    coords.map(([x, y, z]) => new THREE.Vector3(x, y, z))
+  );
+  const steps = Math.max(12, Math.ceil(path.getLength() / 3));
+  const samples = path.getPoints(steps);
+  const vertices = [];
+  const indices = [];
+  const edgeA = [];
+  const edgeB = [];
+  for (let i = 0; i < samples.length; i++) {
+    const tangent = path.getTangentAt(i / (samples.length - 1));
+    const side = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize().multiplyScalar(width / 2);
+    const point = samples[i];
+    vertices.push(
+      point.x + side.x, point.y, point.z + side.z,
+      point.x - side.x, point.y, point.z - side.z
+    );
+    edgeA.push(new THREE.Vector3(point.x + side.x, point.y + 0.5, point.z + side.z));
+    edgeB.push(new THREE.Vector3(point.x - side.x, point.y + 0.5, point.z - side.z));
+    if (i < samples.length - 1) {
+      const a = i * 2;
+      indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  const asphalt = new THREE.Mesh(geometry, mat(0x34383c, { roughness: 0.95, side: THREE.DoubleSide }));
+  asphalt.receiveShadow = true;
+  G.scene.add(asphalt);
+  for (const edge of [edgeA, edgeB]) {
+    const rail = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(edge),
+      new THREE.LineBasicMaterial({ color: 0xb9b9b4 })
+    );
+    G.scene.add(rail);
+  }
+}
+
 function buildCorridors() {
   addDeck({
     id: 'shitta',
@@ -1106,6 +1462,14 @@ function buildCorridors() {
     { axis: 'v', k: 360, halfW: 10, from: -248, to: -86 },
   ]) {
     deckMesh(d);
+  }
+  if (META.id === 'lagos') {
+    interchangeRamp([[116, 0, -26], [142, 3.5, -26], [170, 7.5, -18], [190, 9, -12]]);
+    interchangeRamp([[116, 0, 26], [142, 3.5, 26], [170, 7.5, 18], [190, 9, 12]]);
+    interchangeRamp([[440, 8, 110], [450, 5, 108], [466, 1, 98]], 5);
+    interchangeRamp([[440, 8, 155], [450, 5, 169], [464, 1, 205]], 5);
+    sign('COSTAIN INTERCHANGE · APAPA / ISLAND', 154, 12, -26, '#ffffff', 13, 1.6, 'rgba(20,90,50,.96)');
+    sign('FALOMO RAMPS · IKOYI / V.I.', 458, 9.5, 145, '#ffffff', 10, 1.4, 'rgba(20,90,50,.96)');
   }
 
   sign(
@@ -1207,10 +1571,10 @@ function buildCorridors() {
     }
   }
 
-  cyl(152, 0, 4, 0.5, 0x8d9a8a, 'prop', 0, 24);
-  cyl(152, 0, 0.3, 5, 0x5d402b, 'prop', 0.5);
-  solidAt(152, 0, 8.3, 8.3);
-  sign('COSTAIN', 152, 6.2, 0, '#ffffff', 5, 1.2, 'rgba(20,90,50,.96)');
+  cyl(152, -22, 4, 0.5, 0x8d9a8a, 'prop', 0, 24);
+  cyl(152, -22, 0.3, 5, 0x5d402b, 'prop', 0.5);
+  solidAt(152, -22, 8.3, 8.3);
+  sign('COSTAIN', 152, 6.2, -22, '#ffffff', 5, 1.2, 'rgba(20,90,50,.96)');
   sign(
     'EKO BRIDGE → LAGOS ISLAND',
     185,
@@ -1403,11 +1767,15 @@ function buildPlaces() {
 export function buildDistrict() {
   buildSky();
   buildGround();
-  buildCorridors();
+  if (META.id === 'surulere' || META.id === 'lagos') buildCorridors();
+  registerSidewalks();
   streetLights();
   streetSigns();
-  buildBlocks();
-  buildIsland();
+  if (META.id === 'surulere' || META.id === 'lagos') {
+    buildBlocks();
+    buildIsland();
+  }
+  if (META.id !== 'surulere') buildRegionalBlocks();
   buildLandmarks();
   buildPlaces();
   buildPalms();
@@ -1420,9 +1788,23 @@ export function buildDistrict() {
 }
 
 export function updateClouds(dt) {
+  const [west, east] = META.bounds.x;
   for (const c of G.clouds || []) {
     c.position.x += dt * 1.2;
-    if (c.position.x > 280) c.position.x = -280;
+    if (c.position.x > east + 80) c.position.x = west - 80;
+  }
+}
+
+export function updateWorldVisuals(dt) {
+  updateClouds(dt);
+  for (const textures of waterMaterials) {
+    textures.map.offset.x = (textures.map.offset.x + dt * 0.006) % 1;
+    textures.normalMap.offset.y = (textures.normalMap.offset.y + dt * 0.012) % 1;
+  }
+  for (const plane of G.airplanes || []) {
+    plane.mesh.position.x += plane.speed * dt;
+    plane.mesh.position.y = plane.baseY + Math.sin(performance.now() * 0.0012) * 1.2;
+    if (plane.mesh.position.x > plane.end) plane.mesh.position.x = plane.start;
   }
 }
 

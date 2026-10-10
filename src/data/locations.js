@@ -2,6 +2,9 @@
 import { DISTRICT } from './districts/index.js';
 
 export const META = DISTRICT.META;
+export const DISTRICT_AREAS = DISTRICT.DISTRICT_AREAS || [];
+export const U_TURNS = DISTRICT.U_TURNS || [];
+export const ARTISAN_NPCS = DISTRICT.ARTISAN_NPCS || [];
 export const ROADS = DISTRICT.ROADS;
 export const ROAD_NAMES = DISTRICT.ROAD_NAMES;
 export const ROAD_WIDTHS = DISTRICT.ROAD_WIDTHS;

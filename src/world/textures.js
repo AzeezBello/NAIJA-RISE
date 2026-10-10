@@ -29,6 +29,37 @@ export function groundTexture() {
   grain(g, 256, 256, 22);
   return tex(c);
 }
+export function waterTexture() {
+  const c = canvas(256, 256), g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 256, 256);
+  grd.addColorStop(0, '#267c8d');
+  grd.addColorStop(0.5, '#368f9a');
+  grd.addColorStop(1, '#1c687e');
+  g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+  for (let y = 8; y < 256; y += 24) {
+    g.beginPath(); g.moveTo(0, y);
+    for (let x = 0; x <= 256; x += 32) g.quadraticCurveTo(x + 16, y + Math.sin((x + y) * 0.035) * 5, x + 32, y);
+    g.strokeStyle = 'rgba(194,232,226,.19)'; g.lineWidth = 1.5; g.stroke();
+    g.beginPath(); g.moveTo(0, y + 4);
+    for (let x = 0; x <= 256; x += 32) g.quadraticCurveTo(x + 16, y + 4 + Math.sin((x + y) * 0.027) * 3, x + 32, y + 4);
+    g.strokeStyle = 'rgba(13,66,83,.2)'; g.lineWidth = 1; g.stroke();
+  }
+  grain(g, 256, 256, 10);
+  return tex(c);
+}
+export function waterNormalTexture() {
+  const size = 64, data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const i = (y * size + x) * 4;
+    data[i] = 128 + Math.sin((x + y * 0.5) * 0.28) * 22;
+    data[i + 1] = 128 + Math.cos((y - x * 0.35) * 0.3) * 20;
+    data[i + 2] = 245; data[i + 3] = 255;
+  }
+  const t = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.needsUpdate = true;
+  return t;
+}
 export function concreteTexture() {
   const c = canvas(128, 128), g = c.getContext('2d');
   g.fillStyle = '#9a9b95'; g.fillRect(0, 0, 128, 128); grain(g, 128, 128, 20);

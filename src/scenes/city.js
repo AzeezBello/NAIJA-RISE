@@ -7,15 +7,15 @@ import { updateCharacters } from '../entities/character.js';
 import { applyQuality } from '../core/quality.js';
 import { spawnContacts, updateContacts } from '../entities/contacts.js';
 import { updateTolls } from '../systems/tolls.js';
-import { spawnNpcs, spawnAgberos, spawnServiceNpcs, spawnExtras, spawnCrew, updateNpcs } from '../entities/npcs.js';
+import { spawnNpcs, spawnAgberos, spawnServiceNpcs, spawnArtisanNpcs, spawnExtras, spawnCrew, updateNpcs } from '../entities/npcs.js';
 import { spawnAnimals, applyPet, updateAnimals } from '../entities/animals.js';
 import { updateTraffic } from '../entities/vehicles.js';
-import { updateClouds } from '../world/district.js';
+import { updateWorldVisuals } from '../world/district.js';
 import { applySky, updateClock } from '../world/daynight.js';
 import { createMarkers, updateMarkers, updateRoute, homeProp } from '../systems/navigation.js';
 import { setupDialogue } from '../systems/dialogue.js';
 import { setupInteraction } from '../systems/interaction.js';
-import { setupMovement, updateMovement, updateCamera } from '../systems/movement.js';
+import { setupMovement, updateMovement, updateCamera, moveFoot } from '../systems/movement.js';
 import { updateVitals } from '../systems/vitals.js';
 import { updateEconomy, msg } from '../systems/economy.js';
 import { updateLaw } from '../systems/police.js';
@@ -38,6 +38,7 @@ import { toggleColliderDebug } from '../world/builders.js';
 import { updateVehicleTransition } from '../systems/interaction.js';
 import { setupFamily, maybeIssueFamilyRequest, updateFamily } from '../systems/family.js';
 import { updateWorldAssets } from '../world/assets.js';
+import { updateInterior } from '../world/interior.js';
 
 
 // The playable city. World geometry and traffic are built once in main.js; this scene adds the player,
@@ -51,7 +52,7 @@ export const CityScene = {
       built = true;
       createPlayer();
       createMarkers();
-      spawnNpcs(PERF.lowEnd ? PERF.npcs.low : PERF.npcs.full); spawnAgberos(); spawnServiceNpcs(); spawnExtras(); spawnCrew(); spawnAnimals(); spawnContacts();
+      spawnNpcs(PERF.lowEnd ? PERF.npcs.low : PERF.npcs.full); spawnAgberos(); spawnServiceNpcs(); spawnArtisanNpcs(); spawnExtras(); spawnCrew(); spawnAnimals(); spawnContacts();
       applyQuality(G.quality);   // crowd / traffic caps for the current graphics level
       buildHud(root); buildPhone(root); buildTouch(root);
       setupDialogue(); setupInteraction(); setupMovement(); setupAudio();
@@ -72,6 +73,17 @@ export const CityScene = {
   exit() { $('hud')?.classList.remove('show'); },
   update(dt) {
     updateGamepad(dt);
+    if (G.interior) {
+      updateInterior(dt);
+      if (G.interior) {
+        if (!G.interior.exiting) moveFoot(dt);
+        updatePlayer();
+        updateCharacters(dt);
+        updateCamera(dt);
+        frame++; hudFrame(); updateTouch();
+      }
+      return;
+    }
     updateVehicleTransition(dt);
     updateMovement(dt);
     updatePlayer();
@@ -84,7 +96,7 @@ export const CityScene = {
     updateAnimals(dt);
     updateWorldAssets(dt);         // Alpha 1.1: ambient dog/cat wander + stadium GLB streaming
     updateMarkers(dt);
-    updateClouds(dt);
+    updateWorldVisuals(dt);
     updateVitals(dt);
     updateEconomy(dt);
     updateLaw(dt);

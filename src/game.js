@@ -1,6 +1,7 @@
 // Engine entry usable from the static page (src/main.js) or from React/Next (web/components/GameCanvas.tsx).
 // createGame mounts the renderer into `mount`, builds UI into `ui`, and returns { stop } for cleanup.
-import { PERF } from './data/config.js';
+import { PERF, WORLD } from './data/config.js';
+import { META } from './data/locations.js';
 import { preloadCharacters } from './entities/character.js';
 import { setupPostFx, renderFrame } from './core/postfx.js';
 import { setQuality, updateQuality } from './core/quality.js';
@@ -21,6 +22,8 @@ let running = false;
 export function createGame({ mount, ui, startScene } = {}) {
   if (running) return { stop: stopGame };
   running = true;
+  WORLD.bounds = META.bounds;
+  WORLD.spawn = META.spawn || { x: 0, z: 34 };
   G.uiRoot = ui;
   G.state = loadState();
   const { renderer, scene, camera } = createRenderer(mount);
