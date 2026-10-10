@@ -3,7 +3,7 @@ import { emit, on } from '../core/events.js';
 import { dist, fmt, pick } from '../core/utils.js';
 import {
   FAMILY, FAMILY_HOME, FAMILY_REQUESTS, familyOf, requestOf,
-  scheduleSlot, spotCoords, REQUEST_NEED_LABEL, FAMILY_SPOTS,
+  scheduleSlot, spotCoords, REQUEST_NEED_LABEL, FAMILY_SPOTS, relationshipLabel,
 } from '../data/family.js';
 import { placeOf } from '../data/locations.js';
 import { msg, pay, xp, addRep } from './economy.js';
@@ -14,6 +14,10 @@ import { setWaypoint } from './navigation.js';
 const COOLDOWN_DAYS = 1;
 const IGNORE_DAYS = 2;
 const ARRIVE_EPS = 0.35;   // snap distance while lerping
+const NEED_DECAY = {
+  mum: { food: 12, companionship: 14 },
+  sibling: { education: 9, companionship: 14 },
+};
 
 // Runtime positions (updated each frame)
 const live = Object.create(null); // id → { x, z, label }
@@ -28,6 +32,7 @@ function resolveSpots() {
 function canOffer(req, s) {
   const last = s.familyDone?.[req.id];
   if (last != null && s.day - last < COOLDOWN_DAYS) return false;
+  if (req.need && (s.familyNeeds?.[req.who]?.[req.need] ?? 100) > (req.threshold ?? 75)) return false;
   return true;
 }
 
@@ -37,7 +42,11 @@ export function maybeIssueFamilyRequest() {
   if (s.familyReqDay === s.day) return;
   const pool = FAMILY_REQUESTS.filter(r => canOffer(r, s));
   if (!pool.length) return;
-  const req = pick(pool);
+  pool.sort((a, b) =>
+    (s.familyNeeds?.[a.who]?.[a.need] ?? 100) - (s.familyNeeds?.[b.who]?.[b.need] ?? 100)
+  );
+  const urgentNeed = s.familyNeeds?.[pool[0].who]?.[pool[0].need] ?? 100;
+  const req = pick(pool.filter(r => (s.familyNeeds?.[r.who]?.[r.need] ?? 100) <= urgentNeed + 8));
   s.familyReq = req.id;
   s.familyReqDay = s.day;
   msg(req.who, req.msg);
@@ -90,11 +99,27 @@ function bumpRel(who, n) {
   r[who] = Math.max(0, Math.min(100, (r[who] || 0) + n));
 }
 
+function strengthenBond(who, amount) {
+  const before = relationshipLabel(G.state.familyRel[who] || 0);
+  bumpRel(who, amount);
+  const after = relationshipLabel(G.state.familyRel[who] || 0);
+  if (after !== before) toast(`${familyOf(who).name} · relationship: ${after}`);
+}
+
+function bumpNeed(who, need, n) {
+  if (!need) return;
+  const needs = G.state.familyNeeds[who];
+  if (needs && Number.isFinite(needs[need])) {
+    needs[need] = Math.max(0, Math.min(100, needs[need] + n));
+  }
+}
+
 function completeRequest(req) {
   const s = G.state;
   s.familyDone[req.id] = s.day;
   s.familyReq = null;
-  bumpRel(req.who, 8);
+  strengthenBond(req.who, 8);
+  bumpNeed(req.who, req.need, req.restore || 35);
   if (req.rep) for (const [k, v] of Object.entries(req.rep)) addRep(k, v);
   xp(req.xp || 5);
   if (s.waypoint?.label?.startsWith('Family')) setWaypoint(null);
@@ -117,6 +142,16 @@ export function tickFamilyIgnore() {
   s.familyReq = null;
   if (s.waypoint?.label?.startsWith('Family')) setWaypoint(null);
   emit('hud');
+}
+
+export function tickFamilyNeeds() {
+  const needs = G.state.familyNeeds;
+  for (const [who, decay] of Object.entries(NEED_DECAY)) {
+    needs[who] ??= {};
+    for (const [need, amount] of Object.entries(decay)) {
+      needs[who][need] = Math.max(0, (needs[who][need] ?? 100) - amount);
+    }
+  }
 }
 
 export function tryFamilyInteract() {
@@ -220,10 +255,23 @@ function greetFamily(id) {
   const label = familyWorldPos(id).label;
   const line =
     label === 'sleep' ? 'Shh… dey sleep.' :
-    rel >= 60 ? `${f.line} You be good child.` :
-    rel >= 30 ? f.line :
+    rel >= 85 ? `${f.line} You always show up for your family. I proud of you.` :
+    rel >= 65 ? `${f.line} You be good child. We fit count on you.` :
+    rel >= 40 ? `${f.line} E good say you come around.` :
+    rel >= 20 ? f.line :
     'Hmm. You rare for this house nowadays.';
-  startDialog([{ s: id, t: line }], [{ label: 'Greet', apply() { if (label !== 'sleep') bumpRel(id, 1); } }], ch => { ch.apply(); emit('hud'); });
+  const alreadyGreeted = G.state.familyGreetingDay[id] === G.state.day;
+  startDialog([{ s: id, t: line }], [{
+    label: alreadyGreeted ? 'Say goodbye' : 'Greet · spend a moment together',
+    apply() {
+      if (label === 'sleep' || alreadyGreeted) return;
+      G.state.familyGreetingDay[id] = G.state.day;
+      strengthenBond(id, 2);
+      bumpNeed(id, 'companionship', 8);
+      if (id === 'mum') bumpNeed(id, 'food', 3);
+      if (id === 'sibling') bumpNeed(id, 'education', 2);
+    },
+  }], ch => { ch.apply(); emit('hud'); });
 }
 
 export function familyPrompt() {
@@ -300,6 +348,7 @@ export function updateFamily(dt) {
 export function setupFamily() {
   resolveSpots();
   on('day', () => {
+    tickFamilyNeeds();
     tickFamilyIgnore();
     maybeIssueFamilyRequest();
   });

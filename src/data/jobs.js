@@ -20,6 +20,7 @@ export const JOBS = [
   { id: 'webdev', title: 'Web Freelancer', where: 'Cyber Café · Surulere', at: 'cafe', pay: 28000, xp: 28, dur: 4, by: 'cafeguy', skill: 'business', min: 12, needCourse: 'web' },
   { id: 'designer', title: 'Graphics Freelancer', where: 'Cyber Café · Surulere', at: 'cafe', pay: 24000, xp: 24, dur: 4, by: 'cafeguy', skill: 'business', min: 8, needCourse: 'graphic' },
   { id: 'coder', title: 'Junior Coder', where: 'Yaba · Tech errands', at: 'yaba', pay: 35000, xp: 32, dur: 5, by: 'cafeguy', skill: 'business', min: 15, needCourse: 'code' },
+  { id: 'it-support', title: 'IT Support Technician', where: 'Alagomeji Tech Hub', at: 'alagomeji-tech', pay: 42000, xp: 38, dur: 6, by: 'cafeguy', skill: 'business', min: 10, needCourse: 'yabatech' },
 ];
 export const jobOf = id => JOBS.find(j => j.id === id) || null;
 export const jobPay = (j, skills) => Math.round(j.pay * (1 + (skills?.[j.skill] || 0) * 0.01));   // +1% per skill point

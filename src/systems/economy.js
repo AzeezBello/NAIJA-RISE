@@ -55,7 +55,11 @@ export function updateEconomy(dt) {
       s.payIn = ECON.payCycle;
       const total = bizIncome(s);
       s.bank += total; tx('Business income', total); emit('cash');
-      for (const b of BUSINESSES) if (s.owned.includes(b.id)) { const c = bizCfg(s, b.id); c.stock = Math.max(0, (c.stock ?? 100) - 15); if (c.stock === 30) notify('Business', `${b.name} is running low on stock`); }
+      for (const b of BUSINESSES) if (s.owned.includes(b.id)) {
+        const c = bizCfg(s, b.id);
+        c.stock = Math.max(0, (c.stock ?? 100) - 15);
+        if (c.stock === 30) notify('Business', `${b.name} is running low on stock`);
+      }
       if (rivalOpen(s) && !s.rivalTold) { s.rivalTold = true; msg('nkechi', "Chidi don open shop near your own. E dey undercut you. Drop your prices if you wan keep customers."); }
       notify('RiseBank', `Credit alert · ${fmt(total)} business income`);
       emit('hud');

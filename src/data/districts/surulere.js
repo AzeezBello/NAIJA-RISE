@@ -74,6 +74,7 @@ export const LANDMARKS = [
   { id: 'shitta', name: 'Shitta Market', short: 'SHITTA MKT', x: -96, z: -24, c: '#6b4737', sign: '#ffc52f', h: 5, kind: 'market' },
   { id: 'mushin', name: 'Mushin Market', short: 'MUSHIN MKT', x: -24, z: -120, c: '#5e4a3a', sign: '#ffc52f', h: 5, kind: 'market' },
   { id: 'stadium', name: 'National Stadium', short: 'STADIUM', x: -104, z: -104, c: '#8a8f93', sign: '#ffffff', stadium: true, kind: 'landmark' },
+  { id: 'egbon-desk', name: 'Adugbo Community Desk', short: 'ADUGBO DESK', x: 144, z: 104, c: '#5b6540', sign: '#ffc52f', h: 4, kind: 'service' },
   // law and public services
   { id: 'police', name: 'Area C Police Station', short: 'POLICE', x: 96, z: -96, c: '#1f2b45', sign: '#ffffff', h: 6, kind: 'police' },
   { id: 'fire', name: 'Lagos State Fire Service', short: 'FIRE', x: 96, z: -48, c: '#8a2222', sign: '#ffffff', h: 6, kind: 'service' },

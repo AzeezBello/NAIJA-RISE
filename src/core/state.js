@@ -10,13 +10,23 @@ export const DEFAULT = {
   clock: TIME.startClock, day: 1,
   look: { skin: 2, face: 0, hair: 0, hairColor: 0, bodyType: 1, outfit: 0, shirt: 0, pants: 0, shoes: 0, accessory: 1, facialHair: 0 },   // ankara shirt, dark trousers, fila
   pet: null, prayedDay: 0, partyDay: 0, rented: null, let: [],
-  skills: { driving: 0, business: 0, charisma: 0, fitness: 0 },
+  skills: { driving: 0, business: 0, charisma: 0, fitness: 0, strength: 0 },
   rep: { public: 0, business: 0, street: 0, social: 0 },
   vehicles: [], biz: {}, lastSeen: 0, awayTotal: 0, arc: null, upgrades: {}, complaints: {},
+  college: null,
   gym: { until: 0, sessions: 0 }, digital: {}, football: { wins: 0, tier: 0 }, outfit: 0, ate: 0, storyPaused: false,
   settings: { sens: 1, shadows: !PERF.lowEnd, rotateMap: true, hints: true, touch: 'auto', mature: true },
     // Family life-sim (Alpha 1.1)
   familyRel: { mum: 20, sibling: 15 },   // 0–100 affection/trust
+  familyNeeds: {
+    mum: { food: 100, companionship: 100 },
+    sibling: { education: 100, companionship: 100 },
+  },
+  familyGreetingDay: {},
+  contactRel: {},
+  contactTalkDay: {},
+  contactFavourDay: {},
+  egbonLeadDay: 0,
   familyReq: null,                       // active request id or null
   familyReqDay: 0,                       // day the current request was issued
   familyDone: {},                        // { [reqId]: lastCompletedDay }
@@ -32,6 +42,18 @@ export function loadState() {
       const st = freshState();
       Object.assign(st, s);
       st.familyRel = Object.assign({}, DEFAULT.familyRel, s.familyRel || {});
+      st.familyNeeds = Object.fromEntries(Object.entries(DEFAULT.familyNeeds).map(([who, needs]) => [
+        who,
+        Object.assign({}, needs, s.familyNeeds?.[who] || {}),
+      ]));
+      st.familyGreetingDay = Object.assign({}, DEFAULT.familyGreetingDay, s.familyGreetingDay || {});
+      st.contactRel = Object.fromEntries(Object.entries(s.contactRel || {}).map(([id, rel]) => [
+        id,
+        { trust: rel?.trust ?? 20, respect: rel?.respect ?? 15 },
+      ]));
+      st.contactTalkDay = Object.assign({}, DEFAULT.contactTalkDay, s.contactTalkDay || {});
+      st.contactFavourDay = Object.assign({}, DEFAULT.contactFavourDay, s.contactFavourDay || {});
+      if (st.egbonLeadDay === undefined) st.egbonLeadDay = 0;
       st.familyDone = Object.assign({}, DEFAULT.familyDone, s.familyDone || {});
       st.digital = Object.assign({}, DEFAULT.digital, s.digital || {});
       if (st.familyReq === undefined) st.familyReq = null;

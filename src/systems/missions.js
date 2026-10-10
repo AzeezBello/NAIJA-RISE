@@ -34,7 +34,7 @@ function finishTask(ok) {
   if (G.task.item) removeItem(G.task.item);
   if (G.task.vehicle) G.task.vehicle.userData.marked = false;
   G.task = null;
-  if (ok) { m.after(); if (!s.done) s.mission++; }
+  if (ok) { m.after(); emit('mission:completed', m); if (!s.done) s.mission++; }
   else { m.fail?.(); toast('Mission failed'); }
   applyMission(); emit('mission:refresh'); emit('hud');
 }

@@ -25,6 +25,7 @@ const LOOKS = {
   captain: { rig: 0, look: { outfit: 4, shirt: 7, pants: 4, skin: 4 } },
   mum:     { rig: 0, look: { outfit: 9, shirt: 0, pants: 5, skin: 3, hair: 3, bodyType: 2 } },
   sibling: { rig: 0, look: { outfit: 10, shirt: 1, pants: 0, skin: 2, hair: 3, bodyType: 0 } },
+  egbon:   { rig: 0, look: { outfit: 1, shirt: 4, pants: 2, skin: 3, hair: 2, accessory: 1, bodyType: 2 } },
 };
 // Where a contact stands: on the street side of their building, by the shelter at a bus stop.
 function spotFor(c) {

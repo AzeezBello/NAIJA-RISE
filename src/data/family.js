@@ -1,4 +1,4 @@
-// Family life-sim stub (Alpha 1.1 Track C1).
+// Family life simulation (Alpha 1.1 Track C1).
 // Home is a face-me-I-face-you compound off Adelabu; mum and sibling stand in the yard.
 
 export const FAMILY_HOME = {
@@ -48,6 +48,9 @@ export const FAMILY_REQUESTS = [
     blurb: 'Mama need small money for market.',
     kind: 'money',
     amount: 5000,
+    need: 'food',
+    threshold: 76,
+    restore: 55,
     msg: 'My son, abeg send ₦5,000 for market. Pepper don cost.',
     done: 'God bless you. I go cook something nice when you come.',
     xp: 8, rep: { social: 3 },
@@ -58,6 +61,9 @@ export const FAMILY_REQUESTS = [
     title: 'Come home',
     blurb: 'Visit Mama at the compound.',
     kind: 'visit',
+    need: 'companionship',
+    threshold: 76,
+    restore: 45,
     msg: 'You don forget the road to this house? Come greet your mother today.',
     done: 'My son don come. Sit down, make I bring water.',
     xp: 6, rep: { social: 4 },
@@ -69,6 +75,9 @@ export const FAMILY_REQUESTS = [
     blurb: 'Buy suya for Chioma at a kiosk / Yaba.',
     kind: 'fetch',
     item: 'suya',
+    need: 'food',
+    threshold: 76,
+    restore: 40,
     msg: 'Abeg buy suya for me. I go repay you later — or maybe not.',
     done: 'You try! This suya sweet die.',
     xp: 7, rep: { social: 2 },
@@ -80,6 +89,9 @@ export const FAMILY_REQUESTS = [
     blurb: 'Chioma needs ₦8,000 for a school levy.',
     kind: 'money',
     amount: 8000,
+    need: 'education',
+    threshold: 76,
+    restore: 55,
     msg: 'School levy is ₦8,000. Daddy no dey around. You fit help?',
     done: 'Thank you jare. I no go disappoint you for school.',
     xp: 10, rep: { social: 3 },
@@ -90,13 +102,49 @@ export const FAMILY_REQUESTS = [
     title: 'Sunday visit',
     blurb: 'Spend time at home (visit).',
     kind: 'visit',
+    need: 'companionship',
+    threshold: 76,
+    restore: 50,
     msg: 'After church we dey wait you. Come eat with family.',
     done: 'Family wey stay together. Go well, my son.',
     xp: 8, rep: { social: 5 },
   },
+  {
+    id: 'bring_water',
+    who: 'mum',
+    title: 'Bring drinking water',
+    blurb: 'Mama needs drinking water at home.',
+    kind: 'fetch',
+    item: 'water',
+    need: 'food',
+    threshold: 55,
+    restore: 35,
+    msg: 'My son, abeg bring sachet water when you dey come. NEPA don affect our pumping machine.',
+    done: 'Thank you. Cold water fit solve plenty wahala.',
+    xp: 6, rep: { social: 2 },
+  },
 ];
 
 export const requestOf = id => FAMILY_REQUESTS.find(r => r.id === id);
+export const RELATIONSHIP_LEVELS = [
+  { min: 0, label: 'Strained' },
+  { min: 20, label: 'Distant' },
+  { min: 40, label: 'Warm' },
+  { min: 65, label: 'Close' },
+  { min: 85, label: 'Unshakable' },
+];
+export const relationshipLabel = score => {
+  let label = RELATIONSHIP_LEVELS[0].label;
+  for (const level of RELATIONSHIP_LEVELS) {
+    if (score >= level.min) label = level.label;
+  }
+  return label;
+};
+export const FAMILY_NEED_LABELS = {
+  food: 'Household',
+  education: 'School',
+  companionship: 'Togetherness',
+};
 
 // ---- C1.5 schedules ----------------------------------------------------------
 // Clock is G.state.clock (0–24). Each window: [startHour, endHour) → world spot.

@@ -28,7 +28,9 @@ export function updateVitals(dt) {
   } else {
     const sprinting = (G.keys.shift || G.pad?.sprint) && G.curSpeed > 5.5;
     const tank = s.home && s.upgrades?.[s.home]?.includes('tank') ? 1.25 : 1;
-    s.stamina = clampN(s.stamina + (sprinting ? -16 : 10 * tank) * dt, 0, 100);
+    const recovery = (10 + Math.min(5, (s.skills.fitness || 0) * 0.05)) * tank;
+    const sprintCost = 16 * (1 - Math.min(0.25, (s.skills.strength || 0) * 0.0025));
+    s.stamina = clampN(s.stamina + (sprinting ? -sprintCost : recovery) * dt, 0, 100);
     if (sprinting) gainSkill('fitness', dt * 0.05);
   }
   saveT += dt; if (saveT > 15) { saveT = 0; for (const v of G.parked) if (v.userData.owned) { const o = s.vehicles.find(o => o.id === v.userData.ownedId); if (o) o.pos = { x: v.position.x, z: v.position.z, rot: v.rotation.y }; } saveState(s); }

@@ -15,7 +15,10 @@ export default {
   icon: '<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M6 21v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3M9 14l3 3 3-3"/></svg>',
   render(body) {
     const s = G.state, L = s.look;
-    body.innerHTML = `<div class="card preview"><canvas id="charPreview" width="144" height="144"></canvas><div><h6>${esc(s.name)}</h6><p>Level ${s.level} · ${levelTitle(s.level)}</p><p>Skills grow with use: drive, sprint, work shifts, trade, socialise.</p></div></div>` +
+    const college = s.college
+      ? `<p>${s.college.graduated ? 'Yaba Tech Diploma · Computer Systems' : `Yaba Tech · Computer Systems · Semester ${s.college.semester}/3`}</p>`
+      : '';
+    body.innerHTML = `<div class="card preview"><canvas id="charPreview" width="144" height="144"></canvas><div><h6>${esc(s.name)}</h6><p>Level ${s.level} · ${levelTitle(s.level)}</p><p>Fitness improves stamina recovery; Strength reduces sprint stamina cost. Train at the gym to build both.</p>${college}</div></div>` +
       Sect('Skills') + Card(Object.entries(SKILLS).map(([k, label]) => bar(label, s.skills[k] || 0, 0, 100, 'hpfill')).join('')) +
       Sect('Reputation') + Card(Object.entries(REPS).map(([k, label]) => bar(label, s.rep[k] || 0, -100, 100, k === 'street' ? 'fuelfill' : 'stafill')).join('') + '<p>Public falls when you are arrested; Street rises with risk; Business with ownership; Social with owambe and nightlife.</p>') +
       Sect('Skin') + Swatches('skin', LOOK.skin, L.skin) + Sect('Face') + Chips('face', LOOK.face, L.face ?? 0) + Sect('Body') + Chips('bodyType', LOOK.bodyType, L.bodyType ?? 1) +

@@ -6,7 +6,7 @@ import { LANDMARKS, VENDORS } from '../data/locations.js';
 import { toast } from '../ui/feedback.js';
 import { pay, tx, xp, addItem, addRep, gainSkill, msg } from './economy.js';
 import { startDialog } from './dialogue.js';
-import { cafeCourseRows, completeCourse } from './education.js';
+import { cafeCourseRows, completeCourse, completeYabaTechSemester } from './education.js';
 
 // Living City places (Phase 2): gym, restaurant, mall + cinema, cyber café, football pitch, roadside vendors.
 // Every activity moves the player model: money, stamina (energy), skills, reputation, time — and opens opportunities.
@@ -24,21 +24,24 @@ export function openPlace(p) { ({ gym: gymMenu, restaurant: foodMenu, mall: mall
 
 /* ---------- gym ---------- */
 export const gymMember = () => s().gym.until > s().day;
-function train(kind, gain, cost) {
+function train(kind, fitnessGain, strengthGain, cost) {
   if (s().stamina < 35) return toast('Too tired to train — eat or rest first');
   if (cost && !pay(cost, `Gym · ${kind}`)) return toast('Not enough money');
-  s().stamina = Math.max(0, s().stamina - 35); s().health = Math.min(100, s().health + 5); s().gym.sessions++;
-  gainSkill('fitness', gain); hours(1); xp(4);
-  toast(`${kind} done · Fitness +${gain}`);
+  s().stamina = Math.max(0, s().stamina - 35); s().gym.sessions++;
+  if (fitnessGain) gainSkill('fitness', fitnessGain);
+  if (strengthGain) gainSkill('strength', strengthGain);
+  hours(1); xp(4);
+  toast(`${kind} done${fitnessGain ? ` · Fitness +${fitnessGain}` : ''}${strengthGain ? ` · Strength +${strengthGain}` : ''}`);
   if (s().gym.sessions === 5) msg('coach', 'Five sessions. You dey build. Boxing class dey open for you now.');
+  return true;
 }
 function gymMenu() {
   const c = PLACES_CFG.gym, m = gymMember();
-  startDialog([{ s: 'coach', t: m ? `Member till day ${s().gym.until}. Wetin we dey train today?` : `Day pass ${fmt(c.dayPass)}, monthly ${fmt(c.monthly)}. Strength, cardio, or a trainer session?` }], [
-    { label: m ? 'Strength training' : `Strength training · day pass ${fmt(c.dayPass)}`, apply() { train('Strength training', 4, m ? 0 : c.dayPass); } },
-    { label: m ? 'Cardio' : `Cardio · day pass ${fmt(c.dayPass)}`, apply() { train('Cardio', 3, m ? 0 : c.dayPass); s().stamina = Math.min(100, s().stamina + 10); } },
-    { label: `Personal trainer · ${fmt(c.trainer)}`, apply() { train('Trainer session', 8, c.trainer); } },
-    ...(s().skills.fitness >= c.boxingMin ? [{ label: 'Boxing class', apply() { train('Boxing', 6, m ? 0 : c.dayPass); addRep('street', 3); } }] : []),
+  startDialog([{ s: 'coach', t: m ? `Member till day ${s().gym.until}. Fitness helps you recover faster; strength makes sprinting cost less. Wetin we dey train today?` : `Day pass ${fmt(c.dayPass)}, monthly ${fmt(c.monthly)}. Fitness helps recovery; strength makes sprinting cost less. Which one you want to build?` }], [
+    { label: m ? 'Strength training' : `Strength training · day pass ${fmt(c.dayPass)}`, apply() { train('Strength training', 2, 5, m ? 0 : c.dayPass); } },
+    { label: m ? 'Cardio' : `Cardio · day pass ${fmt(c.dayPass)}`, apply() { if (train('Cardio', 5, 0, m ? 0 : c.dayPass)) s().stamina = Math.min(100, s().stamina + 10); } },
+    { label: `Personal trainer · ${fmt(c.trainer)}`, apply() { train('Trainer session', 5, 6, c.trainer); } },
+    ...(s().skills.fitness >= c.boxingMin ? [{ label: 'Boxing class', apply() { if (train('Boxing', 3, 4, m ? 0 : c.dayPass)) addRep('street', 3); } }] : []),
     ...(m ? [] : [{ label: `Monthly membership · ${fmt(c.monthly)}`, apply() { if (!pay(c.monthly, 'Gym membership')) return toast('Not enough money'); s().gym.until = s().day + 30; addRep('social', 2); toast('Member for 30 days'); } }]),
     { label: 'Leave', apply() {} },
   ].slice(0, 6), done);
@@ -99,8 +102,44 @@ function cafeMenu() {
 }
 
 /* ---------- Community Grammar School: evening adult classes ---------- */
-function schoolMenu() {
+function schoolMenu(p) {
   const cfg = PLACES_CFG.school, st = s(), helped = st.familyDone?.school_levy != null;
+  if (p.id === 'yabatech') {
+    const college = st.college;
+    const course = cfg.yabaTech;
+    const semesterAction = () => {
+      if (st.stamina < course.stamina) return toast('Too tired to study — rest first');
+      if (!pay(course.semester, 'Yaba Tech · semester fees')) return toast('Not enough money for semester fees');
+      st.stamina -= course.stamina;
+      hours(course.duration);
+      completeYabaTechSemester();
+    };
+    startDialog([{
+      s: 'cafeguy',
+      t: college?.graduated
+        ? 'Your Yaba Tech Diploma don complete. The Alagomeji Tech Hub dey hire — check your Jobs app.'
+        : college
+          ? `Welcome back. You don complete ${college.semester} of ${course.semesters} semesters for Computer Systems.`
+          : `Yaba College of Technology. Enrol for the Computer Systems diploma, study ${course.semesters} semesters, and qualify for IT support work.`,
+    }], [
+      ...(!college ? [{
+        label: `Enrol · Computer Systems diploma · ${fmt(course.enrollment)}`,
+        apply() {
+          if (!pay(course.enrollment, 'Yaba Tech · enrollment')) return toast('Not enough money to enrol');
+          st.college = { program: 'computer-systems', semester: 0, enrolledDay: st.day, graduated: false };
+          hours(1);
+          xp(5);
+          toast('Enrolled at Yaba Tech · Computer Systems');
+        },
+      }] : []),
+      ...(college && !college.graduated ? [{
+        label: `Study semester ${college.semester + 1} · ${fmt(course.semester)} · ${course.duration}h`,
+        apply: semesterAction,
+      }] : []),
+      { label: 'Leave', apply() {} },
+    ], done);
+    return;
+  }
   startDialog([{ s: 'cafeguy', t: helped ? 'Chioma school levy don clear. Evening adult class dey open for you.' : 'Community Grammar School. Evening adult classes — or support a student.' }], [
     { label: `Evening class · ${fmt(cfg.eveningClass)}`, apply() {
       if (st.stamina < 15) return toast('Too tired');

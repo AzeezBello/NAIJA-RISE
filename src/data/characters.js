@@ -57,5 +57,6 @@ export const CONTACTS = [
   { id: 'brt_driver', name: 'BRT Driver', role: 'BRT corridor', c: '#1c4fa0', line: 'Tap card or cash.' },
   { id: 'ajcaptain',  name: 'Baba Goal',  role: 'Street football · AJ City',  at: 'ajpitch',  c: '#2f7d49', line: 'AJ City dey produce ballers. You sabi play?',},
   { id: 'sisi', name: 'Sisi Kemi',  role: 'AJ City · connector',  at: 'ajegunle',  c: '#e8a0bf',  line: 'This AJ. Everybody know everybody. Wetin you need?',},
+  { id: 'egbon', name: 'Egbon Adugbo', role: 'Neighbourhood network manager · Surulere', at: 'egbon-desk', c: '#d2b36f', line: 'I know everybody for this adugbo. Tell me what kind work you dey find.', },
 ];
 export const contactOf = id => CONTACTS.find(c => c.id === id);

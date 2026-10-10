@@ -55,6 +55,7 @@ export function runMission() {
     if (ch && ch.apply) ch.apply();
     if (m.task && G.state.mission === before && !G.task) { startTask(m); return; }   // mission continues as a task
     m.after();
+    emit('mission:completed', m);
     if (!G.state.done) G.state.mission++;
     applyMission(); emit('hud');
   });

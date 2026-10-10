@@ -1080,6 +1080,7 @@ export function sleep(prop) {
     const s = G.state;
     s.clock = 7;
     s.day++;
+    emit('day', s.day);
     s.health = 100;
     s.stamina = 100;
     if (prop?.perk === 'heat0') {

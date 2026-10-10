@@ -87,11 +87,14 @@ export const PLACES_CFG = {
     ],
   },
   // Training centre at Community Grammar School: evening adult classes, extra credit if you paid Chioma's levy
-  school: { levyHelp: 2000, eveningClass: 15000, eveningSkill: { business: 3 } },
+  school: {
+    levyHelp: 2000, eveningClass: 15000, eveningSkill: { business: 3 },
+    yabaTech: { enrollment: 25000, semester: 18000, semesters: 3, duration: 4, stamina: 25 },
+  },
   football: { wager: 5000, tiers: ['Quick match', 'Neighbourhood tournament', 'Lagos championship'], prizes: [0, 20000, 100000] },
 };
 export const RENT = { agentFeeRate: 0.1, leaseDays: 30, tenantShare: 1 / 30 };   // tenants pay rent/30 per game day
-export const SKILLS = { driving: 'Driving', business: 'Business', charisma: 'Charisma', fitness: 'Fitness' };
+export const SKILLS = { driving: 'Driving', business: 'Business', charisma: 'Charisma', fitness: 'Fitness', strength: 'Strength' };
 export const REPS = { public: 'Public', business: 'Business', street: 'Street', social: 'Social' };
 export const DEALER = [['okada', 250000], ['keke', 350000], ['korope', 1200000], ['danfo', 2500000], ['car', 4000000]];
 export const BIZ = { staffCost: 50000, staffBonus: 0.3, maxStaff: 3, priceEffect: { low: 0.8, normal: 1, high: 1.2 } };

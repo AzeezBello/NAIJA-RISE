@@ -1,7 +1,7 @@
 import { G } from '../../core/context.js';
 import { emit } from '../../core/events.js';
 import { esc, fmt, pick } from '../../core/utils.js';
-import { BUSINESSES, bizPrice, bizIncome, bizOne, bizCfg, restockCost, rivalOpen, RIVAL, STAFF_NAMES } from '../../data/businesses.js';
+import { BUSINESSES, bizPrice, bizIncome, bizOne, bizCfg, staffIsOnDuty, STAFF_SHIFTS, restockCost, rivalOpen, RIVAL, STAFF_NAMES } from '../../data/businesses.js';
 import { BIZ } from '../../data/config.js';
 import { Balance, Card, Btn, Pill, Row, Spacer, Note } from '../components.js';
 import { toast } from '../feedback.js';
@@ -21,10 +21,15 @@ export default {
         const c = bizCfg(s, b.id);
         const priceBtns = ['low', 'normal', 'high'].map(p => Btn(p[0].toUpperCase() + p.slice(1), 'setPrice', { id: `${b.id}:${p}`, cls: (c.price === p ? '' : 'ghost ') + 'sm' })).join('');
         const stockCls = c.stock < 30 ? 'fuelfill' : 'hpfill';
+        const roster = c.names.slice(0, c.staff).map(name => {
+          const shiftId = c.shifts?.[name] || 'all-day';
+          const onDuty = STAFF_SHIFTS[shiftId] && staffIsOnDuty(s, b.id, name);
+          return Row(`<span class="sp">${esc(name)} ${onDuty ? Pill('ON SHIFT', 'green') : ''}</span>${Btn(STAFF_SHIFTS[shiftId]?.label || 'Set shift', 'cycleShift', { id: `${b.id}:${name}`, cls: 'ghost sm' })}`);
+        }).join('');
         return Card(`${Row(`<h6 class="sp">${esc(b.name)}</h6>${Pill('OWNED', 'gold')}${c.stock < 30 ? Pill('LOW STOCK', 'blue') : ''}`)}<p>${fmt(bizOne(s, b))} / min · staff ${c.names.length ? esc(c.names.join(', ')) : 'none'} · prices ${c.price}</p>
           <div class="vbar"><span style="width:40px">STOCK</span><div class="track"><i class="${stockCls}" style="width:${c.stock}%"></i></div><b style="width:30px;text-align:right">${Math.round(c.stock)}</b></div>
-          ${Row(`<span class="sp">Prices</span>${priceBtns}`)}${Row(Btn(`Restock · ${fmt(restockCost(b))}`, 'restock', { id: b.id, cls: 'ghost sm', disabled: c.stock >= 95 }) + Spacer() + Btn(c.staff >= BIZ.maxStaff ? 'Fully staffed' : `Hire · ${fmt(BIZ.staffCost)}`, 'hire', { id: b.id, cls: 'sm', disabled: c.staff >= BIZ.maxStaff }))}`);
-      }).join('') + Note('Stock drains 15% every payout and income scales with it. Each staff member adds 30% income. High prices earn more but cost Business reputation; low prices build it and beat the rival.');
+          ${Row(`<span class="sp">Prices</span>${priceBtns}`)}${roster}${Row(Btn(`Restock · ${fmt(restockCost(b))}`, 'restock', { id: b.id, cls: 'ghost sm', disabled: c.stock >= 95 }) + Spacer() + Btn(c.staff >= BIZ.maxStaff ? 'Fully staffed' : `Hire · ${fmt(BIZ.staffCost)}`, 'hire', { id: b.id, cls: 'sm', disabled: c.staff >= BIZ.maxStaff }))}`);
+      }).join('') + Note('Stock drains 15% every payout and income scales with it. Staff add 30% income while on shift. Cycle each worker between morning, afternoon, night and all-day shifts; overnight covers 22:00–06:00. Low prices build Business reputation and beat the rival.');
   },
   actions: {
     buy: id => {
@@ -35,7 +40,18 @@ export default {
       msg('bank', `Purchase confirmed: ${b.name}. Income of ${fmt(bizOne(s, b))} per minute will be paid to your account.`);
       emit('hud');
     },
-    hire: id => { const s = G.state, c = bizCfg(s, id); if (c.staff >= BIZ.maxStaff) return; if (!pay(BIZ.staffCost, 'Hired staff')) return toast('Not enough money'); c.staff++; const n = pick(STAFF_NAMES.filter(n => !c.names.includes(n))); c.names.push(n); gainSkill('business', 2); toast(`${n} starts today`); emit('hud'); },
+    hire: id => { const s = G.state, c = bizCfg(s, id); if (c.staff >= BIZ.maxStaff) return; if (!pay(BIZ.staffCost, 'Hired staff')) return toast('Not enough money'); c.staff++; const n = pick(STAFF_NAMES.filter(n => !c.names.includes(n))); c.names.push(n); (c.shifts ??= {})[n] = 'morning'; gainSkill('business', 2); toast(`${n} starts on the morning shift`); emit('hud'); },
+    cycleShift: id => {
+      const [bid, name] = id.split(':');
+      const c = bizCfg(G.state, bid);
+      if (!c.names.includes(name)) return;
+      const shifts = Object.keys(STAFF_SHIFTS);
+      const current = c.shifts?.[name] || 'all-day';
+      c.shifts ??= {};
+      c.shifts[name] = shifts[(shifts.indexOf(current) + 1) % shifts.length];
+      toast(`${name} · ${STAFF_SHIFTS[c.shifts[name]].label} shift`);
+      emit('hud');
+    },
     restock: id => { const s = G.state, c = bizCfg(s, id), b = BUSINESSES.find(b => b.id === id); if (!pay(restockCost(b), `Restock · ${b.name}`)) return toast('Not enough money'); c.stock = 100; toast('Shelves full'); emit('hud'); },
     setPrice: id => { const [bid, p] = id.split(':'); const s = G.state, c = bizCfg(s, bid); if (c.price === p) return; c.price = p; addRep('business', p === 'high' ? -3 : p === 'low' ? 2 : 0); toast(`Prices set to ${p}`); emit('hud'); },
   },

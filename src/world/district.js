@@ -87,6 +87,57 @@ const ROAD_W = ROAD_WIDTHS.h;
 const VROAD_W = ROAD_WIDTHS.v;
 const waterMaterials = [];
 
+function createExteriorDoor(x, z, depth) {
+  const hinge = new THREE.Group();
+  hinge.position.set(x - 0.75, 0, z - depth / 2 - 0.08);
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 0.14), mat(0x493120));
+  panel.position.set(0.75, 1.1, 0);
+  panel.castShadow = true;
+  hinge.add(panel);
+  G.scene.add(hinge);
+  return hinge;
+}
+
+function waterShoreline() {
+  const points = [];
+  const steps = 5;
+  for (const water of WATERS) {
+    const [x0, x1] = water.x, [z0, z1] = water.z;
+    const edges = [
+      { axis: 'x', fixed: x0, start: z0, end: z1, nx: -0.7, nz: 0 },
+      { axis: 'x', fixed: x1, start: z0, end: z1, nx: 0.7, nz: 0 },
+      { axis: 'z', fixed: z0, start: x0, end: x1, nx: 0, nz: -0.7 },
+      { axis: 'z', fixed: z1, start: x0, end: x1, nx: 0, nz: 0.7 },
+    ];
+    for (const edge of edges) {
+      const count = Math.ceil((edge.end - edge.start) / steps);
+      for (let i = 0; i < count; i++) {
+        const a = edge.start + (edge.end - edge.start) * i / count;
+        const b = edge.start + (edge.end - edge.start) * (i + 1) / count;
+        const mid = (a + b) / 2;
+        const x = edge.axis === 'x' ? edge.fixed + edge.nx : mid;
+        const z = edge.axis === 'z' ? edge.fixed + edge.nz : mid;
+        if (WATERS.some(other =>
+          other !== water &&
+          x >= other.x[0] && x <= other.x[1] &&
+          z >= other.z[0] && z <= other.z[1]
+        )) continue;
+        if (edge.axis === 'x') points.push(edge.fixed, 0.055, a, edge.fixed, 0.055, b);
+        else points.push(a, 0.055, edge.fixed, b, 0.055, edge.fixed);
+      }
+    }
+  }
+  if (!points.length) return;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+  const foam = new THREE.LineSegments(
+    geometry,
+    new THREE.LineBasicMaterial({ color: 0xb9e6df, transparent: true, opacity: 0.28 })
+  );
+  foam.userData.name = 'water-shoreline';
+  G.scene.add(foam);
+}
+
 function roadMedian(axis, k, start, end) {
   const openings = U_TURNS
     .filter(u => u.axis === axis && u.k === k && u.at > start + 8 && u.at < end - 8)
@@ -101,56 +152,6 @@ function roadMedian(axis, k, start, end) {
       else solidBox('medians', k, (cursor + openingStart) / 2, 1.2, length, 0.9);
     }
 
-    function createExteriorDoor(x, z, depth) {
-      const hinge = new THREE.Group();
-      hinge.position.set(x - 0.75, 0, z - depth / 2 - 0.08);
-      const panel = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 0.14), mat(0x493120));
-      panel.position.set(0.75, 1.1, 0);
-      panel.castShadow = true;
-      hinge.add(panel);
-      G.scene.add(hinge);
-      return hinge;
-    }
-
-    function waterShoreline() {
-      const points = [];
-      const steps = 5;
-      for (const water of WATERS) {
-        const [x0, x1] = water.x, [z0, z1] = water.z;
-        const edges = [
-          { axis: 'x', fixed: x0, start: z0, end: z1, nx: -0.7, nz: 0 },
-          { axis: 'x', fixed: x1, start: z0, end: z1, nx: 0.7, nz: 0 },
-          { axis: 'z', fixed: z0, start: x0, end: x1, nx: 0, nz: -0.7 },
-          { axis: 'z', fixed: z1, start: x0, end: x1, nx: 0, nz: 0.7 },
-        ];
-        for (const edge of edges) {
-          const count = Math.ceil((edge.end - edge.start) / steps);
-          for (let i = 0; i < count; i++) {
-            const a = edge.start + (edge.end - edge.start) * i / count;
-            const b = edge.start + (edge.end - edge.start) * (i + 1) / count;
-            const mid = (a + b) / 2;
-            const x = edge.axis === 'x' ? edge.fixed + edge.nx : mid;
-            const z = edge.axis === 'z' ? edge.fixed + edge.nz : mid;
-            if (WATERS.some(other =>
-              other !== water &&
-              x >= other.x[0] && x <= other.x[1] &&
-              z >= other.z[0] && z <= other.z[1]
-            )) continue;
-            if (edge.axis === 'x') points.push(edge.fixed, 0.055, a, edge.fixed, 0.055, b);
-            else points.push(a, 0.055, edge.fixed, b, 0.055, edge.fixed);
-          }
-        }
-      }
-      if (!points.length) return;
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-      const foam = new THREE.LineSegments(
-        geometry,
-        new THREE.LineBasicMaterial({ color: 0xb9e6df, transparent: true, opacity: 0.28 })
-      );
-      foam.userData.name = 'water-shoreline';
-      G.scene.add(foam);
-    }
     cursor = at + 8;
   }
   if (cursor < end) {
