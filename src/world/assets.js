@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -17,21 +16,14 @@ import {
   LANDMARKS,
   RESERVED,
   inWater,
-  onBridge,
 } from '../data/locations.js';
 
 // ============================================================
 // WorldAssetManager
 //
-// Manages:
-//   - Ambient animals: dogs and cats
-//   - Vegetation: tropical, maple and pine trees
-//   - Stadium landmarks: National Stadium and Teslim Balogun Stadium
-//
-// Stadiums are streamed by distance. Compressed GLBs are preferred;
-// original GLBs are allowed only when they fit the active tier budget.
-//
-// Procedural stadiums remain visible until their GLBs load successfully.
+// - Ambient animals (dogs / cats)
+// - Vegetation (tropical, maple, pine) — kept off carriageways
+// - Stadium streaming (National / Teslim)
 // ============================================================
 
 const MB = 1024 * 1024;
@@ -43,8 +35,6 @@ const SIZE_BUDGET = {
 };
 
 export const ASSETS = {
-  // Ambient animals
-
   dog: {
     url: 'assets/animals/dogs/dog.glb',
     size: 1.6 * MB,
@@ -56,8 +46,6 @@ export const ASSETS = {
     size: 5.0 * MB,
     category: 'ambient',
   },
-
-  // Vegetation
 
   treeTropical: {
     url: 'assets/vegetation/jabami_anime_tree-grass_v1.glb',
@@ -80,25 +68,13 @@ export const ASSETS = {
     scale: 0.5,
   },
 
-  // Stadiums
-  //
-  // size = compressed GLB budget estimate.
-  // fallbackSize = original GLB budget estimate.
-  //
-  // targetFootprint dimensions are approximate world-space
-  // limits, not claims about real-world stadium dimensions.
-
   nationalStadium: {
     url: 'assets/landmarks/stadiums/national_stadium-compressed.glb',
     fallbackUrl: 'assets/landmarks/stadiums/national_stadium.glb',
     size: 3.3 * MB,
     fallbackSize: 20.2 * MB,
     category: 'landmark',
-    targetFootprint: {
-      x: 54,
-      z: 50,
-      maxHeight: 25,
-    },
+    targetFootprint: { x: 54, z: 50, maxHeight: 25 },
   },
 
   teslimStadium: {
@@ -107,11 +83,7 @@ export const ASSETS = {
     size: 12.4 * MB,
     fallbackSize: 34.4 * MB,
     category: 'landmark',
-    targetFootprint: {
-      x: 50,
-      z: 46,
-      maxHeight: 23,
-    },
+    targetFootprint: { x: 50, z: 46, maxHeight: 23 },
   },
 };
 
@@ -120,38 +92,25 @@ export const ASSETS = {
 // ============================================================
 
 const loader = new GLTFLoader();
-
-// URL -> Promise<GLTF>.
-// Concurrent requests for the same URL share one download.
 const cache = new Map();
 
 function loadGLTF(url) {
   if (!cache.has(url)) {
     const promise = new Promise((resolve, reject) => {
-      loader.load(
-        url,
-        resolve,
-        undefined,
-        (error) => reject(error),
-      );
+      loader.load(url, resolve, undefined, error => reject(error));
     });
-
     cache.set(url, promise);
   }
-
   return cache.get(url);
 }
 
 // ============================================================
-// Asset quality budgets
+// Quality budgets
 // ============================================================
 
 function getQualityTier() {
   const tier = G.quality || 'medium';
-
-  return Object.hasOwn(SIZE_BUDGET, tier)
-    ? tier
-    : 'medium';
+  return Object.hasOwn(SIZE_BUDGET, tier) ? tier : 'medium';
 }
 
 function getBudget() {
@@ -160,7 +119,6 @@ function getBudget() {
 
 function withinBudget(key) {
   const asset = ASSETS[key];
-
   if (!asset) {
     console.warn(`[assets] Unknown asset key: ${key}`);
     return false;
@@ -173,9 +131,8 @@ function withinBudget(key) {
     console.info(
       `[assets] Skipping ${key} (` +
         `${(asset.size / MB).toFixed(1)} MB > ` +
-        `${tier} tier budget ${(budget / MB).toFixed(0)} MB)`,
+        `${tier} tier budget ${(budget / MB).toFixed(0)} MB)`
     );
-
     return false;
   }
 
@@ -183,30 +140,18 @@ function withinBudget(key) {
 }
 
 // ============================================================
-// Load assets with quality-aware fallbacks
+// Load with fallbacks
 // ============================================================
 
-/**
- * Load an asset, trying its compressed/primary URL first.
- *
- * An original fallback is attempted only when its declared size
- * fits the active quality tier's budget.
- *
- * Rejected promises are removed from the cache so a later request
- * can retry.
- */
 async function loadAsset(key) {
   const asset = ASSETS[key];
-
   if (!asset) {
     throw new Error(`[assets] Unknown asset key: ${key}`);
   }
 
   const budget = getBudget();
-
   const paths = [
     asset.url,
-
     ...(asset.fallbackUrl &&
     (asset.fallbackSize ?? asset.size) <= budget
       ? [asset.fallbackUrl]
@@ -218,23 +163,18 @@ async function loadAsset(key) {
   for (const url of paths) {
     try {
       const gltf = await loadGLTF(url);
-
       if (url !== asset.url) {
         console.warn(
-          `[assets] Using original fallback for ${key}: ${url}`,
+          `[assets] Using original fallback for ${key}: ${url}`
         );
       }
-
       return { gltf, url };
     } catch (error) {
       lastError = error;
-
-      // Remove only the failed URL's rejected promise.
       cache.delete(url);
-
       console.warn(
         `[assets] Failed to load ${key} from ${url}`,
-        error,
+        error
       );
     }
   }
@@ -245,46 +185,28 @@ async function loadAsset(key) {
   );
 }
 
-/**
- * Create a separate scene instance from a cached GLTF.
- * SkeletonUtils.clone preserves skinned-model structures.
- */
 async function instantiate(key) {
   const { gltf, url } = await loadAsset(key);
   const obj = skClone(gltf.scene);
 
-  obj.traverse((o) => {
+  obj.traverse(o => {
     if (o.isMesh) {
       o.castShadow = true;
       o.receiveShadow = true;
     }
   });
 
-  return {
-    obj,
-    animations: gltf.animations,
-    url,
-  };
+  return { obj, animations: gltf.animations, url };
 }
 
 // ============================================================
-// Resource disposal
+// Disposal
 // ============================================================
 
-/**
- * Deep-dispose a scene graph.
- *
- * IMPORTANT:
- * Do not call this during ordinary distance-based unloading.
- * Cached GLTF resources may be shared by other instances.
- *
- * Only use when you know no other scene object depends on these
- * geometries, materials or textures.
- */
 function disposeGroupDeep(root) {
   if (!root) return;
 
-  root.traverse((o) => {
+  root.traverse(o => {
     if (o.geometry) {
       o.geometry.dispose();
       o.geometry = undefined;
@@ -298,7 +220,6 @@ function disposeGroupDeep(root) {
 
     for (const material of materials) {
       if (!material) continue;
-
       material.map?.dispose?.();
       material.normalMap?.dispose?.();
       material.roughnessMap?.dispose?.();
@@ -311,15 +232,8 @@ function disposeGroupDeep(root) {
   });
 }
 
-/**
- * Evict a cached URL.
- *
- * Only use this when it is safe to release its shared resources.
- */
 function evictCachedUrl(url) {
-  if (url) {
-    cache.delete(url);
-  }
+  if (url) cache.delete(url);
 }
 
 // ============================================================
@@ -329,36 +243,22 @@ function evictCachedUrl(url) {
 function clearOfRoads(x, z, shoulder = 2) {
   for (const k of ROADS.h) {
     const [a, b] = roadExtent('h', k);
-
     if (x < a - 4 || x > b + 4) continue;
-
-    if (
-      Math.abs(z - k) <
-      ROAD_WIDTHS.h[k] / 2 + shoulder
-    ) {
-      return false;
-    }
+    const half = (ROAD_WIDTHS.h[k] ?? 18) / 2 + shoulder;
+    if (Math.abs(z - k) < half) return false;
   }
-
   for (const k of ROADS.v) {
     const [a, b] = roadExtent('v', k);
-
     if (z < a - 4 || z > b + 4) continue;
-
-    if (
-      Math.abs(x - k) <
-      ROAD_WIDTHS.v[k] / 2 + shoulder
-    ) {
-      return false;
-    }
+    const half = (ROAD_WIDTHS.v[k] ?? 18) / 2 + shoulder;
+    if (Math.abs(x - k) < half) return false;
   }
-
   return true;
 }
 
 const inReserved = (x, z, pad = 0) =>
   (RESERVED || []).some(
-    (r) => Math.hypot(x - r.x, z - r.z) < r.r - pad,
+    r => Math.hypot(x - r.x, z - r.z) < r.r - pad
   );
 
 function clearOfColliders(x, z, pad = 1) {
@@ -370,37 +270,39 @@ function clearOfColliders(x, z, pad = 1) {
       return false;
     }
   }
-
   return true;
 }
 
-export function isBuildable(
-  x,
-  z,
-  { shoulder = 2, pad = 1 } = {},
-) {
+/**
+ * @param {number} shoulder  metres beyond road half-width
+ *   Vegetation should use ~7 (Adeniran halfW 11 → clear ~18 m from centre).
+ */
+export function isBuildable(x, z, { shoulder = 2, pad = 1 } = {}) {
   return (
     clearOfRoads(x, z, shoulder) &&
     !inWater(x, z) &&
-    !onBridge(x, z) &&
     !inReserved(x, z) &&
     clearOfColliders(x, z, pad)
   );
 }
 
 /**
- * Randomly sample a valid placement inside a rectangle.
+ * Sample a placement inside a rectangle.
+ * ONE definition only — do not redefine this later in the file.
  */
-function sampleSpot(x0, x1, z0, z1, tries = 24) {
+function sampleSpot(
+  x0,
+  x1,
+  z0,
+  z1,
+  tries = 40,
+  opts = { shoulder: 7, pad: 2 }
+) {
   for (let i = 0; i < tries; i++) {
     const x = x0 + Math.random() * (x1 - x0);
     const z = z0 + Math.random() * (z1 - z0);
-
-    if (isBuildable(x, z)) {
-      return { x, z };
-    }
+    if (isBuildable(x, z, opts)) return { x, z };
   }
-
   return null;
 }
 
@@ -419,9 +321,14 @@ async function spawnVegetation() {
     ['treePine', low ? 2 : 5],
   ];
 
-  // Surulere core and existing coastal planting strip.
+  // Prefer plot interiors (avoid the main road grid).
+  // Adeniran is v road at x=0; Bode Thomas-style h roads at z≈0, -66, …
   const zones = [
-    [-120, 120, -120, 120],
+    [-120, -22, -120, -22],
+    [22, 120, -120, -22],
+    [-120, -22, 22, 120],
+    [22, 120, 22, 120],
+    // coastal strip
     [346, 614, 315, 330],
   ];
 
@@ -429,7 +336,6 @@ async function spawnVegetation() {
     if (!withinBudget(key)) continue;
 
     let inst;
-
     try {
       inst = await instantiate(key);
     } catch (error) {
@@ -438,57 +344,47 @@ async function spawnVegetation() {
     }
 
     for (let i = 0; i < count; i++) {
-      const zone = zones[
-        Math.floor(Math.random() * zones.length)
-      ];
+      const zone = zones[(Math.random() * zones.length) | 0];
 
+      // Strict road shoulder so large canopies stay off asphalt
       const spot = sampleSpot(
         zone[0],
         zone[1],
         zone[2],
         zone[3],
+        48,
+        { shoulder: 7, pad: 2 }
       );
 
       if (!spot) continue;
 
       const tree = skClone(inst.obj);
-
       const baseScale = ASSETS[key].scale ?? 1;
       const scale = baseScale * (0.8 + Math.random() * 0.35);
 
       tree.scale.setScalar(scale);
-
       tree.position.set(
         spot.x,
         heightAt(spot.x, spot.z),
-        spot.z,
+        spot.z
       );
-
       tree.rotation.y = Math.random() * Math.PI * 2;
 
       G.scene.add(tree);
-
-      // Approximate trunk collider.
-      solidAt(
-        spot.x,
-        spot.z,
-        0.8 * scale,
-        0.8 * scale,
-      );
-
+      solidAt(spot.x, spot.z, 0.8 * scale, 0.8 * scale);
       vegetation.push(tree);
     }
   }
 
   if (vegetation.length) {
     console.info(
-      `[assets] Vegetation: ${vegetation.length} GLB trees placed`,
+      `[assets] Vegetation: ${vegetation.length} GLB trees placed`
     );
   }
 }
 
 // ============================================================
-// Ambient animals: street dogs and cats
+// Ambient animals
 // ============================================================
 
 const ambient = [];
@@ -506,7 +402,6 @@ async function spawnAmbientAnimals() {
     if (!withinBudget(key)) continue;
 
     let inst;
-
     try {
       inst = await instantiate(key);
     } catch (error) {
@@ -516,21 +411,24 @@ async function spawnAmbientAnimals() {
 
     for (let i = 0; i < count; i++) {
       const spot =
-        sampleSpot(-110, 110, -110, 110) ||
-        sampleSpot(340, 600, 300, 330);
+        sampleSpot(-110, 110, -110, 110, 40, {
+          shoulder: 4,
+          pad: 1.5,
+        }) ||
+        sampleSpot(340, 600, 300, 330, 24, {
+          shoulder: 3,
+          pad: 1,
+        });
 
       if (!spot) continue;
 
       const obj = skClone(inst.obj);
-
       obj.position.set(
         spot.x,
         heightAt(spot.x, spot.z),
-        spot.z,
+        spot.z
       );
-
       obj.rotation.y = Math.random() * Math.PI * 2;
-
       G.scene.add(obj);
 
       const record = {
@@ -543,10 +441,7 @@ async function spawnAmbientAnimals() {
 
       if (inst.animations?.length) {
         record.mixer = new THREE.AnimationMixer(obj);
-
-        record.mixer
-          .clipAction(inst.animations[0])
-          .play();
+        record.mixer.clipAction(inst.animations[0]).play();
       }
 
       ambient.push(record);
@@ -555,7 +450,7 @@ async function spawnAmbientAnimals() {
 
   if (ambient.length) {
     console.info(
-      `[assets] Ambient animals: ${ambient.length} dogs/cats`,
+      `[assets] Ambient animals: ${ambient.length} dogs/cats`
     );
   }
 }
@@ -569,11 +464,9 @@ function updateAmbient(dt) {
     if (playerPosition) {
       const dx = animal.g.position.x - playerPosition.x;
       const dz = animal.g.position.z - playerPosition.z;
-
       distanceSquared = dx * dx + dz * dz;
     }
 
-    // Freeze animal AI and animation beyond 100 metres.
     if (distanceSquared > SLEEP2) continue;
 
     animal.mixer?.update(dt);
@@ -590,17 +483,13 @@ function updateAmbient(dt) {
       animal.target = null;
 
       for (let i = 0; i < 8 && !animal.target; i++) {
-        const x =
-          position.x + (Math.random() - 0.5) * 24;
-
-        const z =
-          position.z + (Math.random() - 0.5) * 24;
-
-        if (isBuildable(x, z, { shoulder: 1.5 })) {
+        const x = position.x + (Math.random() - 0.5) * 24;
+        const z = position.z + (Math.random() - 0.5) * 24;
+        if (isBuildable(x, z, { shoulder: 4, pad: 1.5 })) {
           animal.target = new THREE.Vector3(
             x,
             heightAt(x, z),
-            z,
+            z
           );
         }
       }
@@ -610,51 +499,31 @@ function updateAmbient(dt) {
 
     const direction = animal.target.clone().sub(position);
     direction.y = 0;
-
     const length = direction.length();
-
     if (length <= 0.05) continue;
 
     direction.normalize();
-
     position.addScaledVector(
       direction,
-      Math.min(animal.speed * dt, length),
+      Math.min(animal.speed * dt, length)
     );
-
     position.y = heightAt(position.x, position.z);
-
-    animal.g.rotation.y = Math.atan2(
-      direction.x,
-      direction.z,
-    );
+    animal.g.rotation.y = Math.atan2(direction.x, direction.z);
   }
 }
 
 // ============================================================
-// Stadium model normalization
+// Stadium normalization + ground snap
 // ============================================================
 
-/**
- * Fit a detailed stadium GLB into a shared world-space envelope.
- *
- * The helper:
- *   - Preserves the model's aspect ratio.
- *   - Limits width, depth and height.
- *   - Grounds the visible model at y = 0.
- *
- * Terrain elevation is added later during streaming.
- */
 function fitStadiumToFootprint(object, key) {
   const target = ASSETS[key]?.targetFootprint;
-
   if (!target) return;
 
   object.updateMatrixWorld(true);
 
   const initial = new THREE.Box3().setFromObject(object);
   const size = new THREE.Vector3();
-
   initial.getSize(size);
 
   if (
@@ -666,45 +535,33 @@ function fitStadiumToFootprint(object, key) {
     size.z <= 0
   ) {
     console.warn(
-      `[assets] Invalid stadium bounds for ${key}; using unnormalized model`,
+      `[assets] Invalid stadium bounds for ${key}; using unnormalized model`
     );
-
     return;
   }
 
-  // One uniform factor preserves the model's proportions.
   const fit = Math.min(
     target.x / size.x,
     target.z / size.z,
-    target.maxHeight / size.y,
+    target.maxHeight / size.y
   );
 
   object.scale.multiplyScalar(fit);
   object.updateMatrixWorld(true);
 
+  // Scale only — vertical placement is placeStadiumOnGround
   const fitted = new THREE.Box3().setFromObject(object);
-
-  // Move the visible bottom of the model to y = 0.
-  object.position.y -= fitted.min.y;
-  object.updateMatrixWorld(true);
-
   const finalSize = new THREE.Vector3();
-
   fitted.getSize(finalSize);
 
   console.info(
     `[assets] Stadium ${key} normalized: ` +
       `${finalSize.x.toFixed(1)}w × ` +
       `${finalSize.y.toFixed(1)}h × ` +
-      `${finalSize.z.toFixed(1)}d`,
+      `${finalSize.z.toFixed(1)}d`
   );
 }
 
-
-/**
- * Plant stadium mesh on terrain.
- * Uses live world bbox after scale so the lowest visible vertex sits on the ground.
- */
 function placeStadiumOnGround(object, x, z) {
   object.position.x = x;
   object.position.z = z;
@@ -718,42 +575,31 @@ function placeStadiumOnGround(object, x, z) {
   }
 
   const groundY = heightAt(x, z, 0);
-  // Sit on ground; small sink kills the “hovering” gap
   const SINK = 0.15;
   object.position.y = groundY - box.min.y - SINK;
   object.updateMatrixWorld(true);
 }
 
-
 // ============================================================
-// Stadium landmark streaming
+// Stadium streaming
 // ============================================================
-
-// Procedural stadiums remain visible until detailed GLBs load.
-// Models load near the player and unload farther away.
 
 const LOAD_R = 260;
 const UNLOAD_R = 380;
-
 const landmarkSlots = [];
 
 async function initLandmarks() {
-  const stadiums = (LANDMARKS || []).filter(
-    (landmark) => landmark.stadium,
-  );
+  const stadiums = (LANDMARKS || []).filter(l => l.stadium);
 
   if (!stadiums.length) {
     console.info(
-      '[assets] No stadium landmarks found; streaming disabled',
+      '[assets] No stadium landmarks found; streaming disabled'
     );
-
     return;
   }
 
   for (const landmark of stadiums) {
-    const key = /teslim/i.test(
-      landmark.id || landmark.name || '',
-    )
+    const key = /teslim/i.test(landmark.id || landmark.name || '')
       ? 'teslimStadium'
       : 'nationalStadium';
 
@@ -770,7 +616,7 @@ async function initLandmarks() {
   }
 
   console.info(
-    `[assets] Landmark streaming: ${landmarkSlots.length} stadium slot(s) registered`,
+    `[assets] Landmark streaming: ${landmarkSlots.length} stadium slot(s) registered`
   );
 }
 
@@ -782,20 +628,15 @@ function setProceduralVisible(slot, visible) {
 
 async function streamLandmarks() {
   const playerPosition = G.player?.position;
-
   if (!playerPosition) return;
 
   for (const slot of landmarkSlots) {
     const distance = Math.hypot(
       playerPosition.x - slot.x,
-      playerPosition.z - slot.z,
+      playerPosition.z - slot.z
     );
 
-    if (
-      distance < LOAD_R &&
-      !slot.group &&
-      !slot.loading
-    ) {
+    if (distance < LOAD_R && !slot.group && !slot.loading) {
       slot.loading = true;
 
       if (!withinBudget(slot.key)) {
@@ -805,10 +646,7 @@ async function streamLandmarks() {
 
       try {
         const inst = await instantiate(slot.key);
-
         fitStadiumToFootprint(inst.obj, slot.key);
-
-        // World placement + hard ground snap (after scale/fit)
         placeStadiumOnGround(inst.obj, slot.x, slot.z);
 
         G.scene.add(inst.obj);
@@ -817,55 +655,30 @@ async function streamLandmarks() {
         setProceduralVisible(slot, false);
 
         console.info(
-          `[assets] Streamed in ${slot.key} using ${inst.url}`,
+          `[assets] Streamed in ${slot.key} using ${inst.url}`
         );
       } catch (error) {
         console.warn(
           `[assets] Failed to stream ${slot.key}; keeping procedural fallback`,
-          error,
+          error
         );
       } finally {
         slot.loading = false;
       }
-    } else if (
-      distance > UNLOAD_R &&
-      slot.group
-    ) {
-      // Do not dispose shared cached geometry or materials here.
+    } else if (distance > UNLOAD_R && slot.group) {
       G.scene.remove(slot.group);
-
       slot.group = null;
       slot.loadedUrl = null;
-
       setProceduralVisible(slot, true);
 
       console.info(
-        `[assets] Streamed out ${slot.key}; restored procedural fallback`,
+        `[assets] Streamed out ${slot.key}; restored procedural fallback`
       );
     }
   }
 }
 
-// ============================================================
-// Explicit landmark purge
-// ============================================================
-
-/**
- * Remove currently streamed stadiums.
- *
- * freeGpu=false:
- *   Remove scene objects but preserve cached GLTF resources.
- *
- * freeGpu=true:
- *   Evict and dispose the resources for the loaded model.
- *
- * IMPORTANT:
- * freeGpu=true is safe only if the disposed geometry, materials
- * and textures are not shared by other scene objects.
- */
-export function purgeStreamedLandmarks({
-  freeGpu = false,
-} = {}) {
+export function purgeStreamedLandmarks({ freeGpu = false } = {}) {
   for (const slot of landmarkSlots) {
     if (!slot.group) continue;
 
@@ -879,7 +692,6 @@ export function purgeStreamedLandmarks({
     slot.group = null;
     slot.loadedUrl = null;
     slot.loading = false;
-
     setProceduralVisible(slot, true);
   }
 }
@@ -892,21 +704,14 @@ let built = false;
 
 export async function buildWorldAssets() {
   if (built) return;
-
   built = true;
 
   await initLandmarks();
-
-  // Load optional world assets asynchronously so the world
-  // remains playable while downloads complete.
   void spawnVegetation();
   void spawnAmbientAnimals();
 }
 
 export function updateWorldAssets(dt) {
   updateAmbient(dt);
-
-  // Distance streaming is asynchronous and guarded against
-  // duplicate loads for each landmark slot.
   void streamLandmarks();
 }
