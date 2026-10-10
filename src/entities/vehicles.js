@@ -31,37 +31,37 @@ import { lightFor } from '../systems/trafficlights.js';
 import { PERF } from '../data/config.js';
 
 /**
- * Resolve the correct road surface for a vehicle.
+ * Resolve a vehicle's vertical road surface.
  *
- * A vehicle on an elevated bridge keeps the deck elevation.
- * A vehicle passing beneath the bridge stays on ground level.
- * Low ramps continue to use the existing heightAt behaviour.
+ * Elevated bridge height is applied only when the vehicle is verified
+ * to be on the deck, or its existing elevation confirms deck occupancy.
+ * A vehicle beneath an elevated deck remains at ground level.
  */
 function vehicleSurfaceHeight(x, z, currentY = 0, forceDeck = false) {
   const result = deckHeightAt(x, z);
 
-  if (!result.deck) {
+  if (!result?.deck || !Number.isFinite(result.height)) {
     return 0;
   }
 
   const deckY = result.height;
 
-  // Low ramps can be climbed from ground level.
+  // Ground-level road and low ramp.
   if (deckY <= 2.25) {
     return deckY;
   }
 
-  // Explicitly place a vehicle on the deck at a known bridge spawn.
+  // Caller has verified this is a vehicle spawning on the bridge.
   if (forceDeck) {
     return deckY;
   }
 
-  // Preserve the bridge surface for vehicles already travelling there.
+  // Preserve elevation only when the vehicle was already on the deck.
   if (Math.abs(currentY - deckY) <= 2.0) {
     return deckY;
   }
 
-  // Otherwise, the elevated deck is overhead, not the road surface.
+  // Do not pull ground traffic up onto an overhead bridge.
   return 0;
 }
 
@@ -165,36 +165,86 @@ export function setDriverVisible(vehicle, visible) {
 }
 
 /**
- * Eject driver into world at a side offset (hijack / hard exit).
- * Returns world position used, or null.
+ * Eject a driver into the world beside a vehicle.
+ * Keeps the ejected character on the vehicle's current surface.
  */
 export function ejectDriver(vehicle, side = 1) {
-  const d = vehicle?.userData?.driver;
-  if (!d || !vehicle) return null;
+  const driver = vehicle?.userData?.driver;
+  const scene = G.scene;
 
-  vehicle.updateMatrixWorld(true);
-  const wp = new THREE.Vector3();
-  d.getWorldPosition(wp);
+  if (!driver || !vehicle || !scene) {
+    return null;
+  }
 
-  // Step to the right of the vehicle (Lagos RHD → passenger side is left; use +X local)
-  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(vehicle.quaternion);
-  wp.addScaledVector(right, 1.4 * side);
-  wp.y = heightAt(wp.x, wp.z);
+  vehicle.updateWorldMatrix(true, true);
 
-  vehicle.remove(d);
-  d.position.copy(wp);
-  d.rotation.y = vehicle.rotation.y + Math.PI;
-  d.visible = true;
-  G.scene.add(d);
+  const worldPosition = new THREE.Vector3();
+  driver.getWorldPosition(worldPosition);
+
+  // Calculate the vehicle's world-space right direction.
+  const worldQuaternion = new THREE.Quaternion();
+  vehicle.getWorldQuaternion(worldQuaternion);
+
+  const sideVector = new THREE.Vector3(1, 0, 0)
+    .applyQuaternion(worldQuaternion)
+    .normalize();
+
+  worldPosition.addScaledVector(sideVector, 1.4 * side);
+
+  // Resolve surface using the vehicle's world-space elevation.
+  const vehicleWorldPosition = new THREE.Vector3();
+  vehicle.getWorldPosition(vehicleWorldPosition);
+
+  worldPosition.y = vehicleSurfaceHeight(
+    worldPosition.x,
+    worldPosition.z,
+    vehicleWorldPosition.y,
+    false
+  );
+
+  // Convert world coordinates to the destination scene's local space.
+  scene.updateWorldMatrix(true, false);
+  const localPosition = scene.worldToLocal(worldPosition.clone());
+
+  vehicle.remove(driver);
+  scene.add(driver);
+
+  driver.position.copy(localPosition);
+
+  // Face away from the vehicle in world space.
+  const away = worldPosition
+    .clone()
+    .sub(vehicleWorldPosition);
+
+  away.y = 0;
+
+  if (away.lengthSq() > 0.001) {
+    const yaw = Math.atan2(-away.x, -away.z);
+    const worldEuler = new THREE.Euler(0, yaw, 0);
+    const targetWorldQuaternion =
+      new THREE.Quaternion().setFromEuler(worldEuler);
+
+    if (driver.parent) {
+      const parentWorldQuaternion = new THREE.Quaternion();
+      driver.parent.getWorldQuaternion(parentWorldQuaternion);
+      targetWorldQuaternion.premultiply(
+        parentWorldQuaternion.invert()
+      );
+    }
+
+    driver.quaternion.copy(targetWorldQuaternion);
+  }
+
+  driver.visible = true;
+  driver.updateMatrixWorld(true);
 
   vehicle.userData.driver = null;
   vehicle.userData.hasDriver = false;
 
-  // Optional: track ejected figure briefly then remove
   G._ejected = G._ejected || [];
-  G._ejected.push({ g: d, t: 8 });
+  G._ejected.push({ g: driver, t: 8 });
 
-  return wp;
+  return worldPosition;
 }
 
 /** Tick ejected drivers (fade-out cleanup). Call from city update if desired. */
@@ -693,18 +743,43 @@ const snapLane = t => {
 };
 
 export function spawnTraffic() {
-  G.traffic = TRAFFIC_MIX.slice(
+  const trafficTypes = TRAFFIC_MIX.slice(
     0,
-    PERF.lowEnd ? PERF.trafficCap.low : PERF.trafficCap.full
-  ).map(type => {
-    const axis =
-      type === 'brt' || type === 'tanker' ? 'h' : pick(['h', 'v']);
-    const k = pick(axis === 'h' ? ROADS.h : ROADS.v);
+    PERF.lowEnd
+      ? PERF.trafficCap.low
+      : PERF.trafficCap.full
+  );
+
+  G.traffic = trafficTypes.map(type => {
+    // Choose the final route before calculating its coordinates.
+    let axis =
+      type === 'brt' || type === 'tanker'
+        ? 'h'
+        : pick(['h', 'v']);
+
+    let k = pick(axis === 'h' ? ROADS.h : ROADS.v);
     const dir = pick([1, -1]);
-    const [ea, eb] = roadExtent(axis, k);
-    let c = rnd(ea + 10, eb - 10);
-    if (Math.abs(c) < 25 && Math.abs(k) < 1) c += 40;
+
+    // BRT vehicles must use a horizontal route.
+    if (type === 'brt') {
+      axis = 'h';
+
+      const busRoads = ROADS.h.filter(
+        z => Math.abs(z) < 5 || z === -330 || z === 240
+      );
+
+      k = pick(busRoads.length ? busRoads : ROADS.h);
+    }
+
+    const [start, end] = roadExtent(axis, k);
+    let along = rnd(start + 10, end - 10);
+
+    if (Math.abs(along) < 25 && Math.abs(k) < 1) {
+      along += 40;
+    }
+
     const g = makeVehicle(type, pick(TRAFFIC_COLORS));
+
     const t = {
       g,
       type,
@@ -712,74 +787,100 @@ export function spawnTraffic() {
       dir,
       k,
       speed: 0,
-      cruise: VEH[type].max * rnd(0.5, 0.7),
+      cruise: (VEH[type]?.max ?? 8) * rnd(0.5, 0.7),
       cool: rnd(0, 2),
       pursuit: false,
       acc: 0,
       far: false,
     };
-    if (type === 'brt') {
-      t.axis = 'h';
-      t.k = pick(
-        ROADS.h.filter(z => Math.abs(z) < 5 || z === -330 || z === 240) ||
-          ROADS.h
-      );
-    }
-    if (t.axis === 'h') {
-      g.position.set(c, 0, t.k + t.dir * LANE_OFFSET);
+
+    // Establish horizontal position first.
+    if (axis === 'h') {
+      g.position.set(along, 0, k + dir * LANE_OFFSET);
     } else {
-      g.position.set(t.k - t.dir * LANE_OFFSET, 0, c);
+      g.position.set(k - dir * LANE_OFFSET, 0, along);
     }
 
-    // Only force bridge elevation when this road segment is actually
-    // registered as a bridge and the vehicle is inside its deck footprint.
-    const along = t.axis === 'h' ? g.position.x : g.position.z;
-    const deckY = deck ? deckHeightAt(g.position.x, g.position.z).height : 0;
-    const forceDeck = !!deck && deckY > 2.25 && onBridge(t.axis, t.k, along);
+    // FIX: declare and resolve the deck before reading its properties.
+    const deck = deckAt(g.position.x, g.position.z);
+    const deckResult = deckHeightAt(g.position.x, g.position.z);
+    const deckY =
+      deckResult?.deck && Number.isFinite(deckResult.height)
+        ? deckResult.height
+        : 0;
 
-    const isBridgeRoad =
+    const roadAlong = axis === 'h'
+      ? g.position.x
+      : g.position.z;
+
+    // A deck must match the road axis, lane and along-road extent.
+    const deckMatchesRoad =
       !!deck &&
-      deck.axis === t.axis &&
-      Math.abs(deck.k - t.k) <= deck.halfW + LANE_OFFSET + 0.5 &&
-      along >= deck.from &&
-      along <= deck.to &&
-      onBridge(t.axis, t.k, along);
+      deck.axis === axis &&
+      Math.abs(deck.k - k) <= deck.halfW + LANE_OFFSET + 0.5 &&
+      roadAlong >= deck.from &&
+      roadAlong <= deck.to;
+
+    // Do not elevate a ground road simply because a bridge is nearby.
+    const isBridgeRoad =
+      deckMatchesRoad &&
+      deckY > 2.25 &&
+      onBridge(axis, k, roadAlong);
 
     g.position.y = vehicleSurfaceHeight(
       g.position.x,
       g.position.z,
-      forceDeck ? deckY : 0,
-      forceDeck
+      0,
+      isBridgeRoad
     );
 
     g.rotation.y = poseFor(t);
+
     return t;
   });
 }
 
 export function rejoinTraffic(t) {
+  if (!t?.g?.position) return;
+
   const p = t.g.position;
+  const previousY = p.y;
   let best = null;
+
   for (const z of ROADS.h) {
     const [a, b] = roadExtent('h', z);
     if (p.x < a || p.x > b) continue;
+
     const d = Math.abs(p.z - z);
-    if (!best || d < best.d) best = { d, axis: 'h', k: z };
+    if (!best || d < best.d) {
+      best = { d, axis: 'h', k: z };
+    }
   }
+
   for (const x of ROADS.v) {
     const [a, b] = roadExtent('v', x);
     if (p.z < a || p.z > b) continue;
+
     const d = Math.abs(p.x - x);
-    if (!best || d < best.d) best = { d, axis: 'v', k: x };
+    if (!best || d < best.d) {
+      best = { d, axis: 'v', k: x };
+    }
   }
+
   if (!best) return;
+
   t.axis = best.axis;
   t.k = best.k;
   t.dir = pick([1, -1]);
   t.pursuit = false;
   t.far = false;
   t.acc = 0;
+
   snapLane(t);
+
+  // Resolve elevation at the new lane position.
+  p.y = vehicleSurfaceHeight(p.x, p.z, previousY, false);
+
   t.g.rotation.y = poseFor(t);
 }
 

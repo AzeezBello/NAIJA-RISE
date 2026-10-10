@@ -232,22 +232,15 @@ function finishExit(car) {
         ? car.position.clone().add(doorOffset(car, -1))
         : G.player?.position.clone();
 
-  // Reconcile the vehicle's surface before calculating the final
-  // position of the character.
-  if (car?.position) {
-    car.position.y = heightAt(
-      car.position.x,
-      car.position.z,
-      car.position.y
-    );
-  }
+  const referenceY = car?.position?.y ?? door?.y ?? 0;
 
+  // Complete the exit state transition.
   G.inCar = false;
   G.car = null;
   G.carSpeed = 0;
   G.curSpeed = 0;
 
-  // Restore a parked vehicle's driver if the driver still exists.
+  // Restore an existing, non-stolen driver.
   if (car?.userData?.driver && !car.userData.stolen) {
     setDriverVisible(car, true);
   }
@@ -258,17 +251,15 @@ function finishExit(car) {
     if (door) {
       G.player.position.copy(door);
 
-      // Start with the car's elevation as the reference surface.
-      const referenceY = car?.position?.y ?? door.y;
-
+      // Resolve the door position using the car's surface elevation.
       G.player.position.y = heightAt(
         G.player.position.x,
         G.player.position.z,
         referenceY
       );
 
-      // Move the character away from the vehicle.
       if (car) {
+        // Move away from the car horizontally.
         const away = G.player.position.clone().sub(car.position);
         away.y = 0;
 
@@ -279,8 +270,7 @@ function finishExit(car) {
         away.normalize().multiplyScalar(1.1);
         G.player.position.add(away);
 
-        // Re-sample at the FINAL X/Z, using the nearby surface
-        // as the elevation hint. This matters near deck edges.
+        // Sample again after the horizontal displacement.
         G.player.position.y = heightAt(
           G.player.position.x,
           G.player.position.z,
