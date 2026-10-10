@@ -82,7 +82,7 @@ function buildRoom(place, kind) {
   } else if (place.kind === 'artisan') {
     roomBox(interior, ROOM.x, 0.45, ROOM.z - 1, 6, 0.9, 2, 0x795b3d, true);
     roomBox(interior, ROOM.x + 4.2, 0.8, ROOM.z - 5, 2.4, 1.6, 1, 0x846e54, true);
-  } else if (['market', 'cafe', 'mall', 'restaurant', 'betshop', 'venue'].includes(place.kind)) {
+  } else if (['market', 'cafe', 'mall', 'restaurant', 'betshop', 'venue', 'museum'].includes(place.kind)) {
     roomBox(interior, ROOM.x, 0.55, ROOM.z - 2, 7.2, 1.1, 1.4, 0x76553c, true);
     for (const x of [-6, 6]) {
       roomBox(interior, ROOM.x + x, 0.4, ROOM.z - 6, 1.4, 0.8, 3, 0x8a7356, true);

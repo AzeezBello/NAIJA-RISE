@@ -18,6 +18,7 @@ export const DISTRICT = createArea({
   },
   landmarks: [
     { id: 'makoko', name: 'Makoko', short: 'MAKOKO', x: 300, z: -185, c: '#5a6e72', sign: '#f5c518', h: 3, kind: 'settlement', waterfront: true, region: 'makoko' },
+    { id: 'makoko-canoe-landing', name: 'Makoko Canoe Landing', short: 'CANOE LANDING', x: 294, z: -90, c: '#6b5344', sign: '#f5c518', h: 2, kind: 'waypoint', region: 'makoko' },
   ],
   busStops: [
     { id: 'makoko-shore-stop', name: 'Makoko Shore Bus Stop', short: 'MAKOKO', x: 320, z: -74, agberos: 1 },

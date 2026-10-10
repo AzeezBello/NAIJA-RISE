@@ -379,6 +379,30 @@ function spawnCityDemographics() {
       look: { outfit: 5, shirt: 8, pants: 3, bodyType: 0, accessory: 0, facialHair: 0 },
     }, 24);
   }
+  const busyCrowd = PERF.lowEnd ? 3 : 8;
+  for (const id of ['yaba', 'shitta', 'mushin', 'ajegunle', 'ikorodu-market', 'ikeja-tech', 'tejuosho', 'oyingbo-market', 'agege-market', 'apapa-market', 'ojo-market', 'ojo-alaba', 'sangotedo', 'ikoyi-market']) {
+    spawnGroup(
+      placeOf(id),
+      PERF.lowEnd ? 4 : busyCrowd,
+      'market-crowd',
+      uniform(pick(['#e7a62c', '#2f8050', '#b9473e', '#7b4a9d']), '#24272c', { scale: 1.02 }),
+      12
+    );
+  }
+  const busyStops = ['ojstop', 'kilo', 'costain', 'cms', 'stadstop', 'jibowu', 'ikorodu-garage-stop', 'ajstop', 'makoko-shore-stop', 'oyingbo-market-bus', 'agege-motor-road-stop', 'apapa-bus', 'alaba-bus', 'sangotedo-bus', 'tejuosho-bus'];
+  for (const id of busyStops) {
+    const stop = placeOf(id);
+    spawnGroup(
+      stop,
+      PERF.lowEnd ? 3 : 6,
+      'bus-stop-crowd',
+      uniform(pick(['#d94b3d', '#f0bf2c', '#3572aa', '#39935a']), '#22262b', { scale: 1.0 }),
+      9
+    );
+  }
+  people.sort((a, b) =>
+    Number(b.demographic.includes('crowd')) - Number(a.demographic.includes('crowd'))
+  );
   return people;
 }
 

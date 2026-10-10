@@ -35,9 +35,11 @@ export const DISTRICT = createArea({
     { id: 'ojota-garage', name: 'Ojota Bus Garage', short: 'OJOTA GARAGE', x: 240, z: -590, c: '#5c4933', sign: '#ffc52f', h: 5, kind: 'garage' },
     { id: 'ketu-market', name: 'Ketu Market', short: 'KETU MARKET', x: 240, z: -700, c: '#6b4737', sign: '#ffc52f', h: 6, kind: 'market' },
     { id: 'ikeja-city', name: 'Ikeja City Centre', short: 'IKEJA', x: 120, z: -800, c: '#7a8ba0', sign: '#ffffff', h: 14, kind: 'landmark', big: true },
-    { id: 'ikeja-tech', name: 'Computer Village', short: 'COMPUTER VILLAGE', x: -120, z: -800, c: '#3a4a7a', sign: '#5db8ff', h: 8, kind: 'cafe', big: true },
+    { id: 'ikeja-tech', name: 'Computer Village', short: 'COMPUTER VILLAGE', x: -120, z: -800, c: '#3a4a7a', sign: '#5db8ff', h: 8, kind: 'market', big: true },
     { id: 'ikeja-school', name: 'Ikeja Senior High School', short: 'IKEJA SCHOOL', x: 240, z: -880, c: '#8a7a4a', sign: '#ffffff', h: 6, kind: 'school' },
     { id: 'ikeja-airport', name: 'Murtala Muhammed Airport', short: 'LAGOS AIRPORT', x: 20, z: -900, c: '#69777d', sign: '#ffffff', h: 10, kind: 'airport', big: true },
+    { id: 'new-afrika-shrine', name: 'New Afrika Shrine', short: 'AFRIKA SHRINE', x: 240, z: -960, c: '#8a3e24', sign: '#ffc52f', h: 7, kind: 'venue', big: true },
+    { id: 'kalakuta-republic', name: 'Kalakuta Republic Museum', short: 'KALAKUTA REPUBLIC', x: -120, z: -960, c: '#7a6040', sign: '#f5c518', h: 6, kind: 'museum', big: true },
   ],
   busStops: [
     { id: 'maryland-bus', name: 'Maryland Bus Stop', short: 'MARYLAND', x: 0, z: -546, agberos: 1 },

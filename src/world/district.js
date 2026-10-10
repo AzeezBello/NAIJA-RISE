@@ -218,18 +218,43 @@ function sidewalks(concrete) {
     m.map.needsUpdate = true;
     box(x, z, w, d, 0.16, 0, 'walk', 0, m);
   };
+  const walkSide = (axis, roadCoordinate, fixed, start, end) => {
+    const cuts = JUNCTIONS
+      .filter(j => (axis === 'h' ? j.z === roadCoordinate : j.x === roadCoordinate))
+      .map(j => {
+        const center = axis === 'h' ? j.x : j.z;
+        const width = axis === 'h' ? VROAD_W[j.x] : ROAD_W[j.z];
+        return [center - width / 2, center + width / 2];
+      })
+      .filter(([cutStart, cutEnd]) => cutEnd > start && cutStart < end)
+      .sort((a, b) => a[0] - b[0]);
+    let cursor = start;
+    for (const [cutStart, cutEnd] of cuts) {
+      if (cutStart > cursor) {
+        const segmentEnd = Math.min(cutStart, end);
+        if (axis === 'h') walk((cursor + segmentEnd) / 2, fixed, segmentEnd - cursor, 4);
+        else walk(fixed, (cursor + segmentEnd) / 2, 4, segmentEnd - cursor);
+      }
+      cursor = Math.max(cursor, cutEnd);
+      if (cursor >= end) return;
+    }
+    if (cursor < end) {
+      if (axis === 'h') walk((cursor + end) / 2, fixed, end - cursor, 4);
+      else walk(fixed, (cursor + end) / 2, 4, end - cursor);
+    }
+  };
   for (const z of ROADS.h) {
     if (z === 142) continue;
     const hw = ROAD_W[z] / 2;
     const [a, b] = roadExtent('h', z);
-    walk((a + b) / 2, z - hw - 2, b - a, 4);
-    walk((a + b) / 2, z + hw + 2, b - a, 4);
+    walkSide('h', z, z - hw - 2, a, b);
+    walkSide('h', z, z + hw + 2, a, b);
   }
   for (const x of ROADS.v) {
     const hw = VROAD_W[x] / 2;
     const [a, b] = roadExtent('v', x);
-    walk(x - hw - 2, (a + b) / 2, 4, b - a);
-    walk(x + hw + 2, (a + b) / 2, 4, b - a);
+    walkSide('v', x, x - hw - 2, a, b);
+    walkSide('v', x, x + hw + 2, a, b);
   }
 }
 
@@ -735,6 +760,20 @@ function buildMakoko(l) {
     procedural.push(canoe);
   }
 
+  const landingX = cx - 6;
+  const landingZ = cz + 95;
+  procedural.push(box(landingX, landingZ + 2, 4.2, 0.3, 0.22, WOOD, 'prop', 0.18));
+  procedural.push(box(landingX, landingZ - 10, 2.8, 22, 0.2, WOOD, 'prop', 0.2));
+  for (const x of [landingX - 1.15, landingX + 1.15]) {
+    for (const z of [landingZ - 3, landingZ - 9, landingZ - 15]) {
+      procedural.push(cyl(x, z, 0.11, 1.8, WOOD_DK, 'prop', -0.55, 6));
+    }
+  }
+  const landingCanoe = box(landingX + 3.5, landingZ - 14, 0.65, 4.4, 0.3, 0x2a221c, 'prop', 0.12);
+  landingCanoe.rotation.y = 0.2;
+  sign('CANOE LANDING', landingX, 3.1, landingZ + 4, '#f5c518', 5.5, 0.9, 'rgba(12,40,48,.94)');
+  procedural.push(landingCanoe);
+
   sign('MAKOKO', cx + 8, 7.2, cz - 36, '#f5c518', 11, 1.8, 'rgba(12,40,48,.94)');
   sign(
     'LAGOON SETTLEMENT',
@@ -1002,6 +1041,7 @@ function buildLandmarks() {
       continue;
     }
     if (l.kind === 'pitch') continue;
+    if (l.kind === 'waypoint') continue;
     if (l.kind === 'airport') {
       buildAirport(l);
       continue;
@@ -1153,10 +1193,7 @@ function buildLandmarks() {
     }
   }
 
-  cyl(-72, 0, 2.6, 0.5, 0x8d9a8a, 'prop', 0, 24);
-  cyl(-72, 0, 0.3, 4, 0x5d402b, 'prop', 0.5);
-  solidAt(-72, 0, 5.5, 5.5, { bottomY: 0, topY: 4.5 });
-  sign('SHITTA', -72, 5.2, 0, '#ffc52f', 4.6, 1.15);
+  sign('SHITTA', -72, 5.1, 1.25, '#ffc52f', 4.6, 1.15);
 }
 
 // ---------- Palms (off carriageway) ----------

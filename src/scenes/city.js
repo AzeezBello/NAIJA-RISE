@@ -39,6 +39,7 @@ import { updateVehicleTransition } from '../systems/interaction.js';
 import { setupFamily, maybeIssueFamilyRequest, updateFamily } from '../systems/family.js';
 import { updateWorldAssets } from '../world/assets.js';
 import { updateInterior } from '../world/interior.js';
+import { updateTransitRide } from '../systems/transit.js';
 
 
 // The playable city. World geometry and traffic are built once in main.js; this scene adds the player,
@@ -89,6 +90,7 @@ export const CityScene = {
     updateMovement(dt);
     updatePlayer();
     updateTraffic(dt);
+    updateTransitRide();
     updateFamily(dt);
     maybeIssueFamilyRequest(dt);   // Alpha 1.1: was imported but never called — check family.js for the expected argument
     updateContacts(dt);

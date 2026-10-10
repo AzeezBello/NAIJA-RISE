@@ -22,6 +22,17 @@ export function startTask(m) {
   applyMission(); emit('hud');
 }
 
+export function startSideTask({ dest, item, minutes, obj, deliveryLabel, onComplete, onFail }) {
+  if (G.task) return toast('Finish your current mission first');
+  const t = { type: 'timed', dest, item, minutes, obj, deliveryLabel, onComplete, onFail, sideTask: true, clear: 0 };
+  if (item) addItem(item);
+  t.deadline = G.state.clock + minutes / 60;
+  G.task = t;
+  applyMission();
+  emit('hud');
+  toast('Side mission started · follow the GPS');
+}
+
 export const taskDest = () => {
   const t = G.task; if (!t) return null;
   if (t.type === 'steal' && !G.inCar) return t.destPos;          // first the car, then the drop
@@ -30,12 +41,18 @@ export const taskDest = () => {
 };
 
 function finishTask(ok) {
-  const m = MISSIONS[G.task.mission], s = G.state;
-  if (G.task.item) removeItem(G.task.item);
-  if (G.task.vehicle) G.task.vehicle.userData.marked = false;
+  const task = G.task, s = G.state;
+  const m = Number.isInteger(task.mission) ? MISSIONS[task.mission] : null;
+  if (task.item) removeItem(task.item);
+  if (task.vehicle) task.vehicle.userData.marked = false;
   G.task = null;
-  if (ok) { m.after(); emit('mission:completed', m); if (!s.done) s.mission++; }
-  else { m.fail?.(); toast('Mission failed'); }
+  if (ok) {
+    if (task.onComplete) task.onComplete();
+    if (m) { m.after(); emit('mission:completed', m); if (!s.done) s.mission++; }
+  } else {
+    if (task.onFail) task.onFail();
+    if (m) { m.fail?.(); toast('Mission failed'); }
+  }
   applyMission(); emit('mission:refresh'); emit('hud');
 }
 

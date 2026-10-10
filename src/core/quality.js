@@ -9,9 +9,9 @@ import { saveState } from './state.js';
 // and a #debug FPS/perf overlay. All three live here because updateQuality() is already called every frame.
 export const LEVELS = ['low', 'medium', 'high'];
 export const QUALITY = {
-  low:    { label: 'Low',    pixelRatio: 1,    shadows: 0,    fx: false, env: 0.2,  npcs: 18, traffic: 12, animRange: 60,  shadowRange: 25, fogScale: 0.75 },
-  medium: { label: 'Medium', pixelRatio: 1.25, shadows: 1024, fx: false, env: 0.35, npcs: 44, traffic: 18, animRange: 90,  shadowRange: 35, fogScale: 0.9 },
-  high:   { label: 'High',   pixelRatio: 1.5,  shadows: 2048, fx: true,  env: 0.4,  npcs: 99, traffic: 99, animRange: 120, shadowRange: 50, fogScale: 1 },
+  low:    { label: 'Low',    pixelRatio: 1,    shadows: 0,    fx: false, env: 0.2,  npcs: 24, traffic: 16, animRange: 60,  shadowRange: 25, fogScale: 0.75 },
+  medium: { label: 'Medium', pixelRatio: 1.25, shadows: 1024, fx: false, env: 0.35, npcs: 68, traffic: 28, animRange: 90,  shadowRange: 35, fogScale: 0.9 },
+  high:   { label: 'High',   pixelRatio: 1.5, shadows: 2048, fx: true,  env: 0.4,  npcs: 130, traffic: 99, animRange: 120, shadowRange: 50, fogScale: 1 },
 };
 export const current = () => QUALITY[G.quality || 'medium'];
 

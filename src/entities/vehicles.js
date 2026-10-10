@@ -15,6 +15,8 @@ import {
 import { attachModel, spinWheels } from './vehicleModels.js';
 import {
   ROADS,
+  BUSSTOPS,
+  ROAD_WIDTHS,
   roadRules,
   JUNCTIONS,
   roadExtent,
@@ -181,17 +183,26 @@ export function seatDriver(vehicle, { force = false } = {}) {
   return d;
 }
 
-function fillTrafficPassengers(vehicle, type) {
+function fillTrafficPassengers(vehicle, type, passengerCount = null) {
   const seats = PASSENGER_SEATS[type];
   if (!seats) return;
   for (const child of [...vehicle.children]) {
-    if (child.userData?.isPassenger) vehicle.remove(child);
+    if (!child.userData?.isPassenger) continue;
+    vehicle.remove(child);
+    child.traverse(mesh => {
+      mesh.geometry?.dispose();
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach(material => material.dispose());
+      } else {
+        mesh.material?.dispose();
+      }
+    });
   }
-  const count = type === 'danfo' || type === 'brt'
+  const count = passengerCount ?? ((type === 'danfo' || type === 'brt')
     ? 3 + Math.floor(Math.random() * (seats.length - 2))
     : type === 'korope'
       ? 2 + Math.floor(Math.random() * (seats.length - 1))
-      : 1 + Math.floor(Math.random() * seats.length);
+      : 1 + Math.floor(Math.random() * seats.length));
   const passengers = [];
   for (const seat of seats.slice(0, Math.min(count, seats.length))) {
     const passenger = makeDriverMesh();
@@ -204,6 +215,88 @@ function fillTrafficPassengers(vehicle, type) {
     passengers.push(passenger);
   }
   vehicle.userData.passengers = passengers;
+}
+
+const TRANSIT_TYPES = new Set(['danfo', 'korope', 'keke', 'brt']);
+let transitLines = null;
+
+function getTransitLines() {
+  if (transitLines) return transitLines;
+  const byRoad = new Map();
+  for (const stop of BUSSTOPS) {
+    let nearest = null;
+    for (const axis of ['h', 'v']) {
+      for (const k of ROADS[axis]) {
+        const [start, end] = roadExtent(axis, k);
+        const along = axis === 'h' ? stop.x : stop.z;
+        if (along < start - 2 || along > end + 2) continue;
+        const across = Math.abs((axis === 'h' ? stop.z : stop.x) - k);
+        const key = `${axis}:${k}`;
+        const width = ROAD_WIDTHS[axis][k] || 18;
+        if (across > width / 2 + 18) continue;
+        if (!nearest || across < nearest.across) {
+          nearest = { key, axis, k, along, across, stop };
+        }
+      }
+    }
+    if (!nearest) continue;
+    if (!byRoad.has(nearest.key)) {
+      byRoad.set(nearest.key, {
+        axis: nearest.axis,
+        k: nearest.k,
+        stops: [],
+      });
+    }
+    byRoad.get(nearest.key).stops.push({
+      id: nearest.stop.id,
+      name: nearest.stop.name,
+      x: nearest.stop.x,
+      z: nearest.stop.z,
+      along: nearest.along,
+    });
+  }
+  transitLines = [...byRoad.values()]
+    .filter(line => line.stops.length > 1)
+    .map(line => ({
+      ...line,
+      stops: line.stops.sort((a, b) => a.along - b.along),
+    }));
+  return transitLines;
+}
+
+function pickTransitLine(type) {
+  const lines = getTransitLines();
+  const candidates = type === 'brt'
+    ? lines.filter(line => line.axis === 'h' && line.k === -330)
+    : lines;
+  return pick(candidates.length ? candidates : lines);
+}
+
+function serviceTransitStop(t) {
+  const stop = t.transitStops[t.stopIndex];
+  t.stoppedAtStop = stop;
+  t.stopTimer = 3.5 + Math.random() * 1.5;
+
+  const passengers = t.g.userData.passengers?.length || 0;
+  const capacity = PASSENGER_SEATS[t.type]?.length || passengers;
+  const alighting = Math.floor(Math.random() * (passengers + 1));
+  const remaining = passengers - alighting;
+  const boarding = Math.floor(Math.random() * (capacity - remaining + 1));
+  t.passengerCount = Math.min(capacity, remaining + boarding);
+  fillTrafficPassengers(t.g, t.type, t.passengerCount);
+}
+
+function departTransitStop(t) {
+  const stopIndex = t.stopIndex + t.dir;
+  if (stopIndex < 0 || stopIndex >= t.transitStops.length) {
+    t.dir *= -1;
+    t.g.rotation.y = poseFor(t);
+    t.stopIndex += t.dir;
+  } else {
+    t.stopIndex = stopIndex;
+  }
+  t.stoppedAtStop = null;
+  t.stopTimer = 0;
 }
 
 /** Hide / show driver (enter vehicle / exit). */
@@ -802,22 +895,20 @@ export function spawnTraffic() {
 
   G.traffic = trafficTypes.map(type => {
     // Choose the final route before calculating its coordinates.
-    let axis =
-      type === 'brt' || type === 'tanker'
-        ? 'h'
-        : pick(['h', 'v']);
-
-    let k = pick(axis === 'h' ? ROADS.h : ROADS.v);
-    const dir = pick([1, -1]);
-
-    // BRT vehicles must use a horizontal route.
-    if (type === 'brt') {
-      axis = 'h';
-      k = ROADS.h.includes(-330) ? -330 : pick(ROADS.h);
-    }
+    const transitLine = TRANSIT_TYPES.has(type) ? pickTransitLine(type) : null;
+    let axis = transitLine?.axis || (
+      type === 'brt' || type === 'tanker' ? 'h' : pick(['h', 'v'])
+    );
+    let k = transitLine?.k ?? pick(axis === 'h' ? ROADS.h : ROADS.v);
+    let dir = pick([1, -1]);
 
     const [start, end] = roadExtent(axis, k);
     let along = rnd(start + 10, end - 10);
+    if (transitLine) {
+      const firstStop = transitLine.stops[0].along;
+      const lastStop = transitLine.stops.at(-1).along;
+      along = rnd(firstStop + 2, lastStop - 2);
+    }
 
     if (Math.abs(along) < 25 && Math.abs(k) < 1) {
       along += 40;
@@ -838,7 +929,23 @@ export function spawnTraffic() {
       acc: 0,
       far: false,
       dedicatedLane: type === 'brt' && axis === 'h' && k === -330,
+      transitStops: transitLine?.stops || null,
+      stopIndex: null,
+      stoppedAtStop: null,
+      stopTimer: 0,
     };
+    if (t.transitStops) {
+      t.stopIndex = t.transitStops.findIndex(stop =>
+        dir > 0 ? stop.along > along + 2 : stop.along < along - 2
+      );
+      if (t.stopIndex < 0) {
+        dir *= -1;
+        t.dir = dir;
+        t.stopIndex = t.transitStops.findIndex(stop =>
+          dir > 0 ? stop.along > along + 2 : stop.along < along - 2
+        );
+      }
+    }
 
     // Establish horizontal position first.
     if (axis === 'h') {
@@ -1068,12 +1175,45 @@ function stepTraffic(t, dt, pp) {
     }
   }
 
-  t.speed = approach(t.speed, target, (target < t.speed ? 22 : 7) * dt);
-  t.g.position.x += fx * t.speed * dt;
-  t.g.position.z += fz * t.speed * dt;
+  const hour = G.state.clock;
+  const rushHour = (hour >= 7 && hour < 10) || (hour >= 16 && hour < 20);
+  if (rushHour && roadRules(t.axis, t.k).speed <= 1.1) target *= 0.62;
+
+  if (t.stoppedAtStop) {
+    if (t.boardingHold) {
+      target = 0;
+    } else {
+      t.stopTimer -= dt;
+      if (t.stopTimer <= 0) departTransitStop(t);
+      else target = 0;
+    }
+  } else if (t.transitStops?.length) {
+    const nextStop = t.transitStops[t.stopIndex];
+    if (nextStop) {
+      const along = t.axis === 'h' ? t.g.position.x : t.g.position.z;
+      const distance = (nextStop.along - along) * t.dir;
+      if (distance >= -1 && distance < 26) {
+        target = Math.min(target, Math.max(0, (distance - 3) * 0.5));
+        if (distance <= 3 && t.speed < 1.1) {
+          if (t.axis === 'h') t.g.position.x = nextStop.along - t.dir * 2;
+          else t.g.position.z = nextStop.along - t.dir * 2;
+          t.speed = 0;
+          serviceTransitStop(t);
+        }
+      }
+    }
+  }
+
+  if (t.stoppedAtStop) {
+    t.speed = 0;
+  } else {
+    t.speed = approach(t.speed, target, (target < t.speed ? 22 : 7) * dt);
+    t.g.position.x += fx * t.speed * dt;
+    t.g.position.z += fz * t.speed * dt;
+  }
 
   t.cool -= dt;
-  if (t.cool <= 0 && t.type !== 'brt') {
+  if (t.cool <= 0 && t.type !== 'brt' && !t.transitStops) {
     const cross = t.axis === 'h' ? ROADS.v : ROADS.h;
     const c = t.axis === 'h' ? t.g.position.x : t.g.position.z;
     for (const k of cross) {

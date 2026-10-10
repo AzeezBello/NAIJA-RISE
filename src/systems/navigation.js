@@ -33,7 +33,7 @@ export function createMarkers() {
 }
 export function applyMission() {
   const m = G.markers.mission;
-  if (!missionActive() || (G.task && (G.task.type === 'escape' || G.task.type === 'race'))) { m.visible = false; return; }
+  if ((!missionActive() && !G.task?.sideTask) || (G.task && (G.task.type === 'escape' || G.task.type === 'race'))) { m.visible = false; return; }
   const p = missionPos(); if (!p) { m.visible = false; return; } m.visible = true; m.position.set(p.x, 0.22, p.z);
 }
 export function applyJob() {

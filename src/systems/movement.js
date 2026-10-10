@@ -793,6 +793,11 @@ export function updateMovement(dt) {
     return;
   }
 
+  if (G.transitRide) {
+    G.player.position.copy(G.transitRide.vehicle.g.position);
+    return;
+  }
+
   if (G.inCar) {
     grounded = true;
     jumpVelocity = 0;

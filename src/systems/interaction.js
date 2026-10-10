@@ -40,10 +40,11 @@ import { runMission, advanceDialog, startDialog } from './dialogue.js';
 import { owambeOn } from './events.js';
 import { tryCompleteTask } from './missions.js';
 import { startRace } from './racing.js';
-import { nearPlace, openPlace, placePrompt } from './places.js';
+import { nearPlace, openPlace, openHustleHub, hustleContactAtPlace, isHustleContact, placePrompt } from './places.js';
 import { familyPrompt, tryFamilyInteract } from './family.js';
 import { talkToContact } from './relationships.js';
 import { nearCrew, runCrewDialog } from './crew.js';
+import { nearTransitVehicle, startTransitDialog } from './transit.js';
 import { enterBuilding, interactInterior, interiorPrompt } from '../world/interior.js';
 
 function nearStoryContact(r = 4) {
@@ -90,7 +91,7 @@ const nearNight = () =>
   (G.nightlife || []).find(n => dist(G.player.position, n) < 3.5);
 const ENTERABLE_KINDS = new Set([
   'airport', 'artisan', 'bank', 'betshop', 'cafe', 'garage', 'gym', 'hotel',
-  'mall', 'market', 'office', 'police', 'restaurant', 'school', 'service',
+  'mall', 'market', 'museum', 'office', 'police', 'restaurant', 'school', 'service',
   'venue', 'worship',
 ]);
 const nearBuilding = () => {
@@ -126,6 +127,8 @@ const nearRacer = () =>
   !G.task &&
   dist(pos(), placeOf('stadstop')) < 10 &&
   !(missionActive() && curMission().at === 'stadstop');
+const nearHustleContact = () =>
+  !G.inCar && G.contacts?.find(c => isHustleContact(c.id) && dist(pos(), c) < 4);
 
 const _side = new THREE.Vector3();
 const ENTER_EXIT_T = () =>
@@ -157,7 +160,7 @@ function smoothstep(t) {
 }
 
 export function toggleCar() {
-  if (frozen() || isVehicleBlending()) return;
+  if (frozen() || isVehicleBlending() || G.transitRide) return;
 
   if (G.inCar) {
     const car = G.car;
@@ -186,6 +189,15 @@ export function toggleCar() {
 
   const c = nearestCar();
   if (!c) return;
+  if (
+    VEH[c.userData.type]?.commercial &&
+    !c.userData.owned &&
+    !c.userData.stolen &&
+    !G.state.inv?.weapon
+  ) {
+    toast('The driver and passengers will fight back. You need a weapon to hijack this vehicle.');
+    return;
+  }
 
   const door = c.position.clone().add(doorOffset(c, -1));
   door.y = c.position.y;
@@ -231,6 +243,15 @@ function finishEnter(car) {
     addHeat(1, 'Stolen vehicle');
     addRep('street', 2);
     addRep('public', -2);
+    if (VEH[car.userData.type]?.commercial) {
+      const injury = 20 + Math.floor(Math.random() * 31);
+      G.state.health = Math.max(1, G.state.health - injury);
+      addHeat(2, 'Passengers fight back');
+      addRep('public', -8);
+      addRep('street', -5);
+      toast(`The crew retaliates · health −${injury}`);
+      emit('hud');
+    }
   }
 
   const name = VEH[car.userData.type]?.name || 'Vehicle';
@@ -713,6 +734,15 @@ function dealerDialog() {
     },
   }));
   const choices = [];
+  choices.push({
+    label: s.inv.weapon ? 'Protection weapon · carried' : 'Protection weapon · ₦18,000',
+    apply() {
+      if (s.inv.weapon) return toast('You already have a weapon');
+      if (!pay(18000, 'Ladipo · protection weapon')) return toast('Not enough money');
+      addItem('weapon');
+      toast('Weapon added to your inventory');
+    },
+  });
   if (mine.length) {
     choices.push({
       label: 'Buy another vehicle',
@@ -774,6 +804,9 @@ export function interact() {
     else if (action === 'service') {
       const place = G.interior.place;
       if (place.kind === 'bank') emit('phone:open', 'bank');
+      else if (hustleContactAtPlace(place.id)) {
+        openHustleHub(hustleContactAtPlace(place.id));
+      }
       else if (['cafe', 'gym', 'mall', 'restaurant', 'school'].includes(place.kind)) openPlace(place);
       else toast(`${place.name} · ${place.profession || place.kind} workshop`);
     }
@@ -806,6 +839,11 @@ export function interact() {
   }
   if (!G.inCar) {
     if (tryFamilyInteract()) return;
+    const transitVehicle = nearTransitVehicle();
+    if (transitVehicle) {
+      startTransitDialog(transitVehicle);
+      return;
+    }
     const crew = nearCrew();
     if (crew) {
       runCrewDialog(crew);
@@ -818,6 +856,10 @@ export function interact() {
         !G.task &&
         dist(pos(), missionPos()) < curMission().r;
       if (!missionTalk) {
+        if (!G.task && isHustleContact(sc.id)) {
+          openHustleHub(sc.id);
+          return;
+        }
         talkToContact(sc.id);
         return;
       }
@@ -955,6 +997,14 @@ export function promptFor() {
   if (G.sleeping) return { text: '…' };
   if (G.dialog) return null;
 
+  const transitVehicle = nearTransitVehicle();
+  if (transitVehicle) {
+    return {
+      key: 'E',
+      text: `Board ${VEH[transitVehicle.type]?.name || 'bus'}`,
+      sub: `${transitVehicle.stoppedAtStop.name} · choose a destination`,
+    };
+  }
   const crew = nearCrew();
   if (crew) {
     return {
@@ -980,13 +1030,13 @@ export function promptFor() {
         text:
           G.task.type === 'steal'
             ? 'Hand over the sedan'
-            : `Deliver ${
+            : `Deliver ${G.task.deliveryLabel || (
                 G.task.item === 'coldbox'
                   ? 'the vaccine box'
                   : G.task.item === 'cargo'
                     ? 'the glassware'
                     : 'the package'
-              }`,
+              )}`,
       };
     }
   }
@@ -1001,6 +1051,11 @@ export function promptFor() {
       text: s.storyPaused ? `Resume with ${who}` : `Talk to ${who}`,
     };
   }
+  const hustleContact = nearHustleContact();
+  if (hustleContact && !G.task)
+    return { key: 'E', text: `Talk to ${hustleContact.name} · local missions` };
+  if (hustleContact && G.task)
+    return { key: 'E', text: `Talk to ${hustleContact.name}` };
   const j = jobOf(s.job);
   if (j && dist(p, jobPos(j)) < 9)
     return { key: 'E', text: `Start shift as ${j.title}` };

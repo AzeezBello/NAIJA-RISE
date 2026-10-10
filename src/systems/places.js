@@ -7,6 +7,7 @@ import { toast } from '../ui/feedback.js';
 import { pay, tx, xp, addItem, addRep, gainSkill, msg } from './economy.js';
 import { startDialog } from './dialogue.js';
 import { cafeCourseRows, completeCourse, completeYabaTechSemester } from './education.js';
+import { startSideTask } from './missions.js';
 
 // Living City places (Phase 2): gym, restaurant, mall + cinema, cyber café, football pitch, roadside vendors.
 // Every activity moves the player model: money, stamina (energy), skills, reputation, time — and opens opportunities.
@@ -15,6 +16,169 @@ const nearKind = (kind, r) => LANDMARKS.find(l => l.kind === kind && dist(pos(),
 export const nearPlace = () => (G.inCar ? null : nearKind('gym', 12) || nearKind('restaurant', 12) || nearKind('mall', 18) || nearKind('cafe', 12) || nearKind('pitch', 20) || nearKind('school', 12) || (VENDORS.some(([x, z]) => dist(pos(), { x, z }) < 3.5) ? { kind: 'vendor', name: 'Roadside vendor' } : null));
 const hours = h => { s().clock = Math.min(23.95, s().clock + h); emit('clock'); };
 const done = ch => { ch.apply?.(); emit('hud'); };
+
+const HUSTLE_HUBS = {
+  egbon: {
+    name: 'Surulere',
+    contact: 'egbon',
+    at: 'egbon-desk',
+    missions: [
+      ['Deliver a workshop parts crate to Ladipo Garage', 'ladipo', 'phone_parts', 35, 18000, 'Parts Crate', 'business'],
+      ['Take community notices to the Iponri Logistics Yard', 'marina', 'event_flyers', 30, 15000, 'Community Notices', 'social'],
+    ],
+  },
+  ikoyi_merchant: {
+    name: 'Ikoyi',
+    contact: 'ikoyi_merchant',
+    at: 'ikoyi-market',
+    missions: [
+      ['Deliver a market basket to Ikoyi Club', 'ikoyi-club', 'market_basket', 30, 20000, 'Market Basket', 'business'],
+      ['Take supplies to the Ikoyi Boulevard service desk', 'ikoyi-boulevard', 'school_supplies', 35, 24000, 'Supplies', 'business'],
+    ],
+  },
+  lekki_keeper: {
+    name: 'Lekki–Epe',
+    contact: 'lekki_keeper',
+    at: 'sangotedo',
+    missions: [
+      ['Carry field supplies to Lekki Conservation Centre', 'lekki-conservation', 'conservation_kit', 40, 22000, 'Conservation Kit', 'public'],
+      ['Deliver school materials to Ajah Community School', 'ajah-school', 'school_supplies', 35, 18000, 'School Supplies', 'public'],
+    ],
+  },
+  ikorodu_trader: {
+    name: 'Ikorodu',
+    contact: 'ikorodu_trader',
+    at: 'ikorodu-market',
+    missions: [
+      ['Take a market basket to Ikorodu Garage', 'ikorodu-garage-town', 'market_basket', 35, 16000, 'Market Basket', 'business'],
+      ['Deliver school supplies to Ikorodu Senior Grammar School', 'ikorodu-school', 'school_supplies', 35, 18000, 'School Supplies', 'public'],
+    ],
+  },
+  apapa_dispatch: {
+    name: 'Apapa Port',
+    contact: 'apapa_dispatch',
+    at: 'apapa-port',
+    missions: [
+      ['Deliver the dock manifest to Apapa Wharf', 'apapa-wharf', 'dock_manifest', 30, 24000, 'Dock Manifest', 'business'],
+      ['Take supplies from the port to Apapa Community School', 'apapa-school', 'school_supplies', 35, 19000, 'School Supplies', 'public'],
+    ],
+  },
+  oyingbo_trader: {
+    name: 'Oyingbo · Empire',
+    contact: 'oyingbo_trader',
+    at: 'oyingbo-market',
+    missions: [
+      ['Deliver a market basket to the Oyingbo Rail Terminal', 'oyingbo-rail', 'market_basket', 25, 14000, 'Market Basket', 'business'],
+      ['Carry community notices to Empire', 'empire', 'event_flyers', 20, 12000, 'Community Notices', 'social'],
+    ],
+  },
+  yaba_connector: {
+    name: 'Yaba · Alagomeji',
+    contact: 'yaba_connector',
+    at: 'alagomeji-tech',
+    missions: [
+      ['Run laptop parts to the Yaba Sign Painting Studio', 'yaba-painter', 'laptop_parts', 30, 20000, 'Laptop Parts', 'business'],
+      ['Deliver school supplies to Yaba College of Technology', 'yabatech', 'school_supplies', 35, 22000, 'School Supplies', 'public'],
+    ],
+  },
+  agege_baker: {
+    name: 'Agege',
+    contact: 'agege_baker',
+    at: 'agege-market',
+    missions: [
+      ['Deliver fresh bread to Agege Bus Garage', 'agege-garage', 'fresh_bread', 25, 14000, 'Fresh Bread', 'business'],
+      ['Take bread to the Agege Carpentry Workshop', 'agege-carpenter', 'fresh_bread', 20, 12000, 'Fresh Bread', 'business'],
+    ],
+  },
+  ojo_trader: {
+    name: 'Ojo · Badagry',
+    contact: 'ojo_trader',
+    at: 'ojo-alaba',
+    missions: [
+      ['Deliver electronics parts to the Ojo Welding Yard', 'ojo-welder', 'phone_parts', 30, 18000, 'Electronics Parts', 'business'],
+      ['Carry a market basket to Ojo Market', 'ojo-market', 'market_basket', 25, 14000, 'Market Basket', 'business'],
+    ],
+  },
+  cv_oga: {
+    name: 'Computer Village',
+    contact: 'cv_oga',
+    at: 'ikeja-tech',
+    missions: [
+      ['Deliver replacement phone parts to Ikeja Senior High School', 'ikeja-school', 'phone_parts', 30, 18000, 'Phone Parts', 'business'],
+      ['Run laptop parts to the airport service desk', 'ikeja-airport', 'laptop_parts', 40, 26000, 'Laptop Parts', 'business'],
+      ['Set up a POS terminal at Ikeja City Centre', 'ikeja-city', 'pos_terminal', 35, 22000, 'POS Terminal', 'business'],
+    ],
+  },
+  sisi: {
+    name: 'AJ City',
+    contact: 'sisi',
+    at: 'ajegunle',
+    missions: [
+      ['Take donated football boots to Baba Goal at the AJ City Street Pitch', 'ajpitch', 'football_boots', 25, 12000, 'Football Boots', 'street'],
+    ],
+  },
+  makoko_fisher: {
+    name: 'Makoko',
+    contact: 'makoko_fisher',
+    at: 'makoko-shore-stop',
+    missions: [
+      ['Carry the fresh fish crate to the Makoko Canoe Landing', 'makoko-canoe-landing', 'fish_crate', 18, 9000, 'Fish Crate', 'business'],
+    ],
+  },
+  shrine_host: {
+    name: 'New Afrika Shrine',
+    contact: 'shrine_host',
+    at: 'new-afrika-shrine',
+    missions: [
+      ['Deliver audio cables to the Ikeja City Centre event crew', 'ikeja-city', 'event_cables', 45, 24000, 'Event Cables', 'social'],
+      ['Take spare stage connectors to Kalakuta Republic', 'kalakuta-republic', 'event_cables', 50, 28000, 'Event Cables', 'social'],
+    ],
+  },
+  kalakuta_guide: {
+    name: 'Kalakuta Republic',
+    contact: 'kalakuta_guide',
+    at: 'kalakuta-republic',
+    missions: [
+      ['Deliver an archive box to the New Afrika Shrine history room', 'new-afrika-shrine', 'archive_box', 50, 28000, 'Archive Box', 'social'],
+    ],
+  },
+};
+
+export const isHustleContact = id => Object.hasOwn(HUSTLE_HUBS, id);
+export const hustleContactAtPlace = placeId =>
+  Object.values(HUSTLE_HUBS).find(hub => hub.at === placeId)?.contact || null;
+
+export function openHustleHub(contactId) {
+  const hub = HUSTLE_HUBS[contactId];
+  if (!hub) return false;
+  const contact = hub.contact;
+  startDialog([{ s: contact, t: `Welcome to ${hub.name}. Choose a local run. Deliveries pay when you reach the destination before the deadline.` }], [
+    ...(G.task ? [] : hub.missions.map(([description, dest, item, minutes, reward, deliveryLabel, rep]) => ({
+      label: description,
+      apply() {
+        startSideTask({
+          dest,
+          item,
+          minutes,
+          obj: description,
+          deliveryLabel,
+          onComplete() {
+            s().cash += reward;
+            tx(`${hub.name} delivery`, reward);
+            xp(12);
+            addRep(rep, 2);
+            toast(`Delivery complete · +${fmt(reward)}`);
+          },
+          onFail() {
+            toast(`${hub.name} delivery missed its deadline`);
+          },
+        });
+      },
+    }))),
+    { label: 'Leave', apply() {} },
+  ], done);
+  return true;
+}
 
 export function placePrompt(p) {
   return { gym: 'Enter gym', restaurant: `Enter ${p.name}`, mall: 'Enter mall', cafe: 'Enter cyber café', pitch: 'Join the football', school: 'Visit school · evening class', vendor: 'Buy from vendor' }[p.kind];
