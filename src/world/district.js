@@ -242,6 +242,8 @@ function buildPost(l) {
 function buildLandmarks() {
   for (const l of LANDMARKS) {
     if (l.stadium) { buildStadium(l); continue; }
+    if (l.id === 'makoko' || l.kind === 'settlement') { buildMakoko(l); continue;}
+    if (l.id === 'ajegunle' || (l.kind === 'settlement' && l.dense)) {  buildAjegunle(l); continue;}
     if (l.kind === 'checkpoint') { buildCheckpoint(l); continue; }
     if (l.kind === 'post') { buildPost(l); continue; }
     if (l.kind === 'pitch') continue;
@@ -413,3 +415,245 @@ export function buildDistrict() {
 }
 export function updateClouds(dt) { for (const c of G.clouds || []) { c.position.x += dt * 1.2; if (c.position.x > 280) c.position.x = -280; } }
 export { ROADS };
+
+
+
+// ============================================================
+// Makoko — lagoon stilt settlement (Third Mainland / lagoon-n)
+// ============================================================
+//
+// Geometry is constrained to WATERS:
+//   lagoon   x[165,339] z[-250,330]
+//   lagoon-n x[339,620] z[-250,-85]
+// Bridge deck at x=360 must stay clear (halfW ≈ 10 + margin).
+//
+
+const MAKOKO_BRIDGE_X = 360;
+const MAKOKO_BRIDGE_CLEAR = 14; // outside carriageway + barriers
+
+function makokoInLagoon(x, z) {
+  return inWater(x, z) && Math.abs(x - MAKOKO_BRIDGE_X) > MAKOKO_BRIDGE_CLEAR;
+}
+
+function makokoChannel(x, z, cx, cz) {
+  // Water “streets” — leave open lanes for canoes
+  const lx = x - cx;
+  const lz = z - cz;
+  if (Math.abs(lx % 14) < 2.2) return true;
+  if (Math.abs(lz % 16) < 2.0) return true;
+  return false;
+}
+
+function buildMakoko(l) {
+  const cx = l.x;
+  const cz = l.z;
+  const WOOD = 0x6b5344;
+  const WOOD_DK = 0x3e2f26;
+  const TIN = 0x7a8288;
+  const TIN_RUST = 0x8a6a4a;
+  const procedural = [];
+
+  // Cluster extents (must stay inside lagoon / lagoon-n)
+  const halfX = 48;
+  const halfZ = 42;
+
+  let placed = 0;
+  const maxHouses = 52;
+
+  for (let i = 0; i < 120 && placed < maxHouses; i++) {
+    const x = cx + (Math.random() - 0.5) * halfX * 2;
+    const z = cz + (Math.random() - 0.5) * halfZ * 2;
+
+    if (!makokoInLagoon(x, z)) continue;
+    if (makokoChannel(x, z, cx, cz)) continue;
+    // Keep a viewing corridor from the bridge
+    if (x > MAKOKO_BRIDGE_X - MAKOKO_BRIDGE_CLEAR - 2) continue;
+
+    const stiltH = 1.15 + Math.random() * 0.95; // deck above water (y≈0)
+    const shackH = 1.3 + Math.random() * 1.1;
+    const w = 2.0 + Math.random() * 1.1;
+    const d = 1.9 + Math.random() * 1.0;
+    const roofC = Math.random() < 0.55 ? TIN : TIN_RUST;
+
+    // Four stilts
+    for (const [ox, oz] of [
+      [-0.45, -0.45],
+      [0.45, -0.45],
+      [-0.45, 0.45],
+      [0.45, 0.45],
+    ]) {
+      const px = x + ox * w;
+      const pz = z + oz * d;
+      const pole = cyl(px, pz, 0.07, stiltH + 0.15, WOOD_DK, 'prop', 0, 6);
+      procedural.push(pole);
+    }
+
+    // Deck
+    const deck = box(x, z, w, d, 0.12, WOOD, 'prop', stiltH);
+    procedural.push(deck);
+
+    // Shack
+    const shack = box(x, z, w * 0.92, d * 0.92, shackH, WOOD, 'prop', stiltH + 0.55);
+    procedural.push(shack);
+
+    // Tin roof (slightly larger)
+    const roof = box(
+      x,
+      z,
+      w * 1.08,
+      d * 1.08,
+      0.08,
+      roofC,
+      'prop',
+      stiltH + 0.55 + shackH * 0.5
+    );
+    procedural.push(roof);
+
+    placed++;
+  }
+
+  // A few canoes in the channels (static props)
+  for (let i = 0; i < 8; i++) {
+    const x = cx + (Math.random() - 0.5) * 70;
+    const z = cz + (Math.random() - 0.5) * 55;
+    if (!makokoInLagoon(x, z)) continue;
+    const canoe = box(x, z, 0.55, 2.4, 0.28, 0x2a221c, 'prop', 0.12);
+    canoe.rotation.y = Math.random() * Math.PI;
+    procedural.push(canoe);
+  }
+
+  // Shore marker / identity (readable from Third Mainland deck ~y=9)
+  sign(
+    'MAKOKO',
+    cx + 8,
+    7.2,
+    cz - 36,
+    '#f5c518',
+    11,
+    1.8,
+    'rgba(12,40,48,.94)'
+  );
+  sign(
+    'LAGOON SETTLEMENT',
+    cx + 8,
+    5.4,
+    cz - 36,
+    '#e8efe9',
+    7,
+    1.1,
+    'rgba(12,40,48,.9)'
+  );
+
+  (G.landmarkMeshes ??= {})[l.id] = procedural;
+  console.info(`[district] Makoko: ${placed} stilt houses at (${cx}, ${cz})`);
+}
+
+
+// ============================================================
+// Ajegunle · AJ City — dense mainland neighbourhood
+// ============================================================
+// Cosmopolitan, high-density low-rise. SW of Surulere toward Apapa.
+// Landmark centre ~(-108, 96); stay on land, clear of WATERS / main roads.
+
+function onMajorRoad(x, z, shoulder = 4) {
+  for (const k of ROADS.h) {
+    const [a, b] = roadExtent('h', k);
+    if (x < a - 2 || x > b + 2) continue;
+    const hw = (ROAD_WIDTHS.h[k] || 18) / 2 + shoulder;
+    if (Math.abs(z - k) < hw) return true;
+  }
+  for (const k of ROADS.v) {
+    const [a, b] = roadExtent('v', k);
+    if (z < a - 2 || z > b + 2) continue;
+    const hw = (ROAD_WIDTHS.v[k] || 18) / 2 + shoulder;
+    if (Math.abs(x - k) < hw) return true;
+  }
+  return false;
+}
+
+function buildAjegunle(l) {
+  const cx = l.x;
+  const cz = l.z;
+  const COLORS = [0x6b5344, 0x5a4a3a, 0x7a6a55, 0x4a5550, 0x8a7355, 0x556070];
+  const ROOF = [0x3a3a3a, 0x5a4030, 0x6a6a6a, 0x2a2a2a];
+  const procedural = [];
+
+  const halfX = 44;
+  const halfZ = 40;
+  let placed = 0;
+  const maxHouses = 70;
+
+  for (let i = 0; i < 160 && placed < maxHouses; i++) {
+    const x = cx + (Math.random() - 0.5) * halfX * 2;
+    const z = cz + (Math.random() - 0.5) * halfZ * 2;
+
+    if (inWater(x, z)) continue;
+    if (onMajorRoad(x, z, 5)) continue;
+    // Leave alleys
+    if (Math.abs((x - cx) % 11) < 1.6) continue;
+    if (Math.abs((z - cz) % 10) < 1.5) continue;
+
+    const w = 3.2 + Math.random() * 2.4;
+    const d = 3.0 + Math.random() * 2.2;
+    const floors = Math.random() < 0.35 ? 2 : 1;
+    const h = (2.6 + Math.random() * 1.2) * floors;
+    const bodyC = COLORS[(Math.random() * COLORS.length) | 0];
+    const roofC = ROOF[(Math.random() * ROOF.length) | 0];
+
+    const body = box(x, z, w, d, h, bodyC, 'prop', h * 0.5);
+    procedural.push(body);
+
+    const roof = box(x, z, w * 1.05, d * 1.05, 0.15, roofC, 'prop', h + 0.08);
+    procedural.push(roof);
+
+    // Soft collision so player can’t walk through the block
+    colliders.push({ x, z, w: w * 0.9, d: d * 0.9 });
+
+    // Occasional shop front stripe
+    if (Math.random() < 0.22) {
+      const stripe = box(x, z + d * 0.48, w * 0.9, 0.12, 0.9, 0xf5c518, 'prop', 1.1);
+      procedural.push(stripe);
+    }
+
+    placed++;
+  }
+
+  // Small open “field” / hangout near centre
+  const yard = box(cx + 6, cz - 4, 8, 6, 0.06, 0x4a5a3a, 'prop', 0.04);
+  procedural.push(yard);
+
+  sign('AJEGUNLE', cx, 6.5, cz - 22, '#f5c518', 12, 1.9, 'rgba(20,30,28,.94)');
+  sign('AJ CITY', cx, 4.6, cz - 22, '#e8efe9', 7, 1.2, 'rgba(20,30,28,.9)');
+
+  (G.landmarkMeshes ??= {})[l.id] = procedural;
+  console.info(`[district] Ajegunle: ${placed} houses at (${cx}, ${cz})`);
+}
+
+
+function buildAjPitch() {
+  const pitch = LANDMARKS.find(l => l.id === 'ajpitch');
+  if (!pitch) return;
+
+  const grass = new THREE.Mesh(
+    new THREE.PlaneGeometry(14, 10),
+    mat(0x2f7d49)
+  );
+  grass.rotation.x = -Math.PI / 2;
+  grass.position.set(pitch.x, 0.11, pitch.z);
+  grass.receiveShadow = true;
+  G.scene.add(grass);
+
+  // touch lines
+  staticBox('lanes', pitch.x, pitch.z, 0.2, 10, 0.02, 0.12);
+  staticBox('lanes', pitch.x, pitch.z - 5, 14, 0.2, 0.02, 0.12);
+  staticBox('lanes', pitch.x, pitch.z + 5, 14, 0.2, 0.02, 0.12);
+
+  // mini goals
+  for (const gx of [-6.5, 6.5]) {
+    staticBox('poles', pitch.x + gx, pitch.z - 2, 0.12, 0.12, 1.8);
+    staticBox('poles', pitch.x + gx, pitch.z + 2, 0.12, 0.12, 1.8);
+    staticBox('poles', pitch.x + gx, pitch.z, 0.12, 4, 0.12, 1.7);
+  }
+
+  sign('AJ STREET FOOTBALL', pitch.x, 4.2, pitch.z - 7, '#ffffff', 7, 1.3, 'rgba(10,50,30,.94)');
+}

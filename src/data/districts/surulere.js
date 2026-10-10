@@ -5,6 +5,7 @@ export const META = { id: 'surulere', name: 'Surulere', state: 'Lagos', spawn: {
 // Regions of this world (PRD corridor map), as rectangles. The locale indicator names them.
 export const REGIONS = [
   { id: 'surulere', name: 'Surulere', x: [-150, 135], z: [-150, 150] }, { id: 'costain', name: 'Costain · Iganmu', x: [135, 165], z: [-150, 150] },
+  { id: 'ajegunle', name: 'Ajegunle · AJ City', x: [-150, -60], z: [40, 150] },
   { id: 'lagoon', name: 'Eko Bridge · Lagos Lagoon', x: [165, 340], z: [-250, 330] }, { id: 'island', name: 'Lagos Island', x: [340, 480], z: [-85, 100] },
   { id: 'thirdmainland', name: 'Third Mainland Bridge', x: [340, 480], z: [-250, -85] }, { id: 'yaba', name: 'Yaba', x: [340, 480], z: [-400, -250] },
   { id: 'ebute', name: 'Ebute Metta · Ikorodu Road', x: [-100, 340], z: [-400, -250] }, { id: 'ikorodu', name: 'Ikorodu Road · Ikorodu Garage', x: [-150, -100], z: [-400, -250] },
@@ -119,6 +120,47 @@ export const LANDMARKS = [
   { id: 'unilag', name: 'University of Lagos · Main Gate', short: 'UNILAG', x: 464, z: -360, c: '#6a7a5a', sign: '#ffffff', h: 7, kind: 'school', region: 'yaba' },
   { id: 'ebutepolice', name: 'Ebute Metta Police Post', short: 'POLICE', x: 240, z: -360, c: '#1f2b45', sign: '#ffffff', h: 5, kind: 'police', region: 'ebute' },
   { id: 'ikorodu', name: 'Ikorodu Garage', short: 'IKORODU GARAGE', x: -120, z: -352, c: '#5c4933', sign: '#ffc52f', h: 5, kind: 'garage', region: 'ikorodu' },
+
+    // Makoko — lagoon stilts west of / under Third Mainland Bridge (k = 360)
+  {
+    id: 'makoko',
+    name: 'Makoko',
+    short: 'MAKOKO',
+    x: 300,          // inside lagoon x[165,339]
+    z: -185,         // inside lagoon z[-250,330] and lagoon-n band
+    c: '#5a6e72',
+    sign: '#f5c518',
+    h: 3,
+    kind: 'settlement',
+    waterfront: true,
+    region: 'thirdmainland',
+  },
+
+  // dense cosmopolitan neighbourhood (Ajeromi-Ifelodun / AJ City)
+  {
+    id: 'ajegunle',
+    name: 'Ajegunle · AJ City',
+    short: 'AJ CITY',
+    x: -108,
+    z: 96,
+    c: '#5c4a3a',
+    sign: '#ffc52f',
+    h: 4,
+    kind: 'settlement',
+    dense: true,
+    region: 'ajegunle',
+  },
+  {
+    id: 'ajpitch',
+    name: 'AJ City Street Pitch',
+    short: 'AJ PITCH',
+    x: -102,   // same yard as buildAjegunle open space
+    z: 92,
+    c: '#2f7d49',
+    sign: '#ffffff',
+    kind: 'pitch',
+    region: 'ajegunle',
+  },
 ];
 // Compound cells for the corridor districts. style: 'island' (towers) | 'vi' (towers and hotels) | 'yaba' (storey) | 'lekki' (duplexes) | 'ebute' (bungalow / storey)
 export const VI_CELLS = [[408, 210], [408, 270], [440, 270], [464, 270], [364, 318], [464, 318]];
@@ -143,6 +185,9 @@ export const BUSSTOPS = [
   { id: 'ebutebus', name: 'Ebute Metta Bus Stop', short: 'EBUTE METTA', x: 200, z: -316, agberos: 1 },
   { id: 'lekkibus', name: 'Lekki Toll Bus Stop', short: 'LEKKI B/S', x: 540, z: 226, agberos: 1 },
   { id: 'vibus', name: 'Falomo Bus Stop', short: 'FALOMO B/S', x: 420, z: 226, agberos: 0 },
+  
+  // Ajegunle corridor (dense, cosmopolitan, low-income)
+  { id: 'ajstop', name: 'Ajegunle Bus Stop', short: 'AJ B/S', x: -100, z: 88, agberos: 2 },
 ];
 
 // Housing (PRD §10): rent through an agent or buy from the landlord; owned homes can be let to tenants.
@@ -184,7 +229,7 @@ export const NIGHTLIFE_NPCS = [
 
 // Grid buildings and palms keep clear of these spots.
 export const RESERVED = [
-  ...LANDMARKS.map(l => ({ x: l.x, z: l.z, r: l.stadium ? 34 : l.kind === 'pitch' ? 26 : l.big ? 22 : (l.kind === 'checkpoint' || l.kind === 'post' || l.kind === 'toll') ? 8 : 17 })),
+  ...LANDMARKS.map(l => ({ x: l.x, z: l.z, r: l.stadium ? 34 : l.kind === 'pitch' ? 26 : l.waterfront || l.kind === 'settlement' ? 52 : l.big ? 22 : (l.kind === 'checkpoint' || l.kind === 'post' || l.kind === 'toll') ? 8 : 17 })),
   ...BUSSTOPS.map(b => ({ x: b.x, z: b.z, r: 13 })),
   ...PROPERTIES.map(p => ({ x: p.x, z: p.z, r: 17 })),
 ];

@@ -144,4 +144,67 @@ export const MISSIONS = [
     after() { const s = G.state; s.cash += 100000; tx('Territory race', 100000); addRep('street', 15); s.done = true; toast('BABA K\'S ARC COMPLETE — Funsho Williams is yours'); msg('babak', 'The road na your own. More work soon. Lagos no dey sleep.'); xp(60); },
     fail() { msg('babak', 'You lose the road. Race again when you ready.'); },
   },
+  {
+    title: 'AJ City Errand',
+    at: 'ajegunle',
+    r: 12,
+    // optional: only when free-roaming
+    requires: () => !!G.state.storyPaused || G.state.mission >= 3,
+    obj: () => 'Meet Sisi Kemi in Ajegunle · AJ City',
+    lines: () => [
+      {
+        s: 'sisi',
+        t: 'Welcome to AJ. Dem no dey joke with respect for here.',
+      },
+      {
+        s: 'sisi',
+        t: 'My brother dey wait for pure water money for the bus stop. Carry ₦3,000 give the conductor for AJ B/S, then come back.',
+      },
+    ],
+    choices: [
+      {
+        label: 'I go do am.',
+        reply: 'Sharp. AJ Bus Stop. No lose the money.',
+        apply() {
+          if (!pay(3000, 'AJ errand float')) {
+            toast('You need ₦3,000 cash');
+            G.state.mission--;
+            return;
+          }
+          G.state.ajErrand = true;
+          addItem('aj_envelope');
+        },
+      },
+      {
+        label: 'Not today.',
+        reply: 'No wahala. AJ go still dey.',
+        apply() {},
+      },
+    ],
+    after() {
+      if (!G.state.ajErrand) return;
+      msg('sisi', 'Conductor dey AJ Bus Stop. Settle am, then come back to me.');
+    },
+  },
+  {
+    title: 'AJ City Errand · Return',
+    at: 'ajegunle',
+    r: 12,
+    requires: () => !!G.state.ajErrand,
+    obj: () => 'Return to Sisi Kemi in AJ City',
+    lines: () => [
+      { s: 'sisi', t: 'You try. AJ go remember you.' },
+    ],
+    after() {
+      const s = G.state;
+      s.ajErrand = false;
+      removeItem('aj_envelope');
+      s.cash += 5000;
+      tx('AJ City errand', 5000);
+      addRep('street', 4);
+      addRep('social', 3);
+      xp(20);
+      msg('sisi', 'Anytime you need something for this side, you know where I dey.');
+    },
+  },
 ];
