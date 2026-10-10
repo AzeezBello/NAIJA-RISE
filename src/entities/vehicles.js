@@ -22,9 +22,49 @@ import {
   onBridge,
   inWater,
 } from '../data/locations.js';
-import { heightAt } from '../world/terrain.js';
+import {
+  heightAt,
+  deckHeightAt,
+  deckAt,
+} from '../world/terrain.js';
 import { lightFor } from '../systems/trafficlights.js';
 import { PERF } from '../data/config.js';
+
+/**
+ * Resolve the correct road surface for a vehicle.
+ *
+ * A vehicle on an elevated bridge keeps the deck elevation.
+ * A vehicle passing beneath the bridge stays on ground level.
+ * Low ramps continue to use the existing heightAt behaviour.
+ */
+function vehicleSurfaceHeight(x, z, currentY = 0, forceDeck = false) {
+  const result = deckHeightAt(x, z);
+
+  if (!result.deck) {
+    return 0;
+  }
+
+  const deckY = result.height;
+
+  // Low ramps can be climbed from ground level.
+  if (deckY <= 2.25) {
+    return deckY;
+  }
+
+  // Explicitly place a vehicle on the deck at a known bridge spawn.
+  if (forceDeck) {
+    return deckY;
+  }
+
+  // Preserve the bridge surface for vehicles already travelling there.
+  if (Math.abs(currentY - deckY) <= 2.0) {
+    return deckY;
+  }
+
+  // Otherwise, the elevated deck is overhead, not the road surface.
+  return 0;
+}
+
 
 // ============================================================
 // Vehicle forward
@@ -518,25 +558,41 @@ export function makeVehicle(type, color = 0x172e35, opts = {}) {
 // Park placement
 // ============================================================
 
-function parkClear(x, z, wid, len, pad = 0.6) {
+function parkClear(x, z, wid, len, pad = 1.25) {
   if (inWater(x, z)) return false;
+
   const hw = wid * 0.5 + pad;
   const hd = len * 0.5 + pad;
+
   for (const c of colliders) {
-    if (
-      Math.abs(x - c.x) < c.w / 2 + hw &&
-      Math.abs(z - c.z) < c.d / 2 + hd
-    ) {
+    // Ignore elevated-only colliders when checking a ground-level
+    // parking position. Ground-level colliders remain active.
+    if (c.minY !== undefined && c.minY > 0.5) {
+      continue;
+    }
+
+    const overlapX =
+      Math.abs(x - c.x) < c.w / 2 + hw;
+
+    const overlapZ =
+      Math.abs(z - c.z) < c.d / 2 + hd;
+
+    if (overlapX && overlapZ) {
       return false;
     }
   }
+
   return true;
 }
 
-function findParkSpot(x, z, wid, len, attempts = 16) {
-  if (parkClear(x, z, wid, len)) return { x, z };
+function findParkSpot(x, z, wid, len, attempts = 24) {
+  if (parkClear(x, z, wid, len)) {
+    return { x, z };
+  }
+
   for (let i = 1; i <= attempts; i++) {
-    const step = 1.2 * i;
+    const step = 1.5 * i;
+
     const candidates = [
       [x + step, z],
       [x - step, z],
@@ -547,10 +603,16 @@ function findParkSpot(x, z, wid, len, attempts = 16) {
       [x + step, z - step],
       [x - step, z + step],
     ];
+
     for (const [nx, nz] of candidates) {
-      if (parkClear(nx, nz, wid, len)) return { x: nx, z: nz };
+      if (parkClear(nx, nz, wid, len)) {
+        return { x: nx, z: nz };
+      }
     }
   }
+
+  // Better to omit a blocked parked vehicle than to spawn it
+  // on a kerb, island, building footprint, or in water.
   return null;
 }
 
@@ -565,7 +627,12 @@ export function spawnParked() {
     }
     // Parked commercial still look “alive” with a driver waiting
     const v = makeVehicle(p.type, p.color);
-    v.position.set(spot.x, heightAt(spot.x, spot.z), spot.z);
+    v.position.set(
+      spot.x,
+      vehicleSurfaceHeight(spot.x, spot.z, 0),
+      spot.z
+    );
+
     v.rotation.y = p.rot || 0;
     v.userData.cond = 100;
     v.userData.enterable = true;
@@ -585,12 +652,22 @@ export function spawnOwned(home) {
     const base = home ? home.door : { x: -42, z: 62 };
     const i = G.parked.filter(v => v.userData.owned).length;
     if (o.pos) {
-      v.position.set(o.pos.x, heightAt(o.pos.x, o.pos.z), o.pos.z);
+      v.position.set(
+        o.pos.x,
+        vehicleSurfaceHeight(o.pos.x, o.pos.z, 0),
+        o.pos.z
+      );
+
       v.rotation.y = o.pos.rot;
     } else {
       const x = base.x + 6 + i * 4;
       const z = base.z - 3;
-      v.position.set(x, heightAt(x, z), z);
+      v.position.set(
+        x,
+        vehicleSurfaceHeight(x, z, 0),
+        z
+      );
+      
       v.rotation.y = Math.PI / 2;
     }
     G.parked.push(v);
@@ -657,7 +734,27 @@ export function spawnTraffic() {
     } else {
       g.position.set(t.k - t.dir * LANE_OFFSET, 0, c);
     }
-    g.position.y = heightAt(g.position.x, g.position.z);
+
+    // Only force bridge elevation when this road segment is actually
+    // registered as a bridge and the vehicle is inside its deck footprint.
+    const along = t.axis === 'h' ? g.position.x : g.position.z;
+    const deck = deckAt(g.position.x, g.position.z);
+
+    const isBridgeRoad =
+      !!deck &&
+      deck.axis === t.axis &&
+      Math.abs(deck.k - t.k) <= deck.halfW + LANE_OFFSET + 0.5 &&
+      along >= deck.from &&
+      along <= deck.to &&
+      onBridge(t.axis, t.k, along);
+
+    g.position.y = vehicleSurfaceHeight(
+      g.position.x,
+      g.position.z,
+      0,
+      isBridgeRoad
+    );
+
     g.rotation.y = poseFor(t);
     return t;
   });
@@ -866,5 +963,11 @@ function stepTraffic(t, dt, pp) {
     else t.g.position.z = nc;
   }
 
-  t.g.position.y = heightAt(t.g.position.x, t.g.position.z);
+  const previousY = t.g.position.y;
+
+  t.g.position.y = vehicleSurfaceHeight(
+    t.g.position.x,
+    t.g.position.z,
+    previousY
+  );
 }

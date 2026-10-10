@@ -51,21 +51,21 @@ export const ASSETS = {
     url: 'assets/vegetation/jabami_anime_tree-grass_v1.glb',
     size: 2.7 * MB,
     category: 'vegetation',
-    scale: 0.55,
+    scale: 0.35,
   },
 
   treeMaple: {
     url: 'assets/vegetation/maple_tree.glb',
     size: 5.8 * MB,
     category: 'vegetation',
-    scale: 0.5,
+    scale: 0.28,
   },
 
   treePine: {
     url: 'assets/vegetation/tree_spruce_pine.glb',
     size: 4.8 * MB,
     category: 'vegetation',
-    scale: 0.5,
+    scale: 0.28,
   },
 
   nationalStadium: {
@@ -306,6 +306,50 @@ function sampleSpot(
   return null;
 }
 
+/**
+ * Normalize an imported tree to a realistic height.
+ *
+ * GLB source assets can use very different units and origins.
+ * Measure the actual bounding box instead of guessing a scale.
+ *
+ * Returns the scaled model's bounding box so its base can be
+ * placed exactly on the terrain.
+ */
+function fitTreeToHeight(object, targetHeight = 5.5) {
+  object.updateMatrixWorld(true);
+
+  const initialBox = new THREE.Box3().setFromObject(object);
+  const initialSize = new THREE.Vector3();
+  initialBox.getSize(initialSize);
+
+  if (
+    !Number.isFinite(initialSize.y) ||
+    initialSize.y <= 0.001
+  ) {
+    console.warn('[assets] Tree has invalid dimensions; skipping fit');
+    return null;
+  }
+
+  // Preserve the proportions of the original tree.
+  const fitScale = targetHeight / initialSize.y;
+  object.scale.multiplyScalar(fitScale);
+
+  object.updateMatrixWorld(true);
+
+  const fittedBox = new THREE.Box3().setFromObject(object);
+  const fittedSize = new THREE.Vector3();
+  fittedBox.getSize(fittedSize);
+
+  if (
+    !Number.isFinite(fittedSize.y) ||
+    fittedSize.y <= 0
+  ) {
+    return null;
+  }
+
+  return fittedBox;
+}
+
 // ============================================================
 // Vegetation
 // ============================================================
@@ -359,19 +403,35 @@ async function spawnVegetation() {
       if (!spot) continue;
 
       const tree = skClone(inst.obj);
-      const baseScale = ASSETS[key].scale ?? 1;
-      const scale = baseScale * (0.8 + Math.random() * 0.35);
 
-      tree.scale.setScalar(scale);
+      // Small natural variation without allowing enormous source models
+      // to dominate the city.
+      const targetHeight = 4.8 + Math.random() * 1.2;
+      const fittedBox = fitTreeToHeight(tree, targetHeight);
+
+      if (!fittedBox) {
+        console.warn(`[assets] Skipping tree with invalid bounds: ${key}`);
+        continue;
+      }
+
+      const groundY = heightAt(spot.x, spot.z);
+
+      // The bounding box can have a non-zero local minimum, so offset
+      // the object until its lowest point meets the ground.
       tree.position.set(
         spot.x,
-        heightAt(spot.x, spot.z),
+        groundY - fittedBox.min.y,
         spot.z
       );
+
       tree.rotation.y = Math.random() * Math.PI * 2;
 
       G.scene.add(tree);
-      solidAt(spot.x, spot.z, 0.8 * scale, 0.8 * scale);
+
+      // Use a modest ground footprint for the tree collider.
+      // This prevents oversized collision zones around small trees.
+      solidAt(spot.x, spot.z, 0.65, 0.65);
+
       vegetation.push(tree);
     }
   }

@@ -232,46 +232,60 @@ function finishExit(car) {
         ? car.position.clone().add(doorOffset(car, -1))
         : G.player?.position.clone();
 
+  // Reconcile the vehicle's surface before calculating the final
+  // position of the character.
+  if (car?.position) {
+    car.position.y = heightAt(
+      car.position.x,
+      car.position.z,
+      car.position.y
+    );
+  }
+
   G.inCar = false;
   G.car = null;
   G.carSpeed = 0;
   G.curSpeed = 0;
 
-  // Owned / empty cars stay empty. Stolen keep driver gone.
-  // Parked with a still-present driver mesh: show again when you leave
+  // Restore a parked vehicle's driver if the driver still exists.
   if (car?.userData?.driver && !car.userData.stolen) {
     setDriverVisible(car, true);
   }
 
   if (G.player) {
     G.player.visible = true;
+
     if (door) {
       G.player.position.copy(door);
-      try {
-        G.player.position.y = heightAt(
-          G.player.position.x,
-          G.player.position.z,
-          G.player.position.y
-        );
-      } catch {
-        /* keep y */
-      }
 
+      // Start with the car's elevation as the reference surface.
+      const referenceY = car?.position?.y ?? door.y;
+
+      G.player.position.y = heightAt(
+        G.player.position.x,
+        G.player.position.z,
+        referenceY
+      );
+
+      // Move the character away from the vehicle.
       if (car) {
         const away = G.player.position.clone().sub(car.position);
         away.y = 0;
-        if (away.lengthSq() < 0.01) away.set(1, 0, 0);
+
+        if (away.lengthSq() < 0.01) {
+          away.set(1, 0, 0);
+        }
+
         away.normalize().multiplyScalar(1.1);
         G.player.position.add(away);
-        try {
-          G.player.position.y = heightAt(
-            G.player.position.x,
-            G.player.position.z,
-            G.player.position.y
-          );
-        } catch {
-          /* keep y */
-        }
+
+        // Re-sample at the FINAL X/Z, using the nearby surface
+        // as the elevation hint. This matters near deck edges.
+        G.player.position.y = heightAt(
+          G.player.position.x,
+          G.player.position.z,
+          referenceY
+        );
       }
     }
   }
