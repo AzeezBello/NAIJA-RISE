@@ -235,7 +235,7 @@ function sidewalks(concrete) {
 
 function streetLight(x, z, armDir) {
   staticCyl('poles', x, z, 0.12, 7, 0, 8, 0.09);
-  colliders.push({ x, z, w: 0.55, d: 0.55 });
+  colliders.push({ x, z, w: 0.55, d: 0.55, bottomY: 0, topY: 7 });
   staticBox(
     'poles',
     x + armDir.x * 1.1,
@@ -541,11 +541,11 @@ function buildStadium(l) {
   proceduralMeshes.push(outer);
 
   colliders.push(
-    { x: l.x, z: l.z - 24, w: 48, d: 3 },
-    { x: l.x - 24, z: l.z, w: 3, d: 44 },
-    { x: l.x + 24, z: l.z, w: 3, d: 44 },
-    { x: l.x - 16, z: l.z + 24, w: 14, d: 3 },
-    { x: l.x + 16, z: l.z + 24, w: 14, d: 3 }
+    { x: l.x, z: l.z - 24, w: 48, d: 3, bottomY: 0, topY: 9 },
+    { x: l.x - 24, z: l.z, w: 3, d: 44, bottomY: 0, topY: 9 },
+    { x: l.x + 24, z: l.z, w: 3, d: 44, bottomY: 0, topY: 9 },
+    { x: l.x - 16, z: l.z + 24, w: 14, d: 3, bottomY: 0, topY: 9 },
+    { x: l.x + 16, z: l.z + 24, w: 14, d: 3, bottomY: 0, topY: 9 }
   );
 
   const inner = new THREE.Mesh(
@@ -560,11 +560,11 @@ function buildStadium(l) {
   proceduralMeshes.push(inner);
 
   colliders.push(
-    { x: l.x, z: l.z - 15.5, w: 29, d: 2.5 },
-    { x: l.x - 15.5, z: l.z, w: 2.5, d: 28 },
-    { x: l.x + 15.5, z: l.z, w: 2.5, d: 28 },
-    { x: l.x - 10, z: l.z + 15.5, w: 9, d: 2.5 },
-    { x: l.x + 10, z: l.z + 15.5, w: 9, d: 2.5 }
+    { x: l.x, z: l.z - 15.5, w: 29, d: 2.5, bottomY: 0, topY: 11 },
+    { x: l.x - 15.5, z: l.z, w: 2.5, d: 28, bottomY: 0, topY: 11 },
+    { x: l.x + 15.5, z: l.z, w: 2.5, d: 28, bottomY: 0, topY: 11 },
+    { x: l.x - 10, z: l.z + 15.5, w: 9, d: 2.5, bottomY: 0, topY: 11 },
+    { x: l.x + 10, z: l.z + 15.5, w: 9, d: 2.5, bottomY: 0, topY: 11 }
   );
 
   const field = new THREE.Mesh(
@@ -633,7 +633,7 @@ function buildCheckpoint(l) {
 
 function buildPost(l) {
   box(l.x, l.z + 2.5, 2.4, 2, 2.4, 0x8b1e2d, 'prop');
-  solidAt(l.x, l.z + 2.5, 2.4, 2);
+  solidAt(l.x, l.z + 2.5, 2.4, 2, { bottomY: 0, topY: 2.4 });
   sign(
     l.short,
     l.x,
@@ -794,7 +794,7 @@ function buildAjegunle(l) {
     procedural.push(
       box(x, z, w * 1.05, d * 1.05, 0.15, roofC, 'prop', h + 0.08)
     );
-    colliders.push({ x, z, w: w * 0.9, d: d * 0.9 });
+    colliders.push({ x, z, w: w * 0.9, d: d * 0.9, bottomY: h * 0.5, topY: h * 1.5 });
 
     if (Math.random() < 0.22) {
       procedural.push(
@@ -1072,7 +1072,7 @@ function buildLandmarks() {
     for (const ox of [-3, 3]) cyl(b.x + ox, b.z, 0.12, 3.1, 0xc9ced3, 'pole');
     box(b.x, b.z, 7.4, 2.6, 0.18, 0xf5c518, 'prop', 3.1);
     box(b.x, b.z + 0.6, 6, 0.5, 0.5, 0x6b5a3a, 'prop', 0.5);
-    solidAt(b.x, b.z + 0.6, 6, 0.5);
+    solidAt(b.x, b.z + 0.6, 6, 0.5, { bottomY: 0.5, topY: 1 });
     cyl(b.x + 4.6, b.z - 1, 0.08, 3.6, 0xc9ced3);
     sign(
       b.short,
@@ -1102,7 +1102,7 @@ function buildLandmarks() {
       box(f.x, f.z + 12, 16, 11, 0.5, 0xb32020, 'prop', 5);
       for (const ox of [-3, 0, 3]) {
         box(f.x + ox, f.z + 12, 0.8, 0.5, 1.6, 0xe8e8e8, 'prop');
-        solidAt(f.x + ox, f.z + 12, 0.8, 0.5);
+        solidAt(f.x + ox, f.z + 12, 0.8, 0.5, { bottomY: 0, topY: 1.6 });
       }
       sign(
         'FUEL · ₦',
@@ -1155,7 +1155,7 @@ function buildLandmarks() {
 
   cyl(-72, 0, 2.6, 0.5, 0x8d9a8a, 'prop', 0, 24);
   cyl(-72, 0, 0.3, 4, 0x5d402b, 'prop', 0.5);
-  solidAt(-72, 0, 5.5, 5.5);
+  solidAt(-72, 0, 5.5, 5.5, { bottomY: 0, topY: 4.5 });
   sign('SHITTA', -72, 5.2, 0, '#ffc52f', 4.6, 1.15);
 }
 
@@ -1178,7 +1178,7 @@ function palm(x, z, h) {
   if (onAnyRoad(x, z, 5) || reserved(x, z, 4) || inWater(x, z)) return;
 
   staticCyl('trunks', x, z, 0.22, h, 0, 8, 0.14);
-  colliders.push({ x, z, w: 0.75, d: 0.75 });
+  colliders.push({ x, z, w: 0.75, d: 0.75, bottomY: 0, topY: h });
 
   for (let a = 0; a < 8; a++) {
     const ang = (a * Math.PI) / 4 + Math.random() * 0.3;
@@ -1532,7 +1532,7 @@ function buildCorridors() {
     box(t.at, t.k, 8, w + 4, 0.6, 0xe4d14b, 'prop', 6.5);
     for (const lane of [-7.5, -2.5, 2.5, 7.5]) {
       box(t.at - 2.2, t.k + lane, 1.6, 1.4, 2.6, 0x2b2b2b, 'prop');
-      solidAt(t.at - 2.2, t.k + lane, 1.6, 1.4);
+      solidAt(t.at - 2.2, t.k + lane, 1.6, 1.4, { bottomY: 0, topY: 2.6 });
       box(t.at + 1.2, t.k + lane + 1.2, 3.2, 0.12, 0.12, 0xd62828, 'prop', 1.1);
     }
     sign(
@@ -1558,13 +1558,13 @@ function buildCorridors() {
       const tz = z + side * (w / 2 + 6.5);
       box(x, tz, 3, 3, 5.2, 0x8c8f93, 'prop');
       staticBox('rails', x, tz + side * 1.6, 3, 0.08, 1.1, 5.5);
-      colliders.push({ x, z: tz, w: 3, d: 3 });
+      colliders.push({ x, z: tz, w: 3, d: 3, bottomY: 0, topY: 5.2 });
     }
   }
 
   cyl(152, -22, 4, 0.5, 0x8d9a8a, 'prop', 0, 24);
   cyl(152, -22, 0.3, 5, 0x5d402b, 'prop', 0.5);
-  solidAt(152, -22, 8.3, 8.3);
+  solidAt(152, -22, 8.3, 8.3, { bottomY: 0, topY: 5.5 });
   sign('COSTAIN', 152, 6.2, -22, '#ffffff', 5, 1.2, 'rgba(20,90,50,.96)');
   sign(
     'EKO BRIDGE → LAGOS ISLAND',
@@ -1582,7 +1582,7 @@ function buildCorridors() {
   if (t) {
     const base = cyl(t.x, t.z, 15, 9, 0x8a8f93, 'landmark', 0, 36);
     occluders.push(base);
-    colliders.push({ x: t.x, z: t.z, w: 30, d: 30 });
+    colliders.push({ x: t.x, z: t.z, w: 30, d: 30, bottomY: 0, topY: 9 });
     const brim = new THREE.Mesh(
       new THREE.CylinderGeometry(21, 19, 2.2, 36),
       mat(0x6f767c)

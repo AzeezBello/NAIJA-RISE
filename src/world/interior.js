@@ -17,7 +17,7 @@ function roomBox(interior, x, y, z, w, h, d, color, solid = false) {
   interior.scene.add(mesh);
   interior.objects.push(mesh);
   if (solid) {
-    const collider = { x, z, w, d };
+    const collider = { x, z, w, d, bottomY: y, topY: y + h };
     colliders.push(collider);
     interior.colliders.push(collider);
     occluders.push(mesh);
@@ -62,7 +62,7 @@ function buildRoom(place, kind) {
   scene.add(hinge);
   interior.objects.push(door);
   interior.door = hinge;
-  interior.doorCollider = { x: ROOM.x, z: ROOM.z + ROOM.depth / 2, w: 2.2, d: 0.3 };
+  interior.doorCollider = { x: ROOM.x, z: ROOM.z + ROOM.depth / 2, w: 2.2, d: 0.3, bottomY: 0, topY: 2.2 };
   colliders.push(interior.doorCollider);
   interior.colliders.push(interior.doorCollider);
   hinge.rotation.y = -Math.PI / 2;

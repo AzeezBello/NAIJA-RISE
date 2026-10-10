@@ -61,15 +61,14 @@ const MODEL_SCALE = {
 };
 
 const MODEL_DIMENSIONS = {
-  suzuki_carry_minivan: { length: 3.6, width: 1.9, height: 2.1 },
+  suzuki_carry_minivan: { length: 3.9, width: 2.05, height: 2.25 },
 };
 
 const MODEL_ROTATION = {
   keke_bajaj_re: Math.PI / 2,
   danfo_vanagon: Math.PI,
   
-  // Align the Korope with the game's forward direction.
-  suzuki_carry_minivan: 0,
+  suzuki_carry_minivan: Math.PI,
 
   'suzuki_gsx-r750': Math.PI,
   volkswagen_crafter: Math.PI,
@@ -79,6 +78,16 @@ const MODEL_ROTATION = {
   'suzuki_hayabusa_gsx-1300r-k8': Math.PI,
   'lightbody_90_md_pickup_-_low_poly_model': Math.PI,
   'volkswagen_id._buzz': Math.PI,
+};
+
+const ASSET_FOLDERS = {
+  volkswagen_crafter: 'buses',
+  'volkswagen_id._buzz': 'vans',
+  '2003-gmc-topkick-c6500': 'heavy',
+  heavy_commercial_vehicle_hcv: 'heavy',
+  'lightbody_90_md_pickup_-_low_poly_model': 'pickups',
+  '2008_kawasaki_ninja_zx-10r-em': 'motorcycles',
+  'suzuki_hayabusa_gsx-1300r-k8': 'motorcycles',
 };
 
 
@@ -95,7 +104,9 @@ function assetPathsFor(name) {
   if (name === 'suzuki_carry_minivan') return CUSTOM_ASSETS.korope;
   if (name === 'suzuki_gsx-r750') return CUSTOM_ASSETS.okada;
 
+  const folder = ASSET_FOLDERS[name];
   return [
+    ...(folder ? [`/assets/vehicles/${folder}/${name}.glb`] : []),
     `/assets/vehicles/${name}.glb`,
     `/assets/vehicles/kenney/${name}.glb`,
     `${MODEL_BASE}${name}.glb`,
@@ -137,6 +148,14 @@ function makeReadable(material) {
   }
   if (material.roughness != null) {
     material.roughness = Math.max(Number(material.roughness) || 0.5, 0.45);
+  }
+  const name = materialName(material);
+  if (!/glass|window|windshield|windscreen|light|lamp|head|indicator|brake|wheel|tyre|tire|rubber|tread|rim/.test(name)) {
+    material.color?.multiplyScalar(1.12);
+    material.emissive?.setRGB(0.025, 0.025, 0.025);
+    if (material.emissiveIntensity != null) {
+      material.emissiveIntensity = Math.max(material.emissiveIntensity, 0.35);
+    }
   }
   material.needsUpdate = true;
 }

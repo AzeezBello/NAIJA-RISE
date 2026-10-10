@@ -99,7 +99,7 @@ const BLOCKS = [{ x: 72, z: 14, w: 18, d: 2.5 }, { x: -72, z: -14, w: 18, d: 2.5
 let blocks = null;
 function updateRoadblocks(on) {
   if (on && !blocks) {
-    blocks = BLOCKS.map(b => { const m = box(b.x, b.z, b.w, b.d, 1.2, 0x3f5a2a, 'prop'); const c = { x: b.x, z: b.z, w: b.w, d: b.d }; colliders.push(c); m.userData.collider = c; for (const ox of [-6, 0, 6]) box(b.x + ox, b.z, 0.5, 0.5, 2.2, 0xd9c22e, 'prop').userData.block = m; return m; });
+    blocks = BLOCKS.map(b => { const m = box(b.x, b.z, b.w, b.d, 1.2, 0x3f5a2a, 'prop'); const c = { x: b.x, z: b.z, w: b.w, d: b.d, bottomY: 0, topY: 1.2 }; colliders.push(c); m.userData.collider = c; for (const ox of [-6, 0, 6]) box(b.x + ox, b.z, 0.5, 0.5, 2.2, 0xd9c22e, 'prop').userData.block = m; return m; });
     toast('ARMY ROADBLOCKS — Funsho Williams and Ogunlana Drive are closed');
   }
   if (!on && blocks) { for (const m of blocks) { const i = colliders.indexOf(m.userData.collider); if (i >= 0) colliders.splice(i, 1); G.scene.remove(m); } G.scene.children.filter(o => o.userData.block).forEach(o => G.scene.remove(o)); blocks = null; }

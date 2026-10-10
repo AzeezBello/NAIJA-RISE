@@ -54,6 +54,7 @@ let grounded = true;
 
 const JUMP_FORCE = 7.5;
 const GRAVITY = 20;
+const PLAYER_HEIGHT = 1.7;
 
 // -----------------------------------------------------------------------------
 // COLLISION
@@ -70,8 +71,9 @@ const GRAVITY = 20;
  * @param {THREE.Object3D|null} self Object excluded from parked-vehicle tests.
  * @returns {boolean} Whether the position is blocked.
  */
-export function blockedAt(p, r, self = null) {
+function collisionDepthAt(p, r, self = null) {
   const y = p.y ?? 0;
+  let depth = 0;
 
   // Buildings and static world objects.
   for (const c of colliders) {
@@ -79,16 +81,15 @@ export function blockedAt(p, r, self = null) {
 
     if (c.minY !== undefined && y < c.minY) continue;
     if (c.maxY !== undefined && y > c.maxY) continue;
+    if (c.bottomY !== undefined && y + PLAYER_HEIGHT <= c.bottomY) continue;
+    if (c.topY !== undefined && y >= c.topY) continue;
 
     const halfW = Math.max(0, c.w ?? 0) / 2;
     const halfD = Math.max(0, c.d ?? 0) / 2;
 
-    if (
-      Math.abs(p.x - c.x) < halfW + r &&
-      Math.abs(p.z - c.z) < halfD + r
-    ) {
-      return true;
-    }
+    const overlapX = halfW + r - Math.abs(p.x - c.x);
+    const overlapZ = halfD + r - Math.abs(p.z - c.z);
+    if (overlapX > 0 && overlapZ > 0) depth += Math.min(overlapX, overlapZ);
   }
 
   // Moving traffic.
@@ -98,31 +99,21 @@ export function blockedAt(p, r, self = null) {
     const vehicleWidth = VEH[t.type]?.wid ?? 2;
     const trafficRadius = r + vehicleWidth * 0.6 + 0.6;
 
-    if (
-      Math.hypot(
-        p.x - t.g.position.x,
-        p.z - t.g.position.z
-      ) < trafficRadius
-    ) {
-      return true;
-    }
+    depth += Math.max(0, trafficRadius - Math.hypot(p.x - t.g.position.x, p.z - t.g.position.z));
   }
 
   // Parked vehicles, including the player's vehicle when walking.
   for (const c of G.parked ?? []) {
     if (!c?.visible || c === self) continue;
 
-    if (
-      Math.hypot(
-        p.x - c.position.x,
-        p.z - c.position.z
-      ) < r + 1.4
-    ) {
-      return true;
-    }
+    depth += Math.max(0, r + 1.4 - Math.hypot(p.x - c.position.x, p.z - c.position.z));
   }
 
-  return false;
+  return depth;
+}
+
+export function blockedAt(p, r, self = null) {
+  return collisionDepthAt(p, r, self) > 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -348,17 +339,21 @@ export function moveFoot(dt) {
     const fromZ = pl.position.z;
 
     // Resolve X independently.
+    const oldXDepth = collisionDepthAt(pl.position, 0.65);
     pl.position.x = fromX + stepX;
 
-    if (blockedAt(pl.position, 0.65)) {
+    const newXDepth = collisionDepthAt(pl.position, 0.65);
+    if (newXDepth > 0 && (oldXDepth === 0 || newXDepth >= oldXDepth)) {
       pl.position.x = fromX;
     }
 
     // Resolve Z independently.
     // If one axis is blocked, the player can still slide along the other.
+    const oldZDepth = collisionDepthAt(pl.position, 0.65);
     pl.position.z = fromZ + stepZ;
 
-    if (blockedAt(pl.position, 0.65)) {
+    const newZDepth = collisionDepthAt(pl.position, 0.65);
+    if (newZDepth > 0 && (oldZDepth === 0 || newZDepth >= oldZDepth)) {
       pl.position.z = fromZ;
     }
 

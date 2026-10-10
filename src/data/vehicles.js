@@ -36,8 +36,8 @@ export const VEH = {
 
   korope: {
     name: 'Korope',
-    len: 3.6,
-    wid: 1.9,
+    len: 3.9,
+    wid: 2.05,
     max: 19,
     boost: 25,
     accel: 10,
@@ -47,8 +47,8 @@ export const VEH = {
 
   keke: {
     name: 'Keke Napep',
-    len: 2.75,
-    wid: 1.45,
+    len: 2.95,
+    wid: 1.55,
     max: 12,
     boost: 15,
     accel: 8,
@@ -122,6 +122,13 @@ export const VEH = {
     boost: 18,
     accel: 4,
   },
+
+  pickup: { name: 'Pickup', len: 4.8, wid: 2.05, max: 17, boost: 23, accel: 7 },
+  motorcycle: { name: 'Motorcycle', len: 2.5, wid: 0.95, max: 26, boost: 36, accel: 14 },
+  van: { name: 'Van', len: 4.9, wid: 2.1, max: 18, boost: 24, accel: 7 },
+  delivery: { name: 'Delivery Van', len: 4.7, wid: 2.0, max: 17, boost: 22, accel: 7 },
+  truck: { name: 'Truck', len: 6.5, wid: 2.5, max: 15, boost: 19, accel: 5 },
+  ambulance: { name: 'Ambulance', len: 5.8, wid: 2.35, max: 21, boost: 28, accel: 9 },
 };
 
 export const isCommercial = type => !!VEH[type]?.commercial;
@@ -166,6 +173,15 @@ export const TRAFFIC_MIX = [
   'car',
   'car',
   'car',
+
+  'pickup',
+  'van',
+  'delivery',
+  'truck',
+  'motorcycle',
+  'ambulance',
+  'fire',
+  'army',
 
   // Emergency / service vehicles
   'police',
@@ -221,18 +237,10 @@ export const USE_MODELS = true;
 // VEHICLE GLB MAPPING
 // ============================================================
 //
-// Names do NOT include .glb because vehicleModels.js appends
-// the extension.
+// Names are stable model IDs; vehicleModels.js maps IDs to organized GLB paths.
 //
 // Current Lagos fleet:
-//   Danfo  -> Lagos Danfo GLB
-//   Keke   -> Lagos Keke GLB
-//   Korope -> Suzuki Carry
-//   Okada  -> Suzuki GSX-R750
-//   BRT    -> VW Crafter temporary representation
-//   Army   -> GMC Topkick
-//   Tanker -> Heavy Commercial Vehicle
-//
+// Every local vehicle GLB is assigned to a traffic vehicle family below.
 // Procedural geometry remains the fallback if a GLB cannot load.
 // ============================================================
 
@@ -291,6 +299,10 @@ export const MODELS = {
     'firetruck',
   ],
 
+  ambulance: [
+    'ambulance',
+  ],
+
   army: [
     '2003-gmc-topkick-c6500',
   ],
@@ -320,6 +332,17 @@ export const MODELS = {
   van: [
     'volkswagen_crafter',
     'volkswagen_id._buzz',
+    'van',
+  ],
+
+  delivery: [
+    'delivery',
+    'delivery-flat',
+  ],
+
+  truck: [
+    'truck',
+    'truck-flat',
   ],
 };
 

@@ -8,6 +8,8 @@ import { gpsTarget, setWaypoint } from '../systems/navigation.js';
 import { toast } from './feedback.js';
 
 const KIND_COLORS = { police: '#2c3f70', army: '#3f5a2a', service: '#8a4a2a', bank: '#4a4a8a', venue: '#7a2a6a', hotel: '#6a5a9a', market: '#6b4737', checkpoint: '#e4d14b', post: '#8b1e2d' };
+const PHONE_MAP_ZOOM = { value: 1, min: 1, max: 6 };
+const PHONE_MAP_PAN = { x: 0, y: 0 };
 
 // Shared world drawing in world units; callers set up the transform.
 function drawWorld(g) {
@@ -50,6 +52,10 @@ function heading() {
 // Circular HUD minimap, centred on the player, rotating with the camera.
 export function mapDraw() {
   const map = $('map'), ctx = map.getContext('2d');
+  if (!map.dataset.expandBound) {
+    map.dataset.expandBound = 'true';
+    map.addEventListener('click', () => emit('phone:open', 'map'));
+  }
   const R = 150, W = 300, p = pos(), s = R / 52, rot = G.state.settings.rotateMap ? G.camYaw : 0;
   ctx.clearRect(0, 0, W, W); ctx.fillStyle = '#0a1612'; ctx.fillRect(0, 0, W, W);
   ctx.save(); ctx.translate(R, R); ctx.rotate(rot); ctx.scale(s, s); ctx.translate(-p.x, -p.z); drawWorld(ctx); ctx.restore();
@@ -99,18 +105,92 @@ export function phoneMapDraw() {
 }
 function phoneMapTransform(width, height) {
   const { x, z } = META.bounds;
-  const s = Math.min(width / (x[1] - x[0]), height / (z[1] - z[0])) * 0.92;
+  const s = Math.min(width / (x[1] - x[0]), height / (z[1] - z[0])) * 0.92 * PHONE_MAP_ZOOM.value;
   return {
     s,
-    cx: width / 2 - (x[0] + x[1]) / 2 * s,
-    cy: height / 2 - (z[0] + z[1]) / 2 * s,
+    cx: width / 2 - (x[0] + x[1]) / 2 * s + PHONE_MAP_PAN.x,
+    cy: height / 2 - (z[0] + z[1]) / 2 * s + PHONE_MAP_PAN.y,
   };
+}
+function setPhoneMapZoom(zoom, anchorX, anchorY, width, height) {
+  const previous = phoneMapTransform(width, height);
+  const worldX = (anchorX - previous.cx) / previous.s;
+  const worldZ = (anchorY - previous.cy) / previous.s;
+  PHONE_MAP_ZOOM.value = Math.max(PHONE_MAP_ZOOM.min, Math.min(PHONE_MAP_ZOOM.max, zoom));
+  const { x, z } = META.bounds;
+  const baseScale = Math.min(width / (x[1] - x[0]), height / (z[1] - z[0])) * 0.92;
+  const s = baseScale * PHONE_MAP_ZOOM.value;
+  PHONE_MAP_PAN.x = anchorX - (width / 2 - (x[0] + x[1]) / 2 * s + worldX * s);
+  PHONE_MAP_PAN.y = anchorY - (height / 2 - (z[0] + z[1]) / 2 * s + worldZ * s);
 }
 export function bindPhoneMap() {
   const pmap = $('pmap'); if (!pmap) return;
-  pmap.addEventListener('click', e => {
-    const r = pmap.getBoundingClientRect(), { cx, cy, s } = phoneMapTransform(pmap.width, pmap.height);
-    const x = ((e.clientX - r.left) * pmap.width / r.width - cx) / s, z = ((e.clientY - r.top) * pmap.height / r.height - cy) / s;
-    const b = META.bounds; setWaypoint({ x: clampN(x, b.x[0], b.x[1]), z: clampN(z, b.z[0], b.z[1]), label: 'Waypoint' }); toast('GPS waypoint set');
+  if (pmap.dataset.mapBound) return;
+  pmap.dataset.mapBound = 'true';
+  const point = e => {
+    const r = pmap.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * pmap.width / r.width, y: (e.clientY - r.top) * pmap.height / r.height };
+  };
+  let drag = null;
+  pmap.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+      drag = { x: e.clientX, y: e.clientY, moved: false, startX: PHONE_MAP_PAN.x, startY: PHONE_MAP_PAN.y };
+    pmap.setPointerCapture(e.pointerId);
   });
+  pmap.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const r = pmap.getBoundingClientRect();
+    const dx = (e.clientX - drag.x) * pmap.width / r.width;
+    const dy = (e.clientY - drag.y) * pmap.height / r.height;
+    if (Math.hypot(dx, dy) > 4) drag.moved = true;
+    if (!drag.moved) return;
+    PHONE_MAP_PAN.x = drag.startX + dx;
+    PHONE_MAP_PAN.y = drag.startY + dy;
+    phoneMapDraw();
+  });
+  const endDrag = e => {
+    if (!drag) return;
+    const moved = drag.moved;
+    if (!moved) setMapWaypoint(e);
+    drag = null;
+  };
+  pmap.addEventListener('pointerup', endDrag);
+  pmap.addEventListener('pointercancel', () => { drag = null; });
+  pmap.addEventListener('wheel', e => {
+    e.preventDefault();
+    const p = point(e);
+    setPhoneMapZoom(PHONE_MAP_ZOOM.value * (e.deltaY < 0 ? 1.2 : 1 / 1.2), p.x, p.y, pmap.width, pmap.height);
+    phoneMapDraw();
+  }, { passive: false });
+  pmap.addEventListener('touchstart', e => {
+    if (e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+  pmap.addEventListener('touchmove', e => {
+    if (e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+  for (const button of document.querySelectorAll('[data-map-zoom]')) {
+    if (button.dataset.mapZoomBound) continue;
+    button.dataset.mapZoomBound = 'true';
+    button.addEventListener('click', () => {
+      if (button.dataset.mapZoom === 'reset') {
+        PHONE_MAP_ZOOM.value = 1;
+        PHONE_MAP_PAN.x = PHONE_MAP_PAN.y = 0;
+      } else {
+        const r = pmap.getBoundingClientRect();
+        const factor = button.dataset.mapZoom === 'in' ? 1.5 : 1 / 1.5;
+        setPhoneMapZoom(PHONE_MAP_ZOOM.value * factor, pmap.width / 2, pmap.height / 2, pmap.width, pmap.height);
+      }
+      phoneMapDraw();
+    });
+  }
+}
+function setMapWaypoint(e) {
+    const pmap = $('pmap');
+    if (!pmap) return;
+    const r = pmap.getBoundingClientRect();
+    const px = (e.clientX - r.left) * pmap.width / r.width;
+    const py = (e.clientY - r.top) * pmap.height / r.height;
+    const { cx, cy, s } = phoneMapTransform(pmap.width, pmap.height);
+    const x = (px - cx) / s, z = (py - cy) / s;
+    const b = META.bounds; setWaypoint({ x: clampN(x, b.x[0], b.x[1]), z: clampN(z, b.z[0], b.z[1]), label: 'Waypoint' }); toast('GPS waypoint set');
 }

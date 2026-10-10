@@ -8,6 +8,7 @@ import { MISSIONS } from '../data/missions.js';
 import { VEH } from '../data/vehicles.js';
 import { Key, StatBar } from './components.js';
 import { renderApp } from './phone.js';
+import { togglePause } from '../core/gamepad.js';
 import {
   missionActive,
   missionAvailable,
@@ -92,6 +93,16 @@ export function buildHud(root) {
           <span class="objpips" id="objPips"></span>
         </div>
       </section>
+
+      <button id="pauseBtn" class="pause-btn" type="button" aria-label="Pause game" title="Pause game">Ⅱ</button>
+      <div id="pauseScreen" class="pause-screen" role="dialog" aria-modal="true" aria-labelledby="pauseTitle" hidden>
+        <div class="pause-card glass">
+          <span class="pause-kicker">NAIJA RISE</span>
+          <h2 id="pauseTitle">Game paused</h2>
+          <p>Your game is paused. Resume when you’re ready.</p>
+          <button id="resumeBtn" class="btn" type="button">Resume</button>
+        </div>
+      </div>
 
       <section class="nav">
         <div class="locale" id="locale">
@@ -180,8 +191,22 @@ export function buildHud(root) {
   );
 
   on('hud', refreshHud);
+  $('pauseBtn').addEventListener('click', togglePause);
+  $('resumeBtn').addEventListener('click', () => {
+    if (G.paused) togglePause();
+  });
+  on('pause', paused => {
+    const screen = $('pauseScreen');
+    screen.hidden = !paused;
+    if (paused) $('resumeBtn').focus();
+    else $('pauseBtn').focus();
+  });
 
   on('key', key => {
+    if (key === 'escape') {
+      if (!$('phone')?.classList.contains('show')) togglePause();
+      return;
+    }
     if (key === 'h') {
       G.state.settings.hints = !G.state.settings.hints;
       refreshHud();

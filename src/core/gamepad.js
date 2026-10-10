@@ -122,8 +122,18 @@ function clearButtonState() {
   }
 }
 
-function togglePause() {
+export function togglePause() {
   G.paused = !G.paused;
+  for (const key of Object.keys(G.keys || {})) G.keys[key] = false;
+  if (G.pad) {
+    G.pad.gas = 0;
+    G.pad.brake = 0;
+    G.pad.sprint = false;
+    G.pad.hand = false;
+    G.pad.jump = false;
+    G.pad.camX = 0;
+    G.pad.camY = 0;
+  }
 
   emit('pause', G.paused);
 }

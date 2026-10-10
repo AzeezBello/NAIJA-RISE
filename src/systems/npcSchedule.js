@@ -36,7 +36,7 @@ function destFor(n, label) {
     if (!n.busSpot) n.busSpot = pick(BUSSTOPS);
     return n.busSpot;
   }
-  if (label === 'school') return placeOf('school') || placeOf('yaba');
+  if (label === 'school') return n.schoolSpot || placeOf('school') || placeOf('yaba');
   if (label === 'venue') {
     const v = LANDMARKS.filter(l => l.kind === 'venue');
     return pick(v) || placeOf('ojuelegba');

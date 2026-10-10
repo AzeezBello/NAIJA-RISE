@@ -338,7 +338,14 @@ function spawnCityDemographics() {
         speed: 1.05,
       };
       bindSchedule(rec);
-      rec.archetype = 'wander';
+      rec.archetype = demographic === 'student' ? 'youth' : 'office';
+      rec.home = projectToWalk(
+        anchor.x + (Math.random() - 0.5) * 52,
+        anchor.z + (Math.random() - 0.5) * 52,
+        32
+      ) || point;
+      if (demographic === 'student') rec.schoolSpot = anchor;
+      else rec.workSpot = anchor;
       people.push(rec);
     }
   };

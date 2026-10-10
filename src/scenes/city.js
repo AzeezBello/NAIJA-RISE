@@ -73,6 +73,7 @@ export const CityScene = {
   exit() { $('hud')?.classList.remove('show'); },
   update(dt) {
     updateGamepad(dt);
+    if (G.paused) return;
     if (G.interior) {
       updateInterior(dt);
       if (G.interior) {

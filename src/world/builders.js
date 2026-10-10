@@ -41,15 +41,15 @@ export function flushStatic(materials) {
 // block things at ground level).
 export function solidBox(bucket, x, z, w, d, h, y = 0, opts = {}) {
   staticBox(bucket, x, z, w, d, h, y);
-  colliders.push({ x, z, w, d, ...(opts.minY !== undefined ? { minY: opts.minY } : {}), ...(opts.maxY !== undefined ? { maxY: opts.maxY } : {}) });
+  colliders.push({ x, z, w, d, bottomY: y, topY: y + h, ...(opts.minY !== undefined ? { minY: opts.minY } : {}), ...(opts.maxY !== undefined ? { maxY: opts.maxY } : {}) });
 }
 export function solidCyl(bucket, x, z, r, h, y = 0, seg = 8, rTop = r, opts = {}) {
   staticCyl(bucket, x, z, r, h, y, seg, rTop);
-  colliders.push({ x, z, w: r * 2 + 0.3, d: r * 2 + 0.3, ...(opts.minY !== undefined ? { minY: opts.minY } : {}), ...(opts.maxY !== undefined ? { maxY: opts.maxY } : {}) });
+  colliders.push({ x, z, w: r * 2 + 0.3, d: r * 2 + 0.3, bottomY: y, topY: y + h, ...(opts.minY !== undefined ? { minY: opts.minY } : {}), ...(opts.maxY !== undefined ? { maxY: opts.maxY } : {}) });
 }
 // Convenience for one-off meshes created with box()/cyl() under a non-SOLID name.
 export function solidAt(x, z, w, d, opts = {}) {
-  colliders.push({ x, z, w, d, ...(opts.minY !== undefined ? { minY: opts.minY } : {}), ...(opts.maxY !== undefined ? { maxY: opts.maxY } : {}) });
+  colliders.push({ x, z, w, d, ...(opts.bottomY !== undefined ? { bottomY: opts.bottomY } : {}), ...(opts.topY !== undefined ? { topY: opts.topY } : {}), ...(opts.minY !== undefined ? { minY: opts.minY } : {}), ...(opts.maxY !== undefined ? { maxY: opts.maxY } : {}) });
 }
 
 const SOLID = ['building', 'landmark', 'kiosk', 'property', 'fence'];
@@ -57,7 +57,7 @@ export function box(x, z, w, d, h, c, name = 'building', y = 0, material) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material || mat(c));
   m.position.set(x, y + h / 2, z);
   m.castShadow = true; m.receiveShadow = true; m.userData.name = name;
-  if (SOLID.includes(name)) { colliders.push({ x, z, w, d }); occluders.push(m); }
+  if (SOLID.includes(name)) { colliders.push({ x, z, w, d, bottomY: y, topY: y + h }); occluders.push(m); }
   G.scene.add(m);
   return m;
 }
@@ -65,7 +65,7 @@ export function cyl(x, z, r, h, c, name = 'prop', y = 0, seg = 12, rTop = r) {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(rTop, r, h, seg), mat(c));
   m.position.set(x, y + h / 2, z);
   m.castShadow = true; m.receiveShadow = true; m.userData.name = name;
-  if (name === 'palm' || name === 'pole') colliders.push({ x, z, w: r * 2 + 0.3, d: r * 2 + 0.3 });
+  if (name === 'palm' || name === 'pole') colliders.push({ x, z, w: r * 2 + 0.3, d: r * 2 + 0.3, bottomY: y, topY: y + h });
   G.scene.add(m);
   return m;
 }
@@ -177,7 +177,7 @@ export function compound(x, z, pw, pd, style, color, name = 'building', h) {
 
   // fence with a gate gap on the street side (all styles, including highrise)
   const fh = 1.8, t = 0.3, gate = 3.2;
-  const wall = (wx, wz, ww, wd) => { staticBox('fences', wx, wz, ww, wd, fh); colliders.push({ x: wx, z: wz, w: ww, d: wd }); };
+  const wall = (wx, wz, ww, wd) => { staticBox('fences', wx, wz, ww, wd, fh); colliders.push({ x: wx, z: wz, w: ww, d: wd, bottomY: 0, topY: fh }); };
   wall(x, z + pd / 2, pw, t);                                                   // back
   wall(x - pw / 2, z, t, pd); wall(x + pw / 2, z, t, pd);
   const side = (pw - gate) / 2;
@@ -187,7 +187,7 @@ export function compound(x, z, pw, pd, style, color, name = 'building', h) {
   const g = box(x, z - pd / 2, gate, 0.12, fh + 0.2, 0x2b2b2b, 'prop');
   g.userData.gate = true;
   g.visible = Math.random() < 0.5;
-  if (g.visible) colliders.push({ x, z: z - pd / 2, w: gate, d: 0.5 });
+  if (g.visible) colliders.push({ x, z: z - pd / 2, w: gate, d: 0.5, bottomY: 0, topY: fh + 0.2 });
 
   // gate pillars — now solid (P0)
   for (const sx of [-gate / 2 - 0.25, gate / 2 + 0.25]) {

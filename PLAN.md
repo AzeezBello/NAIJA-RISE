@@ -63,15 +63,15 @@ One character pipeline for the player and NPCs: rigged GLB (Mixamo-compatible sk
 Post-processing (bloom, split-tone colour grade, vignette, ACES) with an environment map for reflections, wet night roads, the poster's dusk-to-night palette and a golden-hour start; human rigs only (Ready Player Me avatar with RPM locomotion clips, Khronos CesiumMan; a female body needs its own rig and clips) with eleven everyday outfits (ankara to jacket-and-jeans, gowns and skirts) and sneakers for street variety; rigs on mobile; title-screen preload; service-worker cache bump. Graphics quality levels (auto-detect + adaptive step-down, Settings › Graphics) for weaker GPUs; story contacts are characters in the world with objective arrows. Vehicles are Kenney Car Kit models (CC0) with runtime repainting and rolling wheels (keke, okada, BRT and tanker still procedural); houses carry ledges, balconies, ACs, water tanks, dishes, awnings and generators.
 
 ### Alpha 1.0 — Corridors (shipped)
-The district registry now covers Surulere, Ikoyi/VI, Lekki through Ajah and Eleko, Ikorodu, Apapa, Ikeja, Oyingbo, Yaba/Alagomeji, Ajegunle, Makoko, Agege and Ojo/Badagry; coastal destinations include Bar Beach, Oniru, Elegushi and Quilox. Ikorodu Road and Third Mainland have widened multi-lane profiles, medians with legal U-turn openings and road signs. The Costain/Falomo bridges, Ikorodu Road BRT lanes, pedestrian bridges, terminal danfo queues, toll plaza, road-work diversions, rush-hour bridge profiles and long-distance jobs are wired to district data. Airport terminal/runway/aircraft, procedural wave and shoreline detail, agency and artisan NPCs, and first-pass enterable home/shop/office interiors with doors are implemented. Fixed shared shoreline and exterior-door helper scope; browser initialization now reaches renderer creation, but visual QA remains blocked because the browser harness cannot create a WebGL context. GLB geometry is Meshopt-compressed at high precision; textures and scene transforms are preserved, and redundant compressed variants are removed.
+The district registry now covers Surulere, Ikoyi/VI, Lekki through Ajah and Eleko, Ikorodu, Apapa, Ikeja, Oyingbo, Yaba/Alagomeji, Ajegunle, Makoko, Agege and Ojo/Badagry; coastal destinations include Bar Beach, Oniru, Elegushi and Quilox. Ikorodu Road and Third Mainland have widened multi-lane profiles, medians with legal U-turn openings and road signs. The Costain/Falomo bridges, Ikorodu Road BRT lanes, pedestrian bridges, terminal danfo queues, toll plaza, road-work diversions, rush-hour bridge profiles and long-distance jobs are wired to district data. Airport terminal/runway/aircraft, procedural wave and shoreline detail, agency and artisan NPCs, and first-pass enterable home/shop/office interiors with doors are implemented. Static world and interior colliders now carry vertical bounds so jumping clears low props and barriers while taller obstacles still block, and collision-overlap recovery lets a player move out of an obstructing spawn/contact. Every local vehicle GLB is categorized and mapped to a traffic vehicle family; keke and korope dimensions/orientation have been tuned, and vehicle materials receive a subtle brightness lift. The phone map now opens from the HUD minimap, supports zoom/pan and place search. Keyboard Escape and controller Options open a pause overlay that freezes city simulation. Fixed shared shoreline and exterior-door helper scope; browser visual QA remains blocked because the browser harness cannot create a WebGL context. GLB geometry is Meshopt-compressed at high precision; textures and scene transforms are preserved, and redundant compressed variants are removed.
 
 ## 2. Next phase — Alpha 1.1 (Living City Phases 3–4, 4 weeks)
 
-**Corridors — next:** add street-level detail and local connections inside the shipped districts, then play-test road widths, U-turns, bridge clearances, shoreline edges and airport placement in-browser. The district layouts and headline locations are present; the broad map still needs visual tuning and QA.
+**Corridors — next:** add street-level detail and local connections inside the shipped districts, then play-test road widths, U-turns, bridge clearances, shoreline edges, airport placement, pause/resume, and map zoom/search in-browser. The district layouts and headline locations are present; the broad map still needs visual tuning and QA.
 
 **Living City Phase 3 — Life:** expand the shipped family foundation (family compound, requests and relationships) with richer needs and storylines; fitness/recovery progression is implemented: cardio and strength training build separate skills, fitness improves stamina recovery, and strength reduces sprint stamina cost. Yaba Tech Computer Systems diploma enrolment, three paid semesters, graduation tracking, and an IT Support Technician job unlock are implemented. Businesses v4 employee shift scheduling is implemented: staff can cycle among morning, afternoon, overnight, and all-day shifts; the staff income bonus applies only while scheduled staff are on duty. Polytechnic/education expansion beyond the Yaba Tech diploma remains queued.
 
-**Living City Phase 4 — Social:** contact trust and respect now progress through daily capped conversations and contact rewards, with relationship tiers shown in Contacts. Egbon Adugbo is present at the Surulere Adugbo Community Desk and offers skill/certificate-appropriate jobs, with long-haul leads gated by social reputation or a close relationship; friend-tier contacts can receive story leads. NPC-wide schedules and expanded friendship/romance systems remain future work.
+**Living City Phase 4 — Social:** contact trust and respect now progress through daily capped conversations and contact rewards, with relationship tiers shown in Contacts. Egbon Adugbo is present at the Surulere Adugbo Community Desk and offers skill/certificate-appropriate jobs, with long-haul leads gated by social reputation or a close relationship; friend-tier contacts can receive story leads. Ambient banker and tech-worker NPCs now commute between nearby homes and their workplace anchors, while student NPCs follow school, market, venue, and home routines; broader schedules for other NPC roles and expanded friendship/romance systems remain future work.
 
 **Also queued:** replace or improve the existing non-CC0 keke and okada models, and replace the temporary Volkswagen Crafter BRT and generic heavy-commercial tanker models with purpose-built Lagos vehicles; none of these vehicle types is supplied by the Kenney CC0 kit. Add a building facade kit; production character rig (see the open decision above) with turn/stop/jump and vehicle enter/exit animation clips (on-foot jump controls already work); real outfit meshes per clothing slot instead of tints; NPC uniform meshes (police, LASTMA, agbero caps) on the rig. First-pass artisan workshops, agency uniforms and enterable interiors need a visual/interaction play-test before being treated as fully polished.
 
@@ -109,3 +109,243 @@ Exit criteria: two players see each other in one Surulere room, saves round-trip
 - 18+ content vs the "Nigerian/African players first" audience and app-store ratings.
 - Headless QA runs on a software renderer at a few frames per second; real-device performance testing (mid-range Android) is still manual.
 - The engine is JavaScript; porting `src/` to TypeScript is planned for Phase 6 so the Next shell and engine share types.
+
+
+
+
+
+
+
+
+
+# NAIJA RISE — Multi-Platform Technical Roadmap
+
+Project: NAIJA RISE — Lagos · Target: Web, PlayStation, Xbox, Nintendo Switch, and VR
+
+We'll treat this as a platform-readiness and architecture audit, not a rewrite. The existing playable game is the foundation we must protect.
+
+The current project baseline is the Three.js game in [`AzeezBello/NAIJA-RISE`](https://github.com/AzeezBello/NAIJA-RISE), previously tested locally on your Mac and deployed at [web-eight-jet-33.vercel.app](https://web-eight-jet-33.vercel.app/). The known architecture includes the Lagos environment, collision and walkability systems, character models and animation, third-person camera, vehicles, traffic, and gameplay/economy systems.
+
+Our first priority is to establish which parts of that baseline still build and run correctly before making architectural decisions. We should preserve the existing vehicle entry and HUD, headlights, bridge driving, map landmarks, and other working gameplay while testing any new changes.
+
+## 1. Repository audit: current position
+
+I inspected the current repository documentation, package configuration, renderer, input handling, gamepad module, vehicle code, and product plan.
+
+Existing Three.js game
+
+A reusable ES-module engine shared by the static build and the Next.js `/play` experience.
+
+Gamepad input already implemented
+
+The browser Gamepad API feeds movement, camera, vehicle controls, interaction, and pause events into the existing systems.
+
+Performance controls already exist
+
+Graphics quality profiles, reduced rendering costs, and lower-end device settings provide a foundation for optimization.
+
+Latest bridge/traffic fixes need regression verification
+
+The latest commit I found is [`4dd4e71`](https://github.com/AzeezBello/NAIJA-RISE/commit/4dd4e715ff230da72573022afb7614bae5f655b4), “fix: deck regression.” I have not verified a fresh build or live gameplay after that commit.
+
+### What the controller test tells us
+
+Your PlayStation-pad test demonstrates that browser-based controller input is already part of the architecture. It does not yet prove native PlayStation compatibility.
+
+The current gamepad module uses standardized browser button and axis mappings. We should retain that implementation while adding a proper input abstraction so each device can supply its own mappings without changing the gameplay systems.
+
+Reference files:
+
+- [Gamepad handling](https://github.com/AzeezBello/NAIJA-RISE/blob/main/src/core/gamepad.js)
+- [Keyboard, mouse and touch input](https://github.com/AzeezBello/NAIJA-RISE/blob/main/src/core/input.js)
+- [Three.js renderer](https://github.com/AzeezBello/NAIJA-RISE/blob/main/src/core/renderer.js)
+- [Existing product plan](https://github.com/AzeezBello/NAIJA-RISE/blob/main/PLAN.md)
+
+## 2. Engine options: what we should compare
+
+Option A — Keep Three.js
+
+Preserves current game
+
+Strengths: smallest disruption, existing gameplay remains usable, natural fit for browser distribution, and a path to WebXR VR. Three.js documents the required WebXR rendering integration.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://threejs.org\&sz=32)
+
+threejs.org
+
++1
+
+
+
+Limitation: it does not provide the same turnkey native console build pipeline as a dedicated console engine.
+
+Best role: web release, browser-based VR prototype, and continued Alpha development.
+
+Option B — Migrate to Unity
+
+Primary candidate for native multi-platform development
+
+Strengths: Unity officially supports workflows targeting web, XR, PlayStation, Xbox, and Nintendo platforms.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://unity.com\&sz=32)
+
+Unity
+
++1
+
+
+
+Limitation: we would need to port the current game systems, recreate or adapt Three.js rendering and interaction, and validate assets and physics. Console development also requires the relevant platform-holder approvals and access to platform-specific tooling.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://unity.com\&sz=32)
+
+Unity
+
+
+
+Best role: a possible native console edition if the audit demonstrates that long-term console support justifies the migration.
+
+Option C — Migrate to Unreal Engine
+
+Alternative for a more extensive 3D production
+
+Strengths: established console development workflows and a powerful 3D rendering environment.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://dev.epicgames.com\&sz=32)
+
+Epic Developer Community
+
+
+
+Limitation: the current JavaScript engine would require substantial porting and the rendering/performance approach would change significantly.
+
+Best role: consider if the future game requires a substantially more ambitious graphical production and the team can support the migration.
+
+My preliminary recommendation is not to migrate yet. Keep Three.js as the production baseline while we assess a native-engine vertical slice. Unity is the first candidate to evaluate for the console roadmap, but it should win on demonstrated results rather than assumptions.
+
+A hybrid approach is also possible: retain the web edition and build a separate native console edition that shares approved assets, game data, and documented gameplay rules. That reduces the risk of a big-bang rewrite, although it means maintaining two implementations.
+
+## 3. The implementation roadmap
+
+The roadmap is organized around measurable milestones rather than committing to a particular engine before we have evidence.
+
+## P0
+
+Stabilize and baseline the current build
+
+First priority
+
+- Run the JavaScript syntax checks and Next.js production build.
+- Verify the latest bridge, road-deck, traffic, vehicle-entry, and vehicle-exit fixes.
+- Test collision with buildings, fences, props and vehicles.
+- Confirm saves, missions, HUD, character animation, and keyboard/touch/gamepad input.
+- Record current performance and create a known-good release tag.
+
+Exit criteria: a repeatable, playable baseline with documented test results.
+
+## P1
+
+Create a platform-independent input layer
+
+Introduce a common action map for movement, steering, camera, interaction, sprint, braking, pause and menu navigation.
+
+- Preserve the existing browser gamepad implementation.
+- Add controller identification and configurable button mappings.
+- Separate gameplay actions from physical buttons.
+- Define UI navigation and focus behavior for controllers.
+- Prepare a mapping specification for PlayStation, Xbox and Switch controllers.
+
+Exit criteria: input changes do not require edits throughout the gameplay systems.
+
+## P2
+
+Build the VR proof of concept
+
+Start with Meta Quest browser-based VR using the existing Three.js engine.
+
+- Enable WebXR rendering and headset tracking.
+- Implement a VR camera rig and controller ray interaction.
+- Add a comfortable movement mode and seated/standing calibration where appropriate.
+- Optimize the Surulere environment for sustained headset performance.
+- Test on actual supported hardware, not only desktop emulation.
+
+Three.js provides a documented WebXR integration path.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://threejs.org\&sz=32)
+
+threejs.org
+
+
+
+Exit criteria: a short, stable first-person Lagos experience with reliable interaction.
+
+## P3
+
+Run a native-engine feasibility spike
+
+Build one small, representative NAIJA RISE scene in the leading candidate engine. It should include a Lagos street, a player character, a vehicle, a bridge, basic collision and controller input.
+
+Measure:
+
+- Time and effort required to port assets and gameplay.
+- Rendering and frame-rate stability on target hardware.
+- Vehicle and character control quality.
+- Save/data integration requirements.
+- Cost of maintaining a native edition alongside the web edition.
+
+Exit criteria: an evidence-based decision to keep Three.js, migrate, or adopt the hybrid model.
+
+## P4
+
+Prepare native console releases
+
+After choosing the architecture and obtaining platform-holder approval:
+
+- Create the first console build.
+- Integrate platform-specific controller, save, suspend/resume, user profile and achievement systems as applicable.
+- Optimize graphics, memory, loading, UI safe areas and frame pacing.
+- Implement platform-specific compliance and certification testing.
+- Expand to the remaining consoles using the validated architecture.
+
+Exit criteria: stable platform builds that pass the relevant technical and publishing requirements.
+
+## P5
+
+Unify the NAIJA RISE ecosystem
+
+- Define account and save synchronization across supported platforms.
+- Establish shared game-data and content-versioning rules.
+- Plan multiplayer architecture if shared-world play remains a goal.
+- Evaluate smart-glasses companion features separately from immersive VR.
+- Add cross-platform play only after platform policies and technical requirements are confirmed.
+
+Exit criteria: a sustainable multi-platform product architecture rather than several disconnected builds.
+
+## 4. What we need to preserve during development
+
+These are non-negotiable regression checks for each milestone.
+
+| Area       | Required behavior                                                                          |
+| ---------- | ------------------------------------------------------------------------------------------ |
+| World      | Lagos streets, landmarks, districts, bridge elevations and road connections remain intact  |
+| Movement   | Player movement, camera orbit, zoom and collision remain reliable                          |
+| Vehicles   | Entry/exit, steering, braking, headlights and driving on elevated bridges continue to work |
+| Simulation | Traffic, NPCs, missions, economy, character customization and saves remain functional      |
+| Controls   | Keyboard, mouse, touch and existing gamepad behavior are not broken by new input adapters  |
+| Delivery   | The current web version remains deployable independently of console experiments            |
+
+I would also introduce automated regression tests around pure gameplay calculations, input mapping and save-data migration. Browser automation can cover the main play loop; hardware testing is still required for actual VR and console validation.
+
+## 5. Immediate next actions
+
+The next development sprint should focus on these deliverables, in order:
+
+1. Baseline report: build results, runtime errors, regression findings and a performance snapshot.
+2. Input architecture specification: shared action map, platform mapping rules and controller UI behavior.
+3. VR prototype plan: minimum viable WebXR implementation and device test checklist.
+4. Engine comparison report: a small Three.js versus Unity feasibility test, with Unreal retained as an alternative if the requirements warrant it.
+5. Release gates: explicit conditions for approving a migration or beginning native console work.
+
+One practical constraint: I could inspect the repository, but the connected GitHub integration denied permission to create a branch. I have not modified the production branch or claimed that any new code has been committed. The roadmap above is based on the repository inspection and is ready to be added as a version-controlled project document.
+
+The key decision is to preserve the playable Three.js version while proving the native-console path in a small, isolated prototype. That lets NAIJA RISE continue growing today without locking the project into an expensive engine migration prematurely.
