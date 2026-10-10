@@ -10,6 +10,15 @@ export const G = {
   markers: {},          // missionMarker, jobMarker, wpMarker, routeLine (systems/navigation.js)
   debug: location.hash.includes('debug'),
 };
-export const frozen = () => !!(G.dialogOpen || G.dialog || (G.vehicleT > 0));
+
+export const frozen = () =>
+  !!(
+    G.dialogOpen ||
+    G.dialog ||
+    G.vehicleMode === 'enter' ||
+    G.vehicleMode === 'exit'
+  );
+
+
 const FAR = { x: 9999, y: 0, z: 9999 };
 export const pos = () => (G.inCar ? G.car.position : G.player ? G.player.position : FAR);

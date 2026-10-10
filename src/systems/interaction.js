@@ -3,16 +3,16 @@ import { G, pos, frozen } from '../core/context.js';
 import { on, emit } from '../core/events.js';
 import { $, dist, fmt } from '../core/utils.js';
 import { saveState } from '../core/state.js';
-import { ECON, TIME, PRICES, RENT, DEALER } from '../data/config.js';
-import { VEH } from '../data/vehicles.js';
+import { ECON, TIME, PRICES, RENT, DEALER, CHARACTER } from '../data/config.js';
+import { VEH, LIVERIES, SLOGANS } from '../data/vehicles.js';
 import { jobOf } from '../data/jobs.js';
 import { placeOf, LANDMARKS, KIOSKS, PROPERTIES } from '../data/locations.js';
 import { contactOf } from '../data/characters.js';
 import { vForward, spawnOwned } from '../entities/vehicles.js';
-import { saveState as persist } from '../core/state.js';
 import { applyPet } from '../entities/animals.js';
 import { toast } from '../ui/feedback.js';
 import { applySky } from '../world/daynight.js';
+import { heightAt } from '../world/terrain.js';
 import { tx, pay, xp, addItem, msg, addHeat, addRep, gainSkill } from './economy.js';
 import { missionActive, missionAvailable, curMission, missionPos, jobPos, homeProp } from './navigation.js';
 import { runMission, advanceDialog, startDialog } from './dialogue.js';
@@ -20,10 +20,8 @@ import { owambeOn } from './events.js';
 import { tryCompleteTask } from './missions.js';
 import { startRace } from './racing.js';
 import { nearPlace, openPlace, placePrompt } from './places.js';
-import { LIVERIES, SLOGANS } from '../data/vehicles.js';
-import { CHARACTER } from '../data/config.js';
 import { familyPrompt, tryFamilyInteract } from './family.js';
-import { bumpRel, rewardContact, talkToContact, getRel } from './relationships.js';
+import { talkToContact } from './relationships.js';
 import { nearCrew, runCrewDialog } from './crew.js';
 
 function nearStoryContact(r = 4) {
@@ -61,7 +59,7 @@ const nearPump = () => G.inCar && (dist(pos(), placeOf('ladipo')) < 16 || dist(p
 const venueOpen = () => G.state.clock >= TIME.venueOpen || G.state.clock < TIME.venueClose;
 const nearYaba = () => !G.inCar && !missionActive() && dist(pos(), placeOf('yaba')) < 11;
 const nearDealer = () => !G.inCar && dist(pos(), placeOf('ladipo')) < 13;
-const nearRacer = () => !G.race && !G.task && dist(pos(), placeOf('stadstop')) < 10 && !(missionActive() && curMission().at === 'stadstop');
+const nearRacer = () => G.race && !G.task && dist(pos(), placeOf('stadstop')) < 10 && !(missionActive() && curMission().at === 'stadstop');
 
 const _side = new THREE.Vector3();
 const ENTER_EXIT_T = () => CHARACTER.enterExit ?? CHARACTER.enterExitT ?? 0.85;
@@ -73,7 +71,7 @@ const ENTER_EXIT_T = () => CHARACTER.enterExit ?? CHARACTER.enterExitT ?? 0.85;
 function doorOffset(car, side = -1) {
   const type = car?.userData?.type;
   const spec = (type && VEH[type]) || { wid: 2.4 };
-  const half = (spec.wid || 2.4) * 0.55 + 0.35;
+  const half = (spec.wid || 2.4) * 0.55 + 0.85; // stand clear of body + collider
   const f = vForward(car);
   _side.set(f.z, 0, -f.x).normalize();
   return _side.clone().multiplyScalar(side * half);
@@ -83,11 +81,21 @@ function isVehicleBlending() {
   return G.vehicleMode === 'enter' || G.vehicleMode === 'exit';
 }
 
+function clearVehicleBlend() {
+  G.vehicleT = null;
+  G.vehicleMode = null;
+  G.vehicleFrom = null;
+  G.vehicleTo = null;
+  G.vehicleCar = null;
+}
+
+function smoothstep(t) {
+  return t * t * (3 - 2 * t);
+}
+
 /**
- * Animated vehicle enter/exit.
- * Blend runs while G.vehicleMode is 'enter' | 'exit'.
- * G.vehicleT is 0→1 progress; cleared to null when done.
- * Do NOT gate on `G.vehicleT != null` alone — a stuck 0 blocks all future F presses.
+ * Start enter or exit. Blend runs while G.vehicleMode is set.
+ * Do NOT gate on `G.vehicleT != null` alone.
  */
 export function toggleCar() {
   if (frozen() || isVehicleBlending()) return;
@@ -96,6 +104,10 @@ export function toggleCar() {
     const car = G.car;
     if (!car) {
       G.inCar = false;
+      G.car = null;
+      G.carSpeed = 0;
+      clearVehicleBlend();
+      if (G.player) G.player.visible = true;
       return;
     }
 
@@ -132,50 +144,6 @@ export function toggleCar() {
   if (Math.hypot(dx, dz) > 0.1) G.player.rotation.y = Math.atan2(dx, dz);
 }
 
-function smoothstep(t) {
-  return t * t * (3 - 2 * t);
-}
-
-/** Call every frame from city update. */
-export function updateVehicleTransition(dt) {
-  if (!isVehicleBlending() || G.vehicleT == null) return;
-
-  const car = G.vehicleCar;
-  const from = G.vehicleFrom;
-  const to = G.vehicleTo;
-  if (!car || !from || !to) {
-    clearVehicleBlend();
-    return;
-  }
-
-  const dur = Math.max(0.2, ENTER_EXIT_T());
-  G.vehicleT = Math.min(1, G.vehicleT + dt / dur);
-  const t = smoothstep(G.vehicleT);
-
-  if (G.vehicleMode === 'enter') {
-    const mid = to;
-    const seat = car.position.clone();
-    seat.y = car.position.y;
-    const p = t < 0.55
-      ? from.clone().lerp(mid, t / 0.55)
-      : mid.clone().lerp(seat, (t - 0.55) / 0.45);
-    G.player.position.copy(p);
-    G.playerChar?.setState(t < 0.55 ? 'walk' : 'enter', t < 0.55 ? 3 : 0);
-
-    if (G.vehicleT >= 1) finishEnter(car);
-  } else {
-    const seat = car.position.clone();
-    const p = t < 0.4
-      ? seat.clone().lerp(to, t / 0.4)
-      : to.clone();
-    G.player.position.copy(p);
-    G.player.visible = true;
-    G.playerChar?.setState(t < 0.5 ? 'exit' : 'idle', 0);
-
-    if (G.vehicleT >= 1) finishExit(car);
-  }
-}
-
 function finishEnter(car) {
   G.inCar = true;
   G.player.visible = false;
@@ -196,23 +164,92 @@ function finishEnter(car) {
 }
 
 function finishExit(car) {
+  const door =
+    (G.vehicleTo && G.vehicleTo.clone)
+      ? G.vehicleTo.clone()
+      : car
+        ? car.position.clone().add(doorOffset(car, -1))
+        : G.player?.position.clone();
+
   G.inCar = false;
-  G.player.visible = true;
   G.car = null;
   G.carSpeed = 0;
+  G.curSpeed = 0;
+
+  if (G.player) {
+    G.player.visible = true;
+    if (door) {
+      G.player.position.copy(door);
+      G.player.position.y = heightAt(
+        G.player.position.x,
+        G.player.position.z,
+        G.player.position.y
+      );
+
+      // Nudge outward so vehicle colliders do not trap the player
+      if (car) {
+        const away = G.player.position.clone().sub(car.position);
+        away.y = 0;
+        if (away.lengthSq() < 0.01) away.set(1, 0, 0);
+        away.normalize().multiplyScalar(1.1);
+        G.player.position.add(away);
+        G.player.position.y = heightAt(
+          G.player.position.x,
+          G.player.position.z,
+          G.player.position.y
+        );
+      }
+    }
+  }
+
+  G.playerChar?.setState('idle', 0);
   toast('Back on foot');
   clearVehicleBlend();
 }
 
-function clearVehicleBlend() {
-  G.vehicleT = null;
-  G.vehicleMode = null;
-  G.vehicleFrom = null;
-  G.vehicleTo = null;
-  G.vehicleCar = null;
+/** Call every frame from city update (prefer BEFORE updateMovement). */
+export function updateVehicleTransition(dt) {
+  if (!isVehicleBlending() || G.vehicleT == null) return;
+
+  const car = G.vehicleCar;
+  const from = G.vehicleFrom;
+  const to = G.vehicleTo;
+
+  // Broken blend → force unlock so the player is never stuck
+  if (!car || !from || !to || !G.player) {
+    G.inCar = false;
+    G.car = null;
+    G.carSpeed = 0;
+    if (G.player) G.player.visible = true;
+    clearVehicleBlend();
+    return;
+  }
+
+  const dur = Math.max(0.25, ENTER_EXIT_T());
+  G.vehicleT = Math.min(1, G.vehicleT + dt / dur);
+  const t = smoothstep(G.vehicleT);
+
+  if (G.vehicleMode === 'enter') {
+    const seat = car.position.clone();
+    seat.y = car.position.y;
+    const p =
+      t < 0.55
+        ? from.clone().lerp(to, t / 0.55)
+        : to.clone().lerp(seat, (t - 0.55) / 0.45);
+    G.player.position.copy(p);
+    G.playerChar?.setState(t < 0.55 ? 'walk' : 'enter', t < 0.55 ? 3 : 0);
+    if (G.vehicleT >= 1) finishEnter(car);
+  } else {
+    const seat = car.position.clone();
+    const p = t < 0.4 ? seat.clone().lerp(to, t / 0.4) : to.clone();
+    G.player.position.copy(p);
+    G.player.visible = true;
+    G.playerChar?.setState(t < 0.5 ? 'exit' : 'idle', 0);
+    if (G.vehicleT >= 1) finishExit(car);
+  }
 }
 
-/* ---------- small vendor dialogues reuse the mission dialogue box ---------- */
+/* ---------- vendor / place dialogs ---------- */
 function posDialog() {
   startDialog([{ s: 'pos', t: 'POS agent dey. Withdrawal, pure water, suya — wetin you want?' }], [
     { label: `Withdraw ${fmt(PRICES.posAmount)} (fee ${fmt(PRICES.posFee)})`, apply() { const s = G.state; if (s.bank < PRICES.posAmount + PRICES.posFee) return toast('Bank balance too low'); s.bank -= PRICES.posAmount + PRICES.posFee; s.cash += PRICES.posAmount; tx('POS withdrawal', -PRICES.posFee); toast(`${fmt(PRICES.posAmount)} cash collected`); } },
@@ -220,6 +257,7 @@ function posDialog() {
     { label: `Suya ${fmt(PRICES.suya)}`, apply() { if (!pay(PRICES.suya)) return toast('No money'); addItem('suya'); toast('Suya added to bag'); } },
   ], ch => { ch.apply(); emit('hud'); });
 }
+
 function petDialog() {
   startDialog([{ s: 'nkechi', t: G.state.pet ? 'Your dog dey enjoy? Buy pure water for am.' : 'My customer! I get one fine dog here. Agbero no go near you again if you carry am.' }], [
     ...(G.state.pet ? [] : [{ label: `Adopt the dog ${fmt(PRICES.pet)}`, apply() { if (!pay(PRICES.pet, 'Adopted a dog')) return toast('Not enough money'); G.state.pet = 'dog'; applyPet(); toast('You now have a dog. Agberos will keep their distance.'); } }]),
@@ -227,6 +265,7 @@ function petDialog() {
     { label: 'Just looking.', apply() {} },
   ], ch => { ch.apply(); emit('hud'); });
 }
+
 function hookupDialog(n) {
   startDialog([{ s: 'olosho', t: `${n.name}: Fine boy, you dey find hook up? ${fmt(PRICES.hookup)} make we go inside.` }], [
     { label: `Hook up ${fmt(PRICES.hookup)}`, apply() {
@@ -244,7 +283,7 @@ function hookupDialog(n) {
     { label: 'Not tonight.', reply: 'Your loss, baby.', apply() {} },
   ], ch => { ch.apply(); emit('hud'); });
 }
-// Property agent at the gate: rent for a lease, or buy from the landlord. Exported for the Property app.
+
 export function rentProperty(p) {
   const s = G.state, fee = Math.round(p.rent * RENT.agentFeeRate);
   if (!pay(p.rent + fee, `Rent + agent fee · ${p.name}`)) return toast(`You need ${fmt(p.rent + fee)} (rent + ${fmt(fee)} agent fee)`);
@@ -254,6 +293,7 @@ export function rentProperty(p) {
   msg('landlord', `Welcome. ${p.type} na yours for ${RENT.leaseDays} days. No late rent, no wahala. Agent Kunle don collect him ${fmt(fee)}.`);
   emit('hud');
 }
+
 export function buyProperty(p) {
   const s = G.state;
   if (!p.buy) return toast('This one na rent only');
@@ -263,6 +303,7 @@ export function buyProperty(p) {
   msg('landlord', `Papers signed. ${p.name} na your own now. Collect rent from tenants if you no wan live there.`);
   emit('hud');
 }
+
 function agentDialog(p) {
   const s = G.state, owned = s.props.includes(p.id), renting = s.rented?.id === p.id, fee = Math.round(p.rent * RENT.agentFeeRate);
   const lines = [{ s: 'agent', t: owned ? `${p.name} — this one na your own. You wan move in?` : renting ? `Your lease still dey run, ${s.rented.until - s.day} days left.` : `${p.type} for ${fmt(p.rent)} per ${RENT.leaseDays} days${p.buy ? `, or buy am outright for ${fmt(p.buy)}` : ''}. Agent fee na ${fmt(fee)}.` }];
@@ -272,12 +313,14 @@ function agentDialog(p) {
   choices.push({ label: 'Just looking.', apply() {} });
   startDialog(lines, choices, ch => { ch.apply(); emit('hud'); });
 }
+
 function racerDialog() {
   startDialog([{ s: 'speedy', t: 'Funsho Williams, two laps, ₦20,000 on the table. You need a motor. Ready?' }], [
     { label: 'Race · ₦20,000 wager', apply() { if (!G.inCar) { toast('Come back in a vehicle'); return; } startRace({ wager: 20000 }); } },
     { label: 'Not now.', apply() {} },
   ], ch => { ch.apply(); emit('hud'); });
 }
+
 function vehicleMenu(v) {
   const s = G.state, o = s.vehicles.find(o => o.id === v.userData.ownedId), name = VEH[v.userData.type].name, price = DEALER.find(d => d[0] === v.userData.type)?.[1] || 1000000;
   const choices = [];
@@ -289,17 +332,33 @@ function vehicleMenu(v) {
   choices.push({ label: 'Back', apply() { dealerDialog(); } });
   startDialog([{ s: 'dayo', t: `${name} · condition ${Math.round(cond)}%${o.insured ? ' · insured' : ''}. Wetin we dey do?` }], choices, ch => { ch.apply(); emit('hud'); });
 }
-export function applyLivery(v, o) { const c = LIVERIES[o.livery || 0]; v.userData.livery = c; if (v.userData.repaint) return v.userData.repaint(c); v.traverse(m => { if (m.isMesh && m.userData.body) m.material.color.set(c); }); }
-export function applySlogan(v, o) { if (v.userData.sloganSprite) v.remove(v.userData.sloganSprite); if (o.slogan === undefined) return; import('../world/builders.js').then(b => { const sp = b.textSprite(SLOGANS[o.slogan], '#07100e', 'rgba(245,197,24,.98)'); sp.position.set(0, 2.9, 0); sp.scale.set(4.2, 1, 1); v.add(sp); v.userData.sloganSprite = sp; }); }
+
+export function applyLivery(v, o) {
+  const c = LIVERIES[o.livery || 0];
+  v.userData.livery = c;
+  if (v.userData.repaint) return v.userData.repaint(c);
+  v.traverse(m => { if (m.isMesh && m.userData.body) m.material.color.set(c); });
+}
+
+export function applySlogan(v, o) {
+  if (v.userData.sloganSprite) v.remove(v.userData.sloganSprite);
+  if (o.slogan === undefined) return;
+  import('../world/builders.js').then(b => {
+    const sp = b.textSprite(SLOGANS[o.slogan], '#07100e', 'rgba(245,197,24,.98)');
+    sp.position.set(0, 2.9, 0);
+    sp.scale.set(4.2, 1, 1);
+    v.add(sp);
+    v.userData.sloganSprite = sp;
+  });
+}
+
 function dealerDialog() {
   const s = G.state, mine = G.parked.filter(v => v.userData.owned);
-  const worst = mine.filter(v => (v.userData.cond ?? 100) < 100);
   const buy = DEALER.map(([type, price]) => ({ label: `${VEH[type].name} · ${fmt(price)}`, apply() {
     if (!pay(price, `Bought ${VEH[type].name}`)) return toast(`You need ${fmt(price)} across cash and bank`);
     s.vehicles = [...(s.vehicles || []), { id: Date.now().toString(36), type, cond: 100 }]; spawnOwned(homeProp());
     addRep('business', 2); toast(`${VEH[type].name} is yours — parked at ${homeProp() ? 'your gate' : 'Ladipo'}`); msg('dayo', `${VEH[type].name} don ready. Papers dey inside. Bring am back when e need service.`);
   } }));
-  void worst;
   const choices = [];
   if (mine.length) choices.push({ label: 'Buy another vehicle', apply() { startDialog([{ s: 'dayo', t: 'Which one?' }], [...buy, { label: 'Back', apply() { dealerDialog(); } }], ch => { ch.apply(); emit('hud'); }); } });
   for (const v of mine.slice(0, 4)) choices.push({ label: `My ${VEH[v.userData.type].name} · service, insure, customise`, apply() { vehicleMenu(v); } });
@@ -307,6 +366,7 @@ function dealerDialog() {
   choices.push({ label: 'Just looking.', apply() {} });
   startDialog([{ s: 'dayo', t: mine.length ? `Welcome back. Wetin you need — service, insurance, paint, or another motor?` : `Ladipo get everything. Okada, keke, korope, danfo, tokunbo car. Which one?` }], choices.slice(0, 6), ch => { ch.apply(); emit('hud'); });
 }
+
 function fadeOut(then) {
   G.sleeping = true; $('sleepfade').classList.add('on');
   setTimeout(() => { then(); setTimeout(() => { $('sleepfade').classList.remove('on'); G.sleeping = false; }, 400); }, 800);
@@ -324,19 +384,12 @@ export function interact() {
   if (!G.inCar) {
     if (tryFamilyInteract()) return;
     const crew = nearCrew();
-    if (crew) {
-      runCrewDialog(crew);
-      return;
-    }
+    if (crew) { runCrewDialog(crew); return; }
     const sc = nearStoryContact(4);
     if (sc && contactOf(sc.id)) {
       const missionTalk = missionAvailable() && !G.task && dist(pos(), missionPos()) < curMission().r;
-      if (!missionTalk) {
-        talkToContact(sc.id);
-        return;
-      }
+      if (!missionTalk) { talkToContact(sc.id); return; }
     }
-
     const gate = nearGate(); if (gate) { agentDialog(gate); return; }
     const night = nearNight(); if (night) { hookupDialog(night); return; }
     if (nearKiosk()) { posDialog(); return; }
@@ -375,7 +428,13 @@ export function interact() {
       s.heat = 0; toast(`Record cleared · ${fmt(fine)} paid`); emit('hud'); return;
     }
     const nepa = nearKind('nepa', 12);
-    if (nepa) { if (G.outage) { if (!pay(5000, 'NEPA · generator diesel')) return toast('Not enough money'); G.outage = 0; emit('sky'); toast('Up NEPA! Light don come back.'); } else toast('PHCN: "No outage for now. Pay your bill."'); return; }
+    if (nepa) {
+      if (G.outage) {
+        if (!pay(5000, 'NEPA · generator diesel')) return toast('Not enough money');
+        G.outage = 0; emit('sky'); toast('Up NEPA! Light don come back.');
+      } else toast('PHCN: "No outage for now. Pay your bill."');
+      return;
+    }
   }
   if (nearPump()) {
     if (!pay(ECON.refuel, 'Fuel')) return toast('Not enough money to refuel');
@@ -397,14 +456,21 @@ export function promptFor() {
     };
   }
   if (G.working) return { text: `Working · ${G.working.job.title}`, bar: G.working.t / G.working.job.dur };
-  if (G.task && !G.race) { const d = missionPos(); if (d && dist(p, d) < 13 && (G.task.type !== 'steal' || G.inCar)) return { key: 'E', text: G.task.type === 'steal' ? 'Hand over the sedan' : `Deliver ${G.task.item === 'coldbox' ? 'the vaccine box' : G.task.item === 'cargo' ? 'the glassware' : 'the package'}` }; }
-  if (missionAvailable() && !G.task && dist(p, missionPos()) < curMission().r) { const who = contactOf(curMission().lines()[0].s)?.name || 'contact'; return { key: 'E', text: s.storyPaused ? `Resume with ${who}` : `Talk to ${who}` }; }
+  if (G.task && !G.race) {
+    const d = missionPos();
+    if (d && dist(p, d) < 13 && (G.task.type !== 'steal' || G.inCar)) {
+      return { key: 'E', text: G.task.type === 'steal' ? 'Hand over the sedan' : `Deliver ${G.task.item === 'coldbox' ? 'the vaccine box' : G.task.item === 'cargo' ? 'the glassware' : 'the package'}` };
+    }
+  }
+  if (missionAvailable() && !G.task && dist(p, missionPos()) < curMission().r) {
+    const who = contactOf(curMission().lines()[0].s)?.name || 'contact';
+    return { key: 'E', text: s.storyPaused ? `Resume with ${who}` : `Talk to ${who}` };
+  }
   const j = jobOf(s.job);
   if (j && dist(p, jobPos(j)) < 9) return { key: 'E', text: `Start shift as ${j.title}` };
   if (nearHome()) return { key: 'E', text: 'Enter home · sleep' };
   if (!G.inCar) {
     const fp = familyPrompt(); if (fp) return fp;
-
     const gate = nearGate(); if (gate) return { key: 'E', text: `Talk to Agent Kunle · ${gate.type}${G.state.props.includes(gate.id) || G.state.rented?.id === gate.id ? ' (yours)' : ' to let'}` };
     const night = nearNight(); if (night) return { key: 'E', text: `Talk to ${night.name}` };
     if (nearKiosk()) return { key: 'E', text: 'Use POS kiosk' };
@@ -437,12 +503,16 @@ export function sleep(prop) {
   fadeOut(() => {
     const s = G.state;
     s.clock = 7; s.day++; s.health = 100; s.stamina = 100;
-    if (prop?.perk === 'heat0') { s.heat = 0; s.fuel = 100; } else if (prop?.perk === 'heat1') s.heat = Math.max(0, s.heat - 1);
+    if (prop?.perk === 'heat0') { s.heat = 0; s.fuel = 100; }
+    else if (prop?.perk === 'heat1') s.heat = Math.max(0, s.heat - 1);
     applySky(); emit('hud'); emit('clock'); saveState(s);
     toast(`Day ${s.day} · Good morning, ${s.name.split(' ')[0]}`);
   });
 }
 
 export function setupInteraction() {
-  on('key', k => { if (k === 'e') interact(); if (k === 'f') toggleCar(); });
+  on('key', k => {
+    if (k === 'e') interact();
+    if (k === 'f') toggleCar();
+  });
 }

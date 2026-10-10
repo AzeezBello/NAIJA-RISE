@@ -20,12 +20,62 @@ export const vForward = o =>
 // Procedural vehicle helpers
 // ============================================================
 
-function wheel(g, x, y, z, r = 0.38) {
-  const wh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.3, 14), mat(0x101111));
-  wh.rotation.z = Math.PI / 2;
-  wh.position.set(x, y, z);
-  g.add(wh);
+/**
+ * Lagos-style tire: dark rubber + light rim.
+ * Registers the mesh on g.userData.wheels so spinWheels works for procedural cars too.
+ */
+function wheel(g, x, y, z, r = 0.38, width = 0.28) {
+  const group = new THREE.Group();
+  group.position.set(x, y, z);
+
+  // Rubber
+  const tire = new THREE.Mesh(
+    new THREE.CylinderGeometry(r, r, width, 16),
+    new THREE.MeshStandardMaterial({
+      color: 0x0d0e10,
+      roughness: 0.92,
+      metalness: 0.05,
+    })
+  );
+  tire.rotation.z = Math.PI / 2;
+  tire.castShadow = true;
+  tire.receiveShadow = true;
+  group.add(tire);
+
+  // Rim
+  const rim = new THREE.Mesh(
+    new THREE.CylinderGeometry(r * 0.55, r * 0.55, width * 1.08, 12),
+    new THREE.MeshStandardMaterial({
+      color: 0xc5c8cc,
+      roughness: 0.35,
+      metalness: 0.65,
+    })
+  );
+  rim.rotation.z = Math.PI / 2;
+  group.add(rim);
+
+  // Hub
+  const hub = new THREE.Mesh(
+    new THREE.CylinderGeometry(r * 0.18, r * 0.18, width * 1.12, 8),
+    new THREE.MeshStandardMaterial({
+      color: 0x333333,
+      roughness: 0.5,
+      metalness: 0.4,
+    })
+  );
+  hub.rotation.z = Math.PI / 2;
+  group.add(hub);
+
+  group.userData.isWheel = true;
+  g.add(group);
+
+  if (!g.userData.wheels) g.userData.wheels = [];
+  g.userData.wheels.push(group);
+  g.userData.wheelR = r;
+
+  return group;
 }
+
 
 function lamp(g, x, y, z) {
   const l = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.18, 0.05), mat(0xffe7ad));
@@ -156,7 +206,43 @@ export function makeVehicle(type, color = 0x172e35) {
     }
 
     // KOROPE
-    case 'korope':
+    case 'korope': {
+    const Y = 0xf5c518;   // Lagos commercial yellow
+    const BLK = 0x1a1a1a;
+    const glass = GLASS();
+
+    // Cab
+    add(B(1.7, 1.35, 1.5), body(Y), 0, 1.15, -1.05);
+    add(B(1.65, 0.55, 0.08), glass, 0, 1.55, -1.82); // windscreen
+    add(B(0.08, 0.45, 0.9), glass, 0.86, 1.5, -1.05);
+    add(B(0.08, 0.45, 0.9), glass, -0.86, 1.5, -1.05);
+
+    // Passenger box
+    add(B(1.85, 1.55, 2.4), body(Y), 0, 1.25, 0.55);
+    // Side windows strip
+    add(B(0.06, 0.5, 1.8), glass, 0.94, 1.55, 0.55);
+    add(B(0.06, 0.5, 1.8), glass, -0.94, 1.55, 0.55);
+    // Black waist stripe (danfo-style commercial)
+    add(B(1.88, 0.18, 2.42), body(BLK), 0, 0.95, 0.55);
+    // Roof
+    add(B(1.9, 0.08, 2.5), body(0xe0a800), 0, 2.05, 0.5);
+
+    // Bumper / grille
+    add(B(1.6, 0.35, 0.15), body(0x333333), 0, 0.55, -1.85);
+    lamp(g, -0.55, 0.7, -1.9);
+    lamp(g, 0.55, 0.7, -1.9);
+
+    // Tires — slightly smaller minibus wheels
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1.15, 1.15]) {
+        wheel(g, sx * 0.92, 0.34, sz, 0.34, 0.26);
+      }
+    }
+
+    // Route board
+    add(B(1.2, 0.28, 0.06), body(0x111111), 0, 2.15, -1.7);
+    break;
+  }
       add(B(1.9, 1.8, 3.6), body(0xf5c518), 0, 1.2, 0);
       add(B(1.94, 0.55, 2.4), glass, 0, 1.65, 0.2);
       add(B(1.94, 0.55, 0.1), glass, 0, 1.65, -1.76);

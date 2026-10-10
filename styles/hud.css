@@ -310,3 +310,21 @@ body.touch-ui .dialog{bottom:210px}
   .notif-stack { top: 56px; }
   .prompt .psub { padding-left: 28px; font-size: 8px; }
 }
+
+
+.vehicle .veh-name {
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f5c518;
+  margin-bottom: 0.15rem;
+}
+.vehicle .veh-meta {
+  font-size: 0.7rem;
+  opacity: 0.85;
+  margin-bottom: 0.35rem;
+}
+.vehicle.commercial {
+  border-color: rgba(245, 197, 24, 0.45);
+}

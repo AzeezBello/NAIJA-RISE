@@ -793,24 +793,20 @@ export function updateCamera(dt) {
 // -----------------------------------------------------------------------------
 
 export function updateMovement(dt) {
+  // Enter/exit blend owns the player this frame — do not drive or walk over it.
+  if (G.vehicleMode === 'enter' || G.vehicleMode === 'exit') {
+    return;
+  }
+
   if (G.inCar) {
-    // Reset the jump state when entering a vehicle.
     grounded = true;
     jumpVelocity = 0;
-
     driveCar(dt);
-
     clampWorld(G.car);
-
     if (G.player && G.car) {
       G.player.position.copy(G.car.position);
     }
-
-    spinWheels(
-      G.car,
-      G.carSpeed,
-      dt
-    );
+    spinWheels(G.car, G.carSpeed, dt);
   } else {
     moveFoot(dt);
     clampWorld(G.player);

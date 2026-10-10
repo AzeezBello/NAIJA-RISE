@@ -571,13 +571,18 @@ export function attachModel(
 // ============================================================
 
 export function spinWheels(g, speed, dt) {
-  const wheels = g.userData.wheels;
-  if (!wheels?.length) return;
+  const wheels = g?.userData?.wheels;
+  if (!wheels?.length || !Number.isFinite(speed) || !dt) return;
 
   const radius = g.userData.wheelR || 0.4;
   const rotation = (speed * dt) / radius;
 
-  for (const wheel of wheels) {
-    wheel.rotation.x -= rotation;
+  for (const w of wheels) {
+    // Procedural groups rotate on local X; GLB meshes may be oriented differently
+    if (w.isMesh && w.rotation) {
+      w.rotation.x -= rotation;
+    } else if (w.rotation) {
+      w.rotation.x -= rotation;
+    }
   }
 }

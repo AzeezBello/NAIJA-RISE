@@ -72,8 +72,8 @@ export const CityScene = {
   exit() { $('hud')?.classList.remove('show'); },
   update(dt) {
     updateGamepad(dt);
-    updateMovement(dt);
     updateVehicleTransition(dt);
+    updateMovement(dt);
     updatePlayer();
     updateTraffic(dt);
     updateFamily(dt);

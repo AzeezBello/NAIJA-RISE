@@ -700,6 +700,31 @@ function fitStadiumToFootprint(object, key) {
   );
 }
 
+
+/**
+ * Plant stadium mesh on terrain.
+ * Uses live world bbox after scale so the lowest visible vertex sits on the ground.
+ */
+function placeStadiumOnGround(object, x, z) {
+  object.position.x = x;
+  object.position.z = z;
+  object.position.y = 0;
+  object.updateMatrixWorld(true);
+
+  const box = new THREE.Box3().setFromObject(object);
+  if (!Number.isFinite(box.min.y)) {
+    object.position.y = heightAt(x, z, 0);
+    return;
+  }
+
+  const groundY = heightAt(x, z, 0);
+  // Sit on ground; small sink kills the “hovering” gap
+  const SINK = 0.15;
+  object.position.y = groundY - box.min.y - SINK;
+  object.updateMatrixWorld(true);
+}
+
+
 // ============================================================
 // Stadium landmark streaming
 // ============================================================
@@ -781,29 +806,20 @@ async function streamLandmarks() {
       try {
         const inst = await instantiate(slot.key);
 
-        // Normalize before applying world position.
         fitStadiumToFootprint(inst.obj, slot.key);
 
-        inst.obj.position.x = slot.x;
-        inst.obj.position.z = slot.z;
-
-        // fitStadiumToFootprint grounded the model at y = 0.
-        inst.obj.position.y += heightAt(slot.x, slot.z);
+        // World placement + hard ground snap (after scale/fit)
+        placeStadiumOnGround(inst.obj, slot.x, slot.z);
 
         G.scene.add(inst.obj);
-
         slot.group = inst.obj;
         slot.loadedUrl = inst.url;
-
-        // Hide the procedural fallback only after the detailed
-        // model has loaded and been added to the scene.
         setProceduralVisible(slot, false);
 
         console.info(
           `[assets] Streamed in ${slot.key} using ${inst.url}`,
         );
       } catch (error) {
-        // The procedural stadium remains visible on failure.
         console.warn(
           `[assets] Failed to stream ${slot.key}; keeping procedural fallback`,
           error,
