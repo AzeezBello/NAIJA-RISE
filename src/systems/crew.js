@@ -25,7 +25,6 @@ function greeting(c) {
 
 export function runCrewDialog(c) {
   const trait = TRAITS[c.trait] || TRAITS.patient;
-  c.cool = trait.cool;
 
   const speaker = c.role === 'conductor' ? 'conductor' : (c.vehType === 'brt' ? 'brt_driver' : 'driver');
 

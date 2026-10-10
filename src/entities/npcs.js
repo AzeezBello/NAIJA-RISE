@@ -32,7 +32,6 @@ import {
   pickTrait,
   fareFor,
 } from '../data/crew.js';
-import { runCrewDialog } from '../systems/crew.js';
 import { VEH } from '../data/vehicles.js';
 
 const hex = c => '#' + c.toString(16).padStart(6, '0');
@@ -104,7 +103,6 @@ export function spawnCrew() {
       stop: b,
       x: dg.position.x,
       z: dg.position.z,
-      cool: 0,
       callT: 2 + Math.random() * 4,
     });
 
@@ -129,7 +127,6 @@ export function spawnCrew() {
         stop: b,
         x: cg.position.x,
         z: cg.position.z,
-        cool: 0,
         callT: 1 + Math.random() * 3,
       });
     }
@@ -140,7 +137,6 @@ function updateCrew(dt) {
   for (const c of G.crew || []) {
     if (!c?.g) continue;
     c.g.rotation.y = Math.sin(performance.now() / 800 + c.x) * 0.35;
-    c.cool -= dt;
     c.callT -= dt;
 
     if (c.role === 'conductor' && c.callT <= 0) {
@@ -150,15 +146,6 @@ function updateCrew(dt) {
       c.g.position.y = heightAt(c.g.position.x, c.g.position.z);
     }
 
-    if (
-      !G.inCar &&
-      !frozen() &&
-      c.cool <= 0 &&
-      dist(G.player.position, c) < 3.2
-    ) {
-      runCrewDialog(c);
-      break;
-    }
   }
 }
 

@@ -25,7 +25,7 @@ export function updateVitals(dt) {
   if (G.inCar) {
     if (Math.abs(G.carSpeed) > 0.5) { s.fuel = Math.max(0, s.fuel - dt * 0.4 * (Math.abs(G.carSpeed) / 24)); gainSkill('driving', dt * 0.03 * Math.min(1, Math.abs(G.carSpeed) / 15)); }
     s.stamina = Math.min(100, s.stamina + dt * 6);
-  } else {
+  } else if (!G.swimming) {
     const sprinting = (G.keys.shift || G.pad?.sprint) && G.curSpeed > 5.5;
     const tank = s.home && s.upgrades?.[s.home]?.includes('tank') ? 1.25 : 1;
     const recovery = (10 + Math.min(5, (s.skills.fitness || 0) * 0.05)) * tank;

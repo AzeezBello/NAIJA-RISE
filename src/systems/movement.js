@@ -7,6 +7,7 @@ import { approach, lerpAngle } from '../core/utils.js';
 import { colliders, occluders } from '../world/builders.js';
 import { VEH } from '../data/vehicles.js';
 import { WORLD } from '../data/config.js';
+import { inWater, onBridge } from '../data/locations.js';
 import { vForward } from '../entities/vehicles.js';
 import { toast } from '../ui/feedback.js';
 import { heightAt } from '../world/terrain.js';
@@ -51,10 +52,61 @@ const setState = (state) => {
 
 let jumpVelocity = 0;
 let grounded = true;
+let drowningTime = 0;
 
 const JUMP_FORCE = 7.5;
 const GRAVITY = 20;
 const PLAYER_HEIGHT = 1.7;
+const SWIM_SPEED = 2.2;
+const SWIM_SURFACE = 0.08;
+
+function swimmingAt(x, z) {
+  return inWater(x, z) && !onBridge('h', z, x) && !onBridge('v', x, z);
+}
+
+function updateSwimming(pl, dt) {
+  const wasSwimming = G.swimming;
+  const swimming = swimmingAt(pl.position.x, pl.position.z);
+  if (!swimming) {
+    G.swimming = false;
+    drowningTime = 0;
+    G.lastDryPosition = pl.position.clone();
+    return;
+  }
+
+  G.swimming = true;
+  if (!wasSwimming) toast('Deep water · swim back to shore');
+  pl.position.y = SWIM_SURFACE;
+  grounded = true;
+  jumpVelocity = 0;
+  const state = G.state;
+  if (!state) return;
+
+  state.stamina = Math.max(0, (state.stamina ?? 0) - 6.5 * dt);
+  if (state.stamina > 0) {
+    drowningTime = 0;
+    return;
+  }
+
+  drowningTime += dt;
+  if (drowningTime > 2.5) {
+    state.health = Math.max(0, (state.health ?? 100) - 12 * dt);
+  }
+  if (state.health > 0) return;
+
+  const shore = G.lastDryPosition || new THREE.Vector3(WORLD.spawn.x, 0, WORLD.spawn.z);
+  pl.position.copy(shore);
+  pl.position.y = heightAt(pl.position.x, pl.position.z, pl.position.y);
+  G.curSpeed = 0;
+  G.swimming = false;
+  state.health = 25;
+  state.stamina = 15;
+  grounded = true;
+  jumpVelocity = 0;
+  drowningTime = 0;
+  toast('You drowned · rescued at the last shore with low health');
+  emit('hud');
+}
 
 // -----------------------------------------------------------------------------
 // COLLISION
@@ -159,15 +211,19 @@ export function moveFoot(dt) {
 
   const input = inputVector();
   const mag = Math.min(1, input.length());
+  const swimming = swimmingAt(pl.position.x, pl.position.z);
+  G.swimming = swimming;
+  if (swimming) pl.position.y = SWIM_SURFACE;
 
   const has = mag > 0 && !frozen();
 
   const sprint =
+    !swimming &&
     !!(k.shift || G.pad?.sprint) &&
     (G.state.stamina ?? 0) > 0;
 
   const maxSpeed =
-    (sprint ? 8.5 : 4.6) *
+    (swimming ? SWIM_SPEED : sprint ? 8.5 : 4.6) *
     (G.stick?.active ? mag : 1);
 
   G.stateT = (G.stateT || 0) + dt;
@@ -180,7 +236,10 @@ export function moveFoot(dt) {
     !!k.jumpPressed ||
     !!G.pad?.jump;
 
-  if (jumpPressed && grounded && !frozen()) {
+  if (swimming && jumpPressed) {
+    k.jumpPressed = false;
+    if (G.pad) G.pad.jump = false;
+  } else if (jumpPressed && grounded && !frozen()) {
     jumpVelocity = JUMP_FORCE;
     grounded = false;
 
@@ -198,7 +257,7 @@ export function moveFoot(dt) {
   // VERTICAL JUMP PHYSICS
   // ---------------------------------------------------------------------------
 
-  if (!grounded) {
+  if (!swimming && !grounded) {
     jumpVelocity -= GRAVITY * dt;
     pl.position.y += jumpVelocity * dt;
 
@@ -265,7 +324,9 @@ export function moveFoot(dt) {
       G.curSpeed - 16 * dt
     );
 
-    if (grounded) {
+    if (swimming) {
+      pl.position.y = SWIM_SURFACE + Math.sin(bob) * 0.025;
+    } else if (grounded) {
       setState(
         G.curSpeed > 0.4 ? 'stop' : 'idle'
       );
@@ -320,6 +381,7 @@ export function moveFoot(dt) {
       lastDir.x,
       lastDir.z
     );
+    updateSwimming(pl, dt);
     return;
   }
 
@@ -374,6 +436,7 @@ export function moveFoot(dt) {
     lastDir.x,
     lastDir.z
   );
+  updateSwimming(pl, dt);
 }
 
 // -----------------------------------------------------------------------------

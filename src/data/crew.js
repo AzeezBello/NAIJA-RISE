@@ -3,12 +3,12 @@
 import { VEH } from './vehicles.js';
 
 export const TRAITS = {
-  patient:   { label: 'Patient',   fareMul: 1.0,  cool: 8,  heatOnRefuse: 0 },
-  hustler:   { label: 'Hustler',   fareMul: 1.15, cool: 5,  heatOnRefuse: 0 },
-  strict:    { label: 'Strict',    fareMul: 1.0,  cool: 4,  heatOnRefuse: 1 },
-  jolly:     { label: 'Jolly',     fareMul: 0.9,  cool: 10, heatOnRefuse: 0 },
-  tired:     { label: 'Tired',     fareMul: 1.0,  cool: 6,  heatOnRefuse: 0 },
-  noChange:  { label: 'No change', fareMul: 1.0,  cool: 5,  heatOnRefuse: 0 }, // hates big notes
+  patient:   { label: 'Patient',   fareMul: 1.0, heatOnRefuse: 0 },
+  hustler:   { label: 'Hustler',   fareMul: 1.15, heatOnRefuse: 0 },
+  strict:    { label: 'Strict',    fareMul: 1.0, heatOnRefuse: 1 },
+  jolly:     { label: 'Jolly',     fareMul: 0.9, heatOnRefuse: 0 },
+  tired:     { label: 'Tired',     fareMul: 1.0, heatOnRefuse: 0 },
+  noChange:  { label: 'No change', fareMul: 1.0, heatOnRefuse: 0 }, // hates big notes
 };
 
 export const DRIVER_NAMES = [

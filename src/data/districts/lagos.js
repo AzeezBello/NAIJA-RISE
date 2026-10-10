@@ -141,6 +141,83 @@ const WATERS = [
   ),
 ];
 const PROPERTIES = surulere.PROPERTIES;
+const WORLD_BOUNDS = { x: [-520, 1120], z: [-1000, 410] };
+const roadFootprintOverlap = (x, z, width, depth) =>
+  ROADS.h.some(y => {
+    const [start, end] = ROAD_EXTENT.h[y] || [-150, 150];
+    return x + width / 2 + 1 > start && x - width / 2 - 1 < end &&
+      Math.abs(z - y) < (ROAD_WIDTHS.h[y] || 12) / 2 + depth / 2 + 1;
+  }) ||
+  ROADS.v.some(x0 => {
+    const [start, end] = ROAD_EXTENT.v[x0] || [-150, 150];
+    return z + depth / 2 + 1 > start && z - depth / 2 - 1 < end &&
+      Math.abs(x - x0) < (ROAD_WIDTHS.v[x0] || 12) / 2 + width / 2 + 1;
+  });
+const buildingFootprint = landmark => {
+  if (
+    landmark.stadium || landmark.waterfront ||
+    ['airport', 'beach', 'checkpoint', 'pitch', 'post', 'settlement', 'toll', 'waypoint'].includes(landmark.kind)
+  ) return null;
+  if (landmark.kind === 'artisan') return { width: 16, depth: 13 };
+  if (landmark.big) return { width: 26, depth: 20 };
+  if (landmark.kind === 'hotel' || landmark.kind === 'bank') return { width: 20, depth: 16 };
+  return { width: 18, depth: 14 };
+};
+const moveBuildingsClearOfRoads = () => {
+  const buildings = [
+    ...LANDMARKS.flatMap(landmark => {
+      const footprint = buildingFootprint(landmark);
+      return footprint ? [{ location: landmark, ...footprint }] : [];
+    }),
+    ...PROPERTIES.map(property => ({ location: property, width: 20, depth: 18 })),
+  ];
+  const moving = buildings
+    .filter(({ location, width, depth }) => roadFootprintOverlap(location.x, location.z, width, depth))
+    .sort((a, b) => b.width * b.depth - a.width * a.depth);
+  const occupied = buildings
+    .filter(building => !moving.includes(building))
+    .map(building => ({ ...building, x: building.location.x, z: building.location.z }));
+  for (const stop of BUSSTOPS) occupied.push({ x: stop.x, z: stop.z, width: 16, depth: 16 });
+
+  const offsets = [];
+  for (let dx = -80; dx <= 80; dx += 2) {
+    for (let dz = -80; dz <= 80; dz += 2) {
+      if (dx || dz) offsets.push({ dx, dz, distance: dx * dx + dz * dz });
+    }
+  }
+  offsets.sort((a, b) => a.distance - b.distance || a.dx - b.dx || a.dz - b.dz);
+
+  for (const building of moving) {
+    const { location, width, depth } = building;
+    const site = offsets.find(({ dx, dz }) => {
+      const x = location.x + dx, z = location.z + dz;
+      if (
+        x - width / 2 < WORLD_BOUNDS.x[0] || x + width / 2 > WORLD_BOUNDS.x[1] ||
+        z - depth / 2 < WORLD_BOUNDS.z[0] || z + depth / 2 > WORLD_BOUNDS.z[1] ||
+        roadFootprintOverlap(x, z, width, depth) ||
+        WATERS.some(water =>
+          x + width / 2 > water.x[0] && x - width / 2 < water.x[1] &&
+          z + depth / 2 > water.z[0] && z - depth / 2 < water.z[1]
+        )
+      ) return false;
+      return !occupied.some(other =>
+        Math.abs(x - other.x) < (width + other.width) / 2 + 3 &&
+        Math.abs(z - other.z) < (depth + other.depth) / 2 + 3
+      );
+    });
+    if (!site) {
+      throw new Error(`No safe road-free placement found for ${location.id}`);
+    }
+    location.x += site.dx;
+    location.z += site.dz;
+    if (location.door) {
+      location.door.x = location.x;
+      location.door.z = location.z - 10.5;
+    }
+    occupied.push({ ...building, x: location.x, z: location.z });
+  }
+};
+moveBuildingsClearOfRoads();
 const RESERVED = [
   ...LANDMARKS.map(l => ({ x: l.x, z: l.z, r: l.stadium ? 34 : l.kind === 'pitch' ? 26 : l.waterfront || l.kind === 'settlement' ? 52 : l.big ? 22 : (l.kind === 'checkpoint' || l.kind === 'post' || l.kind === 'toll') ? 8 : 17 })),
   ...BUSSTOPS.map(b => ({ x: b.x, z: b.z, r: 13 })),
@@ -161,7 +238,7 @@ export const META = {
   ...surulere.META,
   id: 'lagos',
   name: 'Lagos',
-  bounds: { x: [-520, 1120], z: [-1000, 410] },
+  bounds: WORLD_BOUNDS,
 };
 const REGION_PRIORITY = [...REGIONS].sort((a, b) =>
   (a.x[1] - a.x[0]) * (a.z[1] - a.z[0]) -
@@ -198,6 +275,7 @@ export const EBUTE_CELLS = surulere.EBUTE_CELLS;
 export const ISLAND_CELLS = surulere.ISLAND_CELLS;
 export const VENDORS = surulere.VENDORS;
 export const BRIDGES = surulere.BRIDGES;
+export const BRIDGE_RUSH = surulere.BRIDGE_RUSH;
 export const CLASS_RULES = surulere.CLASS_RULES;
 export const DISTRICT_AREAS = areas;
 export const U_TURNS = [

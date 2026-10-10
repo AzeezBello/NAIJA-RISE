@@ -84,23 +84,90 @@ export function phoneMapDraw() {
   pctx.clearRect(0, 0, W, W); pctx.fillStyle = '#0a1612'; pctx.fillRect(0, 0, W, W);
   pctx.save(); pctx.translate(cx, cy); pctx.scale(s, s); drawWorld(pctx); pctx.restore();
   const p = pos(); arrow(pctx, cx + p.x * s, cy + p.z * s, heading(), 9, '#fff');
-  pctx.textAlign = 'center'; pctx.textBaseline = 'top';
-  for (const l of LANDMARKS) {
-    const small = l.kind === 'checkpoint' || l.kind === 'post';
-    pctx.fillStyle = small ? l.c : '#fff'; pctx.font = `700 ${small ? 8 : 11}px Inter,sans-serif`;
-    pctx.fillText(l.short, cx + l.x * s, cy + (l.z + (l.stadium ? 24 : small ? 4 : 9)) * s);
-  }
-  pctx.fillStyle = '#f5c518'; pctx.font = '700 8px Inter,sans-serif'; for (const b of BUSSTOPS) pctx.fillText(b.short, cx + b.x * s, cy + (b.z + 3) * s);
-  pctx.fillStyle = '#bfe8cf'; pctx.font = '700 9px Inter,sans-serif';
-  for (const pr of PROPERTIES) if (G.state.props.includes(pr.id)) pctx.fillText(pr.id === G.state.home ? 'HOME' : pr.name.toUpperCase(), cx + pr.x * s, cy + (pr.z + 8) * s);
-  pctx.fillStyle = '#c9d6cf'; pctx.font = '600 8px Inter,sans-serif'; pctx.textBaseline = 'middle';
-  for (const z of ROADS.h) { const [a, b] = roadExtent('h', z); pctx.fillText(ROAD_NAMES.h[z].toUpperCase().split(' · ')[0], cx + ((a + b) / 2 + (z === 0 ? -90 : 0)) * s, cy + (z - 9) * s); }
-  for (const x of ROADS.v) { const [a] = roadExtent('v', x); pctx.save(); pctx.translate(cx + (x + 7) * s, cy + (a + 60) * s); pctx.rotate(-Math.PI / 2); pctx.fillText(ROAD_NAMES.v[x].toUpperCase().split(' · ')[0], 0, 0); pctx.restore(); }
-  pctx.fillStyle = '#9fd8e6'; pctx.font = '700 10px Inter,sans-serif'; pctx.fillText('LAGOS LAGOON', cx + WATER.x * s, cy + 60 * s); pctx.fillText('ATLANTIC', cx + 480 * s, cy + 360 * s);
-  pctx.fillStyle = '#ffffff'; pctx.font = '800 10px Inter,sans-serif';
+  const labels = [];
+  const addLabel = (text, x, z, color, size, priority, rotation = 0) => {
+    if (text) labels.push({ text, x: cx + x * s, y: cy + z * s, color, size, priority, rotation });
+  };
+
   for (const r of REGIONS) {
     const x = (r.x[0] + r.x[1]) / 2, z = (r.z[0] + r.z[1]) / 2;
-    pctx.fillText(r.name.toUpperCase(), cx + x * s, cy + z * s);
+    const name = PHONE_MAP_ZOOM.value < 1.8 ? r.name.split(' · ')[0] : r.name;
+    addLabel(name.toUpperCase(), x, z, '#ffffff', 10, 130);
+  }
+  if (PHONE_MAP_ZOOM.value >= 2) {
+    for (const l of LANDMARKS) {
+      const small = l.kind === 'checkpoint' || l.kind === 'post';
+      addLabel(l.short, l.x, l.z + (l.stadium ? 24 : small ? 4 : 9), small ? l.c : '#ffffff', small ? 8 : 10, l.big || l.kind === 'airport' ? 145 : 125);
+    }
+  }
+  if (PHONE_MAP_ZOOM.value >= 1.5) {
+    for (const pr of PROPERTIES) {
+      if (!G.state.props.includes(pr.id)) continue;
+      addLabel(pr.id === G.state.home ? 'HOME' : pr.name.toUpperCase(), pr.x, pr.z + 8, '#bfe8cf', 9, 140);
+    }
+  }
+  if (PHONE_MAP_ZOOM.value >= 2.5) {
+    for (const b of BUSSTOPS) addLabel(b.short, b.x, b.z + 3, '#f5c518', 8, 80);
+  }
+  if (PHONE_MAP_ZOOM.value >= 3) {
+    for (const z of ROADS.h) {
+      const [a, b] = roadExtent('h', z);
+      addLabel(ROAD_NAMES.h[z].toUpperCase().split(' · ')[0], (a + b) / 2 + (z === 0 ? -90 : 0), z - 9, '#c9d6cf', 8, 60);
+    }
+    for (const x of ROADS.v) {
+      const [a] = roadExtent('v', x);
+      addLabel(ROAD_NAMES.v[x].toUpperCase().split(' · ')[0], x + 7, a + 60, '#c9d6cf', 8, 60, -Math.PI / 2);
+    }
+  }
+  addLabel('LAGOS LAGOON', WATER.x, 60, '#9fd8e6', 10, 40);
+  addLabel('ATLANTIC', 480, 360, '#9fd8e6', 10, 40);
+  drawPhoneMapLabels(pctx, labels, W, pmap.height);
+}
+
+function drawPhoneMapLabels(ctx, labels, width, height) {
+  const occupied = [{ left: width - 236, top: 0, right: width, bottom: 58 }];
+  const offsets = [[0, 0], [0, -12], [0, 12], [-14, 0], [14, 0], [0, -24], [0, 24]];
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (const label of labels.sort((a, b) => b.priority - a.priority)) {
+    ctx.font = `700 ${label.size}px Inter,sans-serif`;
+    const textWidth = ctx.measureText(label.text).width + 8;
+    const textHeight = label.size + 6;
+    const boxWidth = Math.abs(label.rotation) > 0.1 ? textHeight : textWidth;
+    const boxHeight = Math.abs(label.rotation) > 0.1 ? textWidth : textHeight;
+    let placed = null;
+
+    for (const [dx, dy] of offsets) {
+      const x = label.x + dx, y = label.y + dy;
+      const rect = {
+        left: x - boxWidth / 2, top: y - boxHeight / 2,
+        right: x + boxWidth / 2, bottom: y + boxHeight / 2,
+      };
+      if (
+        rect.left < 2 || rect.top < 2 || rect.right > width - 2 || rect.bottom > height - 2 ||
+        occupied.some(other =>
+          rect.left < other.right && rect.right > other.left &&
+          rect.top < other.bottom && rect.bottom > other.top
+        )
+      ) continue;
+      placed = { x, y, rect };
+      break;
+    }
+    if (!placed) continue;
+
+    occupied.push(placed.rect);
+    ctx.save();
+    ctx.translate(placed.x, placed.y);
+    ctx.rotate(label.rotation);
+    ctx.font = `700 ${label.size}px Inter,sans-serif`;
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(5,16,13,.92)';
+    ctx.strokeText(label.text, 0, 0);
+    ctx.fillStyle = label.color;
+    ctx.fillText(label.text, 0, 0);
+    ctx.restore();
   }
 }
 function phoneMapTransform(width, height) {
