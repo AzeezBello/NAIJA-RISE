@@ -116,15 +116,22 @@ const REGIONS = [
   ...oyingbo.REGIONS,
   ...yaba.REGIONS,
 ];
-const WATERS = [
+const baseWaters = [
   ...surulere.WATERS
     .filter(w => w.id !== 'creek' && w.id !== 'lagoon-e' && w.id !== 'atlantic')
     .map(w => w.id === 'lagoon-n' ? { ...w, x: [339, 1120] } : w),
   { id: 'creek', name: 'Five Cowrie Creek', x: [339, 426], z: [100, 180] },
   { id: 'lagoon-e', name: 'Lagos Lagoon', x: [480, 1120], z: [-85, 180] },
   { id: 'atlantic', name: 'Atlantic Ocean', x: [339, 1120], z: [350, 410] },
-  { id: 'eleko-coast', name: 'Atlantic Ocean', x: [840, 1120], z: [350, 410] },
-  ...areas.flatMap(area => area.WATERS),
+];
+const WATERS = [
+  ...baseWaters,
+  ...areas.flatMap(area => area.WATERS).filter(w =>
+    !baseWaters.some(existing =>
+      w.x[0] >= existing.x[0] && w.x[1] <= existing.x[1] &&
+      w.z[0] >= existing.z[0] && w.z[1] <= existing.z[1]
+    )
+  ),
 ];
 const PROPERTIES = surulere.PROPERTIES;
 const RESERVED = [

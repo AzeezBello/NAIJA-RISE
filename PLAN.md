@@ -13,9 +13,9 @@ The PRD's §25 "Version 0.1" MVP list, checked against the current build:
 
 | PRD MVP item | Status | Notes |
 |---|---|---|
-| One district | **Done** | Surulere: Ojuelegba, Kilo, Shitta, Mushin edge, Yaba Market, National Stadium, Ladipo, Marina, bus stops |
+| Lagos district network | **Done** | Surulere, Ikoyi, Lekki/Ajah/Eleko, Ikorodu, Apapa, Ikeja, Oyingbo, Yaba/Alagomeji, Ajegunle, Makoko, Agege and Ojo/Badagry; Bar Beach, Oniru and Elegushi/Quilox landmarks |
 | One playable character | **Done** | Customisable skin, hair, shirt, trousers (Character app) |
-| 10 NPC types | **Done** | Pedestrians, agberos, police, soldiers, firemen, LAWMA, LASTMA, FRSC, night hustlers, school kids, owambe crowd, animals |
+| Lagos NPC variety | **Done** | Pedestrians, agberos, students, service agencies (Police, Army, LASTMA, LAWMA, VIO, KAI, Civil Defence, FRSC), artisans, night hustlers, owambe crowd and animals |
 | 5 vehicles | **Done (11)** | Sedan, danfo, korope, keke napep, okada, BRT, police, fire truck, LAWMA truck, army truck, fuel tanker |
 | 10 jobs | **Done (10)** | Plus Market Porter, POS Agent, Bouncer, Tanker Driver; pay scales with Driving / Business / Charisma / Fitness skills |
 | 5 missions | **Done (13)** | Shared prologue of seven, then two arcs of three (Amaka legit / Baba K risk) gated by reputation; timed, cargo, escape, steal and race objectives |
@@ -30,7 +30,7 @@ Systems that go beyond the MVP list and are already in: heat with police pursuit
 
 ### Codebase
 
-- `src/` — framework-agnostic Three.js engine in ES modules: `core/` (context, events, state, renderer, input, gamepad), `data/` (config, districts, vehicles, characters, jobs, businesses, missions, items), `world/` (textures, builders, district, day/night), `entities/` (player, vehicles, NPCs, animals), `systems/` (movement, navigation, dialogue, interaction, economy, vitals, police, events), `ui/` (HUD, minimap, phone and apps, touch, components), `scenes/` (title, city).
+- `src/` — framework-agnostic Three.js engine in ES modules: `core/` (context, events, state, renderer, input, gamepad), `data/` (config, districts, vehicles, characters, jobs, businesses, missions, items), `world/` (textures, builders, districts, interiors, day/night), `entities/` (player, vehicles, NPCs, animals), `systems/` (movement, navigation, dialogue, interaction, economy, vitals, police, events), `ui/` (HUD, minimap, phone and apps, touch, components), `scenes/` (title, city).
 - `index.html` + `styles/` — static build; runs from any static server.
 - `web/` — Next.js 16 / React 19 / TypeScript shell (Turbopack): landing page with a React Three Fiber hero, `/play` mounts the same engine. Accounts, marketplace and admin will live here.
 - Engine and Next shell share `src/` and `styles/`; the engine exposes `createGame({ mount, ui })`.
@@ -63,17 +63,17 @@ One character pipeline for the player and NPCs: rigged GLB (Mixamo-compatible sk
 Post-processing (bloom, split-tone colour grade, vignette, ACES) with an environment map for reflections, wet night roads, the poster's dusk-to-night palette and a golden-hour start; human rigs only (Ready Player Me avatar with RPM locomotion clips, Khronos CesiumMan; a female body needs its own rig and clips) with eleven everyday outfits (ankara to jacket-and-jeans, gowns and skirts) and sneakers for street variety; rigs on mobile; title-screen preload; service-worker cache bump. Graphics quality levels (auto-detect + adaptive step-down, Settings › Graphics) for weaker GPUs; story contacts are characters in the world with objective arrows. Vehicles are Kenney Car Kit models (CC0) with runtime repainting and rolling wheels (keke, okada, BRT and tanker still procedural); houses carry ledges, balconies, ACs, water tanks, dishes, awnings and generators.
 
 ### Alpha 1.0 — Corridors (shipped)
-Falomo Bridge → Victoria Island → Lekki toll gate and Lekki Phase 1; Third Mainland Bridge → Yaba; Ikorodu Road across Ebute Metta to Ikorodu Garage via Western Avenue; pedestrian bridges, terminal danfo queues, toll plaza with fees and heat, road-works diversions, bridge rush profiles, long-distance jobs; world builders generated from the district data (roads, medians, lights, signs, water bodies, cells). Bridge decks render at their own elevation profile, with traffic sitting on the deck surface; GLB geometry is Meshopt-compressed at high precision, textures and scene transforms are preserved, and redundant compressed model variants are removed.
+The district registry now covers Surulere, Ikoyi/VI, Lekki through Ajah and Eleko, Ikorodu, Apapa, Ikeja, Oyingbo, Yaba/Alagomeji, Ajegunle, Makoko, Agege and Ojo/Badagry; coastal destinations include Bar Beach, Oniru, Elegushi and Quilox. Ikorodu Road and Third Mainland have widened multi-lane profiles, medians with legal U-turn openings and road signs. The Costain/Falomo bridges, Ikorodu Road BRT lanes, pedestrian bridges, terminal danfo queues, toll plaza, road-work diversions, rush-hour bridge profiles and long-distance jobs are wired to district data. Airport terminal/runway/aircraft, procedural wave and shoreline detail, agency and artisan NPCs, and first-pass enterable home/shop/office interiors with doors are implemented. Browser visual QA remains outstanding. GLB geometry is Meshopt-compressed at high precision; textures and scene transforms are preserved, and redundant compressed variants are removed.
 
 ## 2. Next phase — Alpha 1.1 (Living City Phases 3–4, 4 weeks)
 
-**Corridors — remaining:** Ikoyi proper between the Island and VI, Lekki beyond Phase 1 (Ajah, Eleko), Ikorodu town, Apapa port road; interchange ramps at Costain and Falomo; BRT dedicated lanes on Ikorodu Road.
+**Corridors — next:** add street-level detail and local connections inside the shipped districts, then play-test road widths, U-turns, bridge clearances, shoreline edges and airport placement in-browser. The district layouts and headline locations are present; the broad map still needs visual tuning and QA.
 
 **Living City Phase 3 — Life:** expand the shipped family foundation (family compound, requests and relationships) with richer needs and storylines; continue the shipped education tree (five certified cyber café courses and school evening classes) with polytechnic and Yaba Tech enrolment; add fitness as recovery/strength and businesses v4 with employee schedules.
 
 **Living City Phase 4 — Social:** deepen NPC social simulation with trust, respect, affection and reputation; add friendships and romance, and Egbon Adugbo as the neighbourhood network manager who hands out jobs and missions by local reputation.
 
-**Also queued:** replace or improve the existing non-CC0 keke and okada models, and replace the temporary Volkswagen Crafter BRT and generic heavy-commercial tanker models with purpose-built Lagos vehicles; none of these vehicle types is supplied by the Kenney CC0 kit. Add a building facade kit; production character rig (see the open decision above) with turn/stop/jump and vehicle enter/exit animation clips (on-foot jump controls already work); real outfit meshes per clothing slot instead of tints; NPC uniform meshes (police, LASTMA, agbero caps) on the rig.
+**Also queued:** replace or improve the existing non-CC0 keke and okada models, and replace the temporary Volkswagen Crafter BRT and generic heavy-commercial tanker models with purpose-built Lagos vehicles; none of these vehicle types is supplied by the Kenney CC0 kit. Add a building facade kit; production character rig (see the open decision above) with turn/stop/jump and vehicle enter/exit animation clips (on-foot jump controls already work); real outfit meshes per clothing slot instead of tints; NPC uniform meshes (police, LASTMA, agbero caps) on the rig. First-pass artisan workshops, agency uniforms and enterable interiors need a visual/interaction play-test before being treated as fully polished.
 
 **Then (Alpha 1.1+):** Phase 5 dynamic world (NPC schedules, random encounters, neighbourhood stories) and Phase 6 the NAIJA RISE MCP server (world, player, NPC, mission, business, education and community tools) feeding an AI world director; multiplayer groundwork and accounts as planned before.
 
@@ -86,9 +86,9 @@ Goal: make the economy loop deep enough that a player can spend an hour running 
 5. **TypeScript port** — `src/data/` and `src/systems/` first, with JSDoc-to-TS types shared by the Next shell.
 6. **Admin dashboard v0** — a `/admin` route listing players, economy totals and the mission/job/business tables, editable without a rebuild.
 7. **Audio v2** — recorded ambience and owambe music behind the existing Sound toggle.
-8. **Second district stub** — Yaba (tech) as a `districts/yaba.js` with a road grid, three landmarks and a BRT link to Surulere, to prove the registry.
+8. **QA gate** — run headless and browser smoke tests across the registry, including loading Yaba and checking interior entry/exit without console errors.
 
-Exit criteria: two players see each other in one Surulere room, saves round-trip through the server, one co-op race, Yaba loads from the registry, zero console errors in the headless QA run.
+Exit criteria: two players see each other in one Surulere room, saves round-trip through the server, one co-op race, Yaba and other districts load from the registry, interiors return cleanly to the exterior, zero console errors in the headless QA run.
 
 ---
 
@@ -97,7 +97,7 @@ Exit criteria: two players see each other in one Surulere room, saves round-trip
 - **Phase 4 — Action (0.7)**: chase and escape mission templates, street racing on Western Avenue, convoy interception, Heat 4–5 responses (army, roadblocks), safe houses.
 - **Phase 5 — Multiplayer (0.8)**: Colyseus rooms per district, player sync, chat, crews with treasury and HQ, co-op missions. Requires the server-side save first.
 - **Phase 6 — Alpha release (0.9)**: Supabase Auth accounts in `web/`, PostgreSQL/Neon schema from PRD §27, admin dashboard (PRD §28) for missions/jobs/economy values, analytics, anti-cheat basics, closed testing.
-- **Districts**: `src/data/districts/` is a registry; next areas are Yaba (tech), Ikeja (CBD), Lekki/VI (luxury), Apapa (port), then other Nigerian states as separate district packs.
+- **Districts**: `src/data/districts/` is a registry with the Lagos areas listed above; continue adding detail and later add other Nigerian states as separate district packs.
 - **Platforms**: Web first (done), PWA install (manifest next), then Electron/PC, mobile wrappers.
 - **Monetisation (PRD §29)**: cosmetics only — clothing, vehicle liveries, property decor, emotes; "Lagos Life Pass" seasonal cosmetics.
 

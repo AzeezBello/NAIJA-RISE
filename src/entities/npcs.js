@@ -400,18 +400,18 @@ export function spawnAgberos() {
 
 export function spawnServiceNpcs() {
   G.service = [];
+  const capColors = {
+    police: 0x111318,
+    army: 0x3f5a2a,
+    lastma: 0x7a1e2d,
+    lawma: 0xf07a1e,
+    vio: 0x174a78,
+    kai: 0x8a2638,
+    civildefence: 0x245a74,
+  };
   for (const s of SERVICE_NPCS) {
     const n = person({
-      ...uniform(
-        UNIFORMS[s.u],
-        s.u === 'police'
-          ? 0x111318
-          : s.u === 'army'
-            ? 0x3f5a2a
-            : s.u === 'lastma'
-              ? 0x7a1e2d
-              : 0x1b1b1b
-      ),
+      ...uniform(UNIFORMS[s.u], capColors[s.u] || 0x1b1b1b),
       scale: 1.05,
     });
     n.position.set(s.x, heightAt(s.x, s.z), s.z);

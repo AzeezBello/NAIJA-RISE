@@ -22,5 +22,5 @@ export const DISTRICT = createArea({
   busStops: [
     { id: 'makoko-shore-stop', name: 'Makoko Shore Bus Stop', short: 'MAKOKO', x: 320, z: -74, agberos: 1 },
   ],
-  water: [{ id: 'makoko-lagoon', name: 'Lagos Lagoon · Makoko', x: [250, 340], z: [-250, -85] }],
+  water: [{ id: 'makoko-lagoon', name: 'Lagos Lagoon · Makoko', x: [250, 339], z: [-250, -85] }],
 });

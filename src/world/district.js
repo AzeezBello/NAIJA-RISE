@@ -282,37 +282,27 @@ function streetLights() {
   const nearCross = (coord, cross) =>
     cross.some(k => Math.abs(coord - k) < 14);
   for (const z of ROADS.h) {
-    if (
-      roadClass('h', z) === 'expressway' ||
-      roadClass('h', z) === 'highway'
-    ) {
-      continue;
-    }
     const hw = ROAD_W[z] / 2 + 1;
     const [a, b] = roadExtent('h', z);
-    for (let x = a + 18; x <= b - 18; x += 36) {
+    const spacing = ['expressway', 'highway'].includes(roadClass('h', z)) ? 60 : 36;
+    for (let x = a + 18; x <= b - 18; x += spacing) {
       if (nearCross(x, ROADS.v) || onBridge('h', z, x) || inWater(x, z)) {
         continue;
       }
       streetLight(x, z - hw, { x: 0, z: 1 });
-      streetLight(x + 18, z + hw, { x: 0, z: -1 });
+      streetLight(x + spacing / 2, z + hw, { x: 0, z: -1 });
     }
   }
   for (const x of ROADS.v) {
-    if (
-      roadClass('v', x) === 'expressway' ||
-      roadClass('v', x) === 'highway'
-    ) {
-      continue;
-    }
     const hw = VROAD_W[x] / 2 + 1;
     const [a, b] = roadExtent('v', x);
-    for (let z = a + 18; z <= b - 18; z += 36) {
+    const spacing = ['expressway', 'highway'].includes(roadClass('v', x)) ? 60 : 36;
+    for (let z = a + 18; z <= b - 18; z += spacing) {
       if (nearCross(z, ROADS.h) || onBridge('v', x, z) || inWater(x, z)) {
         continue;
       }
       streetLight(x - hw, z, { x: 1, z: 0 });
-      streetLight(x + hw, z + 18, { x: -1, z: 0 });
+      streetLight(x + hw, z + spacing / 2, { x: -1, z: 0 });
     }
   }
 }

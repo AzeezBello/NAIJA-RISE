@@ -62,6 +62,9 @@ function buildRoom(place, kind) {
   scene.add(hinge);
   interior.objects.push(door);
   interior.door = hinge;
+  interior.doorCollider = { x: ROOM.x, z: ROOM.z + ROOM.depth / 2, w: 2.2, d: 0.3 };
+  colliders.push(interior.doorCollider);
+  interior.colliders.push(interior.doorCollider);
   hinge.rotation.y = -Math.PI / 2;
 
   const ambient = new THREE.HemisphereLight(0xffedd2, 0x443629, 1.8);
@@ -106,11 +109,11 @@ export function enterBuilding(place, kind = place.kind) {
     outdoorSky: G.sky,
     outdoorCameraPosition: G.camera.position.clone(),
     outdoorCameraQuaternion: G.camera.quaternion.clone(),
-    colliderStart: colliders.length - interior.colliders.length,
-    occluderStart: occluders.length - interior.occluders.length,
     outsideDoor: place.doorMesh || null,
   });
   if (interior.outsideDoor) interior.outsideDoor.rotation.y = -Math.PI / 2;
+  const doorIndex = colliders.indexOf(interior.doorCollider);
+  if (doorIndex >= 0) colliders.splice(doorIndex, 1);
   G.interior = interior;
   G.scene = interior.scene;
   G.scene.add(G.sun.target, G.sun, G.hemi, G.player);
@@ -133,6 +136,8 @@ export function leaveBuilding() {
   interior.exiting = true;
   interior.exitTimer = 0.28;
   interior.door.rotation.y = -Math.PI / 2;
+  const doorIndex = colliders.indexOf(interior.doorCollider);
+  if (doorIndex >= 0) colliders.splice(doorIndex, 1);
 }
 
 export function updateInterior(dt) {
@@ -141,6 +146,7 @@ export function updateInterior(dt) {
   if (interior.closeTimer > 0) {
     interior.closeTimer = Math.max(0, interior.closeTimer - dt);
     interior.door.rotation.y = -Math.PI / 2 * (interior.closeTimer / 0.6);
+    if (!interior.closeTimer && !interior.exiting) colliders.push(interior.doorCollider);
   }
   if (!interior.exiting) return;
   interior.exitTimer -= dt;
@@ -158,8 +164,14 @@ export function updateInterior(dt) {
   G.camera.quaternion.copy(interior.outdoorCameraQuaternion);
   G.sky = interior.outdoorSky;
   if (interior.outsideDoor) interior.outsideDoor.rotation.y = 0;
-  colliders.splice(interior.colliderStart, interior.colliders.length);
-  occluders.splice(interior.occluderStart, interior.occluders.length);
+  for (const collider of interior.colliders) {
+    const index = colliders.indexOf(collider);
+    if (index >= 0) colliders.splice(index, 1);
+  }
+  for (const mesh of interior.occluders) {
+    const index = occluders.indexOf(mesh);
+    if (index >= 0) occluders.splice(index, 1);
+  }
   for (const object of interior.objects) {
     object.geometry?.dispose();
     if (Array.isArray(object.material)) object.material.forEach(material => material.dispose());

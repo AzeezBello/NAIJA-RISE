@@ -33,7 +33,7 @@ export const DISTRICT = createArea({
     { id: 'bar-beach', name: 'Bar Beach', short: 'BAR BEACH', x: 448, z: 318, c: '#cbb98a', sign: '#ffffff', h: 3, kind: 'landmark', waterfront: true, region: 'bar-beach' },
     { id: 'oniru-beach', name: 'Oniru Beach', short: 'ONIRU BEACH', x: 500, z: 318, c: '#cbb98a', sign: '#ffffff', h: 3, kind: 'landmark', waterfront: true, region: 'oniru' },
     { id: 'elegushi-beach', name: 'Elegushi Beach', short: 'ELEGUSHI', x: 580, z: 318, c: '#cbb98a', sign: '#ffffff', h: 3, kind: 'landmark', waterfront: true, region: 'elegushi' },
-    { id: 'quilox', name: 'Quilox Nightclub', short: 'QUILOX', x: 540, z: 278, c: '#29253f', sign: '#f3a4ff', h: 7, kind: 'venue', region: 'oniru' },
+    { id: 'quilox', name: 'Quilox Nightclub', short: 'QUILOX', x: 520, z: 278, c: '#29253f', sign: '#f3a4ff', h: 7, kind: 'venue', region: 'oniru' },
   ],
   busStops: [
     { id: 'ajah-bus', name: 'Ajah Bus Stop', short: 'AJAH', x: 800, z: 226, agberos: 2 },
