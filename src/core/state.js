@@ -33,11 +33,19 @@ export const DEFAULT = {
 };
 
 const LEGACY_KEYS = ['naijarise.alpha09', 'naijarise.alpha08', 'naijarise.alpha07', 'naijarise.alpha06', 'naijarise.alpha05'];
+// Keep the first copy of a save we are about to discard (corrupt JSON, or written by a newer build) so it can be recovered
+// by hand; the autosave would otherwise overwrite it within 15 seconds of starting a fresh game.
+function stashSave(raw, tag) {
+  try { const k = `${GAME.saveKey}.${tag}`; if (raw && !localStorage.getItem(k)) localStorage.setItem(k, raw); } catch { /* storage blocked or full */ }
+}
 export function hasSave() { try { return !!(localStorage.getItem(GAME.saveKey) || LEGACY_KEYS.some(k => localStorage.getItem(k))); } catch { return false; } }
 export function freshState() { return structuredClone(DEFAULT); }
 export function loadState() {
+  let raw = null;
+  try { raw = localStorage.getItem(GAME.saveKey); } catch { /* storage blocked */ }
   try {
-    const s = JSON.parse(localStorage.getItem(GAME.saveKey)) || LEGACY_KEYS.map(k => JSON.parse(localStorage.getItem(k))).find(Boolean);
+    const s = JSON.parse(raw) || LEGACY_KEYS.map(k => JSON.parse(localStorage.getItem(k))).find(Boolean);
+    if (s && !(s.v === GAME.saveVersion || [9, 8, 7, 6, 5].includes(s.v))) stashSave(raw, `v${s.v}`);   // unknown / newer version
     if (s && (s.v === GAME.saveVersion || [9, 8, 7, 6, 5].includes(s.v))) {   // v5 saves migrate: new fields take defaults
       const st = freshState();
       Object.assign(st, s);
@@ -65,7 +73,7 @@ export function loadState() {
       st.v = GAME.saveVersion;
       return st;
     }
-  } catch { /* corrupt save → fresh */ }
+  } catch { stashSave(raw, 'corrupt'); }   // corrupt save → fresh game, but keep the bytes
   return freshState();
 }
 export function saveState(state) { try { state.lastSeen = Date.now(); localStorage.setItem(GAME.saveKey, JSON.stringify(state)); } catch { /* storage blocked */ } }

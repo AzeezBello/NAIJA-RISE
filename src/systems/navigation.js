@@ -38,7 +38,8 @@ export function applyMission() {
 }
 export function applyJob() {
   const j = jobOf(G.state.job), m = G.markers.job;
-  if (j) { const p = jobPos(j); m.visible = true; m.position.set(p.x, 0.22, p.z); } else m.visible = false;
+  const p = j && jobPos(j);   // a job whose place no longer exists must not crash the load of a save that holds it
+  if (p) { m.visible = true; m.position.set(p.x, 0.22, p.z); } else m.visible = false;
 }
 export function applyWaypoint() {
   const w = G.state.waypoint, m = G.markers.wp;
@@ -57,7 +58,7 @@ export function gpsTarget() {
   if (G.task && G.task.type !== 'escape') { const p = taskDest(); if (p) return { x: p.x, z: p.z, label: G.task.obj.split(' — ')[0], kind: 'mission' }; }
   if (s.waypoint) return { x: s.waypoint.x, z: s.waypoint.z, label: s.waypoint.label || 'Waypoint', kind: 'wp' };
   const j = jobOf(s.job);
-  if (j) { const p = jobPos(j); return { x: p.x, z: p.z, label: `${j.title} · ${j.where}`, kind: 'job' }; }
+  if (j) { const p = jobPos(j); if (p) return { x: p.x, z: p.z, label: `${j.title} · ${j.where}`, kind: 'job' }; }
   if (missionActive()) { const p = missionPos(); return { x: p.x, z: p.z, label: curMission().title, kind: 'mission' }; }
   return null;
 }

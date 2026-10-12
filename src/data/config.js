@@ -4,7 +4,11 @@ export const ECON = { payCycle: 60, refuel: 3000, startCash: 50000, startBank: 1
 export const TIME = { daySpeed: 1 / 45, startClock: 8.5, venueOpen: 20, venueClose: 4 };   // 1 game hour per 45 real seconds
 export const WORLD = { bounds: { x: [-520, 1120], z: [-1000, 410] }, spawn: { x: 0, z: 34 } };
 // Low-end profile (touch devices or small screens): fewer NPCs and vehicles, lower pixel ratio, shadows off by default.
-export const PERF = { lowEnd: typeof matchMedia !== 'undefined' && (matchMedia('(pointer:coarse)').matches || innerWidth < 900), npcs: { full: 110, low: 32 }, trafficCap: { full: 99, low: 16 }, rainDrops: { full: 1800, low: 700 } };
+// Low-end profile = touch-first devices or very little RAM. Window width is deliberately not used: a narrow desktop window
+// (or a touch laptop with a mouse) used to be locked into the low profile; slow GPUs are handled by core/quality.js (Auto).
+const COARSE = typeof matchMedia !== 'undefined' && matchMedia('(pointer:coarse)').matches;
+const LOW_RAM = typeof navigator !== 'undefined' && (navigator.deviceMemory || 8) <= 2;
+export const PERF = { lowEnd: COARSE || LOW_RAM, npcs: { full: 110, low: 32 }, trafficCap: { full: 99, low: 16 }, rainDrops: { full: 1800, low: 700 } };
 // Character pipeline: the first reachable rig wins. Ship your own at assets/characters/player.glb (Mixamo-compatible
 // skeleton with Idle/Walk/Run clips); the three.js Soldier is the development placeholder.
 // Character rigs. Every rig is a real human: rig 0 (the player and most of the street) is a Ready Player Me avatar in a
