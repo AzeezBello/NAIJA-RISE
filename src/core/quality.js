@@ -9,9 +9,11 @@ import { saveState } from './state.js';
 // and a #debug FPS/perf overlay. All three live here because updateQuality() is already called every frame.
 export const LEVELS = ['low', 'medium', 'high'];
 export const QUALITY = {
-  low:    { label: 'Low',    pixelRatio: 1,    shadows: 0,    fx: false, env: 0.2,  npcs: 24, traffic: 16, animRange: 60,  shadowRange: 25, fogScale: 0.75 },
-  medium: { label: 'Medium', pixelRatio: 1.25, shadows: 1536, fx: true, env: 0.4, npcs: 68, traffic: 28, animRange: 90,  shadowRange: 35, fogScale: 0.9 },
-  high:   { label: 'High',   pixelRatio: 1.5, shadows: 2048, fx: true,  env: 0.4,  npcs: 130, traffic: 99, animRange: 120, shadowRange: 50, fogScale: 1 },
+  // fx = HDR target + bloom. msaa = samples on the HDR target (costly on integrated GPUs, so High only); fxaa = a cheap
+  // post-process anti-alias used instead of MSAA on Medium.
+  low:    { label: 'Low',    pixelRatio: 1,    shadows: 0,    fx: false, msaa: 0, fxaa: false, env: 0.2,  npcs: 24, traffic: 16, animRange: 60,  shadowRange: 25, fogScale: 0.75 },
+  medium: { label: 'Medium', pixelRatio: 1.25, shadows: 1536, fx: true,  msaa: 0, fxaa: true,  env: 0.4,  npcs: 68, traffic: 28, animRange: 90,  shadowRange: 35, fogScale: 0.9 },
+  high:   { label: 'High',   pixelRatio: 1.5,  shadows: 2048, fx: true,  msaa: 2, fxaa: false, env: 0.4,  npcs: 130, traffic: 99, animRange: 120, shadowRange: 50, fogScale: 1 },
 };
 export const current = () => QUALITY[G.quality || 'medium'];
 
@@ -26,19 +28,26 @@ export function detectQuality(renderer) {
 }
 
 // ---- dynamic resolution state ----
-const DYN_MIN = 0.55;            // never render below 55% of the tier's pixel-ratio cap
-let dynScale = 1;                // 1 = full tier resolution, drops under load, recovers when fast
+// Every change reallocates the canvas backbuffer and (with the cinematic look on) the HDR targets and bloom mips, so the
+// scale moves in a few discrete steps with hysteresis rather than in small increments, and it gives up when shrinking
+// the frame does not make it faster (CPU-bound, or a display capped at 30 fps).
+const DYN_STEPS = [1, 0.85, 0.7, 0.55];   // fractions of the tier's pixel-ratio cap; never below 55 %
+let dynIdx = 0;                  // index into DYN_STEPS: 0 = full tier resolution
 let ema = 1 / 60;                // smoothed frame time (s)
 let dynT = 0, fastT = 0;         // dynamic-res tick timer / sustained-fast timer for step-up
+let slowTicks = 0, fastTicks = 0;   // consecutive slow / fast evaluations (0.6 s each)
+let recoverTicks = 5;            // fast evaluations needed before resolution steps back up; doubles after a failed recovery
+let lastRecoverAt = -1e9;        // performance.now() of the last upward step
+let streakBase = 0;              // smoothed frame time when the current shrink streak began
+let noGainLock = 60000, noGainUntil = 0;   // shrinking is off until this time after a shrink that bought nothing
 let autoCeiling = null;          // highest tier the auto governor may climb back to
 
-// Effective pixel ratio: the tier's cap (which itself caps devicePixelRatio) scaled by dynScale.
+// Effective pixel ratio: the tier's cap (which itself caps devicePixelRatio) scaled by the current dynamic step.
 function applyPixelRatio() {
   const cap = Math.min(devicePixelRatio || 1, current().pixelRatio);
-  const pr = cap * Math.max(DYN_MIN, Math.min(1, dynScale));
+  const pr = cap * DYN_STEPS[dynIdx];
   G.renderer?.setPixelRatio(pr);
-  G.composer?.setPixelRatio?.(pr);
-  G.composer?.setSize?.(innerWidth, innerHeight);
+  G.composer?.setPixelRatio?.(pr);   // also resizes the composer targets
 }
 
 export function applyQuality(level, { silent = true } = {}) {
@@ -78,14 +87,28 @@ export function updateQuality() {
   ema = ema * 0.95 + ft * 0.05;
   dynT -= ft;
   if (dynT <= 0 && gap <= 5) {
-    dynT = 0.6;                            // re-evaluate twice a second, not every frame
-    if (ema > 0.027 && dynScale > DYN_MIN) {          // ~37 FPS or worse: shrink
-      dynScale = Math.max(DYN_MIN, dynScale - 0.06);
-      applyPixelRatio(); fastT = 0;
-    } else if (ema < 0.017) {                          // ~59 FPS or better: recover
-      if (dynScale < 1) { dynScale = Math.min(1, dynScale + 0.02); applyPixelRatio(); }
-      else if (auto) { fastT += 0.6; if (fastT >= 6) { fastT = 0; stepUp(); } }   // 6 s of headroom → higher tier
-    } else fastT = 0;
+    dynT = 0.6;                            // re-evaluate about twice a second, not every frame
+    if (ema > 0.027) {                     // ~37 FPS or worse
+      fastT = 0; fastTicks = 0;
+      if (++slowTicks >= 2 && dynIdx < DYN_STEPS.length - 1 && now >= noGainUntil) {   // ~1.2 s of slow frames: shrink one step
+        slowTicks = 0;
+        if (dynIdx === 0) streakBase = ema;
+        else if (dynIdx >= 2 && ema > streakBase * 0.9) {
+          // two steps (about half the pixels) bought less than 10 % frame time: the frame is not fill-rate bound.
+          // Go back to full resolution and stop shrinking for a while instead of paying for pointless reallocations.
+          dynIdx = 0; applyPixelRatio();
+          noGainUntil = now + noGainLock; noGainLock = Math.min(600000, noGainLock * 2);
+          return void updateOverlay(ft);
+        }
+        if (now - lastRecoverAt < 10000) recoverTicks = Math.min(80, recoverTicks * 2);   // we recovered too early: wait longer next time
+        dynIdx++; applyPixelRatio();
+      }
+    } else if (ema < 0.017) {              // ~59 FPS or better
+      slowTicks = 0;
+      if (dynIdx > 0) {
+        if (++fastTicks >= recoverTicks) { fastTicks = 0; dynIdx--; lastRecoverAt = now; applyPixelRatio(); }   // recover one step
+      } else if (auto) { fastT += 0.6; if (fastT >= 6) { fastT = 0; stepUp(); } }   // 6 s of headroom → higher tier
+    } else { slowTicks = 0; fastTicks = 0; fastT = 0; }
   }
   updateOverlay(ft);
   if (!auto) return;                       // manual levels: resolution still adapts, tiers don't
@@ -138,7 +161,7 @@ function updateOverlay(ft) {
     `Triangles  ${((info?.render.triangles ?? 0) / 1000).toFixed(0)}K`,
     `Textures   ${info?.memory.textures ?? '—'} · Geo ${info?.memory.geometries ?? '—'}`,
     `Vehicles   ${active(G.traffic)} · NPCs ${active(G.npcs)}`,
-    `PixelRatio ${r?.getPixelRatio().toFixed(2)} (${(Math.min(1, dynScale) * 100).toFixed(0)}% of tier)`,
+    `PixelRatio ${r?.getPixelRatio().toFixed(2)} (${(DYN_STEPS[dynIdx] * 100).toFixed(0)}% of tier)`,
     `Graphics   ${(G.quality || '?').toUpperCase()}${autoCeiling ? ` (auto ≤ ${autoCeiling})` : ''}`,
   ].join('\n');
 }

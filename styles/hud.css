@@ -1,3 +1,6 @@
+/* Safe areas: index.html sets viewport-fit=cover, so notches and the home indicator overlap the page unless the HUD keeps clear.
+   Every offset below is max()/calc() of its normal value, so devices without insets lay out exactly as before. */
+:root{--sat:env(safe-area-inset-top,0px);--sar:env(safe-area-inset-right,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px)}
 .hud{position:fixed;inset:0;pointer-events:none;user-select:none;display:none}
 .hud.show{display:block}
 .fade{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 45%,transparent 60%,#000a 100%)}
@@ -5,7 +8,7 @@
 .sleepfade.on{opacity:1}
 
 /* ---------- top bar: brand + district · clock + day ---------- */
-.topbar{position:absolute;left:0;right:0;top:0;display:flex;justify-content:flex-end;align-items:flex-start;padding:16px 24px;background:linear-gradient(180deg,#000a,transparent);pointer-events:none}
+.topbar{position:absolute;left:0;right:0;top:0;display:flex;justify-content:flex-end;align-items:flex-start;padding:max(16px,var(--sat,0px)) max(24px,var(--sar,0px)) 16px max(24px,var(--sal,0px));background:linear-gradient(180deg,#000a,transparent);pointer-events:none}
 .locale{margin:0 0 2px 6px;transition:opacity .4s}
 .locale b{display:block;font-size:12px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;text-shadow:0 2px 10px #000}
 .locale span{font-size:8px;letter-spacing:.3em;text-transform:uppercase;color:#aeb9b4}
@@ -18,7 +21,7 @@
 .tr .daynum{font-size:10px;color:#dfe8e3}
 
 /* ---------- objective card (above the minimap) ---------- */
-.objective{position:absolute;left:22px;bottom:268px;width:272px;padding:10px 14px 10px 12px;border-left:3px solid var(--gold);border-radius:8px var(--r) var(--r) 8px}
+.objective{position:absolute;left:max(22px,var(--sal,0px));bottom:calc(268px + var(--sab,0px));width:272px;padding:10px 14px 10px 12px;border-left:3px solid var(--gold);border-radius:8px var(--r) var(--r) 8px}
 .objhead{display:flex;align-items:baseline;gap:8px;min-width:0}
 .objkicker{font-size:8px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);font-weight:900;flex:none}
 .objtitle{font-size:11px;font-weight:800;color:#dfe8e3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -41,12 +44,12 @@
 
 
 /* ---------- minimap + GPS ---------- */
-.nav{position:absolute;left:22px;bottom:22px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.nav{position:absolute;left:max(22px,var(--sal,0px));bottom:calc(22px + var(--sab,0px));display:flex;flex-direction:column;align-items:flex-start;gap:8px}
 .minimap{position:relative;width:150px;height:150px;border-radius:50%;overflow:hidden;border:2px solid #ffffff26;box-shadow:0 0 0 4px #0a1612,0 14px 40px #0008;background:#0a1612}
 .minimap canvas{width:100%;height:100%;cursor:pointer}
 .minimap:before{content:"↗ FULL MAP";position:absolute;right:8px;bottom:8px;z-index:2;padding:4px 6px;border-radius:6px;background:#06120ddd;color:#d4eddd;font-size:8px;font-weight:900;letter-spacing:.08em;pointer-events:none}
 .minimap:after{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:inset 0 0 28px #000b;pointer-events:none}
-.pause-btn{position:absolute;right:18px;top:76px;width:40px;height:40px;border:1px solid #ffffff28;border-radius:12px;background:#08130fee;color:#fff;font-size:20px;font-weight:900;cursor:pointer;pointer-events:auto}
+.pause-btn{position:absolute;right:max(18px,var(--sar,0px));top:calc(76px + var(--sat,0px));width:40px;height:40px;border:1px solid #ffffff28;border-radius:12px;background:#08130fee;color:#fff;font-size:20px;font-weight:900;cursor:pointer;pointer-events:auto}
 .pause-screen{position:absolute;inset:0;z-index:20;display:grid;place-items:center;background:#020806c9;backdrop-filter:blur(8px);pointer-events:auto}
 .pause-screen[hidden]{display:none}
 .pause-card{width:min(340px,calc(100% - 36px));padding:28px;text-align:center;border-radius:22px}
@@ -90,7 +93,7 @@
 @keyframes wantedFlash{0%,100%{opacity:1}50%{opacity:.55}}
 
 /* ---------- bottom centre: vitals / vehicle + interaction prompt ---------- */
-.bottom{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);display:flex;align-items:center;gap:14px}
+.bottom{position:absolute;left:50%;bottom:calc(26px + var(--sab,0px));transform:translateX(-50%);display:flex;align-items:center;gap:14px}
 .vitals{display:flex;flex-direction:column;gap:6px;padding:9px 14px;min-width:200px}
 .vbar{display:flex;align-items:center;gap:10px;font-size:10px;font-weight:800;color:var(--muted)}
 .vbar span{width:18px;text-align:center}
@@ -137,14 +140,14 @@
 .prompt .bar{width:110px;height:4px;background:#ffffff22;border-radius:2px;overflow:hidden}
 .prompt .bar i{display:block;height:100%;background:var(--green);width:0;transition:width .08s linear}
 
-.hints{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font-size:9px;color:#ffffff66;letter-spacing:.06em;display:flex;align-items:center;gap:9px;transition:opacity .6s;white-space:nowrap}
+.hints{position:absolute;left:50%;bottom:calc(6px + var(--sab,0px));transform:translateX(-50%);font-size:9px;color:#ffffff66;letter-spacing:.06em;display:flex;align-items:center;gap:9px;transition:opacity .6s;white-space:nowrap}
 .hints .key{min-width:18px;height:16px;font-size:8px;background:#ffffff22;color:#fff;box-shadow:none;margin-right:-4px}
 .hints .badge{position:static;margin-left:-4px}
 .hints.hide{opacity:0}
 .hints .car,.hints.incar .foot{display:none}.hints.incar .car{display:contents}
 
 /* ---------- dialogue ---------- */
-.dialog{position:absolute;left:50%;bottom:110px;transform:translateX(-50%) translateY(8px);width:min(560px,calc(100vw - 380px));display:flex;gap:14px;padding:14px 16px;opacity:0;transition:.2s;pointer-events:none}
+.dialog{position:absolute;left:50%;bottom:calc(110px + var(--sab,0px));transform:translateX(-50%) translateY(8px);width:min(560px,calc(100vw - 380px));display:flex;gap:14px;padding:14px 16px;opacity:0;transition:.2s;pointer-events:none}
 .dialog.show{opacity:1;transform:translateX(-50%);pointer-events:auto}
 .dialog .avatar{width:44px;height:44px;font-size:16px}
 .dbody{flex:1;min-width:0}
@@ -159,7 +162,7 @@
 .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 
 .notif-stack{
-  position:absolute;left:50%;top:64px;transform:translateX(-50%);
+  position:absolute;left:50%;top:calc(64px + var(--sat,0px));transform:translateX(-50%);
   display:flex;flex-direction:column;align-items:center;gap:6px;
   pointer-events:none;z-index:5;max-width:min(420px,90vw);
 }
@@ -178,25 +181,25 @@
 
 /* ---------- responsive: tablets and phones ---------- */
 @media (max-width:900px),(max-height:560px){
-  .topbar{padding:8px 10px}.locale b{font-size:10px}.tr{gap:5px}.tr .clk{font-size:13px}
-  .objective{left:12px;bottom:186px;width:200px;padding:7px 10px 8px 9px}.objline{font-size:11px}
-  .nav{left:12px;bottom:12px;gap:6px}.minimap{width:104px;height:104px}.gps{max-width:180px;font-size:9px;padding:5px 9px}
+  .topbar{padding:max(8px,var(--sat,0px)) max(10px,var(--sar,0px)) 8px max(10px,var(--sal,0px))}.locale b{font-size:10px}.tr{gap:5px}.tr .clk{font-size:13px}
+  .objective{left:max(12px,var(--sal,0px));bottom:calc(186px + var(--sab,0px));width:200px;padding:7px 10px 8px 9px}.objline{font-size:11px}
+  .nav{left:max(12px,var(--sal,0px));bottom:calc(12px + var(--sab,0px));gap:6px}.minimap{width:104px;height:104px}.gps{max-width:180px;font-size:9px;padding:5px 9px}
   .status{min-width:0;padding:6px 9px 6px 6px;gap:8px}.portrait{width:34px;height:34px}.cash{font-size:16px}.srow{font-size:8px}
-  .bottom{bottom:12px;gap:8px}.vitals{min-width:140px;padding:6px 10px}.vehicle{padding:5px 10px 5px 5px}.speedo{width:60px;height:60px}.speednum b{font-size:16px}.vehicle .fuel{width:88px}
+  .bottom{bottom:calc(12px + var(--sab,0px));gap:8px}.vitals{min-width:140px;padding:6px 10px}.vehicle{padding:5px 10px 5px 5px}.speedo{width:60px;height:60px}.speednum b{font-size:16px}.vehicle .fuel{width:88px}
   .prompt{font-size:10px;padding:7px 10px 7px 7px}.prompt .ptext{max-width:150px}
   .hints{display:none}
-  .dialog{width:calc(100vw - 24px);bottom:80px;padding:10px 12px;gap:10px}.dbody p{font-size:12px}
+  .dialog{width:calc(100vw - 24px);bottom:calc(80px + var(--sab,0px));padding:10px 12px;gap:10px}.dbody p{font-size:12px}
   .notif{top:56px;max-width:80vw}.toast{top:30%;font-size:12px;padding:10px 16px}
 }
-body.touch-ui .bottom{left:auto;right:12px;transform:none;top:128px;bottom:auto;flex-direction:column;align-items:flex-end;gap:8px}
-body.touch-ui .topbar{padding-right:8px}
-body.touch-ui .nav{bottom:150px}
-body.touch-ui .objective{bottom:326px}
-body.touch-ui .dialog{bottom:210px}
+body.touch-ui .bottom{left:auto;right:max(12px,var(--sar,0px));transform:none;top:calc(128px + var(--sat,0px));bottom:auto;flex-direction:column;align-items:flex-end;gap:8px}
+body.touch-ui .topbar{padding-right:max(8px,var(--sar,0px))}
+body.touch-ui .nav{bottom:calc(150px + var(--sab,0px))}
+body.touch-ui .objective{bottom:calc(326px + var(--sab,0px))}
+body.touch-ui .dialog{bottom:calc(210px + var(--sab,0px))}
 @media (pointer:coarse){.glass{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(6,14,12,.9)}.prompt{backdrop-filter:none}}
 /* landscape phones: the objective card pins to the top-left in a compact form so it clears the street name and minimap */
 @media (max-height:560px){
-  body.touch-ui .objective{top:4px;bottom:auto;padding:5px 9px 5px 8px;width:190px}
+  body.touch-ui .objective{top:max(4px,var(--sat,0px));bottom:auto;padding:5px 9px 5px 8px;width:190px}
   body.touch-ui .objective .objfoot,body.touch-ui .objective .objkicker{display:none}
   body.touch-ui .objective .objtitle{font-size:9px}
 }
@@ -206,7 +209,7 @@ body.touch-ui .dialog{bottom:210px}
   .prompt{font-size:13px;padding:10px 14px 10px 10px}
   .prompt .ptext{max-width:min(220px,55vw)}
   .prompt .key{min-width:30px;height:30px;font-size:13px}
-  .notif-stack{top:56px}
+  .notif-stack{top:calc(56px + var(--sat,0px))}
 }
 
 
@@ -315,7 +318,7 @@ body.touch-ui .dialog{bottom:210px}
 }
 
 @media (max-width: 900px), (max-height: 560px) {
-  .notif-stack { top: 56px; }
+  .notif-stack { top: calc(56px + var(--sat,0px)); }
   .prompt .psub { padding-left: 28px; font-size: 8px; }
 }
 

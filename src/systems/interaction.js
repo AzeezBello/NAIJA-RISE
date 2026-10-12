@@ -829,7 +829,7 @@ export function interact() {
     return;
   }
   const j = jobOf(s.job);
-  if (j && dist(p, jobPos(j)) < 9) {
+  if (j && jobPos(j) && dist(p, jobPos(j)) < 9) {
     G.working = { job: j, t: 0 };
     return;
   }
@@ -1057,7 +1057,7 @@ export function promptFor() {
   if (hustleContact && G.task)
     return { key: 'E', text: `Talk to ${hustleContact.name}` };
   const j = jobOf(s.job);
-  if (j && dist(p, jobPos(j)) < 9)
+  if (j && jobPos(j) && dist(p, jobPos(j)) < 9)
     return { key: 'E', text: `Start shift as ${j.title}` };
   if (nearHome()) return { key: 'E', text: 'Enter home' };
   if (!G.inCar) {

@@ -19,7 +19,7 @@ export default {
       Toggle('Rotate minimap with camera', 'setRotate', st.rotateMap) +
       Field(`GRAPHICS · now ${QUALITY[G.quality]?.label || 'Auto'}${G.gpu ? ' · ' + esc(G.gpu.slice(0, 40)) : ''}`, `<select id="setQuality">${['auto', 'low', 'medium', 'high'].map(v => `<option value="${v}" ${(st.quality || 'auto') === v ? 'selected' : ''}>${v === 'auto' ? 'Auto (detect and adapt)' : QUALITY[v].label}</option>`).join('')}</select>`) +
       Toggle('Shadows', 'setShadows', st.shadows) +
-      Toggle('Cinematic look (bloom, colour grade)', 'setFx', st.fx === undefined ? !PERF.lowEnd : st.fx) +
+      Toggle('Cinematic look (HDR, night bloom)', 'setFx', st.fx === undefined ? !PERF.lowEnd : st.fx) +
       Toggle('Rigged 3D characters (applies after reload)', 'setRig', st.rig !== false) +
       Toggle('Show control hints', 'setHints', st.hints) +
       Toggle('Sound', 'setAudio', st.audio !== false) +

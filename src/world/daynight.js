@@ -57,8 +57,11 @@ export function applySky() {
   // after dark the asphalt reads wet and glossy; neon and street lights bloom harder
   const wet = night || G.rain ? 1 : h > 17.5 ? (h - 17.5) / 1.1 : 0;
   for (const m of G.roadMats || []) { m.roughness = 0.95 - 0.5 * wet; m.metalness = 0.02 + 0.1 * wet; }
-  if (G.bloom) { G.bloom.strength = 0.12 + 0.18 * wet + (G.rain ? 0.1 : 0); G.bloom.threshold = night ? 0.8 : 0.92; G.bloom.radius = 0.35; }   // natural by day, a soft glow on lights at night
-  if (G.grade) { G.grade.uniforms.split.value = 0; G.grade.uniforms.vignette.value = 0.08; }
+  // Wanted bloom look; core/postfx.js applies it to the pass (which is built lazily and may not exist yet).
+  // By day the pass is skipped altogether: it costs about a dozen blur passes for a glow that is barely visible in sunlight.
+  const bt = G.bloomTarget || (G.bloomTarget = { strength: 0.12, radius: 0.35, threshold: 0.92, enabled: false });
+  bt.strength = 0.12 + 0.18 * wet + (G.rain ? 0.1 : 0); bt.threshold = night ? 0.8 : 0.92; bt.radius = 0.35;
+  bt.enabled = night || !!G.rain || wet > 0.05;
   const q = QUALITY[G.quality] || QUALITY.medium;
   scene.fog.far *= q.fogScale; scene.fog.near *= q.fogScale;
   if (G.scene.environmentIntensity !== undefined) G.scene.environmentIntensity = (night ? 0.25 : 0.4) * (q.env / 0.4);
