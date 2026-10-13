@@ -2,8 +2,9 @@ using UnityEngine;
 
 namespace NaijaRise.Player
 {
-    // Follows the player with a little lag, eased look-at, mouse / Q-E orbit, occlusion pull-in that eases back out,
-    // and a wider field of view when sprinting: the feel described in README "Camera and controller feel".
+    // Follows the player with a little lag, eased look-at, mouse / Z-C orbit, occlusion pull-in that eases back out,
+    // a wider field of view when sprinting or driving fast, and a longer, tighter frame behind a vehicle that swings
+    // round over a second instead of snapping: the feel described in README "Camera and controller feel".
     public class ThirdPersonCamera : MonoBehaviour
     {
         public Transform Target;
@@ -12,16 +13,29 @@ namespace NaijaRise.Player
         public float MouseSensitivity = 2.2f, KeyYawSpeed = 110f, BaseFov = 60f, SprintFov = 69f;
 
         Camera cam;
+        Vehicles.VehicleController vehicle;
+        Transform driving;
         Vector3 posVelocity, lookPoint;
-        float currentDistance;
+        float currentDistance, lastLookInput, smoothTime = 0.07f, targetDistance, targetHeight;
         bool lookPointReady;
 
         void Awake()
         {
             cam = GetComponent<Camera>();
-            currentDistance = Distance;
+            currentDistance = targetDistance = Distance; targetHeight = Height;
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
+        }
+
+        public void SetDriving(Transform vehicleTransform)
+        {
+            driving = vehicleTransform;
+            vehicle = vehicleTransform != null ? vehicleTransform.GetComponent<Vehicles.VehicleController>() : null;
+            Target = driving != null ? driving : Player.transform;
+            targetDistance = driving != null ? 9.5f + (vehicle != null ? vehicle.Class.len * 0.4f : 0f) : 6.8f;
+            targetHeight = driving != null ? 3.0f : 1.9f;
+            smoothTime = driving != null ? 0.045f : 0.07f;
+            lastLookInput = -10f;   // let the camera swing behind the vehicle
         }
 
         void Update()
@@ -33,14 +47,24 @@ namespace NaijaRise.Player
         void LateUpdate()
         {
             if (Target == null) return;
-            if (Cursor.lockState == CursorLockMode.Locked)
-            {
-                Yaw += Input.GetAxis("Mouse X") * MouseSensitivity;
-                Pitch -= Input.GetAxis("Mouse Y") * MouseSensitivity * 0.8f;
-            }
-            if (Input.GetKey(KeyCode.Q)) Yaw -= KeyYawSpeed * Time.deltaTime;
-            if (Input.GetKey(KeyCode.E)) Yaw += KeyYawSpeed * Time.deltaTime;
+            float dt = Time.deltaTime;
+            float mx = Cursor.lockState == CursorLockMode.Locked ? Input.GetAxis("Mouse X") : 0f, my = Cursor.lockState == CursorLockMode.Locked ? Input.GetAxis("Mouse Y") : 0f;
+            if (Input.GetKey(KeyCode.Z)) mx -= KeyYawSpeed * dt / MouseSensitivity;
+            if (Input.GetKey(KeyCode.C)) mx += KeyYawSpeed * dt / MouseSensitivity;
+            if (Mathf.Abs(mx) > 0.01f || Mathf.Abs(my) > 0.01f) lastLookInput = Time.time;
+            Yaw += mx * MouseSensitivity;
+            Pitch -= my * MouseSensitivity * 0.8f;
             Pitch = Mathf.Clamp(Pitch, -18f, 62f);
+
+            // Behind a vehicle the camera settles behind it when you are not looking around.
+            if (driving != null && Time.time - lastLookInput > 1.2f)
+            {
+                Yaw = Mathf.LerpAngle(Yaw, driving.eulerAngles.y, 1f - Mathf.Exp(-2.2f * dt));
+                Pitch = Mathf.Lerp(Pitch, 12f, 1f - Mathf.Exp(-2f * dt));
+            }
+
+            Distance = Mathf.Lerp(Distance, targetDistance, 1f - Mathf.Exp(-3f * dt));
+            Height = Mathf.Lerp(Height, targetHeight, 1f - Mathf.Exp(-3f * dt));
 
             var pivot = Target.position + Vector3.up * Height;
             var rot = Quaternion.Euler(Pitch, Yaw, 0f);
@@ -49,17 +73,22 @@ namespace NaijaRise.Player
             // Occlusion: pull in quickly when something is between the pivot and the camera, ease back out.
             float wanted = Distance;
             int mask = ~(1 << PlayerController.Layer);
-            if (Physics.SphereCast(pivot, 0.3f, back, out var hit, Distance, mask, QueryTriggerInteraction.Ignore)) wanted = Mathf.Max(1.2f, hit.distance - 0.15f);
-            currentDistance = wanted < currentDistance ? Mathf.Lerp(currentDistance, wanted, 1f - Mathf.Exp(-22f * Time.deltaTime)) : Mathf.Lerp(currentDistance, wanted, 1f - Mathf.Exp(-3.5f * Time.deltaTime));
+            if (Physics.SphereCast(pivot, 0.3f, back, out var hit, Distance, mask, QueryTriggerInteraction.Ignore) && (driving == null || !hit.transform.IsChildOf(driving)))
+                wanted = Mathf.Max(1.2f, hit.distance - 0.15f);
+            currentDistance = wanted < currentDistance ? Mathf.Lerp(currentDistance, wanted, 1f - Mathf.Exp(-22f * dt)) : Mathf.Lerp(currentDistance, wanted, 1f - Mathf.Exp(-3.5f * dt));
 
             var desired = pivot + back * currentDistance;
-            transform.position = Vector3.SmoothDamp(transform.position, desired, ref posVelocity, 0.07f);
+            transform.position = Vector3.SmoothDamp(transform.position, desired, ref posVelocity, smoothTime);
 
             if (!lookPointReady) { lookPoint = pivot; lookPointReady = true; }
-            lookPoint = Vector3.Lerp(lookPoint, pivot, 1f - Mathf.Exp(-12f * Time.deltaTime));
+            lookPoint = Vector3.Lerp(lookPoint, pivot, 1f - Mathf.Exp(-12f * dt));
             transform.rotation = Quaternion.LookRotation(lookPoint - transform.position, Vector3.up);
 
-            if (cam != null && Player != null) cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, Mathf.Lerp(BaseFov, SprintFov, Player.IsRunning ? Player.Speed01 : 0f), 1f - Mathf.Exp(-4f * Time.deltaTime));
+            if (cam != null)
+            {
+                float speed01 = vehicle != null ? Mathf.Clamp01(vehicle.Kmh / 110f) : (Player != null && Player.IsRunning ? Player.Speed01 : 0f);
+                cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, Mathf.Lerp(BaseFov, SprintFov, speed01), 1f - Mathf.Exp(-4f * dt));
+            }
         }
     }
 }
