@@ -12,7 +12,8 @@ namespace NaijaRise.World
         public int Count = 70;
         public float SpawnRadius = 190f, RecycleRadius = 260f;
 
-        class Ped { public Transform t; public RoadData road; public int side, dir; public float along, speed, phase; }
+        class Ped { public Transform t; public Animation anim; public RoadData road; public int side, dir; public float along, speed, phase; }
+        public int RiggedCount { get; private set; }
 
         WorldData data;
         Transform player, root;
@@ -25,21 +26,23 @@ namespace NaijaRise.World
             root = new GameObject("Pedestrians").transform; root.SetParent(parent, false);
             for (int i = 0; i < Count; i++)
             {
-                var p = new Ped { t = BuildBody().transform };
+                var p = new Ped(); p.t = BuildBody(out p.anim).transform; if (p.anim != null) RiggedCount++;
                 if (!Respawn(p)) { Destroy(p.t.gameObject); continue; }
                 peds.Add(p);
             }
         }
 
-        GameObject BuildBody()
+        GameObject BuildBody(out Animation anim)
         {
+            anim = null;
             var go = new GameObject("Pedestrian");
             go.transform.SetParent(root, false);
             Color top = data.fabrics.Length > 0 ? Mannequin.Hex(data.fabrics[rng.Next(data.fabrics.Length)].baseColor) : new Color(0.8f, 0.4f, 0.2f);
             Color pants = data.pants.Length > 0 ? Mannequin.Hex(data.pants[rng.Next(data.pants.Length)]) : Color.black;
             Color skin = data.skins.Length > 0 ? Mannequin.Hex(data.skins[rng.Next(data.skins.Length)]) : new Color(0.45f, 0.3f, 0.2f);
             Color? fila = rng.NextDouble() < 0.3 ? (Color?)Mannequin.Hex(rng.NextDouble() < 0.5 ? "#1f3a5f" : "#6e1a2c") : null;
-            Mannequin.Build(go.transform, top, pants, skin, fila, 0, 0.9f + (float)rng.NextDouble() * 0.2f);
+            if (CharacterRig.Available) anim = CharacterRig.Build(go.transform, top, pants, skin, fila, 0, 1.62f + (float)rng.NextDouble() * 0.3f);
+            else Mannequin.Build(go.transform, top, pants, skin, fila, 0, 0.9f + (float)rng.NextDouble() * 0.2f);
             return go;
         }
 
@@ -89,7 +92,8 @@ namespace NaijaRise.World
                 var pos = Position(p);
                 if (!turn && data.InWater(pos)) turn = true;
                 if (turn) { p.dir = -p.dir; p.along += p.dir * 2f; pos = Position(p); }
-                pos.y += Mathf.Abs(Mathf.Sin(Time.time * 7f + p.phase)) * 0.04f;
+                if (p.anim != null) CharacterRig.SetState(p.anim, p.speed > 2.2f ? "run" : "walk", p.speed > 2.2f ? p.speed / CharacterRig.RunClipSpeed : p.speed / CharacterRig.WalkClipSpeed);
+                else pos.y += Mathf.Abs(Mathf.Sin(Time.time * 7f + p.phase)) * 0.04f;
                 p.t.position = pos;
                 p.t.rotation = Quaternion.LookRotation(p.road.Forward(p.dir), Vector3.up);
                 if ((pos - player.position).sqrMagnitude > RecycleRadius * RecycleRadius) Respawn(p);

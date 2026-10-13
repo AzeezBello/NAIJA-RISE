@@ -54,7 +54,7 @@ namespace NaijaRise.Vehicles
             if (Mathf.Abs(Speed) > 0.3f)
                 yaw += steer * 2.3f * Mathf.Rad2Deg * (0.6f + 0.4f * Condition / 100f) * Mathf.Min(1f, Mathf.Abs(Speed) / 9f) * dt * Mathf.Sign(Speed);
 
-            if (Wheels != null) foreach (var w in Wheels) w.Rotate(Vector3.up, Speed * dt * 120f, Space.Self);
+            if (Wheels != null) foreach (var w in Wheels) VehicleBodies.Spin(w, Speed * dt * 120f);
         }
 
         void FixedUpdate()

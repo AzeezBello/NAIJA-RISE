@@ -18,8 +18,11 @@ namespace NaijaRise.Player
         public bool IsGrounded => cc.isGrounded;
 
         CharacterController cc;
+        Animation rig;
         Vector3 spawn, velocity;
         float speed;
+        public bool HasRig => rig != null;
+        public string AnimState { get; private set; } = "idle";
 
         public static PlayerController Create(Vector3 position, float yaw)
         {
@@ -30,8 +33,9 @@ namespace NaijaRise.Player
             cc.height = 1.8f; cc.radius = 0.38f; cc.center = new Vector3(0, 0.9f, 0); cc.stepOffset = 0.45f; cc.slopeLimit = 50f; cc.skinWidth = 0.04f;
             var pc = go.AddComponent<PlayerController>();
             pc.spawn = position;
-            // Placeholder body until a rigged character arrives: ankara top, dark trousers, fila (the default look).
-            Mannequin.Build(go.transform, Mannequin.Hex("#e07b1a"), Mannequin.Hex("#26312d"), Mannequin.Hex("#8a5a3c"), Mannequin.Hex("#1f3a5f"), Layer);
+            // The default look: ankara top, dark trousers, fila. A real rig when the character assets are present.
+            if (CharacterRig.Available) pc.rig = CharacterRig.Build(go.transform, Mannequin.Hex("#e07b1a"), Mannequin.Hex("#26312d"), Mannequin.Hex("#8a5a3c"), Mannequin.Hex("#1f3a5f"), Layer);
+            else Mannequin.Build(go.transform, Mannequin.Hex("#e07b1a"), Mannequin.Hex("#26312d"), Mannequin.Hex("#8a5a3c"), Mannequin.Hex("#1f3a5f"), Layer);
             return pc;
         }
 
@@ -74,6 +78,10 @@ namespace NaijaRise.Player
             }
             velocity.y += Gravity * Time.deltaTime;
             cc.Move((horizontal + Vector3.up * velocity.y) * Time.deltaTime);
+
+            // Locomotion state → clip (src/entities/character.js: idle, walk, run cross-fades, clip speed matched to movement).
+            AnimState = speed < 0.3f ? "idle" : IsRunning && speed > 5.5f ? "run" : "walk";
+            if (rig != null) CharacterRig.SetState(rig, AnimState, AnimState == "walk" ? speed / CharacterRig.WalkClipSpeed : AnimState == "run" ? speed / CharacterRig.RunClipSpeed : 1f);
 
             if (transform.position.y < -40f) Teleport(spawn, transform.eulerAngles.y);
         }

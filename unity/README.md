@@ -5,7 +5,7 @@ A Unity 6 project that builds the same Lagos as the Three.js game in `../src`, f
 before any decision to migrate, and has grown in five increments into a playable slice of the game: city, driving,
 people, story, law, housing, business, education and racing. The web edition remains the production baseline.
 
-Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · no other packages.
+Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFast 6.0.1 with the Meshopt decoder.
 
 ## Status
 
@@ -13,8 +13,8 @@ Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · no ot
 |---|---|
 | Compile | clean, no warnings |
 | Smoke test (edit mode) | passes: 85 roads, 120 landmarks, about 6,000 objects in under a second; every job and contact resolves; mirror correct |
-| Play test (play mode) | passes, 47 checks across the whole loop, see "Headless" below |
-| macOS build | `Builds/NaijaRise-Lagos.app`, about 73 MB |
+| Play test (play mode) | passes, 49 checks across the whole loop, see "Headless" below |
+| macOS build | `Builds/NaijaRise-Lagos.app`, about 133 MB with the models |
 | WebGL build | menu item exists, not yet exercised |
 | Open in editor | no errors; the serialization and deprecation analyzers are quiet |
 
@@ -45,16 +45,23 @@ at night, a neutral grade, ACES tone mapping, FXAA and a light vignette. One gam
 
 **Player, camera, driving** (`Scripts/Player/`, `Scripts/Vehicles/`). CharacterController movement with ease-in
 acceleration, sprint that burns stamina, jump. Third-person camera with lag, eased look-at, mouse / right-stick / Z-C
-orbit, occlusion pull-in, wider FOV at speed, and a longer frame that swings in behind a vehicle. The arcade driving
+orbit, occlusion pull-in, wider FOV at speed, and a longer frame that swings in behind a vehicle. Cars, police, LAWMA, fire, ambulance, van, delivery and truck classes use Kenney's CC0 Car Kit
+models (`Resources/Models/Vehicles`, Meshopt-compressed, decoded on import), scaled to the class length with their
+named wheels spinning; danfo, keke, korope, okada, BRT and the tanker stay procedural, as in the web edition. The arcade driving
 model is ported from `src/systems/movement.js`; crashes are judged by contact normal (ground contacts never count) and
 cost speed and condition. You start with one keke; Dayo at Ladipo sells okada, keke, korope, danfo and sedan at the web
 prices and services vehicles parked nearby. Owned vehicles persist where you parked them. Refuel at Mobil. Any stopped
 traffic vehicle can be taken for Heat +1.
 
-**People** (`Scripts/World/ContactSystem.cs`, `PedestrianSystem.cs`, `Scripts/Entities/Mannequin.cs`). The 32 story and
-job contacts stand outside their places with name labels and turn to face you; the current objective's contact carries
-a bobbing yellow arrow. Seventy pedestrians in wardrobe fabrics walk the pavements near you. Everyone is a primitive
-mannequin until rigged characters arrive.
+**People** (`Scripts/Entities/CharacterRig.cs`, `Scripts/World/ContactSystem.cs`, `PedestrianSystem.cs`). The player,
+the 32 contacts and the 70 pedestrians are the Ready Player Me avatar the web edition streams (`Resources/Models/
+Characters/readyplayer.me.glb`, imported with glTFast), driven by a legacy `Animation` with Ready Player Me's Idle,
+Walk and Run clips. The clips ship as separate GLBs whose curves point at a different root, so
+`Editor/CharacterImport.cs` rebinds every curve by bone name onto the avatar and saves `Resources/Characters/rpm_*.anim`
+(211 to 301 curves each, none dropped); it runs before the smoke test and every build. Each character is scaled to its
+height, faces +z by checking where the eyes sit relative to the head bone, and has its outfit, trousers, skin and cap
+tinted from the wardrobe colours. Walk and run clips are scaled to movement speed and cross-fade from the controller
+state, as in `character.js`. The mannequin remains the fallback when the assets are missing.
 
 **Story and GPS** (`Scripts/Story/Story.cs`, `Scripts/Session.Story.cs`, `Scripts/World/Navigation.cs`). The shared
 prologue (The First Run, Make the Delivery, Get Paid, Raise Your Game, Hot Delivery and its police-chased drop), the
@@ -126,8 +133,9 @@ open unity/Builds/NaijaRise-Lagos.app
 The editor must be closed: Unity allows one instance per project. The same commands are in the editor under the
 `NAIJA RISE` menu.
 
-The smoke test builds the whole city in edit mode and checks object counts, that every job and contact resolves to a
-place, the spawn region and street, the Eko Bridge deck height and the coordinate mirror. The play test enters play
+The smoke test prepares the character clips, builds the whole city in edit mode and checks object counts, that every
+job and contact resolves to a place, the spawn region and street, the Eko Bridge deck height, the coordinate mirror,
+the rig (three legacy clips, 1.80 m tall, facing +z) and a Kenney sedan scaled to its class length with four wheels. The play test enters play
 mode, boots the game and plays through the loop: The First Run with Baba K (taking the clean path), a shift, buying a
 sedan from Dayo and driving it, renting a room and sleeping, buying the kiosk and collecting a pay cycle, a danfo ride,
 pursuit and arrest at Heat 3, delivering the documents to Amaka, the Cold Chain task along the GPS, learning web design
@@ -136,9 +144,10 @@ with 0 on success (no `-quit`: it quits itself). Both are CI-ready.
 
 ## Not here yet
 
-- Rigged characters, wardrobe prints and animation (everyone is a mannequin). Unity 6 does not import `.glb` out of the
-  box: add `com.unity.cloud.gltfast` to `Packages/manifest.json`, and the Meshopt-compressed files under `../assets`
-  need decompressing first (they were compressed for the web build). Same for the Kenney vehicles and landmark models.
+- The wardrobe's procedural fabric prints (ankara, adire, aso-oke) and the eleven customisation slots: clothing is
+  tinted, not printed. CesiumMan as a second pedestrian body. The landmark GLBs under `../assets/landmarks` (stadium,
+  mosque, theatre) and the vegetation: they import the same way as the vehicles now that glTFast and the Meshopt
+  decoder are in the project, and are the next asset pass.
 - Yaba Tech and the school evening class; family and relationships; the phone and its apps; weather; the AJ City
   errand and the hustle-hub side missions; the football tournament tiers.
 - Insurance, liveries and danfo slogans; go-slow incidents and road-construction diversions; tenants and property
@@ -157,6 +166,6 @@ Measure, then decide. Suggested checks against the web build on the same machine
 3. Controller feel on the same PlayStation pad; the Input System's action maps are the path to native console bindings.
 4. Build output: the macOS app's size and startup time, and a WebGL build for parity with the Vercel deployment.
 
-If Unity wins on 1 and 3, the remaining port is: characters via glTFast, the phone, family and education extras,
-quality profiles, console action maps. If it does not, the slice has still produced a JSON export of the whole game
+If Unity wins on 1 and 3, the remaining port is: landmark models and fabric prints, the phone, family and education
+extras, quality profiles, console action maps. If it does not, the slice has still produced a JSON export of the whole game
 data that other tools can use.

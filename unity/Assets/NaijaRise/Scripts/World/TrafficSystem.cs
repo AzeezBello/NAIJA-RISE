@@ -123,7 +123,7 @@ namespace NaijaRise.World
                 v.along += v.dir * v.speed * dt;
                 if (v.dir > 0 && v.along > v.road.to - 4f) v.along = v.road.from + 4f;
                 if (v.dir < 0 && v.along < v.road.from + 4f) v.along = v.road.to - 4f;
-                if (v.wheels != null) foreach (var w in v.wheels) w.Rotate(Vector3.up, v.speed * dt * 120f, Space.Self);
+                if (v.wheels != null) foreach (var w in v.wheels) VehicleBodies.Spin(w, v.speed * dt * 120f);
                 Place(v);
             }
         }
