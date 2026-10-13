@@ -12,7 +12,7 @@ globalThis.location ??= { hash: '', search: '' };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const load = f => import(pathToFileURL(resolve(root, f)).href);
-const [L, C] = await Promise.all([load('src/data/districts/lagos.js'), load('src/data/config.js')]);
+const [L, C, J, Ch, V, F] = await Promise.all([load('src/data/districts/lagos.js'), load('src/data/config.js'), load('src/data/jobs.js'), load('src/data/characters.js'), load('src/data/vehicles.js'), load('src/data/family.js')]);
 const out = process.argv[2] ? resolve(process.argv[2]) : resolve(root, 'unity/Assets/NaijaRise/Resources/world/lagos.json');
 
 const AXES = ['h', 'v'];
@@ -48,13 +48,14 @@ const world = {
     minX: L.META.bounds.x[0], maxX: L.META.bounds.x[1], minZ: L.META.bounds.z[0], maxZ: L.META.bounds.z[1],
     startClock: C.TIME.startClock, hoursPerSecond: C.TIME.daySpeed,
     startCash: C.ECON.startCash, startBank: C.ECON.startBank,
+    priceWater: C.PRICES.water, priceSuya: C.PRICES.suya, refuel: C.ECON.refuel,
   },
   regions: L.REGIONS.map(rect),
   roads,
   segments,
   bridges,
   junctions: L.JUNCTIONS.map(j => ({ x: j.x, z: j.z })),
-  landmarks: L.LANDMARKS.map(l => ({
+  landmarks: [...L.LANDMARKS, { id: F.FAMILY_HOME.id, name: F.FAMILY_HOME.name, short: 'FAMILY HOUSE', x: F.FAMILY_HOME.x, z: F.FAMILY_HOME.z, c: '#c9b48a', sign: '#e8b86d', h: 3.6, kind: 'home' }].map(l => ({
     id: l.id, name: l.name, shortName: l.short || l.name.toUpperCase(), kind: l.kind || 'landmark',
     color: l.c || '#8a7d6a', sign: l.sign || '#ffc52f', region: l.region || '',
     x: l.x, z: l.z, h: l.h ?? 5, big: !!l.big, stadium: !!l.stadium, waterfront: !!l.waterfront,
@@ -70,6 +71,19 @@ const world = {
   uTurns: L.U_TURNS.map(u => ({ axis: u.axis, k: u.k, at: u.at, name: u.name || '' })),
   kiosks: L.KIOSKS.map(point),
   vendors: L.VENDORS.map(point),
+  jobs: J.JOBS.map(j => ({
+    id: j.id, title: j.title, where: j.where, at: j.at, by: j.by || '', skill: j.skill || 'business', needCourse: j.needCourse || '',
+    pay: j.pay, xp: j.xp, min: j.min || 0, dur: j.dur, night: !!j.night, far: !!j.far,
+  })),
+  // Contacts who stand in the world (they have a place). The first entry wins when an id repeats.
+  contacts: Ch.CONTACTS.filter((c, i, all) => c.at && all.findIndex(o => o.id === c.id) === i)
+    .map(c => ({ id: c.id, name: c.name, role: c.role || '', at: c.at, color: c.c || '#ffc52f', line: c.line || '', offsetX: c.offset?.x || 0, offsetZ: c.offset?.z || 0 })),
+  allContacts: Ch.CONTACTS.filter((c, i, all) => all.findIndex(o => o.id === c.id) === i).map(c => ({ id: c.id, name: c.name })),
+  vehicleClasses: Object.entries(V.VEH).map(([id, v]) => ({ id, name: v.name, len: v.len, wid: v.wid, max: v.max, boost: v.boost, accel: v.accel, commercial: !!v.commercial, fare: v.fare || 0 })),
+  fabrics: Ch.FABRICS.map(f => ({ name: f.name, baseColor: f.base, accent: f.accent, pattern: f.pattern })),
+  skins: Ch.LOOK.skin, pants: Ch.LOOK.pants,
+  levels: C.LEVELS.map(([level, title]) => ({ level, title })),
+  unlocks: Object.entries(C.UNLOCKS).map(([level, text]) => ({ level: Number(level), text })),
   cells: [[L.VI_CELLS, 'vi'], [L.LEKKI_CELLS, 'lekki'], [L.YABA_CELLS, 'yaba'], [L.EBUTE_CELLS, 'ebute'], [L.ISLAND_CELLS, 'island']]
     .flatMap(([cells, style]) => cells.map(([x, z]) => ({ style, x, z }))),
 };
@@ -78,4 +92,5 @@ mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, JSON.stringify(world));
 const n = k => world[k].length;
 console.log(`exported ${out}`);
+console.log(`jobs ${n('jobs')} · contacts ${n('contacts')} · vehicle classes ${n('vehicleClasses')} · fabrics ${n('fabrics')}`);
 console.log(`roads ${n('roads')} · segments ${n('segments')} · bridges ${n('bridges')} · junctions ${n('junctions')} · landmarks ${n('landmarks')} · bus stops ${n('busStops')} · properties ${n('properties')} · waters ${n('waters')} · cells ${n('cells')} · regions ${n('regions')}`);

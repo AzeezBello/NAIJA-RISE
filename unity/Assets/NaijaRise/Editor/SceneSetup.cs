@@ -55,13 +55,21 @@ namespace NaijaRise.EditorTools
             builder.Build(data);
             t0.Stop();
             int renderers = host.GetComponentsInChildren<MeshRenderer>().Length;
-            var spawn = new Vector3(data.meta.spawnX, 0, data.meta.spawnZ);
-            var region = data.RegionAt(spawn.x, spawn.z);
-            var road = data.RoadAt(spawn.x, spawn.z, 9f);
-            float eko = data.DeckHeightAt(250f, 0f), ground = data.DeckHeightAt(0f, 34f);
+            var spawn = data.Spawn;
+            var region = data.RegionAt(spawn);
+            var road = data.RoadAt(spawn, 9f);
+            float eko = data.DeckHeightAtData(250f, 0f), ground = data.DeckHeightAt(spawn);
             Debug.Log($"NAIJA RISE smoke test: {data.roads.Length} roads, {data.landmarks.Length} landmarks, {builder.ObjectCount} objects, {renderers} renderers in {t0.ElapsedMilliseconds} ms; " +
-                      $"spawn in '{region?.name}' near '{(road != null ? data.RoadNameAt(road, road.Along(spawn.x, spawn.z)) : "no road")}'; Eko Bridge deck at x=250 is {eko} m, ground at spawn {ground} m");
-            bool ok = builder.ObjectCount > 1000 && renderers > 1000 && region != null && Mathf.Approximately(eko, 9f) && Mathf.Approximately(ground, 0f);
+                      $"spawn in '{region?.name}' near '{(road != null ? data.RoadNameAt(road, road.Along(spawn)) : "no road")}'; Eko Bridge deck at x=250 is {eko} m, ground at spawn {ground} m");
+            // Jobs and contacts must resolve to places, and the mirror must put Lagos Island east (+x) of Surulere with north at +z.
+            int badJobs = 0, badContacts = 0, placedContacts = 0;
+            foreach (var j in data.jobs) if (!data.TryPlace(j.at, out _)) badJobs++;
+            foreach (var c in data.contacts) if (data.ContactSpot(c, out _)) placedContacts++; else badContacts++;
+            var cmsWorld = Data.WorldData.W(372f, 0f, -15f);   // CMS Bus Terminal, data (372, -15)
+            bool mirrorOk = cmsWorld.x > spawn.x && cmsWorld.z > 0f && data.RoadAt(cmsWorld, 30f) != null;
+            Debug.Log($"NAIJA RISE smoke test: {data.jobs.Length} jobs ({badJobs} unresolved), {placedContacts} contacts placed ({badContacts} unresolved), {data.vehicleClasses.Length} vehicle classes; CMS at world {cmsWorld}, mirror {(mirrorOk ? "ok" : "WRONG")}");
+            bool ok = builder.ObjectCount > 1000 && renderers > 1000 && region != null && Mathf.Approximately(eko, 9f) && Mathf.Approximately(ground, 0f)
+                      && badJobs == 0 && badContacts == 0 && placedContacts > 10 && data.vehicleClasses.Length > 5 && mirrorOk;
             Debug.Log(ok ? "NAIJA RISE smoke test: PASS" : "NAIJA RISE smoke test: FAIL");
             Object.DestroyImmediate(host);
             if (Application.isBatchMode && !ok) EditorApplication.Exit(1);
