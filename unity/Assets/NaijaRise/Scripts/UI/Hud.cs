@@ -96,27 +96,34 @@ namespace NaijaRise.UI
             float cw = 420 * s, cx = W * 0.5f - cw * 0.5f;
             Bar(new Rect(cx, H - 86 * s, cw * 0.49f, 10 * s), st.health / 100f, new Color(0.85f, 0.2f, 0.2f));
             Bar(new Rect(cx + cw * 0.51f, H - 86 * s, cw * 0.49f, 10 * s), st.stamina / 100f, new Color(0.25f, 0.75f, 0.95f));
-            if (!string.IsNullOrEmpty(session.Prompt) && session.Dialogue == null && session.Working == null)
+            if (!string.IsNullOrEmpty(session.Prompt) && session.ActiveMenu == null && session.Working == null)
                 GUI.Label(new Rect(cx, H - 70 * s, cw, 40 * s), $"[E]  {session.Prompt}", prompt);
-            else if (Time.time < hintUntil && session.Dialogue == null && session.Working == null)
+            else if (Time.time < hintUntil && session.ActiveMenu == null && session.Working == null)
                 GUI.Label(new Rect(cx - 120 * s, H - 66 * s, cw + 240 * s, 32 * s), "WASD / left stick move  ·  Shift sprint  ·  Space jump  ·  Mouse or Z/C look  ·  E interact  ·  Esc frees the cursor", small);
 
-            // Dialogue card.
-            if (session.Dialogue != null)
+            // Menu card (dialogue, agent, home, business, bus stop, kiosk, police).
+            var menu = session.ActiveMenu;
+            if (menu != null)
             {
-                var c = session.Dialogue.data; var j = session.DialogueJob;
-                GUILayout.BeginArea(new Rect(W * 0.5f - 280 * s, H * 0.5f - 20 * s, 560 * s, 200 * s), cardStyle);
-                GUILayout.Label(c.name, brand); GUILayout.Label(c.role, small); GUILayout.Space(6 * s);
-                GUILayout.Label($"“{c.line}”", body); GUILayout.Space(8 * s);
-                if (j != null)
+                float mh = (120 + 30 * menu.Options.Count) * s;
+                GUILayout.BeginArea(new Rect(W * 0.5f - 300 * s, H * 0.5f - mh * 0.5f, 600 * s, mh), cardStyle);
+                GUILayout.Label(menu.Title, brand);
+                if (!string.IsNullOrEmpty(menu.Subtitle)) GUILayout.Label(menu.Subtitle, small);
+                if (!string.IsNullOrEmpty(menu.Line)) { GUILayout.Space(4 * s); GUILayout.Label($"“{menu.Line}”", body); }
+                GUILayout.Space(6 * s);
+                for (int i = 0; i < menu.Options.Count; i++)
                 {
-                    bool ok = session.State.CanTake(j) && (!j.night || clock.IsNight);
-                    string why = !string.IsNullOrEmpty(j.needCourse) ? $"needs the {j.needCourse} certificate" : session.State.S.skills.Get(j.skill) < j.min ? $"needs {j.skill} {j.min}" : j.night && !clock.IsNight ? "night shift only" : "";
-                    GUILayout.Label(ok ? $"[E]  Work shift — {j.title} · ₦{session.State.JobPay(j):N0} · {j.dur}h" : $"—  {j.title} ({why})", ok ? title : body);
+                    var o = menu.Options[i];
+                    var style = !o.Enabled ? small : i == menu.Index ? title : body;
+                    GUILayout.Label($"{(i == menu.Index ? "▶" : " ")} {i + 1}.  {o.Label}", style);
                 }
-                GUILayout.Label("[X]  Not now — I go find another hustle", body);
+                GUILayout.Label("W/S choose · E confirm · X close", small);
                 GUILayout.EndArea();
             }
+
+            // Wanted banner.
+            if (st.heat >= data.meta.pursuitHeat && Mathf.FloorToInt(Time.time * 2f) % 2 == 0)
+                GUI.Label(new Rect(W * 0.5f - 220 * s, 110 * s, 440 * s, 36 * s), $"WANTED · HEAT {st.heat} · POLICE DEY CHASE YOU", prompt);
 
             // Shift overlay.
             if (session.Working != null)

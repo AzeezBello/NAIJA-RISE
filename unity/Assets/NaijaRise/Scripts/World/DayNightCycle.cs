@@ -36,6 +36,8 @@ namespace NaijaRise.World
 
         void Update() => Advance(Time.deltaTime * HoursPerSecond);
 
+        public void SetTime(float clock, int day) { Clock = Mathf.Repeat(clock, 24f); Day = day; Apply(); }
+
         // Move the clock forward by game hours (a shift, sleep, a danfo ride), rolling the day over.
         public void Advance(float hours)
         {

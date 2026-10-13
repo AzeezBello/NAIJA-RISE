@@ -12,7 +12,7 @@ globalThis.location ??= { hash: '', search: '' };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const load = f => import(pathToFileURL(resolve(root, f)).href);
-const [L, C, J, Ch, V, F] = await Promise.all([load('src/data/districts/lagos.js'), load('src/data/config.js'), load('src/data/jobs.js'), load('src/data/characters.js'), load('src/data/vehicles.js'), load('src/data/family.js')]);
+const [L, C, J, Ch, V, F, B] = await Promise.all([load('src/data/districts/lagos.js'), load('src/data/config.js'), load('src/data/jobs.js'), load('src/data/characters.js'), load('src/data/vehicles.js'), load('src/data/family.js'), load('src/data/businesses.js')]);
 const out = process.argv[2] ? resolve(process.argv[2]) : resolve(root, 'unity/Assets/NaijaRise/Resources/world/lagos.json');
 
 const AXES = ['h', 'v'];
@@ -49,6 +49,11 @@ const world = {
     startClock: C.TIME.startClock, hoursPerSecond: C.TIME.daySpeed,
     startCash: C.ECON.startCash, startBank: C.ECON.startBank,
     priceWater: C.PRICES.water, priceSuya: C.PRICES.suya, refuel: C.ECON.refuel,
+    // law and economy rules (src/data/config.js LAW, ECON, RENT, BIZ)
+    pursuitHeat: C.LAW.pursuitHeat, bustSeconds: C.LAW.bustSeconds, ticketKmh: C.LAW.ticketKmh, checkpointKmh: C.LAW.checkpointKmh,
+    fineRate: C.ECON.fineRate, bustRate: C.ECON.bustRate, speedTicket: C.ECON.speedTicket, payCycle: C.ECON.payCycle,
+    agentFeeRate: C.RENT.agentFeeRate, leaseDays: C.RENT.leaseDays,
+    priceLow: C.BIZ.priceEffect.low, priceHigh: C.BIZ.priceEffect.high, propertyLevel: 2,
   },
   regions: L.REGIONS.map(rect),
   roads,
@@ -63,8 +68,9 @@ const world = {
   busStops: L.BUSSTOPS.map(b => ({ id: b.id, name: b.name, shortName: b.short || b.name.toUpperCase(), x: b.x, z: b.z, agberos: b.agberos || 0 })),
   properties: L.PROPERTIES.map(p => ({
     id: p.id, name: p.name, type: p.type, style: p.style || 'bungalow', color: p.c || '#c9b48a', sign: p.sign || '',
-    x: p.x, z: p.z, h: p.h ?? 3.6, rent: p.rent || 0, buy: p.buy || 0,
+    x: p.x, z: p.z, h: p.h ?? 3.6, rent: p.rent || 0, buy: p.buy || 0, perk: p.perk || '',
   })),
+  businesses: B.BUSINESSES.map(b => ({ id: b.id, name: b.name, price: b.price, income: b.income, x: b.x, z: b.z })),
   waters: L.WATERS.map(rect),
   tolls: L.TOLLS.map(t => ({ id: t.id, name: t.name, axis: t.axis, k: t.k, at: t.at, fee: t.fee })),
   footbridges: L.FOOTBRIDGES.map(f => ({ axis: f.axis, k: f.k, at: f.at, name: '' })),
@@ -92,5 +98,6 @@ mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, JSON.stringify(world));
 const n = k => world[k].length;
 console.log(`exported ${out}`);
+console.log(`businesses ${n('businesses')}`);
 console.log(`jobs ${n('jobs')} · contacts ${n('contacts')} · vehicle classes ${n('vehicleClasses')} · fabrics ${n('fabrics')}`);
 console.log(`roads ${n('roads')} · segments ${n('segments')} · bridges ${n('bridges')} · junctions ${n('junctions')} · landmarks ${n('landmarks')} · bus stops ${n('busStops')} · properties ${n('properties')} · waters ${n('waters')} · cells ${n('cells')} · regions ${n('regions')}`);

@@ -67,11 +67,15 @@ namespace NaijaRise.Vehicles
 
         void OnCollisionEnter(Collision c)
         {
-            if (!Driven) return;
-            float impact = Vector3.Dot(c.relativeVelocity, transform.forward);
-            if (Mathf.Abs(impact) < 3f) return;
-            // A head-on hit kills most of the speed; a graze takes a little.
-            float lost = Mathf.Abs(Speed) * Mathf.Clamp01(Mathf.Abs(impact) / Mathf.Max(1f, Mathf.Abs(Speed)) * 0.8f);
+            if (!Driven || c.contactCount == 0) return;
+            // Ground contacts (road, deck, kerb top) are not crashes: only count contacts whose normal is mostly
+            // horizontal, and weigh them by how squarely the car hit (head-on takes most of the speed, a graze little).
+            var n = c.GetContact(0).normal;
+            if (Mathf.Abs(n.y) > 0.5f) return;
+            float square = Mathf.Abs(Vector3.Dot(n, transform.forward));   // 1 head-on, 0 side scrape
+            float closing = Mathf.Abs(Vector3.Dot(c.relativeVelocity, n));
+            if (closing < 3f) return;
+            float lost = Mathf.Abs(Speed) * Mathf.Clamp(0.15f + 0.75f * square, 0f, 0.9f);
             Speed -= Mathf.Sign(Speed) * lost;
             Condition = Mathf.Max(0f, Condition - lost * 1.2f);
             LastImpact = lost;

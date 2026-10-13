@@ -47,8 +47,7 @@ namespace NaijaRise.Player
 
         void Update()
         {
-            float h = InputEnabled ? Input.GetAxisRaw("Horizontal") : 0f, v = InputEnabled ? Input.GetAxisRaw("Vertical") : 0f;
-            var input = Vector2.ClampMagnitude(new Vector2(h, v), 1f);
+            var input = InputEnabled ? GameInput.Move : Vector2.zero;
             Vector3 fwd = Vector3.forward, right = Vector3.right;
             if (CameraTransform != null)
             {
@@ -56,7 +55,7 @@ namespace NaijaRise.Player
                 right = Vector3.Cross(Vector3.up, fwd);
             }
             var dir = (fwd * input.y + right * input.x);
-            IsRunning = CanSprint && input.sqrMagnitude > 0.01f && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) || Input.GetKey(KeyCode.JoystickButton2));
+            IsRunning = CanSprint && input.sqrMagnitude > 0.01f && GameInput.Sprint;
             float target = input.magnitude * (IsRunning ? RunSpeed : WalkSpeed);
             speed = Mathf.MoveTowards(speed, target, Acceleration * Time.deltaTime * (target < speed ? 1.8f : 1f));
             Speed01 = Mathf.InverseLerp(0f, RunSpeed, speed);
@@ -71,7 +70,7 @@ namespace NaijaRise.Player
             if (cc.isGrounded)
             {
                 if (velocity.y < 0f) velocity.y = -2f;
-                if (InputEnabled && (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton1))) velocity.y = JumpSpeed;
+                if (InputEnabled && GameInput.JumpPressed) velocity.y = JumpSpeed;
             }
             velocity.y += Gravity * Time.deltaTime;
             cc.Move((horizontal + Vector3.up * velocity.y) * Time.deltaTime);
