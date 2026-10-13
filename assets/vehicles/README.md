@@ -14,7 +14,9 @@ or moving a model, update both the model registry and path mapping.
 
 ## Unity edition
 
-The Unity project in `../../unity` builds vehicles procedurally (`Assets/NaijaRise/Scripts/Vehicles/VehicleBodies.cs`)
-and does not load these GLBs yet. To use them there: add `com.unity.cloud.gltfast` to `unity/Packages/manifest.json`,
-decompress the Meshopt-compressed files first (Unity's glTF importer does not decode Meshopt), and import them under
-`unity/Assets/NaijaRise/Models/`. The Kenney kit's CC0 licence applies unchanged; see `LICENSES.md`.
+The Unity project in `../../unity` loads the Kenney kit from `unity/Assets/NaijaRise/Resources/Models/Vehicles` (a copy
+of `kenney/`, including the licence) through glTFast with the Meshopt decoder, so the compressed files import as they
+are. `VehicleBodies.cs` maps classes to models (sedan, SUV, hatchback and taxi for cars; police, garbage truck, fire
+truck, ambulance, van, delivery, truck), scales each to its class length and spins the `wheel-*` nodes; the Lagos
+vehicles (danfo, keke, korope, okada, BRT, tanker) stay procedural there. The other folders here are not used by Unity
+yet; they import the same way.

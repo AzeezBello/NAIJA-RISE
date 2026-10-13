@@ -68,6 +68,8 @@ namespace NaijaRise.EditorTools
                     Check(s.Contacts.Contacts.Count > 10, $"contacts placed ({s.Contacts.Contacts.Count})");
                     Check(s.Parked.Count == 1 && s.Parked[0].Owned, $"starter keke parked ({s.Parked.Count})");
                     Check(boot.Player.transform.position.y > -5f && boot.Player.transform.position.y < 5f, $"player on the ground at {boot.Player.transform.position}");
+                    Check(boot.Player.HasRig && boot.Player.GetComponentsInChildren<SkinnedMeshRenderer>().Length > 0 && boot.Player.AnimState == "idle", $"player wears the Ready Player Me rig, state {boot.Player.AnimState}");
+                    Check(peds != null && peds.RiggedCount > 50, $"pedestrians rigged ({peds?.RiggedCount})");
                     // Walk over to Baba K and talk.
                     World.ContactSystem.Contact babak = null;
                     foreach (var c in s.Contacts.Contacts) if (c.data.id == "babak") babak = c;

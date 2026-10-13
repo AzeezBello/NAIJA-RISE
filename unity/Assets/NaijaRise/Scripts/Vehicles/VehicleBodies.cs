@@ -35,8 +35,50 @@ namespace NaijaRise.Vehicles
         static Transform Wheel(Transform parent, Vector3 pos, float radius) =>
             Part(parent, PrimitiveType.Cylinder, pos, new Vector3(radius * 2f, 0.12f, radius * 2f), Mat("#141414", 0.2f), Quaternion.Euler(0, 0, 90));
 
+        // Kenney Car Kit models (CC0, Resources/Models/Vehicles) per class; procedural bodies for the Lagos-specific ones.
+        static readonly Dictionary<string, string[]> Models = new Dictionary<string, string[]>
+        {
+            ["car"] = new[] { "sedan", "sedan-sports", "suv", "suv-luxury", "hatchback-sports", "taxi" },
+            ["police"] = new[] { "police" }, ["lawma"] = new[] { "garbage-truck" }, ["fire"] = new[] { "firetruck" },
+            ["ambulance"] = new[] { "ambulance" }, ["van"] = new[] { "van" }, ["delivery"] = new[] { "delivery", "delivery-flat" },
+            ["truck"] = new[] { "truck", "truck-flat" }, ["army"] = new[] { "truck" }, ["pickup"] = new[] { "truck-flat" },
+        };
+        public static bool UseModels = true;
+
+        // Spin a wheel by its axle: imported wheels (named "wheel-…") turn about their local x, procedural ones about y.
+        public static void Spin(Transform w, float degrees) => w.Rotate(w.name.StartsWith("wheel") ? Vector3.right : Vector3.up, degrees, Space.Self);
+
+        static GameObject TryModel(VehicleClassData cls, Transform parent, System.Random rng, out Transform[] wheels)
+        {
+            wheels = null;
+            if (!UseModels || !Models.TryGetValue(cls.id, out var names)) return null;
+            var prefab = Resources.Load<GameObject>("Models/Vehicles/" + names[rng.Next(names.Length)]);
+            if (prefab == null) return null;
+            var go = new GameObject(cls.name); go.transform.SetParent(parent, false);
+            var model = Object.Instantiate(prefab, go.transform, false);
+            model.name = "Model";
+            model.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);   // glTF +Z front → Unity -z after import
+            // Scale to the class length, feet on the ground, centred on the axle line.
+            var b = Entities.CharacterRig.Bounds(model);
+            float k = b.size.z > 0.01f ? cls.len / b.size.z : 1f;
+            model.transform.localScale = Vector3.one * k;
+            b = Entities.CharacterRig.Bounds(model);
+            model.transform.localPosition = new Vector3(-(b.center.x - go.transform.position.x), -(b.min.y - go.transform.position.y), -(b.center.z - go.transform.position.z));
+            b = Entities.CharacterRig.Bounds(model);
+            if (cls.id == "army") foreach (var r in model.GetComponentsInChildren<Renderer>()) foreach (var m in r.materials) { if (m.HasProperty("baseColorFactor")) m.SetColor("baseColorFactor", new Color(0.55f, 0.6f, 0.4f)); else m.color = new Color(0.55f, 0.6f, 0.4f); }
+            var ws = new List<Transform>();
+            foreach (var t in model.GetComponentsInChildren<Transform>()) if (t.name.StartsWith("wheel")) ws.Add(t);
+            wheels = ws.ToArray();
+            foreach (var c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            var col = go.AddComponent<BoxCollider>();
+            col.center = new Vector3(0f, b.size.y * 0.5f, 0f); col.size = new Vector3(Mathf.Max(cls.wid, b.size.x), b.size.y, cls.len);
+            return go;
+        }
+
         public static GameObject Build(VehicleClassData cls, Transform parent, System.Random rng, out Transform[] wheels)
         {
+            var modelled = TryModel(cls, parent, rng, out wheels);
+            if (modelled != null) return modelled;
             var go = new GameObject(cls.name);
             go.transform.SetParent(parent, false);
             var t = go.transform;
