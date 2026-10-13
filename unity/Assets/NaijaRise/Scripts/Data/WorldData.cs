@@ -4,39 +4,60 @@ using UnityEngine;
 
 namespace NaijaRise.Data
 {
-    // Mirrors the JSON written by scripts/export-world.mjs from src/data/districts/lagos.js.
-    // World units are metres; +x east, +z south (down on the map), exactly as in the Three.js edition.
+    // Mirrors the JSON written by scripts/export-world.mjs from src/data/districts/lagos.js and the data modules.
+    //
+    // Coordinates: the data is in Three.js world units (metres, +x east, +z south). Unity is left-handed, so placing
+    // the data as-is mirrors the city (east ends up on your left when you face north). We therefore map data (x, z)
+    // to Unity (x, -z): north is +z in the scene. Every conversion goes through W() / DataZ() below; the query methods
+    // take Unity world positions unless their name ends in "Data".
     [Serializable] public class MetaData
     {
         public string id, name, version;
         public float spawnX, spawnZ, minX, maxX, minZ, maxZ;
         public float startClock = 8.5f, hoursPerSecond = 1f / 45f;
-        public int startCash, startBank;
+        public int startCash, startBank, priceWater = 100, priceSuya = 1500, refuel = 3000;
     }
-    [Serializable] public class RegionData { public string id, name; public float minX, maxX, minZ, maxZ; public float Area => (maxX - minX) * (maxZ - minZ); public bool Contains(float x, float z) => x >= minX && x < maxX && z >= minZ && z < maxZ; }
+    [Serializable] public class RegionData { public string id, name; public float minX, maxX, minZ, maxZ; public float Area => (maxX - minX) * (maxZ - minZ); public bool ContainsData(float x, float z) => x >= minX && x < maxX && z >= minZ && z < maxZ; }
     [Serializable] public class RoadData
     {
         public string axis; public float k, from, to, width; public string name, cls;
         public float speed = 1f, limit = 80f, density = 1f; public bool median, lights = true, vendors;
         public bool Horizontal => axis == "h";
         public float Length => to - from;
-        // Along/across of a world position relative to this road.
-        public float Along(float x, float z) => Horizontal ? x : z;
-        public float Across(float x, float z) => Horizontal ? z : x;
-        public Vector3 Point(float along, float across, float y = 0f) => Horizontal ? new Vector3(along, y, across) : new Vector3(across, y, along);
-        public Vector3 Forward(int dir) => Horizontal ? new Vector3(dir, 0, 0) : new Vector3(0, 0, dir);
+        // Along / across (data units) of a Unity world position relative to this road.
+        public float Along(Vector3 w) => Horizontal ? w.x : WorldData.DataZ(w.z);
+        public float Across(Vector3 w) => Horizontal ? WorldData.DataZ(w.z) : w.x;
+        // Unity world position for an along / across pair.
+        public Vector3 Point(float along, float across, float y = 0f) => Horizontal ? WorldData.W(along, y, across) : WorldData.W(across, y, along);
+        // Unity direction of travel for increasing (+1) or decreasing (-1) along.
+        public Vector3 Forward(int dir) => Horizontal ? new Vector3(dir, 0, 0) : new Vector3(0, 0, -dir);
     }
     [Serializable] public class SegmentData { public string axis; public float k, from, to; public string name; }
     [Serializable] public class ProfilePoint { public float along, height; }
     [Serializable] public class BridgeData { public string id, name, axis; public float k, halfW; public ProfilePoint[] profile; public float From => profile[0].along; public float To => profile[profile.Length - 1].along; }
-    [Serializable] public class PointData { public float x, z; }
-    [Serializable] public class LandmarkData { public string id, name, shortName, kind, color, sign, region; public float x, z, h; public bool big, stadium, waterfront; }
-    [Serializable] public class BusStopData { public string id, name, shortName; public float x, z; public int agberos; }
-    [Serializable] public class PropertyData { public string id, name, type, style, color, sign; public float x, z, h; public int rent, buy; }
-    [Serializable] public class WaterData { public string id, name; public float minX, maxX, minZ, maxZ; public bool Contains(float x, float z) => x >= minX && x <= maxX && z >= minZ && z <= maxZ; }
+    [Serializable] public class PointData { public float x, z; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class LandmarkData { public string id, name, shortName, kind, color, sign, region; public float x, z, h; public bool big, stadium, waterfront; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class BusStopData { public string id, name, shortName; public float x, z; public int agberos; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class PropertyData { public string id, name, type, style, color, sign; public float x, z, h; public int rent, buy; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class WaterData { public string id, name; public float minX, maxX, minZ, maxZ; public bool ContainsData(float x, float z) => x >= minX && x <= maxX && z >= minZ && z <= maxZ; }
     [Serializable] public class TollData { public string id, name, axis; public float k, at; public int fee; }
     [Serializable] public class RoadPointData { public string axis, name; public float k, at; }
-    [Serializable] public class CellData { public string style; public float x, z; }
+    [Serializable] public class CellData { public string style; public float x, z; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class JobData { public string id, title, where, at, by, skill, needCourse; public int pay, xp, min; public float dur; public bool night, far; }
+    [Serializable] public class ContactData { public string id, name, role, at, color, line; public float offsetX, offsetZ; }
+    [Serializable] public class NameData { public string id, name; }
+    [Serializable] public class VehicleClassData { public string id, name; public float len, wid, max, boost, accel; public bool commercial; public int fare; }
+    [Serializable] public class FabricData { public string name, baseColor, accent, pattern; }
+    [Serializable] public class LevelData { public int level; public string title; }
+    [Serializable] public class UnlockData { public int level; public string text; }
+
+    // A place any id can resolve to: landmark, bus stop or property.
+    public struct Place
+    {
+        public string id, name, kind; public float x, z; public bool stadium, big, busStop;
+        public Vector3 World(float y = 0f) => WorldData.W(x, y, z);
+        public float Depth => stadium ? 34f : big ? 20f : (kind == "hotel" || kind == "bank") ? 16f : 14f;
+    }
 
     [Serializable]
     public class WorldData
@@ -56,10 +77,24 @@ namespace NaijaRise.Data
         public RoadPointData[] uTurns;
         public PointData[] kiosks;
         public PointData[] vendors;
+        public JobData[] jobs;
+        public ContactData[] contacts;
+        public NameData[] allContacts;
+        public VehicleClassData[] vehicleClasses;
+        public FabricData[] fabrics;
+        public string[] skins, pants;
+        public LevelData[] levels;
+        public UnlockData[] unlocks;
         public CellData[] cells;
 
         [NonSerialized] RegionData[] regionsByArea;
         [NonSerialized] Dictionary<string, List<SegmentData>> segmentIndex;
+        [NonSerialized] Dictionary<string, Place> places;
+
+        // ---- coordinate mapping (the only place that knows about the mirror) ----
+        public static Vector3 W(float x, float y, float z) => new Vector3(x, y, -z);
+        public static float DataZ(float worldZ) => -worldZ;
+        public Vector3 Spawn => W(meta.spawnX, 0f, meta.spawnZ);
 
         public static WorldData LoadFromResources(string path = "world/lagos")
         {
@@ -81,33 +116,54 @@ namespace NaijaRise.Data
                 if (!segmentIndex.TryGetValue(key, out var list)) segmentIndex[key] = list = new List<SegmentData>();
                 list.Add(s);
             }
+            places = new Dictionary<string, Place>();
+            foreach (var l in landmarks) if (!places.ContainsKey(l.id)) places[l.id] = new Place { id = l.id, name = l.name, kind = l.kind, x = l.x, z = l.z, stadium = l.stadium, big = l.big };
+            foreach (var b in busStops) if (!places.ContainsKey(b.id)) places[b.id] = new Place { id = b.id, name = b.name, kind = "busstop", x = b.x, z = b.z, busStop = true };
+            foreach (var p in properties) if (!places.ContainsKey(p.id)) places[p.id] = new Place { id = p.id, name = p.name, kind = "property", x = p.x, z = p.z };
+            jobs ??= new JobData[0]; contacts ??= new ContactData[0]; allContacts ??= new NameData[0]; vehicleClasses ??= new VehicleClassData[0];
+            fabrics ??= new FabricData[0]; skins ??= new string[0]; pants ??= new string[0]; levels ??= new LevelData[0]; unlocks ??= new UnlockData[0];
         }
 
-        public RegionData RegionAt(float x, float z)
+        // ---- places, contacts, jobs ----
+        public bool TryPlace(string id, out Place place) => places.TryGetValue(id ?? "", out place);
+
+        // Where a contact stands: on the street side (north, data -z) of their building, by the shelter at a bus stop.
+        // Mirrors src/entities/contacts.js spotFor().
+        public bool ContactSpot(ContactData c, out Vector3 world)
         {
-            foreach (var r in regionsByArea) if (r.Contains(x, z)) return r;
-            return null;
+            world = Vector3.zero;
+            if (!TryPlace(c.at, out var p)) return false;
+            float x, z;
+            if (p.stadium) { x = p.x; z = p.z - 27f; }
+            else if (p.kind == "pitch") { x = p.x + 8f; z = p.z - 13f; }
+            else if (p.busStop) { x = p.x + 5f; z = p.z + 3f; }
+            else { x = p.x + 3f; z = p.z - p.Depth * 0.5f - 2f; }
+            world = W(x + c.offsetX, 0f, z + c.offsetZ);
+            return true;
         }
 
-        public bool InWater(float x, float z)
-        {
-            foreach (var w in waters) if (w.Contains(x, z)) return true;
-            return false;
-        }
+        public string ContactName(string id) { foreach (var c in allContacts) if (c.id == id) return c.name; return id; }
+        public List<JobData> JobsAt(string placeId) { var l = new List<JobData>(); foreach (var j in jobs) if (j.at == placeId) l.Add(j); return l; }
+        public VehicleClassData VehicleClass(string id) { foreach (var v in vehicleClasses) if (v.id == id) return v; return null; }
+        public string TitleFor(int level) { string t = "Newcomer"; foreach (var l in levels) if (level >= l.level) t = l.title; return t; }
+        public string UnlockFor(int level) { foreach (var u in unlocks) if (u.level == level) return u.text; return null; }
 
-        public RoadData FindRoad(string axis, float k)
-        {
-            foreach (var r in roads) if (r.axis == axis && Mathf.Approximately(r.k, k)) return r;
-            return null;
-        }
+        // ---- geometry queries (Unity world positions) ----
+        public RegionData RegionAt(Vector3 w) => RegionAtData(w.x, DataZ(w.z));
+        public RegionData RegionAtData(float x, float z) { foreach (var r in regionsByArea) if (r.ContainsData(x, z)) return r; return null; }
+
+        public bool InWater(Vector3 w) => InWaterData(w.x, DataZ(w.z));
+        public bool InWaterData(float x, float z) { foreach (var wa in waters) if (wa.ContainsData(x, z)) return true; return false; }
+
+        public RoadData FindRoad(string axis, float k) { foreach (var r in roads) if (r.axis == axis && Mathf.Approximately(r.k, k)) return r; return null; }
 
         // The road whose carriageway (plus margin) contains the point; the nearest centreline wins.
-        public RoadData RoadAt(float x, float z, float margin = 8f)
+        public RoadData RoadAt(Vector3 w, float margin = 8f)
         {
             RoadData best = null; float bestD = float.MaxValue;
             foreach (var r in roads)
             {
-                float along = r.Along(x, z), across = Mathf.Abs(r.Across(x, z) - r.k);
+                float along = r.Along(w), across = Mathf.Abs(r.Across(w) - r.k);
                 if (along < r.from || along > r.to || across > r.width * 0.5f + margin) continue;
                 if (across < bestD) { bestD = across; best = r; }
             }
@@ -122,8 +178,10 @@ namespace NaijaRise.Data
         }
 
         // Deck height at a position (0 at ground). Mirrors src/world/terrain.js deckHeightAt.
-        public float DeckHeightAt(float x, float z) => DeckHeightAt(x, z, out _);
-        public float DeckHeightAt(float x, float z, out BridgeData bridge)
+        public float DeckHeightAt(Vector3 w) => DeckHeightAtData(w.x, DataZ(w.z), out _);
+        public float DeckHeightAt(Vector3 w, out BridgeData bridge) => DeckHeightAtData(w.x, DataZ(w.z), out bridge);
+        public float DeckHeightAtData(float x, float z) => DeckHeightAtData(x, z, out _);
+        public float DeckHeightAtData(float x, float z, out BridgeData bridge)
         {
             float best = 0f; bridge = null;
             foreach (var b in bridges)

@@ -6,7 +6,7 @@ A browser-playable open-world life simulation set in a living Surulere, Lagos. O
 
 See [PLAN.md](PLAN.md) for the product plan, what is done, and the next phase, and [DEPLOY.md](DEPLOY.md) for Vercel deployment.
 
-A Unity 6 edition of the same city, built from the same district data as a native-engine vertical slice, lives in [unity/](unity/README.md); run `npm run export:unity` to refresh its map after editing `src/data/districts`.
+A Unity 6 (URP) edition of the same city, built from the same data as a native-engine vertical slice, lives in [unity/](unity/README.md); run `npm run export:unity` to refresh its data after editing `src/data`.
 
 ## Play
 

@@ -30,14 +30,17 @@ namespace NaijaRise.World
             RenderSettings.fogDensity = 0.0022f;
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = 0.85f;
-            QualitySettings.shadowDistance = 160f;
+            if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline is UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset urp) urp.shadowDistance = 160f;
             Apply();
         }
 
-        void Update()
+        void Update() => Advance(Time.deltaTime * HoursPerSecond);
+
+        // Move the clock forward by game hours (a shift, sleep, a danfo ride), rolling the day over.
+        public void Advance(float hours)
         {
-            Clock += Time.deltaTime * HoursPerSecond;
-            if (Clock >= 24f) { Clock -= 24f; Day++; }
+            Clock += hours;
+            while (Clock >= 24f) { Clock -= 24f; Day++; }
             Apply();
         }
 
