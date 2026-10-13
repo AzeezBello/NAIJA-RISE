@@ -1,0 +1,34 @@
+# Unity generated folders (regenerated on open)
+Library/
+Temp/
+Obj/
+obj/
+Logs/
+UserSettings/
+MemoryCaptures/
+Recordings/
+Builds/
+# IDE
+*.csproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.vs/
+.idea/
+.vscode/
+# OS
+.DS_Store
+# Crash reports
+sysinfo.txt
+*.apk
+*.aab
+*.unitypackage

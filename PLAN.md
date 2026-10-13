@@ -95,6 +95,12 @@ Exit criteria: two players see each other in one Surulere room, saves round-trip
 
 ---
 
+## 2b. Unity edition — vertical slice (13 October 2026)
+
+The native-engine vertical slice that the Multi-Platform Technical Roadmap below asks for now exists in [`unity/`](unity/README.md) (Unity 6000.6.5f1, built-in render pipeline, no package dependencies). It builds the same Lagos from the same data: `npm run export:unity` writes `src/data/districts/lagos.js` to `unity/Assets/NaijaRise/Resources/world/lagos.json`, and a C# `WorldBuilder` constructs roads, pavements, medians, street lights, the four bridge decks with their real height profiles, water, 119 landmarks with signs, bus stops, properties, corridor cells and region-aware housing (about 6,000 batched static objects, under a second). It has a third-person player and camera with the web edition's feel, the game clock with natural Lagos light and lamps after dark, 110 ambient vehicles in lanes that ride the bridges and slow at rush hour, and the first HUD pass. It compiles clean, has a headless smoke test, and builds a macOS player from the command line.
+
+Not ported: rigged characters, driving, police/heat, and all of `src/systems/` (jobs, economy, housing, missions, story, saves). The roadmap's recommendation stands: measure this slice against the web build (frame time at Eko Bridge at 20:00, controller feel, time-to-add-a-district, build size) before deciding on a migration. The order of work if Unity wins is in `unity/README.md`.
+
 ## 3. Later phases (from PRD §30)
 
 - **Phase 4 — Action (0.7)**: chase and escape mission templates, street racing on Western Avenue, convoy interception, Heat 4–5 responses (army, roadblocks), safe houses.

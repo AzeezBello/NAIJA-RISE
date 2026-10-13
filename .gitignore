@@ -37,3 +37,18 @@ web/.vercel/
 web/engine/
 web/styles/
 web/public/assets/
+
+# Unity edition (unity/): generated folders, IDE solution files and local builds
+unity/Library/
+unity/Temp/
+unity/Obj/
+unity/obj/
+unity/Logs/
+unity/UserSettings/
+unity/MemoryCaptures/
+unity/Recordings/
+unity/Builds/
+unity/*.csproj
+unity/*.sln
+unity/*.slnx
+unity/.vs/
