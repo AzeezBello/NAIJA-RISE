@@ -48,6 +48,7 @@ namespace NaijaRise.World
             BuildTolls();
             BuildFootbridges();
             BuildStreetFurniture();
+            BuildBusinesses();
 
             StaticBatchingUtility.Combine(Root.gameObject);
         }
@@ -513,6 +514,20 @@ namespace NaijaRise.World
                     Box("Tower", r.Point(f.at, across, 3.1f), new Vector3(2.6f, 6.2f, 2.6f), steel, group);
                     Box("Rail", r.Point(f.at + 1.5f * (h ? 1 : 0), r.k + (h ? 0 : 1.5f), 7.0f), h ? new Vector3(0.1f, 1.2f, span) : new Vector3(span, 1.2f, 0.1f), steel, group, false);
                 }
+            }
+        }
+
+        // The four businesses for sale (src/data/businesses.js): small shops with a painted sign.
+        void BuildBusinesses()
+        {
+            var group = new GameObject("Businesses").transform; group.SetParent(Root, false);
+            foreach (var b in Data.businesses)
+            {
+                var pos = b.World();
+                string colour = b.id == "kiosk" ? "#2e7d32" : b.id == "phone" ? "#1565c0" : b.id == "buka" ? "#c0392b" : "#f39c12";
+                Box(b.name, pos + Vector3.up * 2f, new Vector3(8f, 4f, 6f), Mat("biz-" + colour, colour), group);
+                Box(b.name + " awning", pos + new Vector3(0, 3.3f, 3.6f), new Vector3(8.4f, 0.15f, 1.6f), Mat("awning", "#f1ecdf"), group, false);
+                Sign(b.name.ToUpper(), pos + new Vector3(0, 4.9f, 3.2f), "#ffffff", 0.8f, group);
             }
         }
 

@@ -66,6 +66,19 @@ namespace NaijaRise.World
 
         Vector3 Position(Ped p) => p.road.Point(p.along, p.road.k + p.side * (p.road.width * 0.5f + 1.6f), 0.3f);
 
+        public Transform Nearest(Vector3 pos, float maxDist)
+        {
+            Transform best = null; float bestD = maxDist * maxDist;
+            foreach (var p in peds) { var d = p.t.position - pos; d.y = 0f; if (d.sqrMagnitude < bestD) { bestD = d.sqrMagnitude; best = p.t; } }
+            return best;
+        }
+
+        // Knocked by a vehicle: the pedestrian is thrown clear and hurries off.
+        public void Knock(Transform t)
+        {
+            foreach (var p in peds) if (p.t == t) { p.along += p.dir * 4f; p.speed = 2.6f; return; }
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;

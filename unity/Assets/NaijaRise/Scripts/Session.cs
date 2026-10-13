@@ -8,7 +8,7 @@ namespace NaijaRise
 {
     // The game loop around the player: interaction prompts (talk, work, enter / exit vehicles, buy from kiosks),
     // dialogue, shifts, driving input, vitals (stamina, fuel, driving skill), heat decay and autosave.
-    public class Session : MonoBehaviour
+    public partial class Session : MonoBehaviour
     {
         // Runtime state only: nothing here is meant to be serialized into the scene or inspected as an asset.
         [System.NonSerialized] public WorldData Data; [System.NonSerialized] public GameState State; [System.NonSerialized] public DayNightCycle Clock;
@@ -17,21 +17,26 @@ namespace NaijaRise
 
         [System.NonSerialized] public VehicleController Vehicle;        // the vehicle being driven, if any
         [System.NonSerialized] public string Prompt;                    // "TALK TO BABA K", "ENTER DANFO", …
-        [System.NonSerialized] public ContactSystem.Contact Dialogue;   // open dialogue, if any
-        [System.NonSerialized] public JobData DialogueJob;
         [System.NonSerialized] public JobData Working; [System.NonSerialized] public float WorkT, WorkDuration;   // shift in progress (real seconds)
         [System.NonSerialized] public readonly System.Collections.Generic.List<VehicleController> Parked = new System.Collections.Generic.List<VehicleController>();
 
-        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk }
+        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Gate, Home, Business, BusStop }
         Target target; ContactSystem.Contact targetContact; VehicleController targetVehicle; TrafficSystem.Vehicle targetTraffic; Vector3 targetKiosk;
+        PropertyData targetProperty; BusinessData targetBusiness; BusStopData targetStop;
         float saveT, heatT = 45f;
 
-        public void Init(WorldData data, GameState state, DayNightCycle clock, PlayerController player, ThirdPersonCamera camera, TrafficSystem traffic, ContactSystem contacts)
+        [System.NonSerialized] public TrafficLights Lights;
+        int lastDay;
+
+        public void Init(WorldData data, GameState state, DayNightCycle clock, PlayerController player, ThirdPersonCamera camera, TrafficSystem traffic, ContactSystem contacts, TrafficLights lights)
         {
-            Data = data; State = state; Clock = clock; Player = player; Camera = camera; Traffic = traffic; Contacts = contacts;
+            Data = data; State = state; Clock = clock; Player = player; Camera = camera; Traffic = traffic; Contacts = contacts; Lights = lights;
+            lastDay = clock.Day;
             SpawnParkedVehicles();
             Traffic.PlayerObstacle = Player.transform;
         }
+
+        public Transform Focus => Vehicle != null ? Vehicle.transform : Player.transform;
 
         // Starter vehicles parked on the kerb of Adeniran Ogunsanya Street, just south of the spawn.
         void SpawnParkedVehicles()
@@ -64,8 +69,12 @@ namespace NaijaRise
             heatT -= dt; if (heatT <= 0f) { heatT = 45f; if (State.S.heat > 0) State.S.heat--; }
             saveT += dt; if (saveT > 15f) { saveT = 0f; AutoSave(); }
 
+            State.TickEconomy(dt);
+            if (Clock.Day != lastDay) { lastDay = Clock.Day; State.NewDay(Clock.Day); }
+            UpdateTolls();
+
             if (Working != null) { UpdateShift(dt); return; }
-            if (Dialogue != null) { UpdateDialogue(); return; }
+            if (ActiveMenu != null) { UpdateMenu(); return; }
             if (Vehicle != null) { UpdateDriving(dt); return; }
             UpdateOnFoot();
         }
@@ -103,10 +112,16 @@ namespace NaijaRise
             targetTraffic = Traffic.Nearest(pos, 4.2f);
             targetContact = Contacts.Nearest(pos, 3.4f);
 
+            targetProperty = NearGate(pos); targetBusiness = NearBusiness(pos); targetStop = NearBusStop(pos);
+
             if (targetVehicle != null) { target = Target.Vehicle; Prompt = $"ENTER {targetVehicle.Class.name.ToUpper()}"; }
             else if (targetContact != null) { target = Target.Contact; Prompt = $"TALK TO {targetContact.data.name.ToUpper()}"; }
+            else if (targetProperty != null && IsHome(targetProperty)) { target = Target.Home; Prompt = "ENTER HOME"; }
+            else if (targetProperty != null) { target = Target.Gate; Prompt = $"SEE AGENT KUNLE · {targetProperty.type.ToUpper()}"; }
+            else if (targetBusiness != null) { target = Target.Business; Prompt = (State.Biz(targetBusiness.id) != null ? "MANAGE " : "BUY ") + targetBusiness.name.ToUpper(); }
             else if (targetTraffic != null && targetTraffic.speed < 1f) { target = Target.TrafficVehicle; Prompt = $"TAKE {targetTraffic.cls.name.ToUpper()}"; }
-            else if (NearKiosk(pos, out targetKiosk)) { target = Target.Kiosk; Prompt = $"BUY PURE WATER · ₦{Data.meta.priceWater:N0}"; }
+            else if (targetStop != null) { target = Target.BusStop; Prompt = $"TAKE DANFO FROM {targetStop.shortName}"; }
+            else if (NearKiosk(pos, out targetKiosk)) { target = Target.Kiosk; Prompt = "POS KIOSK · PURE WATER, SUYA"; }
 
             if (!Interact()) return;
             switch (target)
@@ -114,10 +129,11 @@ namespace NaijaRise
                 case Target.Vehicle: Enter(targetVehicle); break;
                 case Target.TrafficVehicle: { var vc = Traffic.TakeVehicle(targetTraffic); Enter(vc); State.AddHeat(1, "Vehicle taken"); break; }
                 case Target.Contact: OpenDialogue(targetContact); break;
-                case Target.Kiosk:
-                    if (!State.Pay(Data.meta.priceWater)) State.Toast("No money");
-                    else { State.S.stamina = Mathf.Min(100f, State.S.stamina + 20f); State.Toast("Pure water · cold one. Stamina +20"); }
-                    break;
+                case Target.Home: OpenHomeMenu(targetProperty); break;
+                case Target.Gate: OpenGateMenu(targetProperty); break;
+                case Target.Business: OpenBusinessMenu(targetBusiness); break;
+                case Target.BusStop: OpenTransitMenu(targetStop); break;
+                case Target.Kiosk: OpenKioskMenu(); break;
             }
         }
 
@@ -128,28 +144,27 @@ namespace NaijaRise
             return best < 3.2f * 3.2f;
         }
 
-        static bool Interact() => Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.JoystickButton0);
-        static bool Decline() => Input.GetKeyDown(KeyCode.X) || Input.GetKeyDown(KeyCode.JoystickButton1) || Input.GetKeyDown(KeyCode.Backspace);
+        static bool Interact() => GameInput.InteractPressed;
+        static bool Decline() => GameInput.DeclinePressed;
 
         // ---- dialogue and shifts (src/systems/interaction.js) ----
         public void OpenDialogue(ContactSystem.Contact c)
         {
-            Dialogue = c; DialogueJob = null;
-            foreach (var j in Data.JobsAt(c.data.at)) { DialogueJob = j; if (State.CanTake(j)) break; }
-            Player.InputEnabled = false;
-        }
-
-        void UpdateDialogue()
-        {
-            if (Decline()) { Dialogue = null; State.Toast("Not now — I go find another hustle"); return; }
-            if (!Interact()) return;
-            if (DialogueJob != null && State.CanTake(DialogueJob) && (!DialogueJob.night || Clock.IsNight)) { StartShift(DialogueJob); return; }
-            Dialogue = null;
+            var menu = new Menu { Title = c.data.name, Subtitle = c.data.role, Line = c.data.line };
+            foreach (var j in Data.JobsAt(c.data.at))
+            {
+                bool ok = State.CanTake(j) && (!j.night || Clock.IsNight);
+                string why = !string.IsNullOrEmpty(j.needCourse) ? $"needs the {j.needCourse} certificate" : State.S.skills.Get(j.skill) < j.min ? $"needs {j.skill} {j.min}" : j.night && !Clock.IsNight ? "night shift only" : "";
+                var job = j;
+                menu.Options.Add(new MenuOption { Label = ok ? $"Work shift — {j.title} · ₦{State.JobPay(j):N0} · {j.dur}h" : $"{j.title} ({why})", Enabled = ok, Action = () => StartShift(job) });
+            }
+            menu.Options.Add(new MenuOption { Label = "Not now — I go find another hustle", Action = () => State.Toast("The story can wait. Jobs, courses, the gym and business dey.") });
+            OpenMenu(menu);
         }
 
         public void StartShift(JobData job, float realSeconds = 3.5f)
         {
-            Working = job; WorkT = 0f; WorkDuration = realSeconds; Dialogue = null;
+            Working = job; WorkT = 0f; WorkDuration = realSeconds; ActiveMenu = null;
         }
 
         // Scripted input (play test, cutscenes): when on, driving reads these instead of the keyboard / pad.
@@ -195,10 +210,8 @@ namespace NaijaRise
 
         void UpdateDriving(float dt)
         {
-            float v = Input.GetAxisRaw("Vertical"), h = Input.GetAxisRaw("Horizontal");
-            bool boost = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift) || Input.GetKey(KeyCode.JoystickButton2);
-            bool hand = Input.GetKey(KeyCode.Space);
-            float gas = Mathf.Max(0f, v), brake = Mathf.Max(0f, -v);
+            float h = GameInput.Steer, gas = GameInput.Gas, brake = GameInput.Brake;
+            bool boost = GameInput.Sprint, hand = GameInput.Handbrake;
             if (ScriptedInput) { gas = ScriptGas; brake = ScriptBrake; h = ScriptSteer; boost = false; hand = false; }
             Vehicle.Drive(gas, brake, boost, hand, h, State.S.fuel / 100f, dt);
             if (Vehicle.LastImpact > 2f) { State.Toast(Vehicle.LastImpact > 8f ? "Crash! Vehicle damaged" : "Scrape"); Vehicle.LastImpact = 0f; }

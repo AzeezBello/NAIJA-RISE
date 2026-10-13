@@ -50,8 +50,12 @@ namespace NaijaRise
             follow.Target = Player.transform; follow.Player = Player; follow.Yaw = state.S.yaw;
             Player.CameraTransform = cam.transform;
 
+            var lights = gameObject.AddComponent<TrafficLights>();
+            lights.Build(Data, Builder.Root);
+
             var traffic = gameObject.AddComponent<TrafficSystem>();
             traffic.Count = TrafficCount;
+            traffic.Lights = lights;
             traffic.Init(Data, Clock, Builder.Root);
 
             var peds = gameObject.AddComponent<PedestrianSystem>();
@@ -62,7 +66,10 @@ namespace NaijaRise
             contacts.Init(Data, Player.transform, Builder.Root);
 
             Session = gameObject.AddComponent<Session>();
-            Session.Init(Data, state, Clock, Player, follow, traffic, contacts);
+            Session.Init(Data, state, Clock, Player, follow, traffic, contacts, lights);
+
+            var law = gameObject.AddComponent<Law>();
+            law.Init(Session, Data, traffic, peds, lights);
 
             var minimap = gameObject.AddComponent<Minimap>();
             minimap.Init(Player.transform);
@@ -71,7 +78,7 @@ namespace NaijaRise
             hud.Init(Data, Clock, Session, minimap);
 
             state.Toast(restored ? $"Welcome back to Lagos · Day {state.S.day}" : "Welcome to Lagos. Baba K dey wait for you at Ojuelegba.");
-            Debug.Log($"NAIJA RISE — {Data.meta.name} {Data.meta.version}: {Data.roads.Length} roads, {Data.landmarks.Length} landmarks, {Builder.ObjectCount} world objects, {contacts.Contacts.Count} contacts, save {(restored ? "restored" : "new")}.");
+            Debug.Log($"NAIJA RISE — {Data.meta.name} {Data.meta.version}: {Data.roads.Length} roads, {Data.landmarks.Length} landmarks, {Builder.ObjectCount} world objects, {lights.Count} lit junctions, {contacts.Contacts.Count} contacts, save {(restored ? "restored" : "new")}.");
         }
 
         void LateUpdate()

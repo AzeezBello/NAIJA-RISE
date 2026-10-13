@@ -76,9 +76,11 @@ namespace NaijaRise.EditorTools
                     boot.Player.Teleport(babak.pos + new Vector3(1.5f, 0.3f, 0f), 0f);
                     cashBefore = s.State.S.cash;
                     s.OpenDialogue(babak);
-                    Check(s.Dialogue != null && s.DialogueJob != null, $"dialogue open with job '{s.DialogueJob?.title}'");
-                    if (s.DialogueJob == null) { Finish(); return; }
-                    s.StartShift(s.DialogueJob, 0.5f);
+                    Check(s.ActiveMenu != null && s.ActiveMenu.Options.Count >= 2 && s.ActiveMenu.Options[0].Enabled, $"dialogue menu open: '{s.ActiveMenu?.Options[0].Label}'");
+                    if (s.ActiveMenu == null) { Finish(); return; }
+                    s.Choose(0);   // take the job
+                    s.WorkDuration = 0.5f;
+                    Check(s.Working != null, $"shift started: {s.Working?.title}");
                     stage = 1; stageT = 0f; return;
                 case 1:   // the shift runs, pays and advances the clock
                     if (s.Working != null) { if (stageT > 10f) Fail("shift never finished"); return; }
@@ -99,6 +101,7 @@ namespace NaijaRise.EditorTools
                     s.Script(0f, 1f, 0f);
                     Check(moved > 5f, $"car moved {moved:0.0} m");
                     Check(s.State.S.skills.driving > 0f, $"driving skill trained ({s.State.S.skills.driving:0.000})");
+                    Check(s.Vehicle.Condition > 95f, $"no phantom crashes on open road (condition {s.Vehicle.Condition:0}%)");
                     stage = 3; stageT = 0f; return;
                 case 3:   // brake, exit, save, reload
                     s.Script(0f, 1f, 0f);
@@ -111,8 +114,47 @@ namespace NaijaRise.EditorTools
                     Check(reloaded.Load() && reloaded.S.cash == s.State.S.cash && reloaded.S.day == boot.Clock.Day, $"save round-trips (cash ₦{reloaded.S?.cash:N0}, day {reloaded.S?.day})");
                     Check(Mathf.Abs(reloaded.S.px - boot.Player.transform.position.x) < 0.01f, "save keeps the player position");
                     stage = 4; stageT = 0f; return;
-                case 4:   // a few more frames with the HUD and systems running
+                case 4:   // housing: rent the room, sleep till morning
+                    {
+                        var room = boot.Data.properties[0]; int cash = s.State.S.cash + s.State.S.bank; int day = boot.Clock.Day;
+                        Check(s.State.Rent(room), "rented the room through Agent Kunle");
+                        Check(s.State.S.home == room.id && s.State.S.cash + s.State.S.bank < cash, $"home set to '{room.name}', paid rent and fee");
+                        s.Sleep();
+                        Check(boot.Clock.Day == day + 1 && Mathf.Abs(boot.Clock.Clock - 7f) < 0.01f && s.State.S.stamina >= 100f, $"slept: day {boot.Clock.Day} at {boot.Clock.ClockText}");
+                        stage = 5; stageT = 0f; return;
+                    }
+                case 5:   // business: buy the kiosk at Level 2 and run a pay cycle
+                    {
+                        var kiosk = boot.Data.businesses[0]; s.State.S.level = 2; s.State.S.cash = 1000000; int bank = s.State.S.bank;
+                        Check(s.State.BuyBusiness(kiosk), $"bought '{kiosk.name}'");
+                        s.State.TickEconomy(boot.Data.meta.payCycle + 1f);
+                        Check(s.State.S.bank > bank, $"business income credited: ₦{bank:N0} → ₦{s.State.S.bank:N0}");
+                        stage = 6; stageT = 0f; return;
+                    }
+                case 6:   // transit: board a danfo to the nearest stop
+                    {
+                        var kilo = boot.Data.busStops[0]; var dests = s.Destinations(kilo);
+                        Check(dests.Count > 0, $"{dests.Count} danfo destinations from {kilo.name}");
+                        if (dests.Count > 0) { float clock = boot.Clock.Clock; s.Board(kilo, dests[0]); Check((boot.Player.transform.position - dests[0].World()).magnitude < 8f && boot.Clock.Clock > clock, $"rode to {dests[0].name}, clock {boot.Clock.ClockText}"); }
+                        stage = 7; stageT = 0f; return;
+                    }
+                case 7:   // law: heat 3 brings the police; arrest clears it at Area C
+                    {
+                        var law = boot.GetComponent<World.Law>(); var lights = boot.GetComponent<World.TrafficLights>();
+                        if (stageT < 0.5f) { s.State.S.heat = 3; return; }
+                        Check(lights != null && lights.Count > 50, $"traffic lights at {lights?.Count} junctions, h is {lights?.LightFor("h")}");
+                        Check(law != null && law.Chasing && law.PursuerCount > 0, $"police pursuing ({law?.PursuerCount} cars)");
+                        s.State.S.cash = 100000;
+                        law.Arrest();
+                        boot.Data.TryPlace("police", out var station);
+                        Check(s.State.S.heat == 0 && (boot.Player.transform.position - station.World()).magnitude < 20f, "arrested: heat 0, released at Area C");
+                        stage = 8; stageT = 0f; return;
+                    }
+                case 8:   // a few more frames with everything running, then save
                     if (stageT < 1f) return;
+                    s.AutoSave();
+                    var again = new GameState(boot.Data);
+                    Check(again.Load() && again.S.home == s.State.S.home && again.S.biz.Count == 1, "save keeps home and business");
                     Finish(); return;
             }
         }
