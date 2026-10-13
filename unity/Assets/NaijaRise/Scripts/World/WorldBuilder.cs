@@ -30,7 +30,7 @@ namespace NaijaRise.World
         public void Build(WorldData data)
         {
             Data = data;
-            standard = Shader.Find("Standard");
+            standard = Shader.Find("Universal Render Pipeline/Lit");
             font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             Root = new GameObject("Lagos").transform;
             Root.SetParent(transform, false);
@@ -59,7 +59,7 @@ namespace NaijaRise.World
             if (materials.TryGetValue(key, out var m)) return m;
             m = new Material(standard) { name = key };
             m.color = Hex(hex);
-            m.SetFloat("_Glossiness", smoothness);
+            m.SetFloat("_Smoothness", smoothness);
             if (emissive) { m.EnableKeyword("_EMISSION"); m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive; m.SetColor("_EmissionColor", Color.black); }
             materials[key] = m;
             return m;
@@ -125,14 +125,14 @@ namespace NaijaRise.World
         {
             var m = Data.meta;
             float w = m.maxX - m.minX + 400f, d = m.maxZ - m.minZ + 400f;
-            Box("Ground", new Vector3((m.minX + m.maxX) * 0.5f, -0.5f, (m.minZ + m.maxZ) * 0.5f), new Vector3(w, 1f, d), Mat(Earth));
+            Box("Ground", WorldData.W((m.minX + m.maxX) * 0.5f, -0.5f, (m.minZ + m.maxZ) * 0.5f), new Vector3(w, 1f, d), Mat(Earth));
         }
 
         void BuildWater()
         {
             var water = Mat("water", Water, 0.92f);
             foreach (var w in Data.waters)
-                Box(w.name, new Vector3((w.minX + w.maxX) * 0.5f, 0.06f, (w.minZ + w.maxZ) * 0.5f),
+                Box(w.name, WorldData.W((w.minX + w.maxX) * 0.5f, 0.06f, (w.minZ + w.maxZ) * 0.5f),
                     new Vector3(w.maxX - w.minX, 0.12f, w.maxZ - w.minZ), water);
         }
 
@@ -217,10 +217,11 @@ namespace NaijaRise.World
                     {
                         float across = r.k + s * (r.width * 0.5f + 2.4f);
                         var basePos = r.Point(along, across, 0.3f);
-                        if (Data.InWater(basePos.x, basePos.z)) continue;
+                        if (Data.InWater(basePos)) continue;
                         Cylinder("Lamp post", basePos, 0.12f, 7f, pole, group);
-                        // The arm leans over the carriageway.
-                        var head = basePos + Vector3.up * 7.1f + (h ? new Vector3(0, 0, -s) : new Vector3(-s, 0, 0)) * 1.1f;
+                        // The arm leans over the carriageway (towards the centreline).
+                        var toCentre = (r.Point(along, r.k, 0.3f) - basePos).normalized;
+                        var head = basePos + Vector3.up * 7.1f + toCentre * 1.1f;
                         Box("Lamp", head, h ? new Vector3(0.5f, 0.22f, 2.2f) : new Vector3(2.2f, 0.22f, 0.5f), LampHead, group, false);
                     }
                 }
@@ -250,25 +251,25 @@ namespace NaijaRise.World
                     float len = Mathf.Sqrt(dA * dA + dH * dH) + 0.6f;
                     float midA = (p[i].along + p[i - 1].along) * 0.5f, midH = (p[i].height + p[i - 1].height) * 0.5f;
                     float tilt = Mathf.Atan2(dH, dA) * Mathf.Rad2Deg;
-                    var rot = h ? Quaternion.Euler(0, 0, tilt) : Quaternion.Euler(-tilt, 0, 0);
-                    var center = h ? new Vector3(midA, midH - 0.5f, b.k) : new Vector3(b.k, midH - 0.5f, midA);
+                    // World +z is data -z, so a deck rising with data z falls with world z: positive x-rotation.
+                    var rot = h ? Quaternion.Euler(0, 0, tilt) : Quaternion.Euler(tilt, 0, 0);
+                    var center = h ? WorldData.W(midA, midH - 0.5f, b.k) : WorldData.W(b.k, midH - 0.5f, midA);
                     Box("Deck", center, h ? new Vector3(len, 1f, deckW) : new Vector3(deckW, 1f, len), concrete, group, true, rot);
                     for (int s = -1; s <= 1; s += 2)
                     {
                         float across = b.k + s * (deckW * 0.5f - 0.3f);
-                        var c = h ? new Vector3(midA, midH + 0.5f, across) : new Vector3(across, midH + 0.5f, midA);
+                        var c = h ? WorldData.W(midA, midH + 0.5f, across) : WorldData.W(across, midH + 0.5f, midA);
                         Box("Barrier", c, h ? new Vector3(len, 1.0f, 0.5f) : new Vector3(0.5f, 1.0f, len), barrier, group, true, rot);
                     }
                 }
                 for (float along = b.From + 11f; along < b.To - 6f; along += 22f)
                 {
-                    var probe = h ? new Vector3(along, 0, b.k) : new Vector3(b.k, 0, along);
-                    float height = Data.DeckHeightAt(probe.x, probe.z);
+                    float height = h ? Data.DeckHeightAtData(along, b.k) : Data.DeckHeightAtData(b.k, along);
                     if (height < 2f) continue;
                     for (int s = -1; s <= 1; s += 2)
                     {
                         float across = b.k + s * deckW * 0.28f;
-                        var basePos = h ? new Vector3(along, -3f, across) : new Vector3(across, -3f, along);
+                        var basePos = h ? WorldData.W(along, -3f, across) : WorldData.W(across, -3f, along);
                         Cylinder("Pillar", basePos, 1.1f, height + 2.2f, pillar, group);
                     }
                 }
@@ -292,13 +293,13 @@ namespace NaijaRise.World
             var booth = Mat("booth", "#e4d14b");
             foreach (var l in Data.landmarks)
             {
-                var pos = new Vector3(l.x, 0, l.z);
+                var pos = l.World();
                 var body = Mat("lm-" + l.color, l.color, l.kind == "bank" || l.kind == "hotel" ? 0.45f : 0.15f);
                 if (l.stadium)
                 {
                     Cylinder(l.name, pos, 34f, 14f, grey, group);
                     Cylinder(l.name + " bowl", pos + Vector3.up * 14f, 26f, 1.5f, Mat("pitch", Pitch), group);
-                    Sign(l.shortName, pos + new Vector3(0, 18f, -36f), l.sign, 2.2f, group);
+                    Sign(l.shortName, pos + new Vector3(0, 18f, 36f), l.sign, 2.2f, group);
                     continue;
                 }
                 switch (l.kind)
@@ -309,25 +310,25 @@ namespace NaijaRise.World
                         continue;
                     case "pitch":
                         Box(l.name, pos + Vector3.up * 0.12f, new Vector3(44f, 0.24f, 30f), Mat("pitch", Pitch), group);
-                        Sign(l.shortName, pos + new Vector3(0, 3.5f, -16f), l.sign, 1.2f, group);
+                        Sign(l.shortName, pos + new Vector3(0, 3.5f, 16f), l.sign, 1.2f, group);
                         continue;
                     case "beach":
                         Box(l.name, pos + Vector3.up * 0.1f, new Vector3(60f, 0.2f, 40f), Mat("sand", Sand), group);
-                        Sign(l.shortName, pos + new Vector3(0, 3.5f, -22f), l.sign, 1.2f, group);
+                        Sign(l.shortName, pos + new Vector3(0, 3.5f, 22f), l.sign, 1.2f, group);
                         continue;
                     case "settlement": case "waterfront": case "airport": case "waypoint":
                         Box(l.name, pos + Vector3.up * 0.2f, new Vector3(50f, 0.4f, 40f), body, group);
-                        Sign(l.shortName, pos + new Vector3(0, 4f, -22f), l.sign, 1.4f, group);
+                        Sign(l.shortName, pos + new Vector3(0, 4f, 22f), l.sign, 1.4f, group);
                         continue;
                 }
                 var fp = Footprint(l);
                 float h = Mathf.Max(3f, l.h);
                 Box(l.name, pos + Vector3.up * h * 0.5f, new Vector3(fp.x, h, fp.y), body, group);
                 Box(l.name + " parapet", pos + Vector3.up * (h + 0.3f), new Vector3(fp.x + 0.6f, 0.6f, fp.y + 0.6f), Mat("parapet", "#6b655a"), group, false);
-                // Sign board on the street-facing (north, -z) side, as the Three.js edition does.
-                var signPos = pos + new Vector3(0, h + 1.3f, -fp.y * 0.5f - 0.2f);
+                // Sign board on the street-facing side (north: data -z, world +z), as the Three.js edition does.
+                var signPos = pos + new Vector3(0, h + 1.3f, fp.y * 0.5f + 0.2f);
                 Box(l.name + " board", signPos, new Vector3(Mathf.Min(fp.x * 0.9f, 2.2f + l.shortName.Length * 1.05f), 1.8f, 0.25f), Mat("board", "#1b1b1f"), group, false);
-                Sign(l.shortName, signPos + new Vector3(0, 0, -0.2f), l.sign, 1f, group);
+                Sign(l.shortName, signPos + new Vector3(0, 0, 0.2f), l.sign, 1f, group);
                 if (l.kind == "market") BuildMarketStalls(pos, fp, group);
             }
         }
@@ -338,7 +339,7 @@ namespace NaijaRise.World
             string[] tarps = { "#d9534f", "#f0ad4e", "#5bc0de", "#5cb85c", "#f5c518" };
             for (int i = 0; i < 6; i++)
             {
-                float x = pos.x + (float)(rng.NextDouble() - 0.5) * (fp.x + 14f), z = pos.z + fp.y * 0.5f + 4f + (float)rng.NextDouble() * 6f;
+                float x = pos.x + (float)(rng.NextDouble() - 0.5) * (fp.x + 14f), z = pos.z - (fp.y * 0.5f + 4f + (float)rng.NextDouble() * 6f);
                 var basePos = new Vector3(x, 0.15f, z);
                 Box("Stall", basePos + Vector3.up * 0.5f, new Vector3(2.4f, 1f, 1.4f), Mat("stall", "#7a5a3a"), group);
                 Box("Tarp", basePos + Vector3.up * 2.3f, new Vector3(3f, 0.1f, 2.2f), Mat("tarp" + i % tarps.Length, tarps[i % tarps.Length]), group, false);
@@ -352,7 +353,7 @@ namespace NaijaRise.World
             var pole = Mat("pole", Steel, 0.4f);
             foreach (var b in Data.busStops)
             {
-                var pos = new Vector3(b.x, 0.3f, b.z);
+                var pos = b.World(0.3f);
                 Cylinder("Post", pos + new Vector3(-2.2f, 0, 0), 0.08f, 2.8f, pole, group);
                 Cylinder("Post", pos + new Vector3(2.2f, 0, 0), 0.08f, 2.8f, pole, group);
                 Box("Roof", pos + Vector3.up * 2.9f, new Vector3(5.4f, 0.18f, 2.4f), yellow, group, false);
@@ -366,12 +367,12 @@ namespace NaijaRise.World
             var group = new GameObject("Properties").transform; group.SetParent(Root, false);
             foreach (var p in Data.properties)
             {
-                var pos = new Vector3(p.x, 0, p.z);
+                var pos = p.World();
                 float h = Mathf.Max(3.2f, p.h);
                 Compound(pos, 20f, 18f, group);
                 Box(p.name, pos + Vector3.up * h * 0.5f, new Vector3(13f, h, 10f), Mat("pr-" + p.color, p.color), group);
                 if (p.style == "bungalow") Box("Roof", pos + Vector3.up * (h + 0.2f), new Vector3(14f, 0.4f, 11f), Mat("zinc", Zinc, 0.5f), group, false);
-                if (!string.IsNullOrEmpty(p.sign)) Sign(p.sign, pos + new Vector3(0, 2.6f, -10.6f), "#ffffff", 0.6f, group);
+                if (!string.IsNullOrEmpty(p.sign)) Sign(p.sign, pos + new Vector3(0, 2.6f, 10.6f), "#ffffff", 0.6f, group);
             }
         }
 
@@ -390,7 +391,7 @@ namespace NaijaRise.World
             foreach (var c in Data.cells)
             {
                 var rng = new System.Random((int)(c.x * 31 + c.z * 17));
-                var pos = new Vector3(c.x, 0, c.z);
+                var pos = c.World();
                 switch (c.style)
                 {
                     case "island": Tower(pos, 16f, 16f, 24f + (float)rng.NextDouble() * 26f, group, rng); break;
@@ -427,12 +428,12 @@ namespace NaijaRise.World
             for (float z = m.minZ + HouseGrid * 0.5f; z < m.maxZ && built < MaxHouses; z += HouseGrid)
             for (float x = m.minX + HouseGrid * 0.5f; x < m.maxX && built < MaxHouses; x += HouseGrid)
             {
-                var region = Data.RegionAt(x, z);
-                if (region == null || Data.InWater(x, z) || NearRoad(x, z, 8f) || Reserved(x, z)) continue;
+                var region = Data.RegionAtData(x, z);
+                if (region == null || Data.InWaterData(x, z) || NearRoadData(x, z, 8f) || ReservedData(x, z)) continue;
                 var rng = new System.Random(Mathf.RoundToInt(x * 73f + z * 151f));
                 if (rng.NextDouble() < 0.18) continue;   // leave some open ground
                 float jx = ((float)rng.NextDouble() - 0.5f) * 4f, jz = ((float)rng.NextDouble() - 0.5f) * 4f;
-                var pos = new Vector3(x + jx, 0, z + jz);
+                var pos = WorldData.W(x + jx, 0, z + jz);
                 string id = region.id;
                 bool dense = id.Contains("island") || id == "obalende" || id == "vi" || id.Contains("marina");
                 bool estate = id.Contains("lekki") || id.Contains("ajah") || id.Contains("ikoyi") || id.Contains("oniru") || id.Contains("eleko");
@@ -450,18 +451,18 @@ namespace NaijaRise.World
             }
         }
 
-        bool NearRoad(float x, float z, float margin)
+        bool NearRoadData(float x, float z, float margin)
         {
             foreach (var r in Data.roads)
             {
-                float along = r.Along(x, z);
+                float along = r.Horizontal ? x : z, across = r.Horizontal ? z : x;
                 if (along < r.from - margin || along > r.to + margin) continue;
-                if (Mathf.Abs(r.Across(x, z) - r.k) < r.width * 0.5f + margin) return true;
+                if (Mathf.Abs(across - r.k) < r.width * 0.5f + margin) return true;
             }
             return false;
         }
 
-        bool Reserved(float x, float z)
+        bool ReservedData(float x, float z)
         {
             foreach (var l in Data.landmarks)
             {
@@ -520,13 +521,13 @@ namespace NaijaRise.World
             var group = new GameObject("Kiosks and vendors").transform; group.SetParent(Root, false);
             foreach (var k in Data.kiosks)
             {
-                var pos = new Vector3(k.x, 0.3f, k.z);
+                var pos = k.World(0.3f);
                 Box("Kiosk", pos + Vector3.up * 1.3f, new Vector3(2.6f, 2.6f, 2.2f), Mat("kiosk", "#2e7d32"), group);
                 Sign("POS", pos + new Vector3(0, 3.1f, 0), "#ffffff", 0.6f, group);
             }
             foreach (var v in Data.vendors)
             {
-                var pos = new Vector3(v.x, 0.3f, v.z);
+                var pos = v.World(0.3f);
                 Box("Table", pos + Vector3.up * 0.5f, new Vector3(2f, 0.9f, 1.2f), Mat("stall", "#7a5a3a"), group);
                 Box("Umbrella", pos + Vector3.up * 2.4f, new Vector3(2.6f, 0.12f, 2.6f), Mat("umbrella", "#d9534f"), group, false);
             }
