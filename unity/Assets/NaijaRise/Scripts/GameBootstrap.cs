@@ -70,6 +70,11 @@ namespace NaijaRise
 
             var law = gameObject.AddComponent<Law>();
             law.Init(Session, Data, traffic, peds, lights);
+            Session.Law = law;
+
+            var nav = gameObject.AddComponent<Navigation>();
+            nav.Init(Data, Builder.Root);
+            Session.Nav = nav;
 
             var minimap = gameObject.AddComponent<Minimap>();
             minimap.Init(Player.transform);

@@ -20,7 +20,7 @@ namespace NaijaRise
         [System.NonSerialized] public JobData Working; [System.NonSerialized] public float WorkT, WorkDuration;   // shift in progress (real seconds)
         [System.NonSerialized] public readonly System.Collections.Generic.List<VehicleController> Parked = new System.Collections.Generic.List<VehicleController>();
 
-        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Gate, Home, Business, BusStop }
+        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Gate, Home, Business, BusStop, Deliver, Place }
         Target target; ContactSystem.Contact targetContact; VehicleController targetVehicle; TrafficSystem.Vehicle targetTraffic; Vector3 targetKiosk;
         PropertyData targetProperty; BusinessData targetBusiness; BusStopData targetStop;
         float saveT, heatT = 45f;
@@ -38,27 +38,15 @@ namespace NaijaRise
 
         public Transform Focus => Vehicle != null ? Vehicle.transform : Player.transform;
 
-        // Starter vehicles parked on the kerb of Adeniran Ogunsanya Street, just south of the spawn.
+        // A new game starts with one keke of your own on the kerb of Adeniran Ogunsanya Street; buy the rest from Dayo.
         void SpawnParkedVehicles()
         {
-            var rng = new System.Random(5);
-            var root = new GameObject("Parked").transform; root.SetParent(transform, false);
+            if (State.S.vehicles.Count > 0) { SpawnOwnedFromSave(); return; }
             var road = Data.RoadAt(Data.Spawn, 2f) ?? Data.roads[0];
-            float along0 = road.Along(Data.Spawn);
-            int i = 0;
-            foreach (var id in new[] { "car", "danfo", "keke" })
-            {
-                var cls = Data.VehicleClass(id); if (cls == null) continue;
-                var go = VehicleBodies.Build(cls, root, rng, out var wheels);
-                // Nose-to-tail along the kerb with the sedan at the front, so the first drive has open road ahead.
-                float along = along0 + 14f + (2 - i) * 9f, across = road.k + road.width * 0.5f - 2.2f;
-                var pos = road.Point(along, across); pos.y = Data.DeckHeightAt(pos) + 0.12f;
-                go.transform.position = pos;
-                go.transform.rotation = Quaternion.LookRotation(road.Forward(1), Vector3.up);
-                var vc = go.AddComponent<VehicleController>(); vc.Setup(cls, wheels); vc.Owned = true;
-                Parked.Add(vc);
-                i++;
-            }
+            var pos = road.Point(road.Along(Data.Spawn) + 32f, road.k + road.width * 0.5f - 2.2f);
+            var keke = new OwnedVehicle { id = "starter-keke", type = "keke", x = pos.x, y = 0f, z = pos.z, yaw = Quaternion.LookRotation(road.Forward(1), Vector3.up).eulerAngles.y };
+            State.S.vehicles.Add(keke);
+            SpawnOwned(keke);
         }
 
         void Update()
@@ -72,6 +60,10 @@ namespace NaijaRise
             State.TickEconomy(dt);
             if (Clock.Day != lastDay) { lastDay = Clock.Day; State.NewDay(Clock.Day); }
             UpdateTolls();
+            UpdateTask(dt);
+            UpdateRace(dt);
+            if (Nav != null) { Nav.Target = ObjectivePosition; Nav.Tick(Focus.position); }
+            Contacts.SetArrow(!HasTask && MissionActive ? CurrentMission.Who : null);
 
             if (Working != null) { UpdateShift(dt); return; }
             if (ActiveMenu != null) { UpdateMenu(); return; }
@@ -114,11 +106,13 @@ namespace NaijaRise
 
             targetProperty = NearGate(pos); targetBusiness = NearBusiness(pos); targetStop = NearBusStop(pos);
 
-            if (targetVehicle != null) { target = Target.Vehicle; Prompt = $"ENTER {targetVehicle.Class.name.ToUpper()}"; }
+            if (TaskDeliverable()) { target = Target.Deliver; Prompt = DeliverLabel(); }
+            else if (targetVehicle != null) { target = Target.Vehicle; Prompt = $"ENTER {targetVehicle.Class.name.ToUpper()}"; }
             else if (targetContact != null) { target = Target.Contact; Prompt = $"TALK TO {targetContact.data.name.ToUpper()}"; }
             else if (targetProperty != null && IsHome(targetProperty)) { target = Target.Home; Prompt = "ENTER HOME"; }
             else if (targetProperty != null) { target = Target.Gate; Prompt = $"SEE AGENT KUNLE · {targetProperty.type.ToUpper()}"; }
             else if (targetBusiness != null) { target = Target.Business; Prompt = (State.Biz(targetBusiness.id) != null ? "MANAGE " : "BUY ") + targetBusiness.name.ToUpper(); }
+            else if ((targetPlace = NearPlace(pos)) != null) { target = Target.Place; Prompt = PlacePrompt(targetPlace); }
             else if (targetTraffic != null && targetTraffic.speed < 1f) { target = Target.TrafficVehicle; Prompt = $"TAKE {targetTraffic.cls.name.ToUpper()}"; }
             else if (targetStop != null) { target = Target.BusStop; Prompt = $"TAKE DANFO FROM {targetStop.shortName}"; }
             else if (NearKiosk(pos, out targetKiosk)) { target = Target.Kiosk; Prompt = "POS KIOSK · PURE WATER, SUYA"; }
@@ -128,13 +122,32 @@ namespace NaijaRise
             {
                 case Target.Vehicle: Enter(targetVehicle); break;
                 case Target.TrafficVehicle: { var vc = Traffic.TakeVehicle(targetTraffic); Enter(vc); State.AddHeat(1, "Vehicle taken"); break; }
-                case Target.Contact: OpenDialogue(targetContact); break;
+                case Target.Deliver: FinishTask(true); break;
+                case Target.Contact: TalkTo(targetContact); break;
                 case Target.Home: OpenHomeMenu(targetProperty); break;
                 case Target.Gate: OpenGateMenu(targetProperty); break;
                 case Target.Business: OpenBusinessMenu(targetBusiness); break;
+                case Target.Place: OpenPlaceMenu(targetPlace); break;
                 case Target.BusStop: OpenTransitMenu(targetStop); break;
                 case Target.Kiosk: OpenKioskMenu(); break;
             }
+        }
+
+        string DeliverLabel()
+        {
+            var st = State.S;
+            if (st.taskType == "steal") return "HAND THE SEDAN TO DAYO";
+            if (Data.TryPlace(st.taskDest, out var d)) return $"DELIVER TO {d.name.ToUpper()}";
+            return "DELIVER";
+        }
+
+        // Story first, then Dayo's dealership, then plain job dialogue.
+        public void TalkTo(ContactSystem.Contact c)
+        {
+            if (IsMissionContact(c)) { OpenStoryDialogue(c); return; }
+            if (c.data.id == "dayo") { OpenDealerMenu(c); return; }
+            if (c.data.id == "speedy") { OpenRaceMenu(c); return; }
+            OpenDialogue(c);
         }
 
         bool NearKiosk(Vector3 pos, out Vector3 kiosk)
@@ -215,13 +228,17 @@ namespace NaijaRise
             if (ScriptedInput) { gas = ScriptGas; brake = ScriptBrake; h = ScriptSteer; boost = false; hand = false; }
             Vehicle.Drive(gas, brake, boost, hand, h, State.S.fuel / 100f, dt);
             if (Vehicle.LastImpact > 2f) { State.Toast(Vehicle.LastImpact > 8f ? "Crash! Vehicle damaged" : "Scrape"); Vehicle.LastImpact = 0f; }
-            Prompt = Mathf.Abs(Vehicle.Speed) < 2f ? "EXIT VEHICLE" : null;
-            if (Mathf.Abs(Vehicle.Speed) < 2f && Interact()) Exit();
+            bool slow = Mathf.Abs(Vehicle.Speed) < 2f;
+            Prompt = null;
+            if (slow && TaskDeliverable()) { Prompt = DeliverLabel(); if (Interact()) { FinishTask(true); return; } }
+            else if (slow && NearFuel(Vehicle.transform.position) && State.S.fuel < 99f) { Prompt = $"REFUEL · ₦{Data.meta.refuel:N0}"; if (Interact()) { Refuel(); return; } }
+            else if (slow) { Prompt = "EXIT VEHICLE"; if (Interact()) Exit(); }
         }
 
         // ---- save ----
         public void AutoSave()
         {
+            SaveVehicles();
             var t = Vehicle != null ? Vehicle.transform : Player.transform;
             State.Save(t.position, t.eulerAngles.y, Clock.Clock, Clock.Day);
         }

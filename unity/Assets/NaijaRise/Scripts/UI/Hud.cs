@@ -31,7 +31,7 @@ namespace NaijaRise.UI
             brand = new GUIStyle(GUI.skin.label) { fontSize = (int)(22 * s), fontStyle = FontStyle.Bold, normal = { textColor = new Color(0.96f, 0.77f, 0.09f) } };
             title = new GUIStyle(GUI.skin.label) { fontSize = (int)(17 * s), fontStyle = FontStyle.Bold, normal = { textColor = Color.white } };
             body = new GUIStyle(GUI.skin.label) { fontSize = (int)(14 * s), normal = { textColor = new Color(0.9f, 0.9f, 0.92f) }, wordWrap = true };
-            small = new GUIStyle(GUI.skin.label) { fontSize = (int)(12 * s), normal = { textColor = new Color(0.75f, 0.77f, 0.8f) }, alignment = TextAnchor.MiddleCenter };
+            small = new GUIStyle(GUI.skin.label) { fontSize = (int)(12 * s), normal = { textColor = new Color(0.75f, 0.77f, 0.8f) }, alignment = TextAnchor.MiddleLeft, wordWrap = true };
             prompt = new GUIStyle(GUI.skin.label) { fontSize = (int)(18 * s), fontStyle = FontStyle.Bold, normal = { textColor = new Color(0.96f, 0.77f, 0.09f) }, alignment = TextAnchor.MiddleCenter };
         }
 
@@ -72,6 +72,20 @@ namespace NaijaRise.UI
             GUILayout.Label($"Day {clock.Day}" + (st.heat > 0 ? $"   HEAT {new string('★', st.heat)}{new string('☆', 5 - st.heat)}" : ""), body);
             GUILayout.EndArea();
 
+            // Objective card above the minimap: mission title, objective, route distance, what you carry.
+            {
+                float m = 190 * s; float cardH = 96 * s;
+                GUILayout.BeginArea(new Rect(18 * s, H - m - 18 * s - cardH - 10 * s, 300 * s, cardH), cardStyle);
+                GUILayout.Label(session.ObjectiveTitle, title);
+                var objective = session.ObjectiveText;
+                if (!string.IsNullOrEmpty(objective)) GUILayout.Label(objective, body);
+                string extra = "";
+                if (session.Nav != null && session.Nav.Target != null) extra = $"{session.Nav.RouteLength:0} m along the road";
+                if (st.items.Count > 0) extra += (extra.Length > 0 ? "  ·  " : "") + "carrying " + string.Join(", ", st.items);
+                if (!string.IsNullOrEmpty(extra)) GUILayout.Label(extra, small);
+                GUILayout.EndArea();
+            }
+
             // Bottom-left: minimap.
             if (minimap != null && minimap.Texture != null)
             {
@@ -85,9 +99,10 @@ namespace NaijaRise.UI
             }
 
             // Bottom-right: money, level, XP (and speed / fuel while driving).
-            GUILayout.BeginArea(new Rect(W - 318 * s, H - 150 * s, 300 * s, 134 * s), cardStyle);
+            GUILayout.BeginArea(new Rect(W - 318 * s, H - 172 * s, 300 * s, 156 * s), cardStyle);
             GUILayout.Label($"₦{st.cash:N0} cash", title);
             GUILayout.Label($"₦{st.bank:N0} RiseBank  ·  Level {st.level} {session.State.Title}", body);
+            GUILayout.Label($"Rep  public {st.rep.publicRep}  ·  street {st.rep.street}  ·  business {st.rep.business}", small);
             var xpRect = GUILayoutUtility.GetRect(260 * s, 8 * s); Bar(xpRect, st.xp / 100f, new Color(0.96f, 0.77f, 0.09f));
             if (session.Vehicle != null) GUILayout.Label($"{session.Vehicle.Kmh:0} km/h  ·  fuel {st.fuel:0}%  ·  condition {session.Vehicle.Condition:0}%", body);
             GUILayout.EndArea();
