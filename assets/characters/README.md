@@ -38,3 +38,10 @@ Recommended pipelines:
 | Jump | optional | Not wired to input yet |
 
 Bake clips **in place** (lock root XZ). Name them exactly as in the table (or aliases listed in `CHARACTER.rigs[].clips`).
+
+## Unity edition
+
+The Unity project in `../../unity` uses primitive mannequins (`Assets/NaijaRise/Scripts/Entities/Mannequin.cs`) for the
+player, contacts and pedestrians. The same rig contract applies when characters are brought over: import `player.glb`
+with `com.unity.cloud.gltfast`, keep the Mixamo-compatible skeleton and the in-place Idle / Walk / Run clips, and drive
+them from `PlayerController.Speed01` and `IsRunning`, which already expose the locomotion state for an Animator.

@@ -66,7 +66,7 @@ namespace NaijaRise.EditorTools
                     var traffic = boot.GetComponent<World.TrafficSystem>(); var peds = boot.GetComponent<World.PedestrianSystem>();
                     Check(traffic != null && traffic.Vehicles.Count > 50, $"traffic running ({traffic?.Vehicles.Count} vehicles)");
                     Check(s.Contacts.Contacts.Count > 10, $"contacts placed ({s.Contacts.Contacts.Count})");
-                    Check(s.Parked.Count == 3, $"starter vehicles parked ({s.Parked.Count})");
+                    Check(s.Parked.Count == 1 && s.Parked[0].Owned, $"starter keke parked ({s.Parked.Count})");
                     Check(boot.Player.transform.position.y > -5f && boot.Player.transform.position.y < 5f, $"player on the ground at {boot.Player.transform.position}");
                     // Walk over to Baba K and talk.
                     World.ContactSystem.Contact babak = null;
@@ -74,6 +74,12 @@ namespace NaijaRise.EditorTools
                     Check(babak != null, "Baba K stands outside Ojuelegba Junction");
                     if (babak == null) { Finish(); return; }
                     boot.Player.Teleport(babak.pos + new Vector3(1.5f, 0.3f, 0f), 0f);
+                    // Story: The First Run. Take the clean path.
+                    Check(s.MissionActive && s.CurrentMission.Title == "The First Run" && s.Nav != null && s.Nav.Target != null, $"objective '{s.ObjectiveText}', GPS {s.Nav?.RouteLength:0} m");
+                    s.TalkTo(babak);
+                    Check(s.ActiveMenu != null && s.ActiveMenu.Subtitle == "The First Run" && s.ActiveMenu.Options.Count == 3, "story dialogue with two choices");
+                    s.Choose(1);
+                    Check(s.State.S.path == "legit" && s.State.Has("documents") && s.State.S.mission == 1, $"took the clean one: carrying {string.Join(",", s.State.S.items)}, mission {s.State.S.mission}");
                     cashBefore = s.State.S.cash;
                     s.OpenDialogue(babak);
                     Check(s.ActiveMenu != null && s.ActiveMenu.Options.Count >= 2 && s.ActiveMenu.Options[0].Enabled, $"dialogue menu open: '{s.ActiveMenu?.Options[0].Label}'");
@@ -87,8 +93,14 @@ namespace NaijaRise.EditorTools
                     Check(s.State.S.cash > cashBefore, $"shift paid: ₦{cashBefore:N0} → ₦{s.State.S.cash:N0}");
                     Check(s.State.S.xp > 0 || s.State.S.level > 1, $"xp awarded ({s.State.S.xp}, level {s.State.S.level})");
                     Check(boot.Clock.Clock > 8.5f + 2f || boot.Clock.Day > 1, $"clock advanced to {boot.Clock.ClockText}");
-                    // Drive the parked sedan.
-                    var car = s.Parked[0];
+                    // Buy a sedan from Dayo and drive it.
+                    s.State.S.cash += 4000000;
+                    var car = s.BuyVehicle("car");
+                    Check(car != null && s.Parked.Count == 2 && s.State.S.vehicles.Count == 2, $"bought a sedan from Dayo ({s.Parked.Count} owned vehicles)");
+                    if (car == null) { Finish(); return; }
+                    var road = boot.Data.RoadAt(boot.Data.Spawn, 2f);
+                    car.transform.position = road.Point(road.Along(boot.Data.Spawn) + 40f, road.k + road.width * 0.5f - 2.2f) + Vector3.up * 0.12f;
+                    car.transform.rotation = Quaternion.LookRotation(road.Forward(1), Vector3.up);
                     s.Enter(car);
                     Check(s.Vehicle == car && !boot.Player.gameObject.activeSelf, "entered the sedan");
                     carStart = car.transform.position;
@@ -150,11 +162,61 @@ namespace NaijaRise.EditorTools
                         Check(s.State.S.heat == 0 && (boot.Player.transform.position - station.World()).magnitude < 20f, "arrested: heat 0, released at Area C");
                         stage = 8; stageT = 0f; return;
                     }
-                case 8:   // a few more frames with everything running, then save
+                case 8:   // story: deliver the documents to Amaka, then a timed cold-chain task to the school
+                    {
+                        World.ContactSystem.Contact amaka = null; foreach (var c in s.Contacts.Contacts) if (c.data.id == "amaka") amaka = c;
+                        Check(amaka != null, "Amaka stands at the Iponri yard");
+                        if (amaka == null) { Finish(); return; }
+                        s.State.S.mission = 1; s.State.S.storyPaused = false; int cash = s.State.S.cash;
+                        boot.Player.Teleport(amaka.pos + new Vector3(1.5f, 0.3f, 0f), 0f);
+                        s.TalkTo(amaka);
+                        Check(s.ActiveMenu != null && s.ActiveMenu.Subtitle == "Make the Delivery" && s.ActiveMenu.Options[0].Label == "Continue", "delivery dialogue");
+                        s.Choose(0);
+                        Check(s.State.S.cash == cash + 12000 && !s.State.Has("documents") && s.State.S.mission == 2, $"documents delivered: +₦12,000, mission {s.State.S.mission}");
+                        // Jump the story to Cold Chain and start the timed task.
+                        s.State.S.mission = 7; s.State.S.arc = "legit";
+                        s.TalkTo(amaka); s.Choose(0);
+                        Check(s.HasTask && s.State.Has("coldbox") && s.State.S.taskType == "timed", $"cold chain task running: '{s.ObjectiveText}'");
+                        s.RefreshNav();
+                        Check(s.Nav.Target != null && s.Nav.RouteLength > 90f, $"GPS route to the school: {s.Nav.RouteLength:0} m (straight line 93 m)");
+                        boot.Data.TryPlace("school", out var school);
+                        boot.Player.Teleport(school.World() + new Vector3(0, 0.3f, 12f), 0f);
+                        Check(s.TaskDeliverable(), "delivery prompt at the school");
+                        cash = s.State.S.cash; s.FinishTask(true);
+                        Check(!s.HasTask && s.State.S.cash == cash + 40000 && s.State.S.mission == 8, $"vaccine box delivered: +₦40,000, mission {s.State.S.mission}");
+                        stage = 9; stageT = 0f; return;
+                    }
+                case 9:   // education, gym, food, racing
+                    {
+                        var web = boot.Data.Course("web"); s.State.S.cash += 500000; s.State.S.stamina = 100f;
+                        var webdev = System.Array.Find(boot.Data.jobs, j => j.id == "webdev");
+                        Check(webdev != null && !s.State.CanTake(webdev), "Web Freelancer locked without the certificate");
+                        Check(s.Study(web) && s.State.HasCourse("web"), $"learned {web?.name}: certificates {string.Join(",", s.State.S.courses)}");
+                        s.State.S.skills.business = Mathf.Max(s.State.S.skills.business, 12f);
+                        Check(webdev != null && s.State.CanTake(webdev), "Web Freelancer unlocked by the certificate");
+                        float fit = s.State.S.skills.fitness; s.State.S.stamina = 100f;
+                        Check(s.Train("Cardio", 5, 0, boot.Data.gym.dayPass) && s.State.S.skills.fitness == fit + 5, $"gym cardio: fitness {s.State.S.skills.fitness}");
+                        s.State.S.stamina = 10f;
+                        Check(boot.Data.food.Length > 0 && s.Eat(boot.Data.food[0]) && s.State.S.stamina > 60f, $"ate {boot.Data.food[0].name}: stamina {s.State.S.stamina:0}");
+                        // Race: start it, drive the sedan through the four checkpoints by teleport.
+                        var sedan = s.Parked.Find(v => v.Class.id == "car");
+                        Check(s.StartRace(boot.Data.raceWager, false) && s.Racing, $"race started: {s.RaceStatus}");
+                        s.Enter(sedan);
+                        stage = 10; stageT = 0f; return;
+                    }
+                case 10:  // one checkpoint per quarter second
+                    {
+                        if (!s.Racing) { Check(s.Vehicle != null && s.State.S.skills.driving >= 6f, $"race won: driving {s.State.S.skills.driving:0.0}, cash ₦{s.State.S.cash:N0}"); s.Exit(); stage = 11; stageT = 0f; return; }
+                        if (stageT < 0.25f) return; stageT = 0f;
+                        var cp = s.ActiveRace.Cps[s.ActiveRace.I]; cp.y = s.Vehicle.transform.position.y;
+                        s.Vehicle.GetComponent<Rigidbody>().position = cp; s.Vehicle.transform.position = cp;
+                        return;
+                    }
+                case 11:  // a few more frames with everything running, then save
                     if (stageT < 1f) return;
                     s.AutoSave();
                     var again = new GameState(boot.Data);
-                    Check(again.Load() && again.S.home == s.State.S.home && again.S.biz.Count == 1, "save keeps home and business");
+                    Check(again.Load() && again.S.home == s.State.S.home && again.S.biz.Count == 1 && again.S.vehicles.Count == 2 && again.S.mission == 8 && again.S.courses.Count == 1, "save keeps home, business, vehicles, story and certificates");
                     Finish(); return;
             }
         }

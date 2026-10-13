@@ -25,6 +25,7 @@ The PRD's §25 "Version 0.1" MVP list, checked against the current build:
 | Character customisation | **Done** | |
 | Day/night cycle | **Done** | Gradient sky, sun, clouds, street lights, lit windows, NEPA outages |
 | Basic multiplayer | **Not started** | See Phase 5 |
+| Unity edition | **Vertical slice** | Playable slice in `unity/` built from the same data; evaluation only, see §2b |
 
 Systems that go beyond the MVP list and are already in: heat with police pursuit and arrest, FRSC speeding tickets, army checkpoint, agbero levies (a pet dog keeps them away), rush-hour slowdowns and go-slow traffic, public-transport stop service with passenger turnover and fare-based boarding, Owambe parties, church/mosque, filling station, phone with ten apps, GPS routing along the road grid, Level titles (Newcomer → Hustler → Entrepreneur → Mogul) with app unlocks at Level 2, keyboard/arrow keys, touch and gamepad controls including on-foot jump.
 
@@ -97,9 +98,19 @@ Exit criteria: two players see each other in one Surulere room, saves round-trip
 
 ## 2b. Unity edition — vertical slice (13 October 2026)
 
-The native-engine vertical slice that the Multi-Platform Technical Roadmap below asks for now exists in [`unity/`](unity/README.md) (Unity 6000.6.5f1, Universal Render Pipeline 17.6, Input System 1.19, no other packages). It builds the same Lagos from the same data: `npm run export:unity` writes the merged district map plus jobs, contacts, vehicle classes, wardrobe colours and level titles to `unity/Assets/NaijaRise/Resources/world/lagos.json`, and C# systems construct the city (roads, pavements, medians, street lights, the four bridge decks on their real profiles, water, 120 landmarks with signs, bus stops, properties, corridor cells, region-aware housing, about 6,000 batched objects in a second), the poster look (HDR, bloom, ACES, vignette), the clock and Lagos light, 110 ambient vehicles that ride the bridges and brake for the player, 70 pedestrians in wardrobe fabrics, the 32 contacts standing outside their places, driving ported from `movement.js`, prompts and choice menus, job shifts with wages, skills, XP, levels, housing (rent, buy, sleep, leases), the four businesses with pay cycles, danfo transit, tolls, traffic lights, FRSC and army checkpoints, police pursuit, settle-or-arrest and roadblocks, heat, fuel and stamina, autosave and resume, a minimap and the HUD. The data's +z south maps to Unity -z so the city is not mirrored.
+The native-engine vertical slice that the Multi-Platform Technical Roadmap below asks for exists in [`unity/`](unity/README.md): Unity 6000.6.5f1, Universal Render Pipeline 17.6, Input System 1.19, no other packages (the Built-in pipeline and the Input Manager are deprecated in Unity 6 and are not used). It was built in five increments in one day and is verified headless: the C# compiles clean, an edit-mode smoke test builds the city from the exported data, a play-mode test plays through the whole loop, and a macOS player builds from the command line.
 
-It compiles clean, has a headless smoke test and a headless play-mode test (talk, work a shift, drive, exit, save and reload) and builds a macOS player from the command line. Not ported: rigged characters, education, family, missions and story, racing, place activities (gym, mall, café), the phone, dealership and vehicle ownership. The roadmap's recommendation stands: measure this slice against the web build (frame time at Eko Bridge at 20:00, controller feel, time-to-add-a-district, build size) before deciding on a migration. The order of work if Unity wins is in `unity/README.md`.
+| Increment | What it added |
+|---|---|
+| 1 · City | `npm run export:unity` writes `src/data/districts/lagos.js` to JSON; roads, pavements, medians, street lights, the four bridge decks on their real profiles, water, landmarks with signs, bus stops, properties, corridor cells, region-aware housing; player, camera, clock and light, ambient traffic, first HUD |
+| 2 · Life | URP look (HDR, bloom, ACES), the coordinate mirror fix, driving ported from `movement.js`, contacts outside their places, jobs and shifts, pedestrians, traffic that brakes for you, minimap, JSON autosave and resume |
+| 3 · Law and property | Choice menus, housing (rent, buy, sleep, leases), the four businesses with pay cycles, danfo transit, tolls, traffic lights, FRSC and army checkpoints, police pursuit, settle-or-arrest, roadblocks, laying low |
+| 4 · Story | The prologue, Hot Delivery, Crossroads and both arcs hand-ported from `missions.js`; objectives, markers and a GPS route along the road graph; timed, cargo, escape and recovery tasks; Dayo's dealership, persistent owned vehicles, refuelling; reputation and inventory |
+| 5 · Places | Gym, restaurants, mall and cinema, cyber café courses and certificates that unlock the gated jobs, freelance gigs, street football, Speedy's races (which now close both arcs) |
+
+Not ported: rigged characters and the wardrobe (needs a glTF importer), Yaba Tech and the school class, family and relationships, the phone apps, weather, insurance and liveries, the hustle-hub side missions, go-slow incidents, tenants and upgrades, business staff and the rival trader.
+
+The roadmap's recommendation stands: measure this slice against the web build (frame time at Eko Bridge at 20:00, controller feel, time-to-add-a-district, build size) before deciding on a migration. The checks and the remaining port order are in `unity/README.md`. The machine this was built on is an Intel Mac; Unity has announced that 6.7 LTS is the last editor for Intel, so a production Unity edition would need Apple Silicon hardware before upgrading past it.
 
 ## 3. Later phases (from PRD §30)
 
@@ -352,7 +363,7 @@ The next development sprint should focus on these deliverables, in order:
 1. Baseline report: build results, runtime errors, regression findings and a performance snapshot.
 2. Input architecture specification: shared action map, platform mapping rules and controller UI behavior.
 3. VR prototype plan: minimum viable WebXR implementation and device test checklist.
-4. Engine comparison report: a small Three.js versus Unity feasibility test, with Unreal retained as an alternative if the requirements warrant it.
+4. Engine comparison report: the Unity vertical slice in `unity/` (§2b) is the feasibility test; measure it against the web build per `unity/README.md`, with Unreal retained as an alternative if the requirements warrant it.
 5. Release gates: explicit conditions for approving a migration or beginning native console work.
 
 One practical constraint: I could inspect the repository, but the connected GitHub integration denied permission to create a branch. I have not modified the production branch or claimed that any new code has been committed. The roadmap above is based on the repository inspection and is ready to be added as a version-controlled project document.

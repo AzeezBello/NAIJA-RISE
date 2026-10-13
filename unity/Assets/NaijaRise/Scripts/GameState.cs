@@ -28,7 +28,23 @@ namespace NaijaRise
         public List<string> props = new List<string>();
         public List<OwnedBusiness> biz = new List<OwnedBusiness>();
         public float payIn = 60f;
+        // Story (src/data/missions.js): mission index, the prologue path, the arc after Crossroads, flags.
+        public int mission; public string path = "", arc = ""; public bool chase, kioskDeal, done, storyPaused;
+        public List<string> items = new List<string>();
+        public RepSet rep = new RepSet();
+        // Live task (one at a time): type is "" when none.
+        public string taskType = "", taskDest = "", taskItem = "", taskObj = ""; public float taskDeadline, taskMaxKmh, taskClear; public int taskMission; public bool taskTaken;
+        public List<OwnedVehicle> vehicles = new List<OwnedVehicle>();
+        // Education and activities (src/systems/education.js, places.js)
+        public List<string> courses = new List<string>();
+        public int gymUntil, gymSessions, outfits;
     }
+
+    [Serializable] public class RepSet { public int publicRep, business, street, social;
+        public int Get(string k) => k == "public" ? publicRep : k == "business" ? business : k == "street" ? street : k == "social" ? social : 0;
+        public void Add(string k, int n) { switch (k) { case "public": publicRep += n; break; case "business": business += n; break; case "street": street += n; break; case "social": social += n; break; } }
+    }
+    [Serializable] public class OwnedVehicle { public string id, type; public float cond = 100f, x, y, z, yaw; }
 
     [Serializable] public class OwnedBusiness { public string id; public float stock = 100f; public string price = "normal"; }
 
@@ -55,7 +71,8 @@ namespace NaijaRise
             {
                 if (!File.Exists(SavePath)) return false;
                 S = JsonUtility.FromJson<SaveData>(File.ReadAllText(SavePath));
-                S.skills ??= new SkillSet();
+                S.skills ??= new SkillSet(); S.rep ??= new RepSet(); S.items ??= new List<string>(); S.vehicles ??= new List<OwnedVehicle>();
+                S.path ??= ""; S.arc ??= ""; S.taskType ??= ""; S.taskDest ??= ""; S.taskItem ??= ""; S.taskObj ??= ""; S.courses ??= new List<string>();
                 return S != null;
             }
             catch (Exception e) { Debug.LogWarning("Save could not be read: " + e.Message); return false; }
@@ -96,7 +113,14 @@ namespace NaijaRise
 
         public void GainSkill(string skill, float n) => S.skills.Add(skill, n);
         public int JobPay(JobData j) => Mathf.RoundToInt(j.pay * (1f + S.skills.Get(j.skill) * 0.01f));   // +1% per skill point
-        public bool CanTake(JobData j) => S.skills.Get(j.skill) >= j.min && string.IsNullOrEmpty(j.needCourse);
+        public bool HasCourse(string id) => !string.IsNullOrEmpty(id) && S.courses.Contains(id);
+        public bool CanTake(JobData j) => S.skills.Get(j.skill) >= j.min && (string.IsNullOrEmpty(j.needCourse) || HasCourse(j.needCourse));
+
+        public void AddRep(string k, int n) => S.rep.Add(k, n);
+        public bool Has(string item) => S.items.Contains(item);
+        public void AddItem(string item) { if (!string.IsNullOrEmpty(item) && !S.items.Contains(item)) S.items.Add(item); }
+        public void RemoveItem(string item) => S.items.Remove(item);
+        public int BizPrice(BusinessData b) => S.kioskDeal && b.id == "kiosk" ? Mathf.RoundToInt(b.price * 0.6f) : b.price;
 
         public void AddHeat(int n, string why)
         {
@@ -158,7 +182,7 @@ namespace NaijaRise
         {
             if (Biz(b.id) != null) { Toast("You own this one already"); return false; }
             if (S.level < data.meta.propertyLevel) { Toast($"Businesses unlock at Level {data.meta.propertyLevel}"); return false; }
-            if (!Pay(b.price)) { Toast($"You need ₦{b.price:N0} across cash and bank"); return false; }
+            if (!Pay(BizPrice(b))) { Toast($"You need ₦{BizPrice(b):N0} across cash and bank"); return false; }
             S.biz.Add(new OwnedBusiness { id = b.id });
             Toast($"{b.name} is yours · ₦{BizIncome(b):N0} per pay cycle");
             Message("bank", $"Business account opened for {b.name}. Income lands in your RiseBank account.");
@@ -191,6 +215,21 @@ namespace NaijaRise
             }
             S.bank += total;
             Toast($"RiseBank · Credit alert · ₦{total:N0} business income");
+        }
+
+        // ---- education (src/systems/education.js completeCourse) ----
+        public bool CompleteCourse(CourseData c)
+        {
+            if (c == null || HasCourse(c.id)) return false;
+            S.courses.Add(c.id);
+            if (c.skills != null) foreach (var sp in c.skills) GainSkill(sp.skill, sp.points);
+            AddXp(20);
+            var unlocked = new List<string>();
+            foreach (var j in data.jobs) if (j.needCourse == c.id || (c.unlocks != null && System.Array.IndexOf(c.unlocks, j.id) >= 0)) if (!unlocked.Contains(j.title)) unlocked.Add(j.title);
+            string extra = unlocked.Count > 0 ? $" Unlocks: {string.Join(", ", unlocked)}." : "";
+            Toast($"{c.name} learned.{extra}");
+            Message("cafeguy", $"{c.name} certificate ready.{extra}");
+            return true;
         }
 
         public void PruneToasts() { Toasts.RemoveAll(t => t.until < Time.time); if (Toasts.Count > 4) Toasts.RemoveRange(0, Toasts.Count - 4); }

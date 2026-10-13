@@ -13,6 +13,7 @@ namespace NaijaRise.Vehicles
         public float Condition = 100f;      // 0–100, crashes wear it down
         public bool Driven;
         public bool Owned;
+        [System.NonSerialized] public string OwnedId;
         public Transform[] Wheels;
         public float LastImpact;            // m/s lost in the last crash, read and cleared by the session
 

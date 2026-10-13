@@ -13,7 +13,8 @@ namespace NaijaRise.World
 
         readonly List<Contact> contacts = new List<Contact>();
         public IReadOnlyList<Contact> Contacts => contacts;
-        Transform player;
+        Transform player, arrow;
+        string arrowFor;
 
         public void Init(WorldData world, Transform playerTransform, Transform parent)
         {
@@ -38,6 +39,21 @@ namespace NaijaRise.World
             }
         }
 
+        // The current objective's contact carries a bobbing yellow arrow over their head.
+        public void SetArrow(string contactId)
+        {
+            if (arrow == null)
+            {
+                var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder); go.name = "Objective arrow";
+                go.transform.localScale = new Vector3(0.9f, 0.45f, 0.9f);
+                var m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(1f, 0.77f, 0.18f) }; m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", new Color(1f, 0.77f, 0.18f) * 1.5f);
+                go.GetComponent<MeshRenderer>().sharedMaterial = m; Destroy(go.GetComponent<Collider>());
+                arrow = go.transform; arrow.SetParent(transform, false);
+            }
+            arrowFor = contactId;
+            arrow.gameObject.SetActive(!string.IsNullOrEmpty(contactId));
+        }
+
         public Contact Nearest(Vector3 pos, float maxDist)
         {
             Contact best = null; float bestD = maxDist * maxDist;
@@ -48,6 +64,8 @@ namespace NaijaRise.World
         void Update()
         {
             if (player == null) return;
+            if (arrow != null && arrow.gameObject.activeSelf)
+                foreach (var c in contacts) if (c.data.id == arrowFor) { arrow.position = c.pos + Vector3.up * (2.9f + Mathf.Sin(Time.time * 4f) * 0.15f); arrow.Rotate(Vector3.up, Time.deltaTime * 90f); break; }
             foreach (var c in contacts)
             {
                 var to = player.position - c.pos; to.y = 0f;

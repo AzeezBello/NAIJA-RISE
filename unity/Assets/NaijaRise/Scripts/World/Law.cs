@@ -128,9 +128,18 @@ namespace NaijaRise.World
             s.OpenMenu(m);
         }
 
+        public bool PoliceWithin(Vector3 pos, float radius)
+        {
+            float r2 = radius * radius;
+            foreach (var p in pursuers) if ((p.v.t.position - pos).sqrMagnitude < r2) return true;
+            foreach (var v in traffic.Vehicles) if (v.cls.id == "police" && (v.t.position - pos).sqrMagnitude < r2) return true;
+            return false;
+        }
+
         public void Arrest()
         {
             var st = s.State.S; int fine = st.heat * data.meta.bustRate;
+            s.FailTaskOnArrest();
             if (!s.State.Pay(fine)) { st.cash = 0; st.bank = 0; }
             st.heat = 0;
             if (s.Vehicle != null) s.Exit();
