@@ -38,7 +38,7 @@ namespace NaijaRise
                     if (Data.TryPlace(st.taskDest, out var d)) return d.World();
                     return null;
                 }
-                if (!MissionActive) return null;
+                if (!MissionActive) return NearestPin(Focus.position);
                 var m = CurrentMission;
                 foreach (var c in Contacts.Contacts) if (c.data.id == m.Who) return c.pos;
                 return Data.TryPlace(m.At, out var p) ? p.World() : (Vector3?)null;

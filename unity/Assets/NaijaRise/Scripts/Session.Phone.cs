@@ -23,6 +23,8 @@ namespace NaijaRise
             m.Options.Add(new MenuOption { Label = "Character", Action = AppCharacter });
             m.Options.Add(new MenuOption { Label = "Contacts", Action = AppContacts });
             m.Options.Add(new MenuOption { Label = "Inventory", Action = AppInventory });
+            m.Options.Add(new MenuOption { Label = InCrew ? $"Crew · {State.S.crewName} [{CrewTag}]" : "Crew", Action = AppCrew });
+            m.Options.Add(new MenuOption { Label = Account != null && Account.SignedIn ? $"Account · {Account.Email}" : "Account", Action = AppAccount });
             m.Options.Add(new MenuOption { Label = "Settings", Action = AppSettings });
             m.Options.Add(new MenuOption { Label = "Put the phone away", Action = () => PhoneOpen = false });
             OpenMenu(m);
@@ -123,6 +125,53 @@ namespace NaijaRise
             sb.Append("Vehicles: ").Append(st.vehicles.Count > 0 ? string.Join(", ", st.vehicles.ConvertAll(v => Data.VehicleClass(v.type)?.name ?? v.type)) : "none").Append('\n');
             sb.Append($"Fuel {st.fuel:0}% · stamina {st.stamina:0}% · health {st.health:0}%");
             Page("Inventory", "What you carry and own", sb.ToString());
+        }
+
+        void AppCrew()
+        {
+            var st = State.S;
+            if (!InCrew)
+            {
+                var m = new Menu { Title = "Crew", Subtitle = "No crew yet", Line = "Form a crew and share the code, or join one with a code. Crews share a treasury, an HQ and GPS pins, and race together." };
+                m.Fields.Add(new MenuField { Label = "Name / code" }); m.Fields.Add(new MenuField { Label = "Tag (2–4)" });
+                m.Options.Add(new MenuOption { Label = "Form a crew with this name and tag", Action = () => { CreateCrew(m.Fields[0].Value, m.Fields[1].Value); AppCrew(); } });
+                m.Options.Add(new MenuOption { Label = "Join the crew with this code", Action = () => { JoinCrew(m.Fields[0].Value); AppCrew(); } });
+                m.Options.Add(new MenuOption { Label = "Back", Action = OpenPhone });
+                OpenMenu(m);
+                return;
+            }
+            var hq = string.IsNullOrEmpty(st.crewHq) ? null : Data.Property(st.crewHq);
+            string body = $"Code {st.crewCode} · treasury ₦{st.crewTreasury:N0} · HQ {(hq != null ? hq.name : "none")}\nPins shared: {Pins.Count} · co-op wins {CoopWins}{(CoopInvitePending ? $"\n{CoopPartnerName} invites you to a co-op race" : "")}{(CoopRace ? "\nCo-op race in progress" : "")}";
+            Page($"{st.crewName} [{st.crewTag}]", "Your crew", body,
+                new MenuOption { Label = "Deposit ₦10,000 to the treasury", Enabled = st.cash + st.bank >= 10000, Action = () => { CrewDeposit(10000); AppCrew(); } },
+                new MenuOption { Label = "Withdraw ₦10,000", Enabled = st.crewTreasury >= 10000, Action = () => { CrewWithdraw(10000); AppCrew(); } },
+                new MenuOption { Label = hq != null ? $"HQ: {hq.name}" : "Make my home the HQ", Enabled = hq == null && State.Home != null && State.Owns(State.Home), Action = () => { SetCrewHq(State.Home); AppCrew(); } },
+                new MenuOption { Label = "Pin my position for the crew", Action = () => { SharePin(Data.RegionAt(Focus.position)?.name ?? "here"); AppCrew(); } },
+                new MenuOption { Label = CoopInvitePending ? $"Accept {CoopPartnerName}'s co-op race" : "Invite the crew to a co-op race", Action = () => { if (CoopInvitePending) AcceptCoopRace(); else InviteCoopRace(); } },
+                new MenuOption { Label = "Leave the crew", Action = () => { LeaveCrew(); AppCrew(); } });
+        }
+
+        void AppAccount()
+        {
+            if (Account == null || !Account.Online)
+            {
+                Page("Account", "Offline", "No backend configured. Copy Resources/cloud.example.json to cloud.json with your Supabase project URL and anon key, and apply supabase/schema.sql to the project. Your progress saves locally either way.");
+                return;
+            }
+            if (Account.SignedIn)
+            {
+                Page("Account", Account.Status, $"Cloud save: {(Cloud != null ? Cloud.Status : "—")}\nMultiplayer: {(Players != null ? Players.Status : "off")}\nPress T in the city to chat with players in your district.",
+                    new MenuOption { Label = "Save to the cloud now", Action = () => { AutoSave(); Cloud?.Push(State.S, ok => State.Toast(ok ? "Saved to the cloud" : "Cloud save failed")); } },
+                    new MenuOption { Label = "Load the cloud save", Action = () => Cloud?.Pull(save => { if (save == null) { State.Toast(Cloud.Status); return; } State.S = save; State.Toast("Cloud save loaded — restart to apply the world state"); }) },
+                    new MenuOption { Label = "Sign out", Action = () => { Account.SignOut(); AppAccount(); } });
+                return;
+            }
+            var m = new Menu { Title = "Account", Subtitle = Account.Status, Line = "Sign in to save to the cloud and meet other players. Click a field, type, then choose." };
+            m.Fields.Add(new MenuField { Label = "Email" }); m.Fields.Add(new MenuField { Label = "Password", Password = true });
+            m.Options.Add(new MenuOption { Label = "Sign in", Action = () => Account.SignIn(m.Fields[0].Value, m.Fields[1].Value, (ok, msg) => { State.Toast(msg); AppAccount(); }) });
+            m.Options.Add(new MenuOption { Label = "Create account", Action = () => Account.SignUp(m.Fields[0].Value, m.Fields[1].Value, (ok, msg) => { State.Toast(msg); AppAccount(); }) });
+            m.Options.Add(new MenuOption { Label = "Back", Action = OpenPhone });
+            OpenMenu(m);
         }
 
         void AppSettings()

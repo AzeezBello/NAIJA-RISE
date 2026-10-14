@@ -42,7 +42,7 @@ namespace NaijaRise.Vehicles
         public void Place(Vector3 position, Quaternion rotation)
         {
             transform.SetPositionAndRotation(position, rotation);
-            if (rb != null) { rb.position = position; rb.rotation = rotation; rb.linearVelocity = Vector3.zero; rb.angularVelocity = Vector3.zero; }
+            if (rb != null) { rb.position = position; rb.rotation = rotation; if (!rb.isKinematic) { rb.linearVelocity = Vector3.zero; rb.angularVelocity = Vector3.zero; } }   // kinematic (parked) bodies have no velocity to clear
             yaw = rotation.eulerAngles.y;
             Physics.SyncTransforms();
         }

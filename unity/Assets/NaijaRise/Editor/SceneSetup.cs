@@ -29,6 +29,9 @@ namespace NaijaRise.EditorTools
         [MenuItem("NAIJA RISE/Build macOS Player")]
         public static void BuildMac() => BuildPlayer(BuildTarget.StandaloneOSX, "Builds/NaijaRise-Lagos.app");
 
+        [MenuItem("NAIJA RISE/Build Windows Player")]
+        public static void BuildWindows() => BuildPlayer(BuildTarget.StandaloneWindows64, "Builds/Windows/NaijaRise-Lagos.exe");
+
         [MenuItem("NAIJA RISE/Build WebGL Player")]
         public static void BuildWebGL() => BuildPlayer(BuildTarget.WebGL, "Builds/WebGL");
 

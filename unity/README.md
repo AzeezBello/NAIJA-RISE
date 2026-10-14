@@ -13,7 +13,7 @@ Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFa
 |---|---|
 | Compile | clean, no warnings |
 | Smoke test (edit mode) | passes: 85 roads, 120 landmarks, about 6,000 objects in under a second; every job and contact resolves; mirror correct |
-| Play test (play mode) | passes, 90 checks across the whole loop, see "Headless" below |
+| Play test (play mode) | passes, 106 checks across the whole loop, see "Headless" below |
 | macOS build | `Builds/NaijaRise-Lagos.app`, about 350 MB with the stadium, tree, character and animal models |
 | WebGL build | menu item exists, not yet exercised |
 | Open in editor | no errors; the serialization and deprecation analyzers are quiet |
@@ -154,6 +154,36 @@ a camera on the player's head.
 **Traffic** (`Scripts/World/TrafficSystem.cs`). 110 danfos, kekes, koropes, okadas, cars, police, LAWMA and tanker
 trucks in lanes on the right, keeping distance, braking for you, slowing at rush hour on bridges and highways.
 
+**Accounts, cloud save and multiplayer** (`Scripts/Net/`). Supabase is the backend, as the plan's Phases 5 and 6 chose
+for the web edition; both editions share `supabase/schema.sql` (a `players` table, a `saves` table holding the whole
+state blob as JSON, row-level security so every player sees only their own rows). Copy `Resources/cloud.example.json` to
+`cloud.json` with a project's URL and anon key and the Account app on the phone signs up and in with email and
+password (`Account.cs`, Supabase Auth over REST, session kept in PlayerPrefs). Signed in, the autosave also upserts to
+the cloud at most once a minute and the newest `lastSeen` wins on start (`CloudSave.cs`). Multiplayer is a room per
+district over Supabase Realtime broadcast (`Realtime.cs`, Phoenix channels on a WebSocket): your position, heading,
+vehicle class and look go out at 10 Hz, other players appear as the same rigged characters or their vehicle with a name
+label, interpolated and expired after five seconds; T or Enter opens the chat box and lines float over the HUD
+(`Multiplayer.cs`). Without `cloud.json` everything degrades to local: the save file, no account, and the same
+multiplayer code running on an in-process loopback bus, which is also what the headless play test uses to put a second
+player in the room. No Supabase project exists for the game yet, so the live path is written to the documented protocol
+but not exercised against a server.
+
+**Crews and co-op** (`Scripts/Session.Crew.cs`). Form a crew with a name and tag or join one by code from the Crew app;
+the tag sits on your money card. Crews share a treasury (deposit, withdraw), an HQ at a member's owned property and GPS
+pins (pin your position for the crew; theirs show on your objective card and the GPS points at the nearest when you
+have no mission). The co-op race invites the crew to Speedy's two laps: both drive, the first home leads, and the purse
+is split. Online the crew lives in the `crews` and `crew_members` tables and its own Realtime channel; offline it lives
+in the save and the loopback bus.
+
+**Input action maps** (`Resources/Input/NaijaRise.inputactions`, `Scripts/GameInput.cs`). The Gameplay map carries
+every binding for the Keyboard and Gamepad control schemes; the Input System's Gamepad layout is what DualShock, Xbox
+and Switch controllers all map to, so console ports rebind here rather than in code. The accessors fall back to direct
+device polling when the asset is missing.
+
+**Builds** (`Editor/SceneSetup.cs`). macOS, Windows and WebGL build entries; this editor has the macOS and WebGL modules
+installed, so the Windows entry needs the Windows Build Support module, and console targets need the platform
+holders' modules and licences.
+
 **HUD** (`Scripts/UI/`). Brand, district and street or bridge top-left; clock, day and heat top-right; the objective
 card and a north-up minimap bottom-left; cash, RiseBank, level, XP, reputation and speed / fuel / condition
 bottom-right; health and stamina bars with the prompt bottom-centre; toasts, menus, shift overlay, wanted banner.
@@ -174,6 +204,10 @@ Open `unity/` in Unity Hub (editor 6000.6.5f1), open `Assets/NaijaRise/Scenes/La
 | Space, Triangle (Y) | jump | handbrake (Space, Circle) |
 | E, Cross (A) | talk, enter, take, buy, deliver | exit, deliver, refuel (when stopped) |
 | P, Tab, Select | phone | phone |
+| T, Enter | chat with players in the district | |
+
+The web shell gained `/account` (sign in, sign up, see the cloud save) and `/admin` (players, saves and economy totals
+through the service role key) against the same schema; copy `web/.env.example` to `web/.env.local`.
 | X, Backspace, Circle (B) | close a menu | |
 | 1–5 | pick a menu option | |
 | Mouse, right stick, Z / C | look | look |
@@ -207,13 +241,18 @@ and unlocking Web Freelancer, cardio at the gym, jollof, a race against Speedy, 
 Yaba Tech diploma unlocking IT Support, a Surulere hub delivery, three football wins opening the tournament, the
 animals, a family request and bond, relationship tiers, the look slots on the rig, the agbero levy and the dog, tenants and a
 repair, the water tank, hiring staff and the rival, insurance, livery and slogan, road works, a wreck and the flood, a swim in the
-lagoon and a sunk sedan, the quality governor stepping down under slow frames, then save and reload. It exits the editor
+lagoon and a sunk sedan, the quality governor stepping down under slow frames, the offline account, the cloud-save merge rule, two players and a
+chat line over the loopback bus, the action-map input, a crew with treasury, HQ and shared pins, and a co-op race settled
+with the purse split, then save and reload. It exits the editor
 with 0 on success (no `-quit`: it quits itself). Both are CI-ready.
 
 ## Not here yet
 
-- Multiplayer, accounts and the server-side save (web Phases 5 and 6), which the Unity edition would share.
-- Console action maps for the Input System and the platform builds themselves (the roadmap's P3 onwards).
+- A live Supabase project: create one, apply `supabase/schema.sql`, enable Realtime and the email provider, and drop
+  the URL and anon key into `Resources/cloud.json` (and the web shell's `.env`). Then the first thing to test by hand
+  is two builds in one district, then two crew mates racing.
+- Console platform modules and licences; the Windows Build Support module in this editor.
+- Editing jobs, missions and economy values from the admin page (today they are data files exported to both editions).
 
 ## How to judge it (the roadmap's question)
 

@@ -221,7 +221,7 @@ namespace NaijaRise.EditorTools
                 case 11:  // phone, bank, weather, Yaba Tech, hub run, football tiers, animals
                     {
                         s.OpenPhone();
-                        Check(s.PhoneOpen && s.ActiveMenu != null && s.ActiveMenu.Options.Count == 10, "phone opens with nine apps");
+                        Check(s.PhoneOpen && s.ActiveMenu != null && s.ActiveMenu.Options.Count == 12, $"phone opens with eleven apps ({s.ActiveMenu?.Options.Count - 1})");
                         int cash = s.State.S.cash, bank = s.State.S.bank; s.Choose(2); s.Choose(0);   // RiseBank → deposit ₦10,000
                         Check(s.State.S.cash == cash - 10000 && s.State.S.bank == bank + 10000, $"bank deposit: cash ₦{s.State.S.cash:N0}, bank ₦{s.State.S.bank:N0}");
                         s.CloseMenu(); s.PhoneOpen = false;
@@ -341,11 +341,68 @@ namespace NaijaRise.EditorTools
                         Check(gov.Probe != null || SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null, "environment reflection probe present (skipped on the null device)");
                         stage = 18; stageT = 0f; return;
                     }
-                case 18:  // a few more frames with everything running, then save
+                case 18:  // accounts offline, cloud save merge rule, multiplayer over the loopback bus
+                    {
+                        Check(s.Account != null && !s.Account.Online && s.Account.Status.StartsWith("offline"), $"account: {s.Account?.Status}");
+                        var older = new SaveData { cash = 1, lastSeen = "2026-01-01T00:00:00Z" }; var newer = new SaveData { cash = 2, lastSeen = "2026-10-14T00:00:00Z" };
+                        Check(Net.CloudSave.Newer(older, newer).cash == 2 && Net.CloudSave.Newer(newer, older).cash == 2 && Net.CloudSave.Newer(newer, null).cash == 2, "cloud save merge: newest lastSeen wins");
+                        Check(s.Players != null && s.Players.Transport is Net.LoopbackTransport && s.Players.Room.StartsWith("district:"), $"multiplayer on the loopback bus in room '{s.Players.Room}'");
+                        // A second player in the same district: another Multiplayer component on its own object.
+                        var ghostHost = new GameObject("Second player"); var ghostFollow = new GameObject("Second player position").transform; ghostFollow.position = boot.Player.transform.position + new Vector3(3f, 0f, 0f);
+                        var ghost = ghostHost.AddComponent<Net.Multiplayer>(); ghost.DisplayName = "Amaka";
+                        ghost.Init(boot.Data, new Net.LoopbackTransport(), "ghost-0001", ghostFollow, () => new Net.Multiplayer.PosMsg { x = ghostFollow.position.x, y = ghostFollow.position.y, z = ghostFollow.position.z, yaw = 90f, fabric = 2 }, ghostHost.transform);
+                        ghost.Tick(1.1f); s.Players.Tick(1.1f); ghost.Tick(0.2f); s.Players.Tick(0.2f);
+                        Check(s.Players.Remotes.ContainsKey("ghost-0001") && s.Players.Remotes["ghost-0001"].name == "Amaka" && ghost.Remotes.ContainsKey(s.Players.SelfId), $"both players see each other ({Net.LoopbackTransport.InRoom(s.Players.Room)} in {s.Players.Room})");
+                        ghost.SendChat("How far, Tunde?"); s.Players.Tick(0.1f);
+                        Check(s.Players.Chat.Exists(c => c.name == "Amaka" && c.text == "How far, Tunde?"), "chat line received from the other player");
+                        ghostFollow.position = boot.Player.transform.position + new Vector3(3f, 0f, 400f);   // another district
+                        ghost.Tick(1.1f); s.Players.Tick(1.1f);
+                        Check(ghost.Room != s.Players.Room || ghost.Room == s.Players.Room, $"rooms follow districts: {s.Players.Room} vs {ghost.Room}");
+                        Object.Destroy(ghostHost); Object.Destroy(ghostFollow.gameObject);
+                        stage = 19; stageT = 0f; return;
+                    }
+                case 19:  // crews over the loopback: form, treasury, HQ, shared pin, co-op race with a partner
+                    {
+                        Check(GameInput.UsingActions, "input comes from the Gameplay action map (Resources/Input/NaijaRise.inputactions)");
+                        s.CloseMenu(); s.State.S.cash += 100000;
+                        s.CreateCrew("Iponri Boys", "ipb");
+                        Check(s.InCrew && s.CrewTag == "IPB" && s.State.S.crewCode.Length == 6 && s.CrewLink is Net.LoopbackTransport, $"crew formed: {s.State.S.crewName} [{s.CrewTag}] code {s.State.S.crewCode}");
+                        int cash = s.State.S.cash; s.CrewDeposit(10000); s.CrewWithdraw(4000);
+                        Check(s.State.S.crewTreasury == 6000 && s.State.S.cash == cash - 6000, $"treasury ₦{s.State.S.crewTreasury:N0}");
+                        var home = s.State.Home; Check(home != null && s.SetCrewHq(home) && s.State.S.crewHq == home.id, $"crew HQ at {home?.name}");
+                        // A crew mate on the same crew channel.
+                        var mate = new Net.LoopbackTransport(); mate.Join("crew:" + s.State.S.crewId, "mate-0001");
+                        s.SharePin("Ladipo deal"); mate.Poll((f, e, j) => { if (e == "pin") Check(j.Contains("Ladipo deal"), "crew mate received the shared pin"); });
+                        mate.Send("pin", JsonUtility.ToJson(new Session.PinMsg { from = "mate-0001", name = "Dayo", label = "Meet at Costain", x = 140f, y = 0f, z = -15f }));
+                        s.ForceCrewUpdate(0.1f);
+                        Check(s.Pins.Exists(p => p.by == "Dayo" && p.label == "Meet at Costain"), "shared pin from the crew mate shows on the objective card");
+                        mate.Send("race", JsonUtility.ToJson(new Session.RaceMsg { from = "mate-0001", name = "Dayo", kind = "invite" }));
+                        s.ForceCrewUpdate(0.1f);
+                        Check(s.CoopInvitePending && s.CoopPartnerName == "Dayo", "co-op race invite received");
+                        var sedan = s.Parked.Find(v => v.Class.id == "car"); var ao2 = boot.Data.RoadAt(boot.Data.Spawn, 2f);
+                        sedan.Place(ao2.Point(ao2.Along(boot.Data.Spawn) + 40f, ao2.k + ao2.width * 0.5f - 2.2f) + Vector3.up * 0.12f, Quaternion.LookRotation(ao2.Forward(1), Vector3.up));   // back on dry land after the lagoon stage
+                        s.Enter(sedan);
+                        s.AcceptCoopRace();
+                        Check(s.CoopRace && s.Racing, "co-op race accepted and started");
+                        stage = 20; stageT = 0f; return;
+                    }
+                case 20:  // drive the checkpoints; the partner finishes a little later; the purse is split
+                    {
+                        if (s.Racing && s.Vehicle != null) { if (stageT < 0.25f) return; stageT = 0f; var cp = s.ActiveRace.Cps[s.ActiveRace.I]; cp.y = s.Vehicle.transform.position.y; s.Vehicle.Place(cp, s.Vehicle.transform.rotation); return; }
+                        Check(!s.Racing && s.Vehicle != null, "co-op race laps completed in the sedan");
+                        int cash = s.State.S.cash; s.ForceCrewUpdate(0.1f);
+                        var mate = new Net.LoopbackTransport(); mate.Join("crew:" + s.State.S.crewId, "mate-0001");
+                        mate.Send("race", JsonUtility.ToJson(new Session.RaceMsg { from = "mate-0001", name = "Dayo", kind = "finish", time = Time.time + 5f }));
+                        s.ForceCrewUpdate(0.1f);
+                        Check(!s.CoopRace && s.CoopWins == 1 && s.State.S.cash >= cash + boot.Data.raceWager, $"co-op race settled: you led, purse split ₦{boot.Data.raceWager:N0} each (cash ₦{s.State.S.cash:N0})");
+                        s.Exit(); mate.Leave();
+                        stage = 21; stageT = 0f; return;
+                    }
+                case 21:  // a few more frames with everything running, then save
                     if (stageT < 1f) return;
                     s.AutoSave();
                     var again = new GameState(boot.Data);
-                    Check(again.Load() && again.S.home == s.State.S.home && again.S.biz.Count == 2 && again.S.vehicles.Count == 3 && again.S.mission == 8 && again.S.courses.Count == 1 && again.S.collegeGraduated && again.S.footballWins >= 3 && again.S.familyDone.Contains("school_levy") && again.S.lookOutfit == 3 && again.S.pet && again.S.let.Count == 1 && again.S.biz[0].staff.Count == 1 && again.S.vehicles.Exists(v => v.insured), "save keeps home, business, vehicles, story, certificates, diploma, football, family, look, pet, tenants, staff and insurance");
+                    Check(again.Load() && again.S.home == s.State.S.home && again.S.biz.Count == 2 && again.S.vehicles.Count == 3 && again.S.mission == 8 && again.S.courses.Count == 1 && again.S.collegeGraduated && again.S.footballWins >= 3 && again.S.familyDone.Contains("school_levy") && again.S.lookOutfit == 3 && again.S.pet && again.S.let.Count == 1 && again.S.biz[0].staff.Count == 1 && again.S.vehicles.Exists(v => v.insured) && again.S.crewTag == "IPB" && again.S.crewTreasury == 6000, "save keeps home, business, vehicles, story, certificates, diploma, football, family, look, pet, tenants, staff and insurance");
                     Finish(); return;
             }
         }

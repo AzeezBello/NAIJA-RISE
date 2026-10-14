@@ -12,8 +12,8 @@ namespace NaijaRise.World
 
         Light sun;
         Material lampHead;
-        public Weather Weather;
-        public Events Events;
+        [System.NonSerialized] public Weather Weather;
+        [System.NonSerialized] public Events Events;
         static readonly Color NightAmbient = new Color(0.10f, 0.12f, 0.20f), DayAmbient = new Color(0.56f, 0.58f, 0.62f);
         static readonly Color NightFog = new Color(0.07f, 0.09f, 0.14f), DayFog = new Color(0.78f, 0.80f, 0.82f);
         static readonly Color LowSun = new Color(1f, 0.62f, 0.36f), NoonSun = new Color(1f, 0.97f, 0.92f), Moon = new Color(0.55f, 0.65f, 0.9f);
