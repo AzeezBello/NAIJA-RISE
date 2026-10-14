@@ -13,8 +13,8 @@ Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFa
 |---|---|
 | Compile | clean, no warnings |
 | Smoke test (edit mode) | passes: 85 roads, 120 landmarks, about 6,000 objects in under a second; every job and contact resolves; mirror correct |
-| Play test (play mode) | passes, 52 checks across the whole loop, see "Headless" below |
-| macOS build | `Builds/NaijaRise-Lagos.app`, about 314 MB with the stadium, tree and character models |
+| Play test (play mode) | passes, 68 checks across the whole loop, see "Headless" below |
+| macOS build | `Builds/NaijaRise-Lagos.app`, about 350 MB with the stadium, tree, character and animal models |
 | WebGL build | menu item exists, not yet exercised |
 | Open in editor | no errors; the serialization and deprecation analyzers are quiet |
 
@@ -93,6 +93,41 @@ checkpoint, pedestrian hits. At Heat 3 two police cars give chase with flashing 
 (heat × ₦5,000, 60 % works) or are booked at Area C (heat × ₦15,000). Heat 4 drops army roadblocks; ten seconds at
 your own gate while wanted drops heat to 2.
 
+**Phone** (`Scripts/Session.Phone.cs`). P, Tab or the pad's Select opens the smartphone from `ui/phone.js` as pages of
+the choice card: Messages, Jobs (every job with its pay and what still locks it), RiseBank (deposits and withdrawals),
+Property and Businesses (from Level 2), Character (skills, reputation, certificates, and the look editor: fabric, skin
+tone, trousers, hair colour, cap; face, body type, hair style and facial hair are stored for the rig that will show
+them), Contacts, Inventory and Settings (three graphics levels through URP's render scale and shadow range, the
+cinematic look on or off, save now, new game).
+
+**Hubs, schools, football** (`Scripts/Session.Hustle.cs`). The twelve district hustle hubs from `places.js` (Egbon
+Adugbo in Surulere, the Ikoyi merchant, the Lekki keeper, the Ikorodu trader, Oga Chidi at Computer Village, the
+Osoanya commission agents of Balogun, Yaba and Computer Village, Sisi Kemi in AJ City, Mama Sade at Makoko, Aunty
+Bisi at the Shrine, Tayo at Kalakuta) offer repeatable timed deliveries along the GPS that pay cash, reputation and
+XP. Community Grammar School runs the evening adult class; Yaba Tech enrols you in the Computer Systems diploma, three
+paid semesters that graduate into the IT Support Technician job. Street football with Captain Tunde now climbs the three
+tiers: quick match on a wager, the neighbourhood tournament after three wins, the Lagos championship.
+
+**Weather and animals** (`Scripts/World/Weather.cs`, `AnimalSystem.cs`). A 15 % chance every minute of two to five
+minutes of rain: a particle curtain around the camera, darker light, wet roads that cut grip, braking and steering to
+70 % (as `movement.js` does), a storm variant, and harmattan haze on days 7 to 9 of every ten. Goats around the
+markets, chickens by the compounds, stray cats, and two stray dogs on the rigged dog model with its walk and idle clips,
+all wandering their patch.
+
+**Family and relationships** (`Scripts/Session.Family.cs`, `Session.Relations.cs`). Mama Tunde and Chioma follow
+their day plans from `family.js` between the compound yard and door, the market edge and the school gate. Household
+needs drift down each day and raise requests (chop money, a visit, suya or sachet water from a kiosk, the school levy);
+completing them restores the need, bonds the family (Strained to Unshakable) and pays XP and social reputation. Every
+contact carries trust and respect, moved by one greeting and one work chat a day, with tiers stranger, known, friend and
+close that change the greeting line and the tips they give; the Contacts app shows them.
+
+**The look on the rig** (`Scripts/Entities/CharacterRig.cs`). All eleven slots now show: fabric print, skin tone,
+trousers, hair colour, body type (Slim, Average, Big widen or narrow the rig), hair style (Bald hides the hair, Afro
+puffs it), facial hair (the beard renderer), accessory (fila or face cap on the headwear, glasses on the head bone, a
+gold chain at the neck) and the outfit silhouette (senator kaftan, agbada, gown, skirt and buba as fabric-printed
+overlays on the hips bone). Face shape is stored; the avatar has one face. The HUD carries a live portrait rendered from
+a camera on the player's head.
+
 **Traffic** (`Scripts/World/TrafficSystem.cs`). 110 danfos, kekes, koropes, okadas, cars, police, LAWMA and tanker
 trucks in lanes on the right, keeping distance, braking for you, slowing at rush hour on bridges and highways.
 
@@ -115,6 +150,7 @@ Open `unity/` in Unity Hub (editor 6000.6.5f1), open `Assets/NaijaRise/Scenes/La
 | Shift, Square (X) | sprint | boost |
 | Space, Triangle (Y) | jump | handbrake (Space, Circle) |
 | E, Cross (A) | talk, enter, take, buy, deliver | exit, deliver, refuel (when stopped) |
+| P, Tab, Select | phone | phone |
 | X, Backspace, Circle (B) | close a menu | |
 | 1–5 | pick a menu option | |
 | Mouse, right stick, Z / C | look | look |
@@ -144,18 +180,17 @@ tree count, and a Kenney sedan scaled to its class length with four wheels. The 
 mode, boots the game and plays through the loop: The First Run with Baba K (taking the clean path), a shift, buying a
 sedan from Dayo and driving it, renting a room and sleeping, buying the kiosk and collecting a pay cycle, a danfo ride,
 pursuit and arrest at Heat 3, delivering the documents to Amaka, the Cold Chain task along the GPS, learning web design
-and unlocking Web Freelancer, cardio at the gym, jollof, a race against Speedy, then save and reload. It exits the editor
+and unlocking Web Freelancer, cardio at the gym, jollof, a race against Speedy, the phone and a bank deposit, rain, the
+Yaba Tech diploma unlocking IT Support, a Surulere hub delivery, three football wins opening the tournament, the
+animals, a family request and bond, relationship tiers, the look slots on the rig, then save and reload. It exits the editor
 with 0 on success (no `-quit`: it quits itself). Both are CI-ready.
 
 ## Not here yet
 
-- The rest of the eleven customisation slots (face, body type, hair style, facial hair, glasses and chain) and the
-  Character app to edit them; the outfit silhouettes (senator, agbada, gown) on the rig; animals (the dog and cat GLBs).
-- Yaba Tech and the school evening class; family and relationships; the phone and its apps; weather; the AJ City
-  errand and the hustle-hub side missions; the football tournament tiers.
-- Insurance, liveries and danfo slogans; go-slow incidents and road-construction diversions; tenants and property
-  upgrades; business staff, shifts and the rival trader; animals, uniforms and agberos.
-- Graphics quality profiles and dynamic resolution (URP's render scale is the hook), environment reflections.
+- The romance system and the agbero / uniformed service NPCs; the pet dog that keeps agberos away.
+- Tenants and property upgrades; business staff, shifts and the rival trader; insurance, liveries and danfo slogans.
+- Go-slow incidents, road-construction diversions and the storm flood at the Ojuelegba underpass.
+- Dynamic resolution and the automatic quality step-down (the three manual levels are in Settings).
 - Water is walkable (a flat plane with a collider). Pedestrians have no colliders.
 
 ## How to judge it (the roadmap's question)
@@ -169,6 +204,6 @@ Measure, then decide. Suggested checks against the web build on the same machine
 3. Controller feel on the same PlayStation pad; the Input System's action maps are the path to native console bindings.
 4. Build output: the macOS app's size and startup time, and a WebGL build for parity with the Vercel deployment.
 
-If Unity wins on 1 and 3, the remaining port is: the Character app and outfit silhouettes, the phone, family and
-education extras, quality profiles, console action maps. If it does not, the slice has still produced a JSON export of the whole game
+If Unity wins on 1 and 3, the remaining port is: tenants and business staff, go-slow incidents, automatic quality
+step-down, console action maps. If it does not, the slice has still produced a JSON export of the whole game
 data that other tools can use.

@@ -21,7 +21,7 @@ namespace NaijaRise
         public bool MissionActive => MissionAvailable && !State.S.storyPaused;
         public bool HasTask => !string.IsNullOrEmpty(State.S.taskType);
 
-        public string ObjectiveTitle => HasTask ? Missions.All[Mathf.Clamp(State.S.taskMission, 0, Missions.All.Count - 1)].Title : MissionAvailable ? CurrentMission.Title : State.S.done ? "Lagos is yours" : "Free roam";
+        public string ObjectiveTitle => HasTask && State.S.taskMission < 0 ? "Side mission" : HasTask ? Missions.All[Mathf.Clamp(State.S.taskMission, 0, Missions.All.Count - 1)].Title : MissionAvailable ? CurrentMission.Title : State.S.done ? "Lagos is yours" : "Free roam";
         public string ObjectiveText => Racing ? RaceStatus : HasTask ? State.S.taskObj : State.S.storyPaused ? "Story paused — talk to " + Data.ContactName(CurrentMission.Who) + " to resume" : MissionAvailable ? CurrentMission.Objective(this) : State.S.done ? "Build your empire: jobs, property, business." : "";
 
         // Where the GPS points: the task destination, else the mission contact.
@@ -140,6 +140,12 @@ namespace NaijaRise
         public void FinishTask(bool ok)
         {
             var st = State.S;
+            if (st.taskMission < 0)
+            {
+                if (!string.IsNullOrEmpty(st.taskItem)) State.RemoveItem(st.taskItem);
+                st.taskType = ""; st.taskDest = ""; st.taskItem = ""; st.taskObj = "";
+                FinishRun(ok); RefreshNav(); return;
+            }
             var m = Missions.All[Mathf.Clamp(st.taskMission, 0, Missions.All.Count - 1)];
             if (!string.IsNullOrEmpty(st.taskItem)) State.RemoveItem(st.taskItem);
             st.taskType = ""; st.taskDest = ""; st.taskItem = ""; st.taskObj = "";

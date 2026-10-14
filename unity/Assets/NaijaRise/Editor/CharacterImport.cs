@@ -65,6 +65,20 @@ namespace NaijaRise.EditorTools
                 made++;
                 Debug.Log($"NAIJA RISE: {outPath} ← CesiumMan.glb: {cesiumSrc.length:0.00} s");
             }
+            // The stray dog's walk and idle clips, as legacy clips on their own hierarchy.
+            const string dog = "Assets/NaijaRise/Resources/Models/Animals/dog.glb";
+            foreach (var (clipName, key) in new[] { ("walk", "dog_walk"), ("iddle", "dog_idle") })
+            {
+                AnimationClip src = null;
+                foreach (var o in AssetDatabase.LoadAllAssetRepresentationsAtPath(dog)) if (o is AnimationClip c && c.name == clipName) { src = c; break; }
+                if (src == null) continue;
+                string outPath = $"{OutDir}/{key}.anim";
+                var dst = new AnimationClip { legacy = true, wrapMode = WrapMode.Loop, frameRate = src.frameRate, name = key };
+                foreach (var b in AnimationUtility.GetCurveBindings(src)) AnimationUtility.SetEditorCurve(dst, b, AnimationUtility.GetEditorCurve(src, b));
+                var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(outPath);
+                if (existing != null) { EditorUtility.CopySerialized(dst, existing); EditorUtility.SetDirty(existing); } else AssetDatabase.CreateAsset(dst, outPath);
+                made++;
+            }
             AssetDatabase.SaveAssets();
             Debug.Log($"NAIJA RISE: character assets prepared ({made} clips, {bones.Count} bones on the avatar)");
         }

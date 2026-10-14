@@ -58,6 +58,7 @@ namespace NaijaRise
         public static float Steer => Move.x;
         public static bool EscapePressed => (K != null && K.escapeKey.wasPressedThisFrame) || (G != null && G.startButton.wasPressedThisFrame);
         public static bool ClickPressed => M != null && M.leftButton.wasPressedThisFrame;
+        public static bool PhonePressed => (K != null && (K.pKey.wasPressedThisFrame || K.tabKey.wasPressedThisFrame)) || (G != null && G.selectButton.wasPressedThisFrame);
         // 1–5 on the keyboard for menu options, 0 when none was pressed this frame.
         public static int DigitPressed
         {

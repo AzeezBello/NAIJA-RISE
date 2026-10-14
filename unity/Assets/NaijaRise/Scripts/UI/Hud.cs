@@ -11,6 +11,7 @@ namespace NaijaRise.UI
     public class Hud : MonoBehaviour
     {
         WorldData data; DayNightCycle clock; Session session; Minimap minimap;
+        public Portrait Portrait;
         GUIStyle brand, title, body, small, prompt, cardStyle, barBg;
         Texture2D cardTex, white;
         float hintUntil;
@@ -69,7 +70,7 @@ namespace NaijaRise.UI
             // Top-right: clock, day, heat.
             GUILayout.BeginArea(new Rect(W - 238 * s, 16 * s, 220 * s, 96 * s), cardStyle);
             GUILayout.Label($"{clock.ClockText}  {(clock.IsNight ? "NIGHT" : "DAY")}", title);
-            GUILayout.Label($"Day {clock.Day}" + (st.heat > 0 ? $"   HEAT {new string('★', st.heat)}{new string('☆', 5 - st.heat)}" : ""), body);
+            GUILayout.Label($"Day {clock.Day}" + (session.Weather != null && session.Weather.Raining ? (session.Weather.Storm ? "  ·  STORM" : "  ·  RAIN") : session.Weather != null && session.Weather.Harmattan ? "  ·  HARMATTAN" : "") + (st.heat > 0 ? $"   HEAT {new string('★', st.heat)}{new string('☆', 5 - st.heat)}" : ""), body);
             GUILayout.EndArea();
 
             // Objective card above the minimap: mission title, objective, route distance, what you carry.
@@ -99,6 +100,12 @@ namespace NaijaRise.UI
             }
 
             // Bottom-right: money, level, XP (and speed / fuel while driving).
+            if (Portrait != null && Portrait.Texture != null)
+            {
+                var pr = new Rect(W - 318 * s - 92 * s, H - 172 * s, 84 * s, 84 * s);
+                GUI.Box(new Rect(pr.x - 3, pr.y - 3, pr.width + 6, pr.height + 6), GUIContent.none, barBg);
+                GUI.DrawTexture(pr, Portrait.Texture, ScaleMode.StretchToFill);
+            }
             GUILayout.BeginArea(new Rect(W - 318 * s, H - 172 * s, 300 * s, 156 * s), cardStyle);
             GUILayout.Label($"₦{st.cash:N0} cash", title);
             GUILayout.Label($"₦{st.bank:N0} RiseBank  ·  Level {st.level} {session.State.Title}", body);
@@ -114,7 +121,7 @@ namespace NaijaRise.UI
             if (!string.IsNullOrEmpty(session.Prompt) && session.ActiveMenu == null && session.Working == null)
                 GUI.Label(new Rect(cx, H - 70 * s, cw, 40 * s), $"[E]  {session.Prompt}", prompt);
             else if (Time.time < hintUntil && session.ActiveMenu == null && session.Working == null)
-                GUI.Label(new Rect(cx - 120 * s, H - 66 * s, cw + 240 * s, 32 * s), "WASD / left stick move  ·  Shift sprint  ·  Space jump  ·  Mouse or Z/C look  ·  E interact  ·  Esc frees the cursor", small);
+                GUI.Label(new Rect(cx - 120 * s, H - 66 * s, cw + 240 * s, 32 * s), "WASD / left stick move  ·  Shift sprint  ·  Space jump  ·  Mouse or Z/C look  ·  E interact  ·  P phone  ·  Esc frees the cursor", small);
 
             // Menu card (dialogue, agent, home, business, bus stop, kiosk, police).
             var menu = session.ActiveMenu;

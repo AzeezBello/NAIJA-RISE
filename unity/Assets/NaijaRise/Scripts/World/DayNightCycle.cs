@@ -12,6 +12,7 @@ namespace NaijaRise.World
 
         Light sun;
         Material lampHead;
+        public Weather Weather;
         static readonly Color NightAmbient = new Color(0.10f, 0.12f, 0.20f), DayAmbient = new Color(0.56f, 0.58f, 0.62f);
         static readonly Color NightFog = new Color(0.07f, 0.09f, 0.14f), DayFog = new Color(0.78f, 0.80f, 0.82f);
         static readonly Color LowSun = new Color(1f, 0.62f, 0.36f), NoonSun = new Color(1f, 0.97f, 0.92f), Moon = new Color(0.55f, 0.65f, 0.9f);
@@ -67,8 +68,9 @@ namespace NaijaRise.World
                 sun.intensity = 0.16f;
             }
             float t = Mathf.Clamp01(e * 1.4f + 0.15f);
-            RenderSettings.ambientLight = Color.Lerp(NightAmbient, DayAmbient, t);
-            RenderSettings.fogColor = Color.Lerp(NightFog, DayFog, t);
+            var ambient = Color.Lerp(NightAmbient, DayAmbient, t); var fog = Color.Lerp(NightFog, DayFog, t); float density = 0.0022f, intensity = sun.intensity;
+            if (Weather != null) Weather.Grade(ref ambient, ref fog, ref density, ref intensity);
+            RenderSettings.ambientLight = ambient; RenderSettings.fogColor = fog; RenderSettings.fogDensity = density; sun.intensity = intensity;
             if (lampHead != null) lampHead.SetColor("_EmissionColor", Color.Lerp(new Color(1f, 0.72f, 0.3f) * 2.4f, Color.black, Mathf.Clamp01(e * 3f + 0.3f)));
         }
     }

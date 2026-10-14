@@ -98,7 +98,7 @@ Exit criteria: two players see each other in one Surulere room, saves round-trip
 
 ## 2b. Unity edition — vertical slice (13 October 2026)
 
-The native-engine vertical slice that the Multi-Platform Technical Roadmap below asks for exists in [`unity/`](unity/README.md): Unity 6000.6.5f1, Universal Render Pipeline 17.6, Input System 1.19, glTFast 6.0.1 (the Built-in pipeline and the Input Manager are deprecated in Unity 6 and are not used). It was built in seven increments in one day and is verified headless: the C# compiles clean, an edit-mode smoke test builds the city from the exported data, a play-mode test plays through the whole loop, and a macOS player builds from the command line.
+The native-engine vertical slice that the Multi-Platform Technical Roadmap below asks for exists in [`unity/`](unity/README.md): Unity 6000.6.5f1, Universal Render Pipeline 17.6, Input System 1.19, glTFast 6.0.1 (the Built-in pipeline and the Input Manager are deprecated in Unity 6 and are not used). It was built in nine increments in one day and is verified headless: the C# compiles clean, an edit-mode smoke test builds the city from the exported data, a play-mode test plays through the whole loop, and a macOS player builds from the command line.
 
 | Increment | What it added |
 |---|---|
@@ -109,8 +109,10 @@ The native-engine vertical slice that the Multi-Platform Technical Roadmap below
 | 5 · Places | Gym, restaurants, mall and cinema, cyber café courses and certificates that unlock the gated jobs, freelance gigs, street football, Speedy's races (which now close both arcs) |
 | 6 · Real models | glTFast 6.0.1 with the Meshopt decoder; the Ready Player Me avatar with Idle / Walk / Run rebound onto its skeleton by an editor step, for the player, contacts and pedestrians; Kenney's Car Kit models for cars, police and trucks, scaled to class length with spinning wheels |
 | 7 · Wardrobe and landmarks | The procedural fabric prints from `wardrobe.js` on the clothing, saved looks with outfit and barber changes, CesiumMan as the second street body, the National Stadium model fitted to its footprint, about thirty trees from the vegetation GLBs |
+| 8 · Phone and the living city | The smartphone with nine apps (Messages, Jobs, RiseBank, Property, Businesses, Character with the look editor, Contacts, Inventory, Settings with three graphics levels), the twelve hustle hubs' timed deliveries, Community Grammar School and Yaba Tech, football tiers, rain and harmattan with wet handling, goats, chickens, cats and the rigged stray dog |
+| 9 · Family and the look | Mama Tunde and Chioma on their day plans with household needs and requests, family bonds, contact trust and respect with tiers, all eleven look slots visible on the rig (body type, hair style, facial hair, accessories, outfit silhouettes), the HUD portrait |
 
-Not ported: the Character app and the remaining customisation slots, animals, Yaba Tech and the school class, family and relationships, the phone apps, weather, insurance and liveries, the hustle-hub side missions, go-slow incidents, tenants and upgrades, business staff and the rival trader.
+Not ported: romance, agberos and uniformed NPCs, insurance and liveries, go-slow incidents and the flood, tenants and upgrades, business staff and the rival trader.
 
 The roadmap's recommendation stands: measure this slice against the web build (frame time at Eko Bridge at 20:00, controller feel, time-to-add-a-district, build size) before deciding on a migration. The checks and the remaining port order are in `unity/README.md`. The machine this was built on is an Intel Mac; Unity has announced that 6.7 LTS is the last editor for Intel, so a production Unity edition would need Apple Silicon hardware before upgrading past it.
 

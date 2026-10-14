@@ -218,11 +218,55 @@ namespace NaijaRise.EditorTools
                         s.Vehicle.Place(cp, s.Vehicle.transform.rotation);
                         return;
                     }
-                case 11:  // a few more frames with everything running, then save
+                case 11:  // phone, bank, weather, Yaba Tech, hub run, football tiers, animals
+                    {
+                        s.OpenPhone();
+                        Check(s.PhoneOpen && s.ActiveMenu != null && s.ActiveMenu.Options.Count == 10, "phone opens with nine apps");
+                        int cash = s.State.S.cash, bank = s.State.S.bank; s.Choose(2); s.Choose(0);   // RiseBank → deposit ₦10,000
+                        Check(s.State.S.cash == cash - 10000 && s.State.S.bank == bank + 10000, $"bank deposit: cash ₦{s.State.S.cash:N0}, bank ₦{s.State.S.bank:N0}");
+                        s.CloseMenu(); s.PhoneOpen = false;
+                        var weather = boot.GetComponent<World.Weather>(); weather.StartRain(2f, false);
+                        Check(weather.Raining && Mathf.Approximately(weather.Wet, 0.7f), "rain started: wet roads");
+                        weather.StopRain();
+                        s.State.S.cash = 2000000; s.State.S.stamina = 100f;
+                        Check(s.Enrol() && s.State.S.collegeSemester == 0, "enrolled at Yaba Tech");
+                        for (int i = 0; i < boot.Data.school.semesters; i++) { s.State.S.stamina = 100f; s.StudySemester(); }
+                        var it = System.Array.Find(boot.Data.jobs, j => j.id == "it-support"); if (it != null) s.State.S.skills.business = Mathf.Max(s.State.S.skills.business, it.min);
+                        Check(s.State.S.collegeGraduated && it != null && s.State.CanTake(it), "Yaba Tech diploma unlocks IT Support Technician");
+                        World.ContactSystem.Contact egbon = null; foreach (var c in s.Contacts.Contacts) if (c.data.id == "egbon") egbon = c;
+                        Check(egbon != null && Session.Hubs.ContainsKey("egbon"), "Egbon Adugbo runs the Surulere hub");
+                        if (egbon != null) { s.StartRun(egbon, Session.Hubs["egbon"].runs[0]); Check(s.HasTask && s.State.Has("phone_parts") && s.ObjectiveTitle == "Side mission", $"hub run started: '{s.ObjectiveText}'"); cash = s.State.S.cash; s.FinishTask(true); Check(!s.HasTask && s.State.S.cash == cash + 18000, "parts crate delivered · +₦18,000"); }
+                        s.State.S.skills.fitness = 200f; s.State.S.stamina = 100f; int wins = s.State.S.footballWins;
+                        s.PlayMatch(0, true); s.State.S.stamina = 100f; s.PlayMatch(0, true); s.State.S.stamina = 100f; s.PlayMatch(0, true);
+                        Check(s.State.S.footballWins == wins + 3 && s.State.S.footballTier >= 1, $"three wins open the neighbourhood tournament (tier {s.State.S.footballTier})");
+                        var animals = boot.GetComponent<World.AnimalSystem>();
+                        Check(animals != null && animals.Count >= 13 && animals.Dogs == 2, $"animals roaming ({animals?.Count}, {animals?.Dogs} dogs on the rig)");
+                        stage = 12; stageT = 0f; return;
+                    }
+                case 12:  // family, relationships, look slots, portrait
+                    {
+                        var mum = s.Contacts.Get("mum"); var chioma = s.Contacts.Get("sibling");
+                        Check(mum != null && chioma != null, $"family at the compound: Mama Tunde ({s.FamilyActivity("mum")}), Chioma ({s.FamilyActivity("sibling")})");
+                        s.IssueFamilyRequest("school_levy"); var req = s.ActiveFamilyRequest; float bond = s.State.Family("sibling").score; int cash = s.State.S.cash + s.State.S.bank;
+                        Check(req != null && req.who == "sibling" && req.amount == 8000, $"request raised: {req?.title}");
+                        s.State.Pay(req.amount); s.CompleteRequest(req);
+                        Check(s.ActiveFamilyRequest == null && s.State.Family("sibling").score > bond && s.State.S.familyDone.Contains("school_levy") && s.State.S.cash + s.State.S.bank == cash - 8000, $"school levy paid: Chioma bond {s.FamilyLabel("sibling")}");
+                        var dayo = s.Contacts.Get("dayo"); string tier = s.State.RelTier("dayo");
+                        s.State.BumpRel("dayo", 30f, 30f);
+                        Check(tier == "stranger" && s.State.RelTier("dayo") == "friend", $"relationship tiers: Dayo stranger → {s.State.RelTier("dayo")}");
+                        s.State.S.lookHairStyle = 4; s.State.S.lookOutfit = 3; s.State.S.lookBody = 2; s.State.S.lookAccessory = 3; boot.Player.ApplyLook(s.State.Look);
+                        var rigRoot = boot.Player.transform.Find("Rig");
+                        bool hairHidden = true; foreach (var r in rigRoot.GetComponentsInChildren<Renderer>(true)) if (r.sharedMaterial != null && r.sharedMaterial.name.Contains("Hair") && r.enabled) hairHidden = false;
+                        var overlay = Entities.CharacterRig.Find(rigRoot, "Outfit overlay"); var glasses = Entities.CharacterRig.Find(rigRoot, "Glasses");
+                        Check(hairHidden && overlay != null && overlay.gameObject.activeSelf && glasses != null && glasses.gameObject.activeSelf && rigRoot.localScale.x > rigRoot.localScale.y * 1.05f, $"look slots on the rig: bald {hairHidden}, agbada overlay {overlay?.gameObject.activeSelf}, glasses {glasses?.gameObject.activeSelf}, big build x/y {rigRoot.localScale.x / rigRoot.localScale.y:0.00}");
+                        Check(boot.GetComponent<UI.Portrait>() != null, "portrait camera present (no render target on the null device)");
+                        stage = 13; stageT = 0f; return;
+                    }
+                case 13:  // a few more frames with everything running, then save
                     if (stageT < 1f) return;
                     s.AutoSave();
                     var again = new GameState(boot.Data);
-                    Check(again.Load() && again.S.home == s.State.S.home && again.S.biz.Count == 1 && again.S.vehicles.Count == 2 && again.S.mission == 8 && again.S.courses.Count == 1, "save keeps home, business, vehicles, story and certificates");
+                    Check(again.Load() && again.S.home == s.State.S.home && again.S.biz.Count == 1 && again.S.vehicles.Count == 2 && again.S.mission == 8 && again.S.courses.Count == 1 && again.S.collegeGraduated && again.S.footballWins >= 3 && again.S.familyDone.Contains("school_levy") && again.S.lookOutfit == 3, "save keeps home, business, vehicles, story, certificates, diploma, football, family and look");
                     Finish(); return;
             }
         }

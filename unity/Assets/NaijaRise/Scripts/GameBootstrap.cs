@@ -77,11 +77,25 @@ namespace NaijaRise
             nav.Init(Data, Builder.Root);
             Session.Nav = nav;
 
+            var weather = gameObject.AddComponent<Weather>();
+            weather.Init(Data, Clock, cam.transform);
+            weather.Notify = t => state.Toast("Weather · " + t);
+            Clock.Weather = weather; Session.Weather = weather;
+
+            var animals = gameObject.AddComponent<AnimalSystem>();
+            animals.Init(Data, Builder.Root);
+
+            Session.ApplyQuality();
+
             var minimap = gameObject.AddComponent<Minimap>();
             minimap.Init(Player.transform);
 
+            var portrait = gameObject.AddComponent<Portrait>();
+            portrait.Init(Player.transform);
+
             var hud = gameObject.AddComponent<Hud>();
             hud.Init(Data, Clock, Session, minimap);
+            hud.Portrait = portrait;
 
             state.Toast(restored ? $"Welcome back to Lagos · Day {state.S.day}" : "Welcome to Lagos. Baba K dey wait for you at Ojuelegba.");
             Debug.Log($"NAIJA RISE — {Data.meta.name} {Data.meta.version}: {Data.roads.Length} roads, {Data.landmarks.Length} landmarks, {Builder.ObjectCount} world objects ({Builder.StadiumModels} stadium models, {Builder.Trees} trees), {lights.Count} lit junctions, {contacts.Contacts.Count} contacts, save {(restored ? "restored" : "new")}.");

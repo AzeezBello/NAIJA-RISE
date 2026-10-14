@@ -14,6 +14,8 @@ namespace NaijaRise
             var m = new Menu { Title = "POS Agent", Subtitle = "Roadside kiosk", Line = "Transfer or withdrawal? Network dey." };
             m.Options.Add(new MenuOption { Label = $"Pure water · ₦{Data.meta.priceWater:N0}  (stamina +20)", Action = () => { if (State.Pay(Data.meta.priceWater)) { State.S.stamina = Mathf.Min(100f, State.S.stamina + 20f); State.Toast("Pure water · cold one"); } else State.Toast("No money"); } });
             m.Options.Add(new MenuOption { Label = $"Suya · ₦{Data.meta.priceSuya:N0}  (stamina +40, health +10)", Action = () => { if (State.Pay(Data.meta.priceSuya)) { State.S.stamina = Mathf.Min(100f, State.S.stamina + 40f); State.S.health = Mathf.Min(100f, State.S.health + 10f); State.Toast("Suya · pepper dey"); } else State.Toast("No money"); } });
+            m.Options.Add(new MenuOption { Label = $"Sachet water to carry · ₦{Data.meta.priceWater:N0}", Action = () => { if (State.Pay(Data.meta.priceWater)) { State.AddItem("water"); State.Toast("Pure water in your bag"); } else State.Toast("No money"); } });
+            m.Options.Add(new MenuOption { Label = $"Suya to carry · ₦{Data.meta.priceSuya:N0}", Action = () => { if (State.Pay(Data.meta.priceSuya)) { State.AddItem("suya"); State.Toast("Suya wrapped for the road"); } else State.Toast("No money"); } });
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(m);
         }
