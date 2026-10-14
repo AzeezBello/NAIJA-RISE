@@ -15,6 +15,8 @@ namespace NaijaRise.World
         class Ped { public Transform t; public RigInstance rig; public RoadData road; public int side, dir; public float along, speed, phase; }
         public int RiggedCount { get; private set; }
         public int CesiumCount { get; private set; }
+        public int Alive => peds.Count;
+        public int BodyColliders { get { int n = 0; foreach (var p in peds) if (p.t.GetComponent<CapsuleCollider>() != null) n++; return n; } }
 
         WorldData data;
         Transform player, root;
@@ -38,6 +40,9 @@ namespace NaijaRise.World
             rig = null;
             var go = new GameObject("Pedestrian");
             go.transform.SetParent(root, false);
+            // A body to bump into: kinematic so the simulation keeps moving them by transform.
+            var col = go.AddComponent<CapsuleCollider>(); col.center = new Vector3(0f, 0.9f, 0f); col.radius = 0.3f; col.height = 1.75f;
+            var rb = go.AddComponent<Rigidbody>(); rb.isKinematic = true; rb.useGravity = false;
             // The street draws random outfits, fabrics, skin tones, heights and caps so no two pedestrians look alike.
             int fabric = data.fabrics.Length > 0 ? rng.Next(data.fabrics.Length) : 0;
             Color top = data.fabrics.Length > 0 ? Mannequin.Hex(data.fabrics[fabric].baseColor) : new Color(0.8f, 0.4f, 0.2f);

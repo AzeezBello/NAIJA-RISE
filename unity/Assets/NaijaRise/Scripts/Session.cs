@@ -20,13 +20,16 @@ namespace NaijaRise
         [System.NonSerialized] public JobData Working; [System.NonSerialized] public float WorkT, WorkDuration;   // shift in progress (real seconds)
         [System.NonSerialized] public readonly System.Collections.Generic.List<VehicleController> Parked = new System.Collections.Generic.List<VehicleController>();
 
-        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Gate, Home, Business, BusStop, Deliver, Place }
+        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Gate, Home, Business, BusStop, Deliver, Place, Hustler }
         Target target; ContactSystem.Contact targetContact; VehicleController targetVehicle; TrafficSystem.Vehicle targetTraffic; Vector3 targetKiosk;
         PropertyData targetProperty; BusinessData targetBusiness; BusStopData targetStop;
         float saveT, heatT = 45f;
+        bool sinking;
 
         [System.NonSerialized] public TrafficLights Lights;
         [System.NonSerialized] public Weather Weather;
+        [System.NonSerialized] public Events Events;
+        [System.NonSerialized] public World.QualityGovernor Governor;
         int lastDay;
 
         public void Init(WorldData data, GameState state, DayNightCycle clock, PlayerController player, ThirdPersonCamera camera, TrafficSystem traffic, ContactSystem contacts, TrafficLights lights)
@@ -64,6 +67,7 @@ namespace NaijaRise
             UpdateTask(dt);
             UpdateRace(dt);
             UpdateFamily(dt);
+            UpdateStreet();
             if (Nav != null) { Nav.Target = ObjectivePosition; Nav.Tick(Focus.position); }
             Contacts.SetArrow(!HasTask && MissionActive ? CurrentMission.Who : null);
 
@@ -87,7 +91,7 @@ namespace NaijaRise
             else
             {
                 bool sprinting = Player.IsRunning && Player.Speed01 > 0.6f;
-                float recovery = 10f + Mathf.Min(5f, s.skills.fitness * 0.05f);
+                float recovery = (10f + Mathf.Min(5f, s.skills.fitness * 0.05f)) * (State.HomeHas("tank") ? 1.25f : 1f);
                 float sprintCost = 16f * (1f - Mathf.Min(0.25f, s.skills.strength * 0.0025f));
                 s.stamina = Mathf.Clamp(s.stamina + (sprinting ? -sprintCost : recovery) * dt, 0f, 100f);
                 if (sprinting) State.GainSkill("fitness", dt * 0.05f);
@@ -95,11 +99,19 @@ namespace NaijaRise
             }
         }
 
+        public void ForceOnFootUpdate() { if (Vehicle == null) UpdateOnFoot(); }
+
+        public bool InWaterOffDeck(Vector3 pos) => Data.InWater(pos) && Data.DeckHeightAt(pos) < 0.05f;
+
         // ---- on foot ----
         void UpdateOnFoot()
         {
             Player.InputEnabled = true;
             var pos = Player.transform.position;
+            bool swimming = InWaterOffDeck(pos);
+            if (swimming && !Player.Swimming) State.Toast("You are in the lagoon — swim back to land");
+            Player.Swimming = swimming;
+            if (swimming) { Player.CanSprint = false; Prompt = null; target = Target.None; return; }
             target = Target.None; Prompt = null;
 
             targetVehicle = null; float best = 3.6f;
@@ -119,6 +131,7 @@ namespace NaijaRise
             else if (targetTraffic != null && targetTraffic.speed < 1f) { target = Target.TrafficVehicle; Prompt = $"TAKE {targetTraffic.cls.name.ToUpper()}"; }
             else if (targetStop != null) { target = Target.BusStop; Prompt = $"TAKE DANFO FROM {targetStop.shortName}"; }
             else if (NearKiosk(pos, out targetKiosk)) { target = Target.Kiosk; Prompt = "POS KIOSK · PURE WATER, SUYA"; }
+            else if (Street != null && (targetHustler = Street.NearestNightlife(pos, 3.5f)) != null) { target = Target.Hustler; Prompt = $"TALK TO {targetHustler.Value.name.ToUpper()}"; }
 
             if (!Interact()) return;
             switch (target)
@@ -133,6 +146,7 @@ namespace NaijaRise
                 case Target.Place: OpenPlaceMenu(targetPlace); break;
                 case Target.BusStop: OpenTransitMenu(targetStop); break;
                 case Target.Kiosk: OpenKioskMenu(); break;
+                case Target.Hustler: if (targetHustler.HasValue) OpenHustlerMenu(targetHustler.Value); break;
             }
         }
 
@@ -177,6 +191,7 @@ namespace NaijaRise
                 var job = j;
                 menu.Options.Add(new MenuOption { Label = ok ? $"Work shift — {j.title} · ₦{State.JobPay(j):N0} · {j.dur}h" : $"{j.title} ({why})", Enabled = ok, Action = () => StartShift(job) });
             }
+            AddDogOption(menu, c);
             AddRelationshipOptions(menu, c);
             menu.Options.Add(new MenuOption { Label = "Not now — I go find another hustle", Action = () => State.Toast("The story can wait. Jobs, courses, the gym and business dey.") });
             OpenMenu(menu);
@@ -233,7 +248,15 @@ namespace NaijaRise
             float h = GameInput.Steer, gas = GameInput.Gas, brake = GameInput.Brake;
             bool boost = GameInput.Sprint, hand = GameInput.Handbrake;
             if (ScriptedInput) { gas = ScriptGas; brake = ScriptBrake; h = ScriptSteer; boost = false; hand = false; }
-            Vehicle.Wet = Weather != null ? Weather.Wet : 1f;
+            Vehicle.Wet = (Weather != null ? Weather.Wet : 1f) * (Events != null && Events.FloodedAt(Vehicle.transform.position) ? 0.45f : 1f);
+            // Into the lagoon: the engine dies, the vehicle settles and you swim out.
+            if (InWaterOffDeck(Vehicle.transform.position))
+            {
+                Vehicle.Speed = Mathf.MoveTowards(Vehicle.Speed, 0f, 18f * dt); Vehicle.Condition = Mathf.Max(0f, Vehicle.Condition - 20f * dt);
+                if (!sinking) { sinking = true; State.Toast("The lagoon don swallow the motor!"); }
+                if (Mathf.Abs(Vehicle.Speed) < 0.5f) { Exit(); sinking = false; return; }
+            }
+            else sinking = false;
             Vehicle.Drive(gas, brake, boost, hand, h, State.S.fuel / 100f, dt);
             if (Vehicle.LastImpact > 2f) { State.Toast(Vehicle.LastImpact > 8f ? "Crash! Vehicle damaged" : "Scrape"); Vehicle.LastImpact = 0f; }
             bool slow = Mathf.Abs(Vehicle.Speed) < 2f;

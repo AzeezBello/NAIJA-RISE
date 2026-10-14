@@ -17,8 +17,13 @@ namespace NaijaRise
                 var cls = Data.VehicleClass(d.type); if (cls == null) continue; var deal = d;
                 m.Options.Add(new MenuOption { Label = $"{cls.name} · ₦{d.price:N0}", Action = () => BuyVehicle(deal.type) });
             }
-            if (Vehicle == null && Parked.Exists(v => v.Owned && v.Condition < 100f && (v.transform.position - dayo.pos).magnitude < 25f))
-                m.Options.Add(new MenuOption { Label = "Service my vehicle here · ₦15,000", Action = () => { if (!State.Pay(15000)) { State.Toast("No money"); return; } foreach (var v in Parked) if (v.Owned && (v.transform.position - dayo.pos).magnitude < 25f) v.Condition = 100f; State.Toast("Serviced · condition 100%"); } });
+            foreach (var v in Parked)
+            {
+                if (!v.Owned || string.IsNullOrEmpty(v.OwnedId) || (v.transform.position - dayo.pos).magnitude > 30f) continue;
+                OwnedVehicle o = null; foreach (var ov in State.S.vehicles) if (ov.id == v.OwnedId) o = ov;
+                if (o == null) continue; var vv = v; var oo = o;
+                m.Options.Add(new MenuOption { Label = $"My {v.Class.name} · service, insure, customise", Action = () => OpenVehicleMenu(vv, oo) });
+            }
             m.Options.Add(new MenuOption { Label = "Not now", Action = null });
             OpenMenu(m);
         }
@@ -49,8 +54,10 @@ namespace NaijaRise
             var go = VehicleBodies.Build(cls, transform, new System.Random(o.id.GetHashCode()), out var wheels);
             var pos = new Vector3(o.x, 0f, o.z); pos.y = Data.DeckHeightAt(pos) + 0.12f;
             go.transform.position = pos; go.transform.rotation = Quaternion.Euler(0f, o.yaw, 0f);
-            var vc = go.AddComponent<VehicleController>(); vc.Setup(cls, wheels); vc.Owned = true; vc.OwnedId = o.id; vc.Condition = o.cond;
+            var vc = go.AddComponent<VehicleController>(); vc.Setup(cls, wheels); vc.Owned = true; vc.OwnedId = o.id; vc.Condition = o.cond; vc.Insured = o.insured;
             vc.Place(pos, Quaternion.Euler(0f, o.yaw, 0f));
+            if (o.livery >= 0 && o.livery < Data.liveries.Length) vc.ApplyLivery(Entities.Mannequin.Hex(Data.liveries[o.livery]));
+            if (o.slogan >= 0 && o.slogan < Data.slogans.Length) vc.ApplySlogan(Data.slogans[o.slogan]);
             Parked.Add(vc);
             return vc;
         }

@@ -16,6 +16,7 @@ namespace NaijaRise.World
         public bool Harmattan => clock != null && clock.Day % 10 >= 7;
         public float Wet => Raining ? 0.7f : 1f;   // grip factor for driving
         public System.Action<string> Notify;
+        public System.Action<bool> OnWet;
 
         public void Init(WorldData world, DayNightCycle dayNight, Transform cameraTransform)
         {
@@ -35,11 +36,11 @@ namespace NaijaRise.World
         public void StartRain(float minutes, bool storm)
         {
             rainLeft = minutes * 60f; Storm = storm;
-            rain.Play();
+            rain.Play(); OnWet?.Invoke(true);
             Notify?.Invoke(storm ? "Storm! Roads slippery — go-slow everywhere." : "Rain don start — roads slippery, go-slow everywhere.");
         }
 
-        public void StopRain() { rainLeft = 0f; Storm = false; rain.Stop(); Notify?.Invoke("Rain don stop."); }
+        public void StopRain() { rainLeft = 0f; Storm = false; rain.Stop(); OnWet?.Invoke(false); Notify?.Invoke("Rain don stop."); }
 
         void Update()
         {

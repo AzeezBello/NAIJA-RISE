@@ -34,7 +34,7 @@ namespace NaijaRise
         {
             int fee = Mathf.RoundToInt(p.rent * Data.meta.agentFeeRate);
             var m = new Menu { Title = "Agent Kunle", Subtitle = p.name, Line = "Agent fee na 10%. No agent, no house." };
-            if (State.Owns(p)) m.Options.Add(new MenuOption { Label = "Make this my home", Action = () => { State.S.home = p.id; State.Toast($"You now live at {p.name}"); } });
+            if (State.Owns(p)) { m.Options.Add(new MenuOption { Label = "Make this my home", Enabled = State.S.home != p.id, Action = () => { State.S.home = p.id; State.S.let.Remove(p.id); State.Toast($"You now live at {p.name}"); } }); AddPropertyOptions(m, p); }
             else
             {
                 m.Options.Add(new MenuOption { Label = $"Rent · ₦{p.rent:N0} + ₦{fee:N0} agent fee · {Data.meta.leaseDays} days", Action = () => State.Rent(p) });
@@ -49,6 +49,7 @@ namespace NaijaRise
         {
             var m = new Menu { Title = p.name, Subtitle = p.type, Line = p.perk == "heat0" ? "Gated, quiet. Sleeping here clears all heat and fills your last vehicle." : p.perk == "heat1" ? "Your own place. Sleeping here clears one heat." : "Shared bathroom, landlord upstairs. Home is home." };
             m.Options.Add(new MenuOption { Label = "Sleep till morning", Action = Sleep });
+            AddUpgradeOptions(m, p);
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(m);
         }
@@ -83,6 +84,7 @@ namespace NaijaRise
             {
                 m.Options.Add(new MenuOption { Label = $"Restock · ₦{State.RestockCost(b):N0}", Enabled = o.stock < 100f, Action = () => State.Restock(b) });
                 m.Options.Add(new MenuOption { Label = $"Change prices (now {o.price})", Action = () => State.CyclePrice(b) });
+                AddStaffOptions(m, b);
             }
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(m);

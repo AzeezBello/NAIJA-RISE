@@ -262,11 +262,90 @@ namespace NaijaRise.EditorTools
                         Check(boot.GetComponent<UI.Portrait>() != null, "portrait camera present (no render target on the null device)");
                         stage = 13; stageT = 0f; return;
                     }
-                case 13:  // a few more frames with everything running, then save
+                case 13:  // street life, tenants, upgrades, staff, rival, vehicle customisation, events
+                    {
+                        var street = boot.GetComponent<World.StreetLife>(); var events = boot.GetComponent<World.Events>();
+                        Check(street != null && street.Agberos.Count > 10 && street.Service.Count == boot.Data.serviceNpcs.Length && street.Nightlife.Count == 4, $"street life: {street?.Agberos.Count} agberos, {street?.Service.Count} uniforms, {street?.Nightlife.Count} night hustlers (hidden until 20:00 and the mature toggle)");
+                        // Walk into the Kilo agberos and pay the levy.
+                        var kilo = street.Agberos.Find(a => a.stop.id == "kilo"); s.CloseMenu(); s.State.S.pet = false;
+                        boot.Player.Teleport(kilo.pos + new Vector3(0.5f, 0f, 1.5f), 180f); kilo.cool = 0f;
+                        int cash = s.State.S.cash; s.ForceStreetUpdate();
+                        Check(s.ActiveMenu != null && s.ActiveMenu.Title == "Agbero", $"agbero levy demanded at {kilo.stop.name}");
+                        s.Choose(0);
+                        Check(s.State.S.cash == cash - 500, "paid ₦500 to the boys");
+                        s.State.S.pet = true; s.ForceStreetUpdate();
+                        Check(street.HasPet, "dog adopted and following");
+                        kilo.cool = 0f; s.ForceStreetUpdate();
+                        Check(s.ActiveMenu == null, "agberos keep their distance from the dog");
+                        // Tenants, upgrades, complaints.
+                        var selfcon = boot.Data.properties[1]; s.State.S.cash += 2000000; s.State.Buy(selfcon); s.State.LetOut(selfcon); int bank = s.State.S.bank; s.State.NewDay(boot.Clock.Day + 1);
+                        Check(s.State.S.let.Contains(selfcon.id) && s.State.S.bank > bank, $"tenants pay: bank ₦{bank:N0} → ₦{s.State.S.bank:N0}");
+                        s.State.Upgrades(selfcon.id).complaint = "roof dey leak"; Check(s.State.FixComplaint(selfcon) && s.State.Upgrades(selfcon.id).complaint == "", "complaint fixed for ₦15,000");
+                        var tank = System.Array.Find(boot.Data.upgrades, u => u.id == "tank"); var room = boot.Data.properties[0]; s.State.S.props.Add(room.id); s.State.S.home = room.id;
+                        Check(tank != null && s.State.BuyUpgrade(room, tank) && s.State.HomeHas("tank"), "water tank installed at home");
+                        // Staff and the rival.
+                        var kiosk = boot.Data.businesses[0]; int income = s.State.BizIncome(kiosk);
+                        Check(s.State.HireStaff(kiosk) && s.State.BizIncome(kiosk) > income, $"hired {s.State.Biz(kiosk.id).staff[0]}: income ₦{income:N0} → ₦{s.State.BizIncome(kiosk):N0}");
+                        s.State.BuyBusiness(boot.Data.businesses[1]);
+                        Check(s.State.RivalOpen && s.State.BizIncome(kiosk) < Mathf.RoundToInt(income * 1.3f), $"{boot.Data.rivalName} opened after two businesses and undercuts normal prices");
+                        // Vehicle insurance, livery, slogan.
+                        var sedan = s.Parked.Find(v => v.Class.id == "car"); OwnedVehicle owned = null; foreach (var ov in s.State.S.vehicles) if (ov.id == sedan.OwnedId) owned = ov;
+                        owned.insured = true; sedan.Insured = true; sedan.ApplyLivery(Color.red); var danfoCls = boot.Data.VehicleClass("danfo"); var danfo = s.BuyVehicle("danfo"); danfo.ApplySlogan(boot.Data.slogans[0]);
+                        Check(sedan.Insured && danfo.transform.Find("Slogan") != null && danfo.transform.Find("Slogan").GetComponent<TextMesh>().text == boot.Data.slogans[0], $"insured, repainted, slogan '{boot.Data.slogans[0]}'");
+                        // Road works, a wreck, the flood, NEPA.
+                        var ao = boot.Data.FindRoad("v", 0f); events.Clear(); events.StartJam(ao, 60f, 0);
+                        Check(events.Current != null && events.Current.works && events.InJam(ao, 90f) && !events.InJam(ao, 200f), "road works close a lane on Adeniran Ogunsanya");
+                        events.Clear(); events.StartJam(ao, 60f, 1);
+                        Check(events.Current != null && events.Current.wreck && events.transform.childCount > 3, "overturned keke with cones");
+                        events.Clear(); events.StartFlood();
+                        Check(events.Current != null && events.Current.flood && events.FloodedAt(boot.Data.FindRoad("h", -66f).Point(20f, -66f)), "Ojuelegba underpass flooded");
+                        events.Clear();
+                        stage = 14; stageT = 0f; return;
+                    }
+                case 14:  // swimming, sinking, pedestrian colliders
+                    {
+                        s.CloseMenu(); if (s.Vehicle != null) s.Exit();
+                        var lagoon = Data.WorldData.W(250f, 0.3f, 100f);   // Lagos Lagoon, off Eko Bridge
+                        Check(boot.Data.InWater(lagoon) && !boot.Data.InWater(boot.Data.Spawn), "lagoon rectangle recognised, spawn on land");
+                        boot.Player.Teleport(lagoon, 0f); s.ForceOnFootUpdate();
+                        Check(boot.Player.Swimming && !boot.Player.CanSprint, "player swims in the lagoon (slow, no sprint)");
+                        boot.Player.Teleport(boot.Data.Spawn + Vector3.up * 0.3f, 180f); s.ForceOnFootUpdate();
+                        Check(!boot.Player.Swimming, "back on land");
+                        var sedan = s.Parked.Find(v => v.Class.id == "car"); sedan.Place(lagoon + Vector3.up * 0.1f, Quaternion.identity); s.Enter(sedan); sedan.Speed = 10f; s.Script(1f, 0f, 0f);
+                        stage = 15; stageT = 0f; return;
+                    }
+                case 15:
+                    {
+                        if (s.Vehicle != null && stageT < 6f) return;
+                        s.EndScript(); s.ForceOnFootUpdate();
+                        Check(s.Vehicle == null && boot.Player.Swimming, $"vehicle stalled in the lagoon and you are swimming (player at {boot.Player.transform.position})");
+                        var pedestrians = boot.GetComponent<World.PedestrianSystem>(); int withColliders = pedestrians.BodyColliders;
+                        Check(withColliders == pedestrians.Alive && withColliders > 50, $"every pedestrian has a body ({withColliders} of {pedestrians.Alive})");
+                        boot.Player.Teleport(boot.Data.Spawn + Vector3.up * 0.3f, 180f); s.ForceOnFootUpdate();
+                        stage = 16; stageT = 0f; return;
+                    }
+                case 16:  // the quality governor: auto level, dynamic resolution step-down, step-down of the level, reflections
+                    {
+                        var gov = boot.GetComponent<World.QualityGovernor>();
+                        Check(gov != null && gov.Auto && gov.Level == World.QualityGovernor.Detect(), $"auto graphics level {World.QualityGovernor.Names[gov?.Level ?? 0]} on '{SystemInfo.graphicsDeviceName}' (render scale {gov?.RenderScale:0.00})");
+                        gov.SetLevel(2, true); gov.SimulateSlow = true;
+                        stage = 17; stageT = 0f; return;
+                    }
+                case 17:
+                    {
+                        var gov = boot.GetComponent<World.QualityGovernor>();
+                        // Slow frames for a few seconds: the render scale shrinks through its steps, then the level drops.
+                        if (stageT < 14f && !(gov.DynIndex == 0 && gov.Level < 2)) return;
+                        Check(gov.Level < 2 && gov.DynIndex == 0, $"sustained slow frames stepped down to {World.QualityGovernor.Names[gov.Level]} after shrinking the frame (render scale now {gov.RenderScale:0.00})");
+                        gov.SimulateSlow = false; gov.SetLevel(2, false); s.State.S.qualityAuto = false; s.State.S.quality = 2;
+                        Check(gov.Probe != null || SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null, "environment reflection probe present (skipped on the null device)");
+                        stage = 18; stageT = 0f; return;
+                    }
+                case 18:  // a few more frames with everything running, then save
                     if (stageT < 1f) return;
                     s.AutoSave();
                     var again = new GameState(boot.Data);
-                    Check(again.Load() && again.S.home == s.State.S.home && again.S.biz.Count == 1 && again.S.vehicles.Count == 2 && again.S.mission == 8 && again.S.courses.Count == 1 && again.S.collegeGraduated && again.S.footballWins >= 3 && again.S.familyDone.Contains("school_levy") && again.S.lookOutfit == 3, "save keeps home, business, vehicles, story, certificates, diploma, football, family and look");
+                    Check(again.Load() && again.S.home == s.State.S.home && again.S.biz.Count == 2 && again.S.vehicles.Count == 3 && again.S.mission == 8 && again.S.courses.Count == 1 && again.S.collegeGraduated && again.S.footballWins >= 3 && again.S.familyDone.Contains("school_levy") && again.S.lookOutfit == 3 && again.S.pet && again.S.let.Count == 1 && again.S.biz[0].staff.Count == 1 && again.S.vehicles.Exists(v => v.insured), "save keeps home, business, vehicles, story, certificates, diploma, football, family, look, pet, tenants, staff and insurance");
                     Finish(); return;
             }
         }
