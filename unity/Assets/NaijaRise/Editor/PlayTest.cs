@@ -355,9 +355,15 @@ namespace NaijaRise.EditorTools
                         Check(s.Players.Remotes.ContainsKey("ghost-0001") && s.Players.Remotes["ghost-0001"].name == "Amaka" && ghost.Remotes.ContainsKey(s.Players.SelfId), $"both players see each other ({Net.LoopbackTransport.InRoom(s.Players.Room)} in {s.Players.Room})");
                         ghost.SendChat("How far, Tunde?"); s.Players.Tick(0.1f);
                         Check(s.Players.Chat.Exists(c => c.name == "Amaka" && c.text == "How far, Tunde?"), "chat line received from the other player");
+                        string roomBefore = ghost.Room, expectedBefore = boot.Data.RegionAt(ghostFollow.position)?.id;
+                        Check(roomBefore == s.Players.Room && roomBefore == "district:" + expectedBefore, $"both players start in the same room '{roomBefore}'");
                         ghostFollow.position = boot.Player.transform.position + new Vector3(3f, 0f, 400f);   // another district
-                        ghost.Tick(1.1f); s.Players.Tick(1.1f);
-                        Check(ghost.Room != s.Players.Room || ghost.Room == s.Players.Room, $"rooms follow districts: {s.Players.Room} vs {ghost.Room}");
+                        string expectedAfter = "district:" + boot.Data.RegionAt(ghostFollow.position)?.id;
+                        ghost.Tick(1.1f); s.Players.Tick(1.1f); ghost.Tick(0.2f);
+                        // Remotes expire after five seconds by design, so assert the transport rooms instead: one player in each.
+                        Check(expectedAfter != roomBefore && ghost.Room == expectedAfter && s.Players.Room == roomBefore
+                              && Net.LoopbackTransport.InRoom(roomBefore) == 1 && Net.LoopbackTransport.InRoom(expectedAfter) == 1 && ghost.Remotes.Count == 0,
+                              $"moving districts changes the room ('{roomBefore}' → '{ghost.Room}'): one player in each room, no remotes carried over");
                         Object.Destroy(ghostHost); Object.Destroy(ghostFollow.gameObject);
                         stage = 19; stageT = 0f; return;
                     }

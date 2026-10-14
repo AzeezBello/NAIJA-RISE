@@ -36,13 +36,16 @@ create trigger saves_touch_player after insert or update on public.saves for eac
 -- In the dashboard: Project Settings → API → Realtime enabled; Authentication → Providers → Email.
 
 -- ---- Crews (PLAN Phase 5): create or join by code, a shared treasury, an HQ at a member's owned property ----
+-- Access model: nobody reads or writes crew tables directly except through the functions below. Members can read
+-- their own crews; joining needs the code; the treasury moves only through crew_deposit / crew_withdraw (withdrawals
+-- are owner-only and bounded by the balance); the owner and name cannot be changed by members.
 create table if not exists public.crews (
   id uuid primary key default gen_random_uuid(),
-  name text not null,
+  name text not null check (char_length(name) between 2 and 40),
   tag text not null check (char_length(tag) between 2 and 4),
-  code text not null unique,                       -- join code shared between players
-  hq_property text,                                -- property id from the district data
-  treasury bigint not null default 0,
+  code text not null unique,
+  hq_property text,
+  treasury bigint not null default 0 check (treasury >= 0),
   owner uuid not null references auth.users (id) on delete cascade,
   created_at timestamptz not null default now()
 );
@@ -55,13 +58,67 @@ create table if not exists public.crew_members (
 );
 alter table public.crews enable row level security;
 alter table public.crew_members enable row level security;
--- Anyone signed in can look a crew up by code to join it; only members read the rest and only members change it.
-create policy "crews: lookup by code" on public.crews for select using (auth.role() = 'authenticated');
-create policy "crews: owner creates" on public.crews for insert with check (auth.uid() = owner);
-create policy "crews: members update" on public.crews for update using (exists (select 1 from public.crew_members m where m.crew_id = id and m.user_id = auth.uid()));
-create policy "members: see your crews" on public.crew_members for select using (auth.uid() = user_id or exists (select 1 from public.crew_members m where m.crew_id = crew_id and m.user_id = auth.uid()));
-create policy "members: join yourself" on public.crew_members for insert with check (auth.uid() = user_id);
-create policy "members: leave yourself" on public.crew_members for delete using (auth.uid() = user_id);
+
+-- A security-definer helper avoids the infinite recursion a policy on crew_members would hit if it queried crew_members.
+create or replace function public.is_crew_member(p_crew uuid) returns boolean language sql security definer stable set search_path = public as $$
+  select exists (select 1 from public.crew_members where crew_id = p_crew and user_id = auth.uid());
+$$;
+
+create policy "crews: members read" on public.crews for select using (public.is_crew_member(id));
+create policy "members: read your crews" on public.crew_members for select using (public.is_crew_member(crew_id));
+-- No insert / update / delete policies on either table: every change goes through the functions.
+
+create or replace function public.create_crew(p_name text, p_tag text) returns public.crews language plpgsql security definer set search_path = public as $$
+declare c public.crews;
+begin
+  if auth.uid() is null then raise exception 'sign in first'; end if;
+  insert into public.crews (name, tag, code, owner)
+    values (trim(p_name), upper(trim(p_tag)), upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 6)), auth.uid()) returning * into c;
+  insert into public.crew_members (crew_id, user_id) values (c.id, auth.uid());
+  return c;
+end $$;
+
+create or replace function public.join_crew(p_code text) returns public.crews language plpgsql security definer set search_path = public as $$
+declare c public.crews;
+begin
+  if auth.uid() is null then raise exception 'sign in first'; end if;
+  select * into c from public.crews where code = upper(trim(p_code));
+  if not found then raise exception 'no crew with that code'; end if;
+  insert into public.crew_members (crew_id, user_id) values (c.id, auth.uid()) on conflict do nothing;
+  return c;
+end $$;
+
+create or replace function public.leave_crew(p_crew uuid) returns void language sql security definer set search_path = public as $$
+  delete from public.crew_members where crew_id = p_crew and user_id = auth.uid();
+$$;
+
+create or replace function public.crew_deposit(p_crew uuid, p_amount bigint) returns bigint language plpgsql security definer set search_path = public as $$
+declare t bigint;
+begin
+  if not public.is_crew_member(p_crew) then raise exception 'not a member'; end if;
+  if p_amount <= 0 then raise exception 'amount must be positive'; end if;
+  update public.crews set treasury = treasury + p_amount where id = p_crew returning treasury into t;
+  return t;
+end $$;
+
+create or replace function public.crew_withdraw(p_crew uuid, p_amount bigint) returns bigint language plpgsql security definer set search_path = public as $$
+declare t bigint;
+begin
+  if not exists (select 1 from public.crews where id = p_crew and owner = auth.uid()) then raise exception 'only the owner withdraws'; end if;
+  if p_amount <= 0 then raise exception 'amount must be positive'; end if;
+  update public.crews set treasury = treasury - p_amount where id = p_crew and treasury >= p_amount returning treasury into t;
+  if t is null then raise exception 'the treasury does not reach'; end if;
+  return t;
+end $$;
+
+create or replace function public.set_crew_hq(p_crew uuid, p_property text) returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from public.crews where id = p_crew and owner = auth.uid()) then raise exception 'only the owner sets the HQ'; end if;
+  update public.crews set hq_property = p_property where id = p_crew;
+end $$;
+
+revoke all on function public.create_crew, public.join_crew, public.leave_crew, public.crew_deposit, public.crew_withdraw, public.set_crew_hq from public, anon;
+grant execute on function public.create_crew, public.join_crew, public.leave_crew, public.crew_deposit, public.crew_withdraw, public.set_crew_hq to authenticated;
 -- Shared GPS pins, chat and co-op race messages travel on realtime:crew:<crew id>; nothing is stored.
 
 -- ---- Admin dashboard (web /admin, service role only) ----
@@ -71,3 +128,6 @@ create or replace view public.admin_overview as
          (select coalesce(sum((state->>'cash')::bigint + (state->>'bank')::bigint), 0) from public.saves) as total_naira,
          (select coalesce(avg((state->>'level')::numeric), 0) from public.saves) as avg_level,
          (select count(*) from public.crews) as crews;
+
+-- The admin view is for the service role only.
+revoke all on public.admin_overview from public, anon, authenticated;

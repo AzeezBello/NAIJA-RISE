@@ -28,7 +28,8 @@ namespace NaijaRise.Net
         public bool Connected => room != null;
         public void Join(string r, string selfId) { Leave(); room = r; self = selfId; if (!rooms.TryGetValue(r, out var l)) rooms[r] = l = new List<LoopbackTransport>(); l.Add(this); }
         public void Send(string eventName, string json) { if (room == null || !rooms.TryGetValue(room, out var l)) return; foreach (var t in l) if (t != this) t.inbox.Enqueue((self, eventName, json)); }
-        public void Leave() { if (room != null && rooms.TryGetValue(room, out var l)) l.Remove(this); room = null; }
+        // Leaving drops anything still queued: messages from the room you left must not surface in the next one.
+        public void Leave() { if (room != null && rooms.TryGetValue(room, out var l)) l.Remove(this); room = null; inbox.Clear(); }
         public void Poll(Action<string, string, string> onMessage) { while (inbox.Count > 0) { var (f, e, j) = inbox.Dequeue(); onMessage(f, e, j); } }
         public static int InRoom(string r) => rooms.TryGetValue(r, out var l) ? l.Count : 0;
     }
@@ -95,7 +96,7 @@ namespace NaijaRise.Net
             _ = SendRaw($"{{\"topic\":\"{topic}\",\"event\":\"broadcast\",\"payload\":{{\"type\":\"broadcast\",\"event\":\"{eventName}\",\"payload\":{json}}},\"ref\":\"{++refCounter}\"}}");
         }
 
-        public void Leave() { try { cts?.Cancel(); ws?.Dispose(); } catch { } ws = null; }
+        public void Leave() { try { cts?.Cancel(); ws?.Dispose(); } catch { } ws = null; while (inbox.TryDequeue(out _)) { } }   // drop stale messages from the old channel
 
         public void Poll(Action<string, string, string> onMessage)
         {
