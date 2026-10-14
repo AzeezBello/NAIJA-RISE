@@ -28,7 +28,7 @@ namespace NaijaRise.World
         public void Build(WorldData data, Transform parent)
         {
             var root = new GameObject("Traffic lights").transform; root.SetParent(parent, false);
-            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            var shader = ShaderLib.Lit;
             hLamp = Lamp(shader, "lamp-h"); vLamp = Lamp(shader, "lamp-v");
             var pole = new Material(shader) { color = new Color(0.25f, 0.26f, 0.28f) };
             var head = new Material(shader) { color = new Color(0.1f, 0.1f, 0.11f) };

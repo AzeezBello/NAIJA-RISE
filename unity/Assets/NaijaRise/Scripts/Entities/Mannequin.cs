@@ -12,7 +12,7 @@ namespace NaijaRise.Entities
         public static Material Mat(Color c)
         {
             if (cache.TryGetValue(c, out var m)) return m;
-            standard ??= Shader.Find("Universal Render Pipeline/Lit");
+            standard ??= ShaderLib.Lit;
             m = new Material(standard) { color = c };
             m.SetFloat("_Smoothness", 0.2f);
             return cache[c] = m;

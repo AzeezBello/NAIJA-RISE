@@ -38,6 +38,7 @@ namespace NaijaRise.EditorTools
         static void BuildPlayer(BuildTarget target, string output)
         {
             if (!System.IO.File.Exists(ScenePath)) Build();
+            ShaderSetup.Prepare();
             CharacterImport.Prepare();
             var options = new BuildPlayerOptions { scenes = new[] { ScenePath }, locationPathName = output, target = target, options = BuildOptions.None };
             var report = BuildPipeline.BuildPlayer(options);
@@ -52,6 +53,7 @@ namespace NaijaRise.EditorTools
         public static void SmokeTest()
         {
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            ShaderSetup.Prepare();
             CharacterImport.Prepare();
             var data = Data.WorldData.LoadFromResources();
             var host = new GameObject("SmokeTest");
@@ -115,7 +117,9 @@ namespace NaijaRise.EditorTools
                 Debug.Log($"NAIJA RISE smoke test: sedan {(car.transform.Find("Model") != null ? "Kenney model" : "procedural")}, length {cb.size.z:0.00} m (class {sedan.len}), {wheels.Length} wheels");
                 Object.DestroyImmediate(vprobe);
             }
-            bool ok = builder.ObjectCount > 1000 && renderers > 1000 && region != null && Mathf.Approximately(eko, 9f) && Mathf.Approximately(ground, 0f)
+            bool shadersOk = ShaderSetup.AllPresent(out var shaderDetail);
+            Debug.Log($"NAIJA RISE smoke test: shaders for players: {shaderDetail}");
+            bool ok = shadersOk && builder.ObjectCount > 1000 && renderers > 1000 && region != null && Mathf.Approximately(eko, 9f) && Mathf.Approximately(ground, 0f)
                       && badJobs == 0 && badContacts == 0 && placedContacts > 10 && data.vehicleClasses.Length > 5 && mirrorOk && rigOk && carOk;
             Debug.Log(ok ? "NAIJA RISE smoke test: PASS" : "NAIJA RISE smoke test: FAIL");
             Object.DestroyImmediate(host);

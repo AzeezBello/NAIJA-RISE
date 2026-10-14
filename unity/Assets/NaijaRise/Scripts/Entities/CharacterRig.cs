@@ -129,7 +129,7 @@ namespace NaijaRise.Entities
             {
                 var ov = GameObject.CreatePrimitive(PrimitiveType.Cylinder); ov.name = "Outfit overlay"; Object.Destroy(ov.GetComponent<Collider>());
                 ov.transform.SetParent(hips, false);
-                rig.OverlayMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = Color.white }; rig.OverlayMaterial.SetFloat("_Smoothness", 0.12f);
+                rig.OverlayMaterial = new Material(ShaderLib.Lit) { color = Color.white }; rig.OverlayMaterial.SetFloat("_Smoothness", 0.12f);
                 ov.GetComponent<MeshRenderer>().sharedMaterial = rig.OverlayMaterial;
                 rig.Overlay = ov.transform; ov.SetActive(false);
             }
@@ -142,7 +142,7 @@ namespace NaijaRise.Entities
             if (neck != null)
             {
                 var c = GameObject.CreatePrimitive(PrimitiveType.Cylinder); c.name = "Chain"; Object.Destroy(c.GetComponent<Collider>());
-                c.transform.SetParent(neck, false); var gold = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(1f, 0.77f, 0.18f) }; gold.SetFloat("_Metallic", 0.9f); gold.SetFloat("_Smoothness", 0.8f);
+                c.transform.SetParent(neck, false); var gold = new Material(ShaderLib.Lit) { color = new Color(1f, 0.77f, 0.18f) }; gold.SetFloat("_Metallic", 0.9f); gold.SetFloat("_Smoothness", 0.8f);
                 c.GetComponent<MeshRenderer>().sharedMaterial = gold;
                 rig.Chain = c.transform; c.SetActive(false);
             }

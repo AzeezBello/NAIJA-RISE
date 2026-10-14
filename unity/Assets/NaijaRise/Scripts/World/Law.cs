@@ -159,7 +159,7 @@ namespace NaijaRise.World
         {
             if (on && roadblocks.Count == 0)
             {
-                var shader = Shader.Find("Universal Render Pipeline/Lit");
+                var shader = ShaderLib.Lit;
                 var olive = new Material(shader) { color = new Color(0.25f, 0.35f, 0.16f) }; var cone = new Material(shader) { color = new Color(1f, 0.45f, 0.1f) };
                 foreach (var b in Blocks)
                 {
