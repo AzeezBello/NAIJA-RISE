@@ -13,6 +13,8 @@ namespace NaijaRise.Vehicles
         public float Condition = 100f;      // 0–100, crashes wear it down
         public bool Driven;
         [System.NonSerialized] public float Wet = 1f;   // 0.7 in the rain: less grip, weaker brakes
+        [System.NonSerialized] public bool Insured;     // half crash damage
+        TextMesh slogan;
         public bool Owned;
         [System.NonSerialized] public string OwnedId;
         public Transform[] Wheels;
@@ -89,11 +91,38 @@ namespace NaijaRise.Vehicles
             if (closing < 3f) return;
             float lost = Mathf.Abs(Speed) * Mathf.Clamp(0.15f + 0.75f * square, 0f, 0.9f);
             Speed -= Mathf.Sign(Speed) * lost;
-            Condition = Mathf.Max(0f, Condition - lost * 1.2f);
+            Condition = Mathf.Max(0f, Condition - lost * 1.2f * (Insured ? 0.5f : 1f));
             LastImpact = lost;
             LastHit = $"{c.gameObject.name} n={n} closing={closing:0.0} square={square:0.00} at {c.GetContact(0).point}";
         }
 
         public float Kmh => Mathf.Abs(Speed) * 3.6f;
+
+        // Repaint: the body of a procedural vehicle, or every painted part of a model (wheels and glass stay).
+        public void ApplyLivery(Color c)
+        {
+            foreach (var r in GetComponentsInChildren<MeshRenderer>())
+            {
+                if (r.name.StartsWith("wheel") || r.GetComponent<TextMesh>() != null) continue;
+                var mats = r.materials;
+                foreach (var m in mats) { if (m.name.Contains("1a2530") || m.color == new Color(0.1f, 0.145f, 0.19f)) continue; if (m.HasProperty("baseColorFactor")) m.SetColor("baseColorFactor", c); else m.color = c; }
+            }
+        }
+
+        // A danfo slogan painted above the windscreen.
+        public void ApplySlogan(string text)
+        {
+            if (slogan == null)
+            {
+                var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                var go = new GameObject("Slogan"); go.transform.SetParent(transform, false);
+                go.transform.localPosition = new Vector3(0f, 2.55f, 0f); go.transform.localRotation = Quaternion.identity;
+                slogan = go.AddComponent<TextMesh>(); slogan.font = font; slogan.fontSize = 56; slogan.characterSize = 0.05f; slogan.fontStyle = FontStyle.Bold; slogan.anchor = TextAnchor.MiddleCenter; slogan.alignment = TextAlignment.Center; slogan.color = new Color(0.03f, 0.06f, 0.05f);
+                go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+                var board = GameObject.CreatePrimitive(PrimitiveType.Cube); board.name = "Slogan board"; Destroy(board.GetComponent<Collider>()); board.transform.SetParent(transform, false); board.transform.localPosition = new Vector3(0f, 2.55f, 0.05f); board.transform.localScale = new Vector3(2.1f, 0.4f, 0.05f);
+                board.GetComponent<MeshRenderer>().sharedMaterial = VehicleBodies.Mat("#f5c518", 0.5f);
+            }
+            slogan.text = text;
+        }
     }
 }

@@ -84,9 +84,9 @@ namespace NaijaRise
             foreach (var b in Data.businesses)
             {
                 var o = State.Biz(b.id);
-                sb.Append(b.name).Append(" — ").Append(o == null ? $"for sale ₦{State.BizPrice(b):N0} · ₦{b.income:N0}/cycle" : $"yours · stock {o.stock:0}% · prices {o.price} · ₦{State.BizIncome(b):N0}/cycle").Append('\n');
+                sb.Append(b.name).Append(" — ").Append(o == null ? $"for sale ₦{State.BizPrice(b):N0} · ₦{b.income:N0}/cycle" : $"yours · stock {o.stock:0}% · prices {o.price} · staff {(o.staff.Count > 0 ? string.Join(", ", o.staff) : "none")} · ₦{State.BizIncome(b):N0}/cycle").Append('\n');
             }
-            Page("Businesses", $"{State.S.biz.Count} owned · next pay in {Mathf.Max(0f, State.S.payIn):0} s", sb.ToString().TrimEnd());
+            Page("Businesses", $"{State.S.biz.Count} owned · next pay in {Mathf.Max(0f, State.S.payIn):0} s{(State.RivalOpen ? $" · {Data.rivalName} opened nearby" : "")}", sb.ToString().TrimEnd());
         }
 
         void AppCharacter()
@@ -127,10 +127,14 @@ namespace NaijaRise
 
         void AppSettings()
         {
-            var st = State.S; string[] q = { "Low", "Medium", "High" };
-            Page("Settings", $"Graphics {q[Mathf.Clamp(st.quality, 0, 2)]} · cinematic look {(st.cinematic ? "on" : "off")}", "Low lowers the render scale and shadow range for slow machines. The cinematic look is the bloom and tone-mapping pass.",
-                new MenuOption { Label = "Graphics: next quality level", Action = () => { st.quality = (st.quality + 1) % 3; ApplyQuality(); AppSettings(); } },
+            var st = State.S; string[] q = World.QualityGovernor.Names;
+            string level = Governor != null ? q[Governor.Level] : q[Mathf.Clamp(st.quality, 0, 2)];
+            string perf = Governor != null ? $" · {Governor.Fps:0} fps · render scale {Governor.RenderScale * 100f:0} %" : "";
+            Page("Settings", $"Graphics {(st.qualityAuto ? "Auto → " : "")}{level}{perf} · cinematic look {(st.cinematic ? "on" : "off")}",
+                "Auto reads the GPU and steps down whenever frames stay slow; dynamic resolution moves in four steps and climbs back when it can. The cinematic look is the HDR, bloom and tone-mapping pass. " + SystemInfo.graphicsDeviceName,
+                new MenuOption { Label = st.qualityAuto ? "Graphics: Auto (tap for Low)" : $"Graphics: {level} (tap for next)", Action = () => { if (st.qualityAuto) { st.qualityAuto = false; st.quality = 0; } else { st.quality = (st.quality + 1) % 3; if (st.quality == 0) st.qualityAuto = true; } ApplyQuality(); AppSettings(); } },
                 new MenuOption { Label = "Toggle cinematic look", Action = () => { st.cinematic = !st.cinematic; ApplyQuality(); AppSettings(); } },
+                new MenuOption { Label = $"Mature content (night hustlers): {(st.mature ? "on" : "off")}", Action = () => { st.mature = !st.mature; AppSettings(); } },
                 new MenuOption { Label = "Save now", Action = () => { AutoSave(); State.Toast("Saved"); AppSettings(); } },
                 new MenuOption { Label = "New game (erases the save)", Action = () => { GameState.ClearSave(); State.Toast("Save erased — restart to begin again"); AppSettings(); } });
         }
@@ -138,13 +142,10 @@ namespace NaijaRise
         public void ApplyQuality()
         {
             var st = State.S;
-            if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline is UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset urp)
-            {
-                urp.renderScale = st.quality == 0 ? 0.7f : st.quality == 1 ? 0.85f : 1f;
-                urp.shadowDistance = st.quality == 0 ? 60f : st.quality == 1 ? 120f : 160f;
-            }
-            var volume = GetComponent<UnityEngine.Rendering.Volume>(); if (volume != null) volume.enabled = st.cinematic;
-            var cam = UnityEngine.Camera.main; if (cam != null) { var cd = cam.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>(); if (cd != null) cd.renderPostProcessing = st.cinematic; }
+            if (Governor == null) return;
+            Governor.SetCinematic(st.cinematic);
+            if (st.qualityAuto) Governor.SetLevel(World.QualityGovernor.Detect(), true); else Governor.SetLevel(st.quality, false);
+            st.quality = Governor.Level;
         }
     }
 }

@@ -13,7 +13,7 @@ Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFa
 |---|---|
 | Compile | clean, no warnings |
 | Smoke test (edit mode) | passes: 85 roads, 120 landmarks, about 6,000 objects in under a second; every job and contact resolves; mirror correct |
-| Play test (play mode) | passes, 68 checks across the whole loop, see "Headless" below |
+| Play test (play mode) | passes, 90 checks across the whole loop, see "Headless" below |
 | macOS build | `Builds/NaijaRise-Lagos.app`, about 350 MB with the stadium, tree, character and animal models |
 | WebGL build | menu item exists, not yet exercised |
 | Open in editor | no errors; the serialization and deprecation analyzers are quiet |
@@ -41,9 +41,15 @@ roadside vendors. The National Stadium is the web edition's stadium model fitted
 trees (tropical, maple, pine, height-fitted with jitter) stand in the Surulere plots and along the Eko Atlantic shore,
 kept off the road shoulders. Static and batched.
 
-**Look** (`Scripts/World/PostFx.cs`, `DayNightCycle.cs`). URP with an HDR frame, soft bloom that shows on street lights
-at night, a neutral grade, ACES tone mapping, FXAA and a light vignette. One game hour per 45 s, a new game starts at
-08:30, warm low sun, moonlit night, ambient and fog follow, lamps glow after dark.
+**Look** (`Scripts/World/PostFx.cs`, `DayNightCycle.cs`, `QualityGovernor.cs`). URP with an HDR frame, soft bloom that
+shows on street lights at night, a neutral grade, ACES tone mapping, FXAA and a light vignette. One game hour per 45 s,
+a new game starts at 08:30, warm low sun, moonlit night, ambient and fog follow, lamps glow after dark. Graphics
+compatibility follows `core/quality.js`: Auto reads the GPU (Apple M-series, NVIDIA and AMD start High, Intel and unknown
+Medium, software or low-memory devices Low) and steps down a level whenever frames stay slow; dynamic resolution moves
+URP's render scale through four steps with hysteresis, climbs back after sustained fast frames (waiting twice as long
+after each failed recovery), and stops shrinking when it buys nothing. Low turns off shadows and the cinematic pass. A
+realtime reflection probe follows the player and re-renders each game hour, so car paint and wet night asphalt (the
+roads turn glossy in the rain) carry the sky and the lamps.
 
 **Player, camera, driving** (`Scripts/Player/`, `Scripts/Vehicles/`). CharacterController movement with ease-in
 acceleration, sprint that burns stamina, jump. Third-person camera with lag, eased look-at, mouse / right-stick / Z-C
@@ -53,7 +59,8 @@ named wheels spinning; danfo, keke, korope, okada, BRT and the tanker stay proce
 model is ported from `src/systems/movement.js`; crashes are judged by contact normal (ground contacts never count) and
 cost speed and condition. You start with one keke; Dayo at Ladipo sells okada, keke, korope, danfo and sedan at the web
 prices and services vehicles parked nearby. Owned vehicles persist where you parked them. Refuel at Mobil. Any stopped
-traffic vehicle can be taken for Heat +1.
+traffic vehicle can be taken for Heat +1. Walk into the lagoon and you swim (slow, no sprint or jump, body in the
+water); drive into it and the engine dies, the vehicle settles and you swim out. Pedestrians have bodies you bump into.
 
 **People** (`Scripts/Entities/CharacterRig.cs`, `Fabrics.cs`, `Scripts/World/ContactSystem.cs`, `PedestrianSystem.cs`).
 The player, the 32 contacts and the 70 pedestrians are real humans: the Ready Player Me avatar the web edition streams
@@ -121,6 +128,22 @@ completing them restores the need, bonds the family (Strained to Unshakable) and
 contact carries trust and respect, moved by one greeting and one work chat a day, with tiers stranger, known, friend and
 close that change the greeting line and the tips they give; the Contacts app shows them.
 
+**The street** (`Scripts/World/StreetLife.cs`, `Events.cs`, `Session.Street.cs`). Agberos work every bus stop and
+demand ₦500 as you pass (pay, or refuse and risk heat); Mama Nkechi sells the dog that follows you and keeps them off,
+and a home with the security upgrade does the same. Fifteen uniformed officers stand at their posts (police, army, fire,
+LAWMA, LASTMA, VIO, KAI, Civil Defence, FRSC). Night hustlers appear outside the clubs after 20:00 when the mature toggle
+in Settings is on, with the hookup and its pickpocket risk. The owambe crowd gathers at the event centre from 19:00.
+City events run as in `events.js`: go-slow jams that traffic crawls through, road works that close a lane with cones,
+barriers and a DIVERSION sign, an overturned keke with its cones, the storm flood at the Ojuelegba underpass that halves
+your grip, and NEPA outages that take the street lights at night.
+
+**Property, business and vehicles, the long game.** Owned homes you do not live in can be let to tenants who pay a
+thirtieth of the rent each morning; tenants raise complaints that halve the rent until you pay for the repair. Homes
+take the generator, water tank (stamina recovers 25 % faster) and security upgrades. Businesses hire up to three named
+staff at ₦50,000 each for 30 % more income, and once you own two, Chidi's Corner opens and undercuts anyone not on low
+prices. Dayo services each owned vehicle by condition (half price when insured), insures it at 8 % of its price (half
+crash damage), repaints it in one of seven liveries and paints a slogan on danfos and koropes.
+
 **The look on the rig** (`Scripts/Entities/CharacterRig.cs`). All eleven slots now show: fabric print, skin tone,
 trousers, hair colour, body type (Slim, Average, Big widen or narrow the rig), hair style (Bald hides the hair, Afro
 puffs it), facial hair (the beard renderer), accessory (fila or face cap on the headwear, glasses on the head bone, a
@@ -182,16 +205,15 @@ sedan from Dayo and driving it, renting a room and sleeping, buying the kiosk an
 pursuit and arrest at Heat 3, delivering the documents to Amaka, the Cold Chain task along the GPS, learning web design
 and unlocking Web Freelancer, cardio at the gym, jollof, a race against Speedy, the phone and a bank deposit, rain, the
 Yaba Tech diploma unlocking IT Support, a Surulere hub delivery, three football wins opening the tournament, the
-animals, a family request and bond, relationship tiers, the look slots on the rig, then save and reload. It exits the editor
+animals, a family request and bond, relationship tiers, the look slots on the rig, the agbero levy and the dog, tenants and a
+repair, the water tank, hiring staff and the rival, insurance, livery and slogan, road works, a wreck and the flood, a swim in the
+lagoon and a sunk sedan, the quality governor stepping down under slow frames, then save and reload. It exits the editor
 with 0 on success (no `-quit`: it quits itself). Both are CI-ready.
 
 ## Not here yet
 
-- The romance system and the agbero / uniformed service NPCs; the pet dog that keeps agberos away.
-- Tenants and property upgrades; business staff, shifts and the rival trader; insurance, liveries and danfo slogans.
-- Go-slow incidents, road-construction diversions and the storm flood at the Ojuelegba underpass.
-- Dynamic resolution and the automatic quality step-down (the three manual levels are in Settings).
-- Water is walkable (a flat plane with a collider). Pedestrians have no colliders.
+- Multiplayer, accounts and the server-side save (web Phases 5 and 6), which the Unity edition would share.
+- Console action maps for the Input System and the platform builds themselves (the roadmap's P3 onwards).
 
 ## How to judge it (the roadmap's question)
 
@@ -204,6 +226,6 @@ Measure, then decide. Suggested checks against the web build on the same machine
 3. Controller feel on the same PlayStation pad; the Input System's action maps are the path to native console bindings.
 4. Build output: the macOS app's size and startup time, and a WebGL build for parity with the Vercel deployment.
 
-If Unity wins on 1 and 3, the remaining port is: tenants and business staff, go-slow incidents, automatic quality
-step-down, console action maps. If it does not, the slice has still produced a JSON export of the whole game
+If Unity wins on 1 and 3, the remaining work is the roadmap's own: console action maps and platform builds, then the
+multiplayer and account phases both editions share. If it does not, the slice has still produced a JSON export of the whole game
 data that other tools can use.

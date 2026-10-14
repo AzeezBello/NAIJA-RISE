@@ -80,12 +80,26 @@ namespace NaijaRise
             var weather = gameObject.AddComponent<Weather>();
             weather.Init(Data, Clock, cam.transform);
             weather.Notify = t => state.Toast("Weather · " + t);
+            weather.OnWet = wet => Builder.SetWet(wet);
             Clock.Weather = weather; Session.Weather = weather;
 
             var animals = gameObject.AddComponent<AnimalSystem>();
             animals.Init(Data, Builder.Root);
 
-            Session.ApplyQuality();
+            var events = gameObject.AddComponent<Events>();
+            events.Init(Data, Clock, weather);
+            events.Notify = (who, t) => state.Toast(who + " · " + t);
+            Clock.Events = events; Session.Events = events; traffic.Events = events; traffic.Weather = weather;
+
+            var street = gameObject.AddComponent<StreetLife>();
+            street.Init(Data, Player.transform, Clock, Builder.Root);
+            Session.Street = street;
+
+            var governor = gameObject.AddComponent<QualityGovernor>();
+            governor.Init(state.S.quality, state.S.qualityAuto, state.S.cinematic, Player.transform, Clock);
+            governor.Notify = t => state.Toast(t);
+            Session.Governor = governor;
+            if (state.S.qualityAuto) state.S.quality = governor.Level;
 
             var minimap = gameObject.AddComponent<Minimap>();
             minimap.Init(Player.transform);

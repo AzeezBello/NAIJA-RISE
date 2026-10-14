@@ -135,7 +135,7 @@ namespace NaijaRise.World
             var water = Mat("water", Water, 0.92f);
             foreach (var w in Data.waters)
                 Box(w.name, WorldData.W((w.minX + w.maxX) * 0.5f, 0.06f, (w.minZ + w.maxZ) * 0.5f),
-                    new Vector3(w.maxX - w.minX, 0.12f, w.maxZ - w.minZ), water);
+                    new Vector3(w.maxX - w.minX, 0.12f, w.maxZ - w.minZ), water, null, false);   // no collider: you swim, vehicles sink
         }
 
         // ---------- roads ----------
@@ -337,6 +337,9 @@ namespace NaijaRise.World
                 if (l.kind == "market") BuildMarketStalls(pos, fp, group);
             }
         }
+
+        // Wet asphalt reflects the lamps and the sky: raise the roads' smoothness while it rains.
+        public void SetWet(bool wet) { foreach (var key in new[] { "asphalt", "asphalt-hi" }) if (materials.TryGetValue(key, out var m)) m.SetFloat("_Smoothness", wet ? 0.82f : 0.15f); }
 
         public int StadiumModels { get; private set; }
         public int Trees { get; private set; }

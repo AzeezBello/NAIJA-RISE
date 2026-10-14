@@ -57,6 +57,9 @@ namespace NaijaRise.Data
     [Serializable] public class FamilySpotData { public string id; public float x, z; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
     [Serializable] public class FamilyScheduleData { public string who, spot, label; public float from, to; }
     [Serializable] public class RelationshipLevelData { public int min; public string label; }
+    [Serializable] public class ServiceNpcData { public float x, z; public string u, color; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class NightlifeData { public float x, z; public string name; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class UpgradeData { public string id, name, desc; public int price; }
     [Serializable] public class AnimalData { public string kind; public float x, z; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
     [Serializable] public class BusinessData { public string id, name; public int price, income; public float x, z; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
     [Serializable] public class WaterData { public string id, name; public float minX, maxX, minZ, maxZ; public bool ContainsData(float x, float z) => x >= minX && x <= maxX && z >= minZ && z <= maxZ; }
@@ -95,6 +98,8 @@ namespace NaijaRise.Data
         public DealerData[] dealer;
         public GymData gym; public FoodData[] food; public MallData mall; public CafeData cafe; public CourseData[] courses; public FootballData football; public int raceWager = 20000;
         public SchoolData school; public WeatherData weather; public AnimalData[] animals; public int petPrice = 25000;
+        public ServiceNpcData[] serviceNpcs; public NightlifeData[] nightlife; public UpgradeData[] upgrades; public string[] liveries, slogans, staffNames;
+        public int hookupPrice = 20000, staffCost = 50000, maxStaff = 3, rivalAfter = 2; public float staffBonus = 0.3f, rivalPenalty = 0.85f, tenantShare = 1f / 30f; public string rivalName = "Chidi's Corner";
         public FamilyMemberData[] family; public FamilyRequestData[] familyRequests; public FamilySpotData[] familySpots; public FamilyScheduleData[] familySchedules; public RelationshipLevelData[] relationshipLevels;
         public string[] outfits, hairStyles, faces, bodyTypes, accessories, facialHair, hairColors;
         public WaterData[] waters;
@@ -146,7 +151,7 @@ namespace NaijaRise.Data
             foreach (var l in landmarks) if (!places.ContainsKey(l.id)) places[l.id] = new Place { id = l.id, name = l.name, kind = l.kind, x = l.x, z = l.z, stadium = l.stadium, big = l.big };
             foreach (var b in busStops) if (!places.ContainsKey(b.id)) places[b.id] = new Place { id = b.id, name = b.name, kind = "busstop", x = b.x, z = b.z, busStop = true };
             foreach (var p in properties) if (!places.ContainsKey(p.id)) places[p.id] = new Place { id = p.id, name = p.name, kind = "property", x = p.x, z = p.z };
-            businesses ??= new BusinessData[0]; dealer ??= new DealerData[0]; gym ??= new GymData(); food ??= new FoodData[0]; mall ??= new MallData(); cafe ??= new CafeData(); courses ??= new CourseData[0]; football ??= new FootballData(); school ??= new SchoolData(); weather ??= new WeatherData(); animals ??= new AnimalData[0]; family ??= new FamilyMemberData[0]; familyRequests ??= new FamilyRequestData[0]; familySpots ??= new FamilySpotData[0]; familySchedules ??= new FamilyScheduleData[0]; relationshipLevels ??= new RelationshipLevelData[0];
+            businesses ??= new BusinessData[0]; dealer ??= new DealerData[0]; gym ??= new GymData(); food ??= new FoodData[0]; mall ??= new MallData(); cafe ??= new CafeData(); courses ??= new CourseData[0]; football ??= new FootballData(); school ??= new SchoolData(); weather ??= new WeatherData(); animals ??= new AnimalData[0]; family ??= new FamilyMemberData[0]; serviceNpcs ??= new ServiceNpcData[0]; nightlife ??= new NightlifeData[0]; upgrades ??= new UpgradeData[0]; liveries ??= new string[0]; slogans ??= new string[0]; staffNames ??= new string[0]; familyRequests ??= new FamilyRequestData[0]; familySpots ??= new FamilySpotData[0]; familySchedules ??= new FamilyScheduleData[0]; relationshipLevels ??= new RelationshipLevelData[0];
             outfits ??= new string[0]; hairStyles ??= new string[0]; faces ??= new string[0]; bodyTypes ??= new string[0]; accessories ??= new string[0]; facialHair ??= new string[0]; hairColors ??= new string[0]; jobs ??= new JobData[0]; contacts ??= new ContactData[0]; allContacts ??= new NameData[0]; vehicleClasses ??= new VehicleClassData[0];
             fabrics ??= new FabricData[0]; skins ??= new string[0]; pants ??= new string[0]; levels ??= new LevelData[0]; unlocks ??= new UnlockData[0];
         }

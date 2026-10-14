@@ -42,13 +42,18 @@ namespace NaijaRise
         public int lookFace, lookBody = 1, lookHairStyle, lookFacialHair;         // stored for the Character app; not yet shown on the rig
         public int footballWins, footballTier;
         public int collegeSemester = -1; public bool collegeGraduated;            // -1 = not enrolled
-        public int quality = 2; public bool cinematic = true;                      // 0 low, 1 medium, 2 high
+        public int quality = 2; public bool cinematic = true, qualityAuto = true;   // 0 low, 1 medium, 2 high; auto picks and steps down
         public int lookOutfit, lookAccessory = 1;                                   // outfit silhouette; accessory 1 = fila (cap index kept in lookCap)
         // Family (src/systems/family.js) and contact relationships (src/systems/relationships.js)
         public List<FamilyRel> familyRel = new List<FamilyRel>();
         public List<string> familyDone = new List<string>();
         public string familyRequest = ""; public int familyRequestDay = -1;
         public List<ContactRel> contactRel = new List<ContactRel>();
+        // Street and property life
+        public bool pet, mature;
+        public List<string> let = new List<string>();                      // owned homes let to tenants
+        public List<PropertyUpgrades> upgrades = new List<PropertyUpgrades>();
+        public bool rivalTold;
     }
 
     [Serializable] public class FamilyRel { public string id; public float score = 50f, food = 100f, companionship = 100f, education = 100f; public int lastVisitDay; }
@@ -58,9 +63,10 @@ namespace NaijaRise
         public int Get(string k) => k == "public" ? publicRep : k == "business" ? business : k == "street" ? street : k == "social" ? social : 0;
         public void Add(string k, int n) { switch (k) { case "public": publicRep += n; break; case "business": business += n; break; case "street": street += n; break; case "social": social += n; break; } }
     }
-    [Serializable] public class OwnedVehicle { public string id, type; public float cond = 100f, x, y, z, yaw; }
+    [Serializable] public class OwnedVehicle { public string id, type; public float cond = 100f, x, y, z, yaw; public bool insured; public int livery = -1, slogan = -1; }
 
-    [Serializable] public class OwnedBusiness { public string id; public float stock = 100f; public string price = "normal"; }
+    [Serializable] public class OwnedBusiness { public string id; public float stock = 100f; public string price = "normal"; public List<string> staff = new List<string>(); }
+    [Serializable] public class PropertyUpgrades { public string id; public List<string> items = new List<string>(); public string complaint = ""; }
 
     public class GameState
     {
@@ -87,7 +93,7 @@ namespace NaijaRise
                 S = JsonUtility.FromJson<SaveData>(File.ReadAllText(SavePath));
                 S.skills ??= new SkillSet(); S.rep ??= new RepSet(); S.items ??= new List<string>(); S.vehicles ??= new List<OwnedVehicle>();
                 S.path ??= ""; S.arc ??= ""; S.taskType ??= ""; S.taskDest ??= ""; S.taskItem ??= ""; S.taskObj ??= ""; S.courses ??= new List<string>();
-                S.familyRel ??= new List<FamilyRel>(); S.familyDone ??= new List<string>(); S.familyRequest ??= ""; S.contactRel ??= new List<ContactRel>();
+                S.familyRel ??= new List<FamilyRel>(); S.familyDone ??= new List<string>(); S.familyRequest ??= ""; S.contactRel ??= new List<ContactRel>(); S.let ??= new List<string>(); S.upgrades ??= new List<PropertyUpgrades>(); foreach (var b in S.biz) b.staff ??= new List<string>();
                 return S != null;
             }
             catch (Exception e) { Debug.LogWarning("Save could not be read: " + e.Message); return false; }
@@ -173,10 +179,33 @@ namespace NaijaRise
             return true;
         }
 
-        // Called when the game day rolls over: leases run out.
+        public PropertyUpgrades Upgrades(string propertyId) { foreach (var u in S.upgrades) if (u.id == propertyId) return u; var n = new PropertyUpgrades { id = propertyId }; S.upgrades.Add(n); return n; }
+        public bool HasUpgrade(string propertyId, string upgrade) => !string.IsNullOrEmpty(propertyId) && Upgrades(propertyId).items.Contains(upgrade);
+        public bool HomeHas(string upgrade) => HasUpgrade(S.home, upgrade);
+        public bool BuyUpgrade(PropertyData p, UpgradeData u)
+        {
+            if (HasUpgrade(p.id, u.id)) { Toast("Already installed"); return false; }
+            if (!Pay(u.price)) { Toast($"You need ₦{u.price:N0}"); return false; }
+            Upgrades(p.id).items.Add(u.id); Toast($"{u.name} installed · {u.desc}"); return true;
+        }
+        public void LetOut(PropertyData p) { if (!S.let.Contains(p.id)) S.let.Add(p.id); if (S.home == p.id) S.home = ""; Toast($"{p.name} let to tenants · ₦{Mathf.RoundToInt(p.rent * data.tenantShare):N0} a day"); }
+        public void TakeBack(PropertyData p) { S.let.Remove(p.id); Toast($"Tenants given notice at {p.name}"); }
+        public bool FixComplaint(PropertyData p)
+        {
+            var u = Upgrades(p.id); if (string.IsNullOrEmpty(u.complaint)) return false;
+            if (!Pay(15000)) { Toast("You need ₦15,000 for the repair"); return false; }
+            u.complaint = ""; Toast($"{p.name} fixed · full rent again"); return true;
+        }
+
+        // Called when the game day rolls over: tenants pay, complaints come up, leases run out.
         public void NewDay(int day)
         {
             S.day = day;
+            int income = 0;
+            foreach (var id in S.let) { var p = data.Property(id); if (p == null) continue; income += Mathf.RoundToInt(p.rent * data.tenantShare * (string.IsNullOrEmpty(Upgrades(id).complaint) ? 1f : 0.5f)); }
+            if (income > 0) { S.bank += income; Toast($"RiseBank · Credit alert · ₦{income:N0} rent from your tenants"); }
+            string[] complaints = { "the pumping machine don spoil", "roof dey leak", "NEPA wire don cut", "soakaway don full" };
+            foreach (var id in S.let) { var u = Upgrades(id); if (string.IsNullOrEmpty(u.complaint) && UnityEngine.Random.value < 0.2f) { u.complaint = complaints[UnityEngine.Random.Range(0, complaints.Length)]; Message("landlord", $"Your tenants for {data.Property(id)?.name} talk say {u.complaint}. Dem go pay half rent until you fix am."); } }
             if (!string.IsNullOrEmpty(S.rentedId) && day > S.rentedUntil)
             {
                 var p = data.Property(S.rentedId);
@@ -190,7 +219,22 @@ namespace NaijaRise
         // ---- businesses (src/data/businesses.js, economy.js updateEconomy) ----
         public OwnedBusiness Biz(string id) { foreach (var b in S.biz) if (b.id == id) return b; return null; }
         public float PriceEffect(string price) => price == "low" ? data.meta.priceLow : price == "high" ? data.meta.priceHigh : 1f;
-        public int BizIncome(BusinessData b) { var o = Biz(b.id); if (o == null) return 0; return Mathf.RoundToInt(b.income * PriceEffect(o.price) * (1f + S.skills.business * 0.005f) * (o.stock / 100f)); }
+        public bool RivalOpen => S.biz.Count >= data.rivalAfter;
+        public int BizIncome(BusinessData b)
+        {
+            var o = Biz(b.id); if (o == null) return 0;
+            float rival = RivalOpen && o.price != "low" ? data.rivalPenalty : 1f;
+            return Mathf.RoundToInt(b.income * (1f + o.staff.Count * data.staffBonus) * PriceEffect(o.price) * (1f + S.skills.business * 0.005f) * (o.stock / 100f) * rival);
+        }
+        public bool HireStaff(BusinessData b)
+        {
+            var o = Biz(b.id); if (o == null) return false;
+            if (o.staff.Count >= data.maxStaff) { Toast("Full roster"); return false; }
+            if (!Pay(data.staffCost)) { Toast("Not enough money to hire"); return false; }
+            string name = data.staffNames.Length > 0 ? data.staffNames[(o.staff.Count + b.id.Length) % data.staffNames.Length] : "Staff";
+            o.staff.Add(name); Toast($"{name} joins {b.name} · +{Mathf.RoundToInt(data.staffBonus * 100)}% income");
+            return true;
+        }
         public int RestockCost(BusinessData b) => Mathf.RoundToInt(b.income * 1.5f);
 
         public bool BuyBusiness(BusinessData b)
@@ -229,6 +273,7 @@ namespace NaijaRise
                 if (Mathf.Approximately(o.stock, 30f)) Toast($"{b.name} is running low on stock");
             }
             S.bank += total;
+            if (RivalOpen && !S.rivalTold) { S.rivalTold = true; Message("nkechi", $"{data.rivalName} don open shop near your own. E dey undercut you. Drop your prices if you wan keep customers."); }
             Toast($"RiseBank · Credit alert · ₦{total:N0} business income");
         }
 

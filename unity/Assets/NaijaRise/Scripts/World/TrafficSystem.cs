@@ -22,6 +22,8 @@ namespace NaijaRise.World
         public IReadOnlyList<Vehicle> Vehicles => vehicles;
         [System.NonSerialized] public Transform PlayerObstacle;   // the player (on foot or driving); traffic brakes for it
         [System.NonSerialized] public TrafficLights Lights;
+        [System.NonSerialized] public Events Events;
+        [System.NonSerialized] public Weather Weather;
         static readonly string[] Mix = { "danfo", "danfo", "danfo", "keke", "keke", "korope", "car", "car", "car", "car", "okada", "car", "danfo", "police", "lawma", "tanker", "van", "pickup" };
 
         public void Init(WorldData world, DayNightCycle dayNight, Transform parent)
@@ -85,6 +87,8 @@ namespace NaijaRise.World
             {
                 var v = vehicles[i];
                 float target = v.cruise * RushFactor(v.road, v.along);
+                if (Events != null && Events.InJam(v.road, v.along)) target = Mathf.Min(target, 1.6f);
+                if (Weather != null && Weather.Raining) target *= 0.7f;
                 float gap = float.MaxValue, aheadSpeed = 0f;
                 for (int j = 0; j < vehicles.Count; j++)
                 {

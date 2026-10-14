@@ -118,7 +118,7 @@ namespace NaijaRise.Vehicles
                     break;
                 case "car": case "pickup": case "van": case "delivery": case "ambulance":
                     height = 1.5f;
-                    var paint = Mat(CarColours[rng.Next(CarColours.Length)], 0.85f);
+                    var paint = Mat(CarColours[rng.Next(CarColours.Length)], 0.92f);
                     Part(t, PrimitiveType.Cube, new Vector3(0, 0.55f, 0), new Vector3(wid * 0.72f, 0.6f, len), paint);
                     Part(t, PrimitiveType.Cube, new Vector3(0, 1.1f, -0.2f), new Vector3(wid * 0.64f, 0.55f, len * 0.5f), glass);
                     foreach (var x in new[] { -wid * 0.34f, wid * 0.34f }) foreach (var z in new[] { len * 0.3f, -len * 0.3f }) w.Add(Wheel(t, new Vector3(x, 0.32f, z), 0.32f));
