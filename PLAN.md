@@ -119,7 +119,7 @@ The native-engine vertical slice that the Multi-Platform Technical Roadmap below
 
 Everything in the web edition's Alpha 1.0 is now in the slice; the web edition's Phases 5 and 6 (multiplayer, accounts, server save) are ahead of both editions, and the roadmap's console work (action maps, platform builds) is next for the Unity side.
 
-The roadmap's recommendation stands: measure this slice against the web build (frame time at Eko Bridge at 20:00, controller feel, time-to-add-a-district, build size) before deciding on a migration. The checks and the remaining port order are in `unity/README.md`. The machine this was built on is an Intel Mac; Unity has announced that 6.7 LTS is the last editor for Intel, so a production Unity edition would need Apple Silicon hardware before upgrading past it.
+What has and has not been verified, with the defects it found, is in [MIGRATION-REPORT.md](MIGRATION-REPORT.md). The roadmap's recommendation stands: measure this slice against the web build (frame time at Eko Bridge at 20:00, controller feel, time-to-add-a-district, build size) before deciding on a migration. The checks and the remaining port order are in `unity/README.md`. The machine this was built on is an Intel Mac; Unity has announced that 6.7 LTS is the last editor for Intel, so a production Unity edition would need Apple Silicon hardware before upgrading past it.
 
 ## 3. Later phases (from PRD §30)
 
