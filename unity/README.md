@@ -13,9 +13,9 @@ Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFa
 |---|---|
 | Compile | clean, no warnings |
 | Smoke test (edit mode) | passes: 85 roads, 120 landmarks, about 6,000 objects in under a second; every job and contact resolves; mirror correct |
-| Play test (play mode) | passes, 106 checks across the whole loop, see "Headless" below |
+| Play test (play mode) | passes, 107 checks across the whole loop, see "Headless" below |
 | macOS build | `Builds/NaijaRise-Lagos.app`, about 350 MB with the stadium, tree, character and animal models |
-| WebGL build | menu item exists, not yet exercised |
+| WebGL build | builds (129 MB); not yet loaded in a browser |
 | Open in editor | no errors; the serialization and deprecation analyzers are quiet |
 
 ## What is here
