@@ -40,17 +40,18 @@ namespace NaijaRise.Player
 
         void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Escape)) { bool locked = Cursor.lockState == CursorLockMode.Locked; Cursor.lockState = locked ? CursorLockMode.None : CursorLockMode.Locked; Cursor.visible = locked; }
-            if (Cursor.lockState != CursorLockMode.Locked && Input.GetMouseButtonDown(0)) { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
+            if (GameInput.EscapePressed) { bool locked = Cursor.lockState == CursorLockMode.Locked; Cursor.lockState = locked ? CursorLockMode.None : CursorLockMode.Locked; Cursor.visible = locked; }
+            if (Cursor.lockState != CursorLockMode.Locked && GameInput.ClickPressed) { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
         }
 
         void LateUpdate()
         {
             if (Target == null) return;
             float dt = Time.deltaTime;
-            float mx = Cursor.lockState == CursorLockMode.Locked ? Input.GetAxis("Mouse X") : 0f, my = Cursor.lockState == CursorLockMode.Locked ? Input.GetAxis("Mouse Y") : 0f;
-            if (Input.GetKey(KeyCode.Z)) mx -= KeyYawSpeed * dt / MouseSensitivity;
-            if (Input.GetKey(KeyCode.C)) mx += KeyYawSpeed * dt / MouseSensitivity;
+            var look = GameInput.LookDelta;
+            float mx = look.x, my = look.y;
+            if (GameInput.LookLeftKey) mx -= KeyYawSpeed * dt / MouseSensitivity;
+            if (GameInput.LookRightKey) mx += KeyYawSpeed * dt / MouseSensitivity;
             if (Mathf.Abs(mx) > 0.01f || Mathf.Abs(my) > 0.01f) lastLookInput = Time.time;
             Yaw += mx * MouseSensitivity;
             Pitch -= my * MouseSensitivity * 0.8f;

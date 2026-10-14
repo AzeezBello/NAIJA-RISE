@@ -16,6 +16,9 @@ namespace NaijaRise.Data
         public float spawnX, spawnZ, minX, maxX, minZ, maxZ;
         public float startClock = 8.5f, hoursPerSecond = 1f / 45f;
         public int startCash, startBank, priceWater = 100, priceSuya = 1500, refuel = 3000;
+        // Law and economy rules (src/data/config.js LAW, ECON, RENT, BIZ).
+        public int pursuitHeat = 3, ticketKmh = 90, checkpointKmh = 60, fineRate = 10000, bustRate = 15000, speedTicket = 2000, leaseDays = 30, propertyLevel = 2;
+        public float bustSeconds = 2.5f, payCycle = 60f, agentFeeRate = 0.1f, priceLow = 0.8f, priceHigh = 1.2f;
     }
     [Serializable] public class RegionData { public string id, name; public float minX, maxX, minZ, maxZ; public float Area => (maxX - minX) * (maxZ - minZ); public bool ContainsData(float x, float z) => x >= minX && x < maxX && z >= minZ && z < maxZ; }
     [Serializable] public class RoadData
@@ -38,7 +41,27 @@ namespace NaijaRise.Data
     [Serializable] public class PointData { public float x, z; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
     [Serializable] public class LandmarkData { public string id, name, shortName, kind, color, sign, region; public float x, z, h; public bool big, stadium, waterfront; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
     [Serializable] public class BusStopData { public string id, name, shortName; public float x, z; public int agberos; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
-    [Serializable] public class PropertyData { public string id, name, type, style, color, sign; public float x, z, h; public int rent, buy; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class PropertyData { public string id, name, type, style, color, sign, perk; public float x, z, h; public int rent, buy; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); public Vector3 Door => WorldData.W(x, 0f, z - 10.5f); }
+    [Serializable] public class DealerData { public string type; public int price; }
+    [Serializable] public class GymData { public int dayPass = 2000, monthly = 25000, trainer = 10000, boxingMin = 20; }
+    [Serializable] public class FoodData { public string name; public int price, stamina, business; }
+    [Serializable] public class MallData { public int outfit = 15000, laptop = 250000, groceries = 6000, barber = 2000, ticket = 5000; public string[] movies; }
+    [Serializable] public class CafeData { public int browse = 500, gig = 25000; }
+    [Serializable] public class SkillPoint { public string skill; public int points; }
+    [Serializable] public class CourseData { public string id, name; public int cost; public float hours; public SkillPoint[] skills; public string[] unlocks; }
+    [Serializable] public class FootballData { public int wager = 5000; public string[] tiers; public int[] prizes; }
+    [Serializable] public class SchoolData { public int levyHelp = 2000, eveningClass = 15000, enrollment = 25000, semester = 18000, semesters = 3; public float duration = 4f, stamina = 25f; public SkillPoint[] eveningSkill; }
+    [Serializable] public class WeatherData { public float rainChance = 0.15f, rainMinMinutes = 2f, rainMaxMinutes = 5f; }
+    [Serializable] public class FamilyMemberData { public string id, name, role, color, line; public float offsetX, offsetZ; public int outfit, fabric, pants, skin, hair, bodyType; }
+    [Serializable] public class FamilyRequestData { public string id, who, title, blurb, kind, item, need, msg, done; public int amount, threshold, restore, xp, repSocial; }
+    [Serializable] public class FamilySpotData { public string id; public float x, z; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class FamilyScheduleData { public string who, spot, label; public float from, to; }
+    [Serializable] public class RelationshipLevelData { public int min; public string label; }
+    [Serializable] public class ServiceNpcData { public float x, z; public string u, color; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class NightlifeData { public float x, z; public string name; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class UpgradeData { public string id, name, desc; public int price; }
+    [Serializable] public class AnimalData { public string kind; public float x, z; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class BusinessData { public string id, name; public int price, income; public float x, z; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
     [Serializable] public class WaterData { public string id, name; public float minX, maxX, minZ, maxZ; public bool ContainsData(float x, float z) => x >= minX && x <= maxX && z >= minZ && z <= maxZ; }
     [Serializable] public class TollData { public string id, name, axis; public float k, at; public int fee; }
     [Serializable] public class RoadPointData { public string axis, name; public float k, at; }
@@ -71,6 +94,14 @@ namespace NaijaRise.Data
         public LandmarkData[] landmarks;
         public BusStopData[] busStops;
         public PropertyData[] properties;
+        public BusinessData[] businesses;
+        public DealerData[] dealer;
+        public GymData gym; public FoodData[] food; public MallData mall; public CafeData cafe; public CourseData[] courses; public FootballData football; public int raceWager = 20000;
+        public SchoolData school; public WeatherData weather; public AnimalData[] animals; public int petPrice = 25000;
+        public ServiceNpcData[] serviceNpcs; public NightlifeData[] nightlife; public UpgradeData[] upgrades; public string[] liveries, slogans, staffNames;
+        public int hookupPrice = 20000, staffCost = 50000, maxStaff = 3, rivalAfter = 2; public float staffBonus = 0.3f, rivalPenalty = 0.85f, tenantShare = 1f / 30f; public string rivalName = "Chidi's Corner";
+        public FamilyMemberData[] family; public FamilyRequestData[] familyRequests; public FamilySpotData[] familySpots; public FamilyScheduleData[] familySchedules; public RelationshipLevelData[] relationshipLevels;
+        public string[] outfits, hairStyles, faces, bodyTypes, accessories, facialHair, hairColors;
         public WaterData[] waters;
         public TollData[] tolls;
         public RoadPointData[] footbridges;
@@ -120,7 +151,8 @@ namespace NaijaRise.Data
             foreach (var l in landmarks) if (!places.ContainsKey(l.id)) places[l.id] = new Place { id = l.id, name = l.name, kind = l.kind, x = l.x, z = l.z, stadium = l.stadium, big = l.big };
             foreach (var b in busStops) if (!places.ContainsKey(b.id)) places[b.id] = new Place { id = b.id, name = b.name, kind = "busstop", x = b.x, z = b.z, busStop = true };
             foreach (var p in properties) if (!places.ContainsKey(p.id)) places[p.id] = new Place { id = p.id, name = p.name, kind = "property", x = p.x, z = p.z };
-            jobs ??= new JobData[0]; contacts ??= new ContactData[0]; allContacts ??= new NameData[0]; vehicleClasses ??= new VehicleClassData[0];
+            businesses ??= new BusinessData[0]; dealer ??= new DealerData[0]; gym ??= new GymData(); food ??= new FoodData[0]; mall ??= new MallData(); cafe ??= new CafeData(); courses ??= new CourseData[0]; football ??= new FootballData(); school ??= new SchoolData(); weather ??= new WeatherData(); animals ??= new AnimalData[0]; family ??= new FamilyMemberData[0]; serviceNpcs ??= new ServiceNpcData[0]; nightlife ??= new NightlifeData[0]; upgrades ??= new UpgradeData[0]; liveries ??= new string[0]; slogans ??= new string[0]; staffNames ??= new string[0]; familyRequests ??= new FamilyRequestData[0]; familySpots ??= new FamilySpotData[0]; familySchedules ??= new FamilyScheduleData[0]; relationshipLevels ??= new RelationshipLevelData[0];
+            outfits ??= new string[0]; hairStyles ??= new string[0]; faces ??= new string[0]; bodyTypes ??= new string[0]; accessories ??= new string[0]; facialHair ??= new string[0]; hairColors ??= new string[0]; jobs ??= new JobData[0]; contacts ??= new ContactData[0]; allContacts ??= new NameData[0]; vehicleClasses ??= new VehicleClassData[0];
             fabrics ??= new FabricData[0]; skins ??= new string[0]; pants ??= new string[0]; levels ??= new LevelData[0]; unlocks ??= new UnlockData[0];
         }
 
@@ -142,6 +174,13 @@ namespace NaijaRise.Data
             return true;
         }
 
+        public PropertyData Property(string id) { foreach (var p in properties) if (p.id == id) return p; return null; }
+        public BusinessData Business(string id) { foreach (var b in businesses) if (b.id == id) return b; return null; }
+        public FamilySpotData FamilySpot(string id) { foreach (var sp in familySpots) if (sp.id == id) return sp; return null; }
+        public FamilyScheduleData ScheduleFor(string who, float clock) { float h = Mathf.Repeat(clock, 24f); FamilyScheduleData first = null; foreach (var w in familySchedules) { if (w.who != who) continue; first ??= w; if (h >= w.from && h < w.to) return w; } return first; }
+        public string RelationshipLabel(float score) { string label = relationshipLevels.Length > 0 ? relationshipLevels[0].label : "Distant"; foreach (var l in relationshipLevels) if (score >= l.min) label = l.label; return label; }
+        public CourseData Course(string id) { foreach (var c in courses) if (c.id == id) return c; return null; }
+        public LandmarkData NearestLandmark(string kind, Vector3 pos, float radius) { LandmarkData best = null; float bestD = radius * radius; foreach (var l in landmarks) { if (l.kind != kind) continue; var w = l.World(pos.y); float d = (w - pos).sqrMagnitude; if (d < bestD) { bestD = d; best = l; } } return best; }
         public string ContactName(string id) { foreach (var c in allContacts) if (c.id == id) return c.name; return id; }
         public List<JobData> JobsAt(string placeId) { var l = new List<JobData>(); foreach (var j in jobs) if (j.at == placeId) l.Add(j); return l; }
         public VehicleClassData VehicleClass(string id) { foreach (var v in vehicleClasses) if (v.id == id) return v; return null; }

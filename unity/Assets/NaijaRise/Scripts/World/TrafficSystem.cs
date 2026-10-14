@@ -21,6 +21,9 @@ namespace NaijaRise.World
         readonly List<Vehicle> vehicles = new List<Vehicle>();
         public IReadOnlyList<Vehicle> Vehicles => vehicles;
         [System.NonSerialized] public Transform PlayerObstacle;   // the player (on foot or driving); traffic brakes for it
+        [System.NonSerialized] public TrafficLights Lights;
+        [System.NonSerialized] public Events Events;
+        [System.NonSerialized] public Weather Weather;
         static readonly string[] Mix = { "danfo", "danfo", "danfo", "keke", "keke", "korope", "car", "car", "car", "car", "okada", "car", "danfo", "police", "lawma", "tanker", "van", "pickup" };
 
         public void Init(WorldData world, DayNightCycle dayNight, Transform parent)
@@ -56,6 +59,10 @@ namespace NaijaRise.World
             return vc;
         }
 
+        // Leave the simulation (police pursuit) and come back to it afterwards.
+        public void Detach(Vehicle v) => vehicles.Remove(v);
+        public void Rejoin(Vehicle v) { if (!vehicles.Contains(v)) { vehicles.Add(v); v.speed = 0f; Place(v); } }
+
         public Vehicle Nearest(Vector3 pos, float maxDist)
         {
             Vehicle best = null; float bestD = maxDist * maxDist;
@@ -80,6 +87,8 @@ namespace NaijaRise.World
             {
                 var v = vehicles[i];
                 float target = v.cruise * RushFactor(v.road, v.along);
+                if (Events != null && Events.InJam(v.road, v.along)) target = Mathf.Min(target, 1.6f);
+                if (Weather != null && Weather.Raining) target *= 0.7f;
                 float gap = float.MaxValue, aheadSpeed = 0f;
                 for (int j = 0; j < vehicles.Count; j++)
                 {
@@ -96,6 +105,21 @@ namespace NaijaRise.World
                     float laneAcross = v.road.k + LaneOffsetSign(v) * LaneOffset(v);
                     if (d > 0f && d < 16f && Mathf.Abs(pAcross - laneAcross) < 2.6f && Mathf.Abs(PlayerObstacle.position.y - v.t.position.y) < 3f) { gap = Mathf.Min(gap, d); aheadSpeed = 0f; }
                 }
+                // Red or amber light at the next junction ahead: stop short of it unless already inside.
+                if (Lights != null)
+                {
+                    string light = Lights.LightFor(v.road.axis);
+                    if (light != "green")
+                        foreach (var o in data.roads)
+                        {
+                            if (o.axis == v.road.axis) continue;
+                            if (v.road.k < o.from || v.road.k > o.to || o.k < v.road.from || o.k > v.road.to) continue;
+                            bool hasLight = v.road.Horizontal ? Lights.HasLight(o.k, v.road.k) : Lights.HasLight(v.road.k, o.k);
+                            if (!hasLight) continue;
+                            float d = (o.k - v.along) * v.dir - o.width * 0.5f;   // distance to the junction edge
+                            if (d > 0.5f && d < 9f) { gap = Mathf.Min(gap, d + v.cls.len * 0.5f + 4.5f - 1f); aheadSpeed = 0f; }
+                        }
+                }
                 float minGap = v.cls.len * 0.5f + 4.5f;
                 if (gap < minGap) target = 0f;
                 else if (gap < minGap + 10f) target = Mathf.Min(target, aheadSpeed * 0.95f);
@@ -103,12 +127,13 @@ namespace NaijaRise.World
                 v.along += v.dir * v.speed * dt;
                 if (v.dir > 0 && v.along > v.road.to - 4f) v.along = v.road.from + 4f;
                 if (v.dir < 0 && v.along < v.road.from + 4f) v.along = v.road.to - 4f;
-                if (v.wheels != null) foreach (var w in v.wheels) w.Rotate(Vector3.up, v.speed * dt * 120f, Space.Self);
+                if (v.wheels != null) foreach (var w in v.wheels) VehicleBodies.Spin(w, v.speed * dt * 120f);
                 Place(v);
             }
         }
 
-        float LaneOffset(Vehicle v) => v.road.width * (0.25f + 0.17f * v.lane);
+        // Lane 0 sits a little inside the quarter line so kerb-parked vehicles (at half width minus 2.2 m) are clear of it.
+        float LaneOffset(Vehicle v) => v.road.width * (0.22f + 0.17f * v.lane);
         // Right-hand traffic: the lane is on the right of the direction of travel. In data units the sign of
         // "right" depends on the axis and direction; derive it from the world right vector.
         float LaneOffsetSign(Vehicle v)

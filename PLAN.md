@@ -24,7 +24,8 @@ The PRD's §25 "Version 0.1" MVP list, checked against the current build:
 | Inventory | **Done** | Consumables and mission items |
 | Character customisation | **Done** | |
 | Day/night cycle | **Done** | Gradient sky, sun, clouds, street lights, lit windows, NEPA outages |
-| Basic multiplayer | **Not started** | See Phase 5 |
+| Basic multiplayer | **Client ready (Unity)** | Rooms per district, player sync and chat over Supabase Realtime in `unity/`; needs a Supabase project and `supabase/schema.sql` applied. Web shell: see Phase 5 |
+| Unity edition | **Vertical slice** | Playable slice in `unity/` built from the same data; evaluation only, see §2b |
 
 Systems that go beyond the MVP list and are already in: heat with police pursuit and arrest, FRSC speeding tickets, army checkpoint, agbero levies (a pet dog keeps them away), rush-hour slowdowns and go-slow traffic, public-transport stop service with passenger turnover and fare-based boarding, Owambe parties, church/mosque, filling station, phone with ten apps, GPS routing along the road grid, Level titles (Newcomer → Hustler → Entrepreneur → Mogul) with app unlocks at Level 2, keyboard/arrow keys, touch and gamepad controls including on-foot jump.
 
@@ -82,12 +83,12 @@ Computer Village is a market destination; Ikeja also includes the New Afrika Shr
 
 Goal: make the economy loop deep enough that a player can spend an hour running a legitimate life, and finish the MVP checklist.
 
-1. **Accounts and server save** — Supabase Auth in `web/`, a `players` + `saves` schema (PRD §27), the engine's state blob synced on autosave; local save remains the offline fallback.
+1. **Accounts and server save** — Supabase Auth in `web/`, a `players` + `saves` schema (PRD §27, now in `supabase/schema.sql` and implemented by the Unity edition), the engine's state blob synced on autosave; local save remains the offline fallback.
 2. **Colyseus room per district** — player position, heading, vehicle and look synced at 10 Hz; other players rendered with the same character builder; chat bubble over the HUD.
-3. **Crews** — create or join, treasury, HQ at an owned property, crew tag on the player card, shared GPS pins.
-4. **Co-op missions** — the race and getaway templates accept a second player; payout split.
+3. **Crews** — create or join, treasury, HQ at an owned property, crew tag on the player card, shared GPS pins. *Implemented in the Unity edition (`Session.Crew.cs`) against `supabase/schema.sql`.*
+4. **Co-op missions** — the race and getaway templates accept a second player; payout split. *The co-op race is in the Unity edition; the getaway is next.*
 5. **TypeScript port** — `src/data/` and `src/systems/` first, with JSDoc-to-TS types shared by the Next shell.
-6. **Admin dashboard v0** — a `/admin` route listing players, economy totals and the mission/job/business tables, editable without a rebuild.
+6. **Admin dashboard v0** — a `/admin` route listing players, economy totals and the mission/job/business tables, editable without a rebuild. *`/admin` and `/account` exist in `web/` on the shared schema; editing the data tables is still to do.*
 7. **Audio v2** — recorded ambience and owambe music behind the existing Sound toggle.
 8. **QA gate** — run headless and browser smoke tests across the registry, including loading Yaba and checking interior entry/exit without console errors.
 
@@ -97,9 +98,28 @@ Exit criteria: two players see each other in one Surulere room, saves round-trip
 
 ## 2b. Unity edition — vertical slice (13 October 2026)
 
-The native-engine vertical slice that the Multi-Platform Technical Roadmap below asks for now exists in [`unity/`](unity/README.md) (Unity 6000.6.5f1, Universal Render Pipeline 17.6, legacy Input Manager, no other packages). It builds the same Lagos from the same data: `npm run export:unity` writes the merged district map plus jobs, contacts, vehicle classes, wardrobe colours and level titles to `unity/Assets/NaijaRise/Resources/world/lagos.json`, and C# systems construct the city (roads, pavements, medians, street lights, the four bridge decks on their real profiles, water, 120 landmarks with signs, bus stops, properties, corridor cells, region-aware housing, about 6,000 batched objects in a second), the poster look (HDR, bloom, ACES, vignette), the clock and Lagos light, 110 ambient vehicles that ride the bridges and brake for the player, 70 pedestrians in wardrobe fabrics, the 32 contacts standing outside their places, driving ported from `movement.js`, prompts and dialogue, job shifts with wages, skills, XP, levels, heat, fuel and stamina, autosave and resume, a minimap and the HUD. The data's +z south maps to Unity -z so the city is not mirrored.
+The native-engine vertical slice that the Multi-Platform Technical Roadmap below asks for exists in [`unity/`](unity/README.md): Unity 6000.6.5f1, Universal Render Pipeline 17.6, Input System 1.19, glTFast 6.0.1 (the Built-in pipeline and the Input Manager are deprecated in Unity 6 and are not used). It was built in fourteen increments in one day and is verified headless: the C# compiles clean, an edit-mode smoke test builds the city from the exported data, a play-mode test plays through the whole loop, and a macOS player builds from the command line.
 
-It compiles clean, has a headless smoke test and a headless play-mode test (talk, work a shift, drive, exit, save and reload) and builds a macOS player from the command line. Not ported: rigged characters, businesses, housing, education, family, missions and story, police and heat responses, racing, the phone. The roadmap's recommendation stands: measure this slice against the web build (frame time at Eko Bridge at 20:00, controller feel, time-to-add-a-district, build size) before deciding on a migration. The order of work if Unity wins is in `unity/README.md`.
+| Increment | What it added |
+|---|---|
+| 1 · City | `npm run export:unity` writes `src/data/districts/lagos.js` to JSON; roads, pavements, medians, street lights, the four bridge decks on their real profiles, water, landmarks with signs, bus stops, properties, corridor cells, region-aware housing; player, camera, clock and light, ambient traffic, first HUD |
+| 2 · Life | URP look (HDR, bloom, ACES), the coordinate mirror fix, driving ported from `movement.js`, contacts outside their places, jobs and shifts, pedestrians, traffic that brakes for you, minimap, JSON autosave and resume |
+| 3 · Law and property | Choice menus, housing (rent, buy, sleep, leases), the four businesses with pay cycles, danfo transit, tolls, traffic lights, FRSC and army checkpoints, police pursuit, settle-or-arrest, roadblocks, laying low |
+| 4 · Story | The prologue, Hot Delivery, Crossroads and both arcs hand-ported from `missions.js`; objectives, markers and a GPS route along the road graph; timed, cargo, escape and recovery tasks; Dayo's dealership, persistent owned vehicles, refuelling; reputation and inventory |
+| 5 · Places | Gym, restaurants, mall and cinema, cyber café courses and certificates that unlock the gated jobs, freelance gigs, street football, Speedy's races (which now close both arcs) |
+| 6 · Real models | glTFast 6.0.1 with the Meshopt decoder; the Ready Player Me avatar with Idle / Walk / Run rebound onto its skeleton by an editor step, for the player, contacts and pedestrians; Kenney's Car Kit models for cars, police and trucks, scaled to class length with spinning wheels |
+| 7 · Wardrobe and landmarks | The procedural fabric prints from `wardrobe.js` on the clothing, saved looks with outfit and barber changes, CesiumMan as the second street body, the National Stadium model fitted to its footprint, about thirty trees from the vegetation GLBs |
+| 8 · Phone and the living city | The smartphone with nine apps (Messages, Jobs, RiseBank, Property, Businesses, Character with the look editor, Contacts, Inventory, Settings with three graphics levels), the twelve hustle hubs' timed deliveries, Community Grammar School and Yaba Tech, football tiers, rain and harmattan with wet handling, goats, chickens, cats and the rigged stray dog |
+| 9 · Family and the look | Mama Tunde and Chioma on their day plans with household needs and requests, family bonds, contact trust and respect with tiers, all eleven look slots visible on the rig (body type, hair style, facial hair, accessories, outfit silhouettes), the HUD portrait |
+| 10 · The street and the long game | Agberos and their levy, the pet dog, uniformed officers, night hustlers behind a mature toggle, the owambe crowd; go-slow jams, road works with a diversion, the overturned keke, the storm flood and NEPA outages; tenants, complaints and home upgrades; business staff and the rival trader; vehicle insurance, liveries and slogans |
+| 11 · Water and bodies | Swimming in the lagoon, vehicles that stall and sink when driven in, pedestrian colliders |
+| 12 · Graphics compatibility | The quality governor from `core/quality.js`: GPU auto-detect, automatic level step-down under slow frames, dynamic resolution with hysteresis and no-gain back-off; a realtime reflection probe and wet-road gloss |
+| 13 · Accounts and multiplayer | Supabase Auth accounts, the server-side save (`supabase/schema.sql`, shared with the web edition), a Realtime room per district with other players rendered as rigged characters or vehicles, chat; a loopback bus keeps the same code path offline and in tests |
+| 14 · Crews, co-op, web and consoles | Crews (code, treasury, HQ, shared pins) and the co-op race on their own channel; the Input System action maps asset; macOS / Windows / WebGL build entries; the web shell's `/account` and `/admin` pages on the shared schema |
+
+Everything in the web edition's Alpha 1.0 is now in the slice; the web edition's Phases 5 and 6 (multiplayer, accounts, server save) are ahead of both editions, and the roadmap's console work (action maps, platform builds) is next for the Unity side.
+
+The roadmap's recommendation stands: measure this slice against the web build (frame time at Eko Bridge at 20:00, controller feel, time-to-add-a-district, build size) before deciding on a migration. The checks and the remaining port order are in `unity/README.md`. The machine this was built on is an Intel Mac; Unity has announced that 6.7 LTS is the last editor for Intel, so a production Unity edition would need Apple Silicon hardware before upgrading past it.
 
 ## 3. Later phases (from PRD §30)
 
@@ -352,7 +372,7 @@ The next development sprint should focus on these deliverables, in order:
 1. Baseline report: build results, runtime errors, regression findings and a performance snapshot.
 2. Input architecture specification: shared action map, platform mapping rules and controller UI behavior.
 3. VR prototype plan: minimum viable WebXR implementation and device test checklist.
-4. Engine comparison report: a small Three.js versus Unity feasibility test, with Unreal retained as an alternative if the requirements warrant it.
+4. Engine comparison report: the Unity vertical slice in `unity/` (§2b) is the feasibility test; measure it against the web build per `unity/README.md`, with Unreal retained as an alternative if the requirements warrant it.
 5. Release gates: explicit conditions for approving a migration or beginning native console work.
 
 One practical constraint: I could inspect the repository, but the connected GitHub integration denied permission to create a branch. I have not modified the production branch or claimed that any new code has been committed. The roadmap above is based on the repository inspection and is ready to be added as a version-controlled project document.

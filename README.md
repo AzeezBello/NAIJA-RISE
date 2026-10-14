@@ -6,7 +6,14 @@ A browser-playable open-world life simulation set in a living Surulere, Lagos. O
 
 See [PLAN.md](PLAN.md) for the product plan, what is done, and the next phase, and [DEPLOY.md](DEPLOY.md) for Vercel deployment.
 
-A Unity 6 (URP) edition of the same city, built from the same data as a native-engine vertical slice, lives in [unity/](unity/README.md); run `npm run export:unity` to refresh its data after editing `src/data`.
+## Unity edition
+
+A Unity 6 edition of the same game lives in [unity/](unity/README.md). It is the native-engine vertical slice from the plan, built from the same data files: `npm run export:unity` writes the district map, jobs, contacts, vehicles, businesses, courses and rules to JSON, and C# systems build the city, the driving, the people (the same Ready Player Me rig and Kenney vehicles, imported with glTFast), the story with its GPS, the law, housing, business, education and racing. It compiles clean, has headless smoke and play-mode tests, builds a macOS player, and carries the account, cloud-save and district-multiplayer client against the Supabase schema in `supabase/schema.sql`. The web edition in `src/` and `web/` remains the production baseline; the Unity edition exists to be measured against it before any migration decision.
+
+```bash
+npm run export:unity        # after editing src/data
+open unity                  # then open Assets/NaijaRise/Scenes/Lagos.unity in Unity 6000.6 and press Play
+```
 
 ## Play
 
@@ -17,7 +24,7 @@ python3 -m http.server 4173
 # open http://localhost:4173
 ```
 
-Next.js 16 shell (landing page, `/play`), Turbopack in dev and build:
+Next.js 16 shell (landing page, `/play`, `/account`, `/admin`), Turbopack in dev and build:
 
 ```bash
 npm install          # repo root: the engine's own `three` dependency
