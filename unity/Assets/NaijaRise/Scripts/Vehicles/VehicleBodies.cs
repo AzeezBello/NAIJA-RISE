@@ -57,7 +57,7 @@ namespace NaijaRise.Vehicles
             var go = new GameObject(cls.name); go.transform.SetParent(parent, false);
             var model = Object.Instantiate(prefab, go.transform, false);
             model.name = "Model";
-            model.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);   // glTF +Z front → Unity -z after import
+            model.transform.localRotation = Quaternion.identity;   // glTFast keeps glTF +Z as Unity +z: the models already face forward
             // Scale to the class length, feet on the ground, centred on the axle line.
             var b = Entities.CharacterRig.Bounds(model);
             float k = b.size.z > 0.01f ? cls.len / b.size.z : 1f;
@@ -71,7 +71,7 @@ namespace NaijaRise.Vehicles
             wheels = ws.ToArray();
             foreach (var c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
             var col = go.AddComponent<BoxCollider>();
-            col.center = new Vector3(0f, b.size.y * 0.5f, 0f); col.size = new Vector3(Mathf.Max(cls.wid, b.size.x), b.size.y, cls.len);
+            col.center = new Vector3(0f, b.size.y * 0.5f, 0f); col.size = new Vector3(cls.wid, b.size.y, cls.len);   // class width: the data's lanes assume it
             return go;
         }
 

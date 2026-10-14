@@ -74,14 +74,32 @@ namespace NaijaRise.EditorTools
             bool rigOk = false, carOk = false;
             if (Entities.CharacterRig.Available)
             {
+                Entities.CharacterRig.Data = data;
                 var probe = new GameObject("RigProbe");
-                var anim = Entities.CharacterRig.Build(probe.transform, Color.red, Color.black, Color.gray, null);
+                var rig = Entities.CharacterRig.Build(probe.transform, Entities.Look.Default);
+                var anim = rig.Anim;
                 var b = Entities.CharacterRig.Bounds(anim.gameObject);
                 var le = Entities.CharacterRig.Find(anim.transform, "LeftEye"); var head = Entities.CharacterRig.Find(anim.transform, "Head");
                 bool facesForward = le == null || head == null || probe.transform.InverseTransformDirection(le.position - head.position).z > 0f;
-                rigOk = anim.GetClipCount() == 3 && Mathf.Abs(b.size.y - 1.8f) < 0.1f && facesForward && anim.GetClip("walk") != null && anim.GetClip("walk").legacy;
-                Debug.Log($"NAIJA RISE smoke test: rig {anim.GetClipCount()} clips, height {b.size.y:0.00} m, faces +z {facesForward}, skinned renderers {anim.GetComponentsInChildren<SkinnedMeshRenderer>().Length}");
+                var print = Entities.Fabrics.Get(data, 0);
+                bool printed = print != null && print.width == 128 && rig.Top.Count > 0 && rig.Top[0].HasProperty("baseColorTexture") && rig.Top[0].GetTexture("baseColorTexture") == print;
+                rigOk = anim.GetClipCount() == 3 && Mathf.Abs(b.size.y - 1.8f) < 0.1f && facesForward && anim.GetClip("walk") != null && anim.GetClip("walk").legacy && printed;
+                Debug.Log($"NAIJA RISE smoke test: rig {anim.GetClipCount()} clips, height {b.size.y:0.00} m, faces +z {facesForward}, skinned renderers {anim.GetComponentsInChildren<SkinnedMeshRenderer>().Length}, top materials {rig.Top.Count}, fabric print applied {printed}");
                 Object.DestroyImmediate(probe);
+                if (Entities.CharacterRig.CesiumAvailable)
+                {
+                    var cprobe = new GameObject("CesiumProbe");
+                    var crig = Entities.CharacterRig.Build(cprobe.transform, Entities.Look.Default, 0, 1.7f, true);
+                    var cb = Entities.CharacterRig.Bounds(crig.Root);
+                    bool cesiumOk = crig.Cesium && crig.Anim.GetClip("walk") != null && Mathf.Abs(cb.size.y - 1.7f) < 0.1f;
+                    rigOk &= cesiumOk;
+                    Debug.Log($"NAIJA RISE smoke test: CesiumMan rig {(cesiumOk ? "ok" : "FAIL")}, height {cb.size.y:0.00} m");
+                    Object.DestroyImmediate(cprobe);
+                }
+                else Debug.Log("NAIJA RISE smoke test: CesiumMan not available");
+                Debug.Log($"NAIJA RISE smoke test: {builder.StadiumModels} stadium models, {builder.Trees} trees placed");
+                int stadiums = 0; foreach (var l in data.landmarks) if (l.stadium) stadiums++;
+                rigOk &= builder.StadiumModels == stadiums && builder.Trees >= 20;
             }
             else Debug.Log("NAIJA RISE smoke test: character rig not available (glTFast import or clips missing)");
             var sedan = data.VehicleClass("car");

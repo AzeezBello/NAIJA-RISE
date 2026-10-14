@@ -39,7 +39,8 @@ namespace NaijaRise
 
             var spawn = new Vector3(state.S.px, state.S.py, state.S.pz);
             if (!restored) spawn.y = Data.DeckHeightAt(spawn) + 0.6f;
-            Player = PlayerController.Create(spawn, state.S.yaw);
+            Entities.CharacterRig.Data = Data;
+            Player = PlayerController.Create(spawn, state.S.yaw, state.Look);
 
             var cam = Camera.main;
             if (cam == null) { cam = new GameObject("Main Camera").AddComponent<Camera>(); cam.tag = "MainCamera"; }
@@ -83,7 +84,7 @@ namespace NaijaRise
             hud.Init(Data, Clock, Session, minimap);
 
             state.Toast(restored ? $"Welcome back to Lagos · Day {state.S.day}" : "Welcome to Lagos. Baba K dey wait for you at Ojuelegba.");
-            Debug.Log($"NAIJA RISE — {Data.meta.name} {Data.meta.version}: {Data.roads.Length} roads, {Data.landmarks.Length} landmarks, {Builder.ObjectCount} world objects, {lights.Count} lit junctions, {contacts.Contacts.Count} contacts, save {(restored ? "restored" : "new")}.");
+            Debug.Log($"NAIJA RISE — {Data.meta.name} {Data.meta.version}: {Data.roads.Length} roads, {Data.landmarks.Length} landmarks, {Builder.ObjectCount} world objects ({Builder.StadiumModels} stadium models, {Builder.Trees} trees), {lights.Count} lit junctions, {contacts.Contacts.Count} contacts, save {(restored ? "restored" : "new")}.");
         }
 
         void LateUpdate()

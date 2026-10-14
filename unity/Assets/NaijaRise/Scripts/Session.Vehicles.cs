@@ -50,6 +50,7 @@ namespace NaijaRise
             var pos = new Vector3(o.x, 0f, o.z); pos.y = Data.DeckHeightAt(pos) + 0.12f;
             go.transform.position = pos; go.transform.rotation = Quaternion.Euler(0f, o.yaw, 0f);
             var vc = go.AddComponent<VehicleController>(); vc.Setup(cls, wheels); vc.Owned = true; vc.OwnedId = o.id; vc.Condition = o.cond;
+            vc.Place(pos, Quaternion.Euler(0f, o.yaw, 0f));
             Parked.Add(vc);
             return vc;
         }

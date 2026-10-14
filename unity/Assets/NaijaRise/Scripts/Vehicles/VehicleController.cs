@@ -16,6 +16,7 @@ namespace NaijaRise.Vehicles
         [System.NonSerialized] public string OwnedId;
         public Transform[] Wheels;
         public float LastImpact;            // m/s lost in the last crash, read and cleared by the session
+        [System.NonSerialized] public string LastHit;   // what the last crash was against (diagnostics)
 
         Rigidbody rb;
         float yaw;
@@ -32,6 +33,15 @@ namespace NaijaRise.Vehicles
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
             rb.linearDamping = 0.2f;
             rb.isKinematic = true;          // parked until someone drives it
+        }
+
+        // Move a vehicle: the Rigidbody (interpolated) keeps its own pose, so the transform alone is not enough.
+        public void Place(Vector3 position, Quaternion rotation)
+        {
+            transform.SetPositionAndRotation(position, rotation);
+            if (rb != null) { rb.position = position; rb.rotation = rotation; rb.linearVelocity = Vector3.zero; rb.angularVelocity = Vector3.zero; }
+            yaw = rotation.eulerAngles.y;
+            Physics.SyncTransforms();
         }
 
         public void SetDriven(bool driven)
@@ -80,6 +90,7 @@ namespace NaijaRise.Vehicles
             Speed -= Mathf.Sign(Speed) * lost;
             Condition = Mathf.Max(0f, Condition - lost * 1.2f);
             LastImpact = lost;
+            LastHit = $"{c.gameObject.name} n={n} closing={closing:0.0} square={square:0.00} at {c.GetContact(0).point}";
         }
 
         public float Kmh => Mathf.Abs(Speed) * 3.6f;

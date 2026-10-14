@@ -80,9 +80,9 @@ namespace NaijaRise
         {
             var c = Data.mall;
             var menu = new Menu { Title = "Mall Attendant", Subtitle = "Adeniran Ogunsanya Mall", Line = "Clothing, electronics, supermarket, barber — or the cinema upstairs." };
-            menu.Options.Add(new MenuOption { Label = $"Buy an outfit · ₦{c.outfit:N0}", Action = () => { if (!State.Pay(c.outfit)) { State.Toast("Not enough money"); return; } State.S.outfits++; State.GainSkill("charisma", 3); State.AddRep("social", 2); State.Toast("Fresh fit · Charisma +3"); } });
+            menu.Options.Add(new MenuOption { Label = $"Buy an outfit · ₦{c.outfit:N0}", Action = () => { if (!State.Pay(c.outfit)) { State.Toast("Not enough money"); return; } State.S.outfits++; NextFabric(); State.GainSkill("charisma", 3); State.AddRep("social", 2); State.Toast($"Fresh fit · {FabricName()} · Charisma +3"); } });
             menu.Options.Add(new MenuOption { Label = State.Has("laptop") ? "Laptop · owned" : $"Laptop · ₦{c.laptop:N0}", Enabled = !State.Has("laptop"), Action = () => { if (!State.Pay(c.laptop)) { State.Toast("Not enough money"); return; } State.AddItem("laptop"); State.Toast("Laptop bought — freelance gigs pay double at the cyber café"); } });
-            menu.Options.Add(new MenuOption { Label = $"Barber · ₦{c.barber:N0}", Action = () => { if (!State.Pay(c.barber)) { State.Toast("Not enough money"); return; } State.GainSkill("charisma", 1); State.Toast("Fresh cut"); } });
+            menu.Options.Add(new MenuOption { Label = $"Barber · ₦{c.barber:N0}", Action = () => { if (!State.Pay(c.barber)) { State.Toast("Not enough money"); return; } State.S.lookHair = (State.S.lookHair + 1) % 5; Player.ApplyLook(State.Look); State.GainSkill("charisma", 1); State.Toast("Fresh cut"); } });
             menu.Options.Add(new MenuOption { Label = "Cinema", Action = OpenCinemaMenu });
             menu.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(menu);
@@ -129,6 +129,9 @@ namespace NaijaRise
             menu.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(menu);
         }
+
+        public void NextFabric() { if (Data.fabrics.Length == 0) return; State.S.lookFabric = (State.S.lookFabric + 1) % Data.fabrics.Length; Player.ApplyLook(State.Look); }
+        public string FabricName() => Data.fabrics.Length > 0 ? Data.fabrics[Mathf.Clamp(State.S.lookFabric, 0, Data.fabrics.Length - 1)].name : "outfit";
 
         public bool Study(CourseData c)
         {

@@ -12,8 +12,9 @@ namespace NaijaRise.World
         public int Count = 70;
         public float SpawnRadius = 190f, RecycleRadius = 260f;
 
-        class Ped { public Transform t; public Animation anim; public RoadData road; public int side, dir; public float along, speed, phase; }
+        class Ped { public Transform t; public RigInstance rig; public RoadData road; public int side, dir; public float along, speed, phase; }
         public int RiggedCount { get; private set; }
+        public int CesiumCount { get; private set; }
 
         WorldData data;
         Transform player, root;
@@ -26,23 +27,28 @@ namespace NaijaRise.World
             root = new GameObject("Pedestrians").transform; root.SetParent(parent, false);
             for (int i = 0; i < Count; i++)
             {
-                var p = new Ped(); p.t = BuildBody(out p.anim).transform; if (p.anim != null) RiggedCount++;
+                var p = new Ped(); p.t = BuildBody(out p.rig).transform; if (p.rig != null) { RiggedCount++; if (p.rig.Cesium) CesiumCount++; }
                 if (!Respawn(p)) { Destroy(p.t.gameObject); continue; }
                 peds.Add(p);
             }
         }
 
-        GameObject BuildBody(out Animation anim)
+        GameObject BuildBody(out RigInstance rig)
         {
-            anim = null;
+            rig = null;
             var go = new GameObject("Pedestrian");
             go.transform.SetParent(root, false);
-            Color top = data.fabrics.Length > 0 ? Mannequin.Hex(data.fabrics[rng.Next(data.fabrics.Length)].baseColor) : new Color(0.8f, 0.4f, 0.2f);
+            // The street draws random outfits, fabrics, skin tones, heights and caps so no two pedestrians look alike.
+            int fabric = data.fabrics.Length > 0 ? rng.Next(data.fabrics.Length) : 0;
+            Color top = data.fabrics.Length > 0 ? Mannequin.Hex(data.fabrics[fabric].baseColor) : new Color(0.8f, 0.4f, 0.2f);
             Color pants = data.pants.Length > 0 ? Mannequin.Hex(data.pants[rng.Next(data.pants.Length)]) : Color.black;
             Color skin = data.skins.Length > 0 ? Mannequin.Hex(data.skins[rng.Next(data.skins.Length)]) : new Color(0.45f, 0.3f, 0.2f);
-            Color? fila = rng.NextDouble() < 0.3 ? (Color?)Mannequin.Hex(rng.NextDouble() < 0.5 ? "#1f3a5f" : "#6e1a2c") : null;
-            if (CharacterRig.Available) anim = CharacterRig.Build(go.transform, top, pants, skin, fila, 0, 1.62f + (float)rng.NextDouble() * 0.3f);
-            else Mannequin.Build(go.transform, top, pants, skin, fila, 0, 0.9f + (float)rng.NextDouble() * 0.2f);
+            Color? cap = rng.NextDouble() < 0.3 ? (Color?)Mannequin.Hex(rng.NextDouble() < 0.5 ? "#1f3a5f" : "#6e1a2c") : null;
+            string[] hair = { "#120b08", "#3a2214", "#6b3e1a", "#b0b0b0" };
+            var look = new Look { Fabric = fabric, Pants = pants, Skin = skin, Hair = Mannequin.Hex(hair[rng.Next(hair.Length)]), Cap = cap };
+            // Rig 0 (Ready Player Me) weight 0.7, CesiumMan 0.3, as in src/data/config.js CHARACTER.rigs.
+            if (CharacterRig.Available) rig = CharacterRig.Build(go.transform, look, 0, 1.62f + (float)rng.NextDouble() * 0.3f, rng.NextDouble() < 0.3);
+            else Mannequin.Build(go.transform, top, pants, skin, cap, 0, 0.9f + (float)rng.NextDouble() * 0.2f);
             return go;
         }
 
@@ -92,7 +98,7 @@ namespace NaijaRise.World
                 var pos = Position(p);
                 if (!turn && data.InWater(pos)) turn = true;
                 if (turn) { p.dir = -p.dir; p.along += p.dir * 2f; pos = Position(p); }
-                if (p.anim != null) CharacterRig.SetState(p.anim, p.speed > 2.2f ? "run" : "walk", p.speed > 2.2f ? p.speed / CharacterRig.RunClipSpeed : p.speed / CharacterRig.WalkClipSpeed);
+                if (p.rig != null) p.rig.SetState(p.speed > 2.2f ? "run" : "walk", p.speed > 2.2f ? p.speed / CharacterRig.RunClipSpeed : p.speed / CharacterRig.WalkClipSpeed);
                 else pos.y += Mathf.Abs(Mathf.Sin(Time.time * 7f + p.phase)) * 0.04f;
                 p.t.position = pos;
                 p.t.rotation = Quaternion.LookRotation(p.road.Forward(p.dir), Vector3.up);

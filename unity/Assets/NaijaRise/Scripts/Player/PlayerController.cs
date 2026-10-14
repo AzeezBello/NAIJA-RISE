@@ -18,13 +18,17 @@ namespace NaijaRise.Player
         public bool IsGrounded => cc.isGrounded;
 
         CharacterController cc;
-        Animation rig;
+        RigInstance rig;
         Vector3 spawn, velocity;
         float speed;
         public bool HasRig => rig != null;
+        public int Fabric => rig != null ? currentLook.Fabric : 0;
+        Look currentLook = Look.Default;
+        public void ApplyLook(Look look) { currentLook = look; if (rig != null) CharacterRig.Dress(rig, look); }
         public string AnimState { get; private set; } = "idle";
 
-        public static PlayerController Create(Vector3 position, float yaw)
+        public static PlayerController Create(Vector3 position, float yaw) => Create(position, yaw, Look.Default);
+        public static PlayerController Create(Vector3 position, float yaw, Look look)
         {
             var go = new GameObject("Player") { layer = Layer };
             go.transform.position = position;
@@ -34,8 +38,8 @@ namespace NaijaRise.Player
             var pc = go.AddComponent<PlayerController>();
             pc.spawn = position;
             // The default look: ankara top, dark trousers, fila. A real rig when the character assets are present.
-            if (CharacterRig.Available) pc.rig = CharacterRig.Build(go.transform, Mannequin.Hex("#e07b1a"), Mannequin.Hex("#26312d"), Mannequin.Hex("#8a5a3c"), Mannequin.Hex("#1f3a5f"), Layer);
-            else Mannequin.Build(go.transform, Mannequin.Hex("#e07b1a"), Mannequin.Hex("#26312d"), Mannequin.Hex("#8a5a3c"), Mannequin.Hex("#1f3a5f"), Layer);
+            if (CharacterRig.Available) pc.rig = CharacterRig.Build(go.transform, look, Layer);
+            else Mannequin.Build(go.transform, Mannequin.Hex("#e07b1a"), look.Pants, look.Skin, look.Cap, Layer);
             return pc;
         }
 
@@ -81,7 +85,7 @@ namespace NaijaRise.Player
 
             // Locomotion state → clip (src/entities/character.js: idle, walk, run cross-fades, clip speed matched to movement).
             AnimState = speed < 0.3f ? "idle" : IsRunning && speed > 5.5f ? "run" : "walk";
-            if (rig != null) CharacterRig.SetState(rig, AnimState, AnimState == "walk" ? speed / CharacterRig.WalkClipSpeed : AnimState == "run" ? speed / CharacterRig.RunClipSpeed : 1f);
+            rig?.SetState(AnimState, AnimState == "walk" ? speed / CharacterRig.WalkClipSpeed : AnimState == "run" ? speed / CharacterRig.RunClipSpeed : 1f);
 
             if (transform.position.y < -40f) Teleport(spawn, transform.eulerAngles.y);
         }

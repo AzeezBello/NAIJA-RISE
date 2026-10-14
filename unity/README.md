@@ -13,8 +13,8 @@ Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFa
 |---|---|
 | Compile | clean, no warnings |
 | Smoke test (edit mode) | passes: 85 roads, 120 landmarks, about 6,000 objects in under a second; every job and contact resolves; mirror correct |
-| Play test (play mode) | passes, 49 checks across the whole loop, see "Headless" below |
-| macOS build | `Builds/NaijaRise-Lagos.app`, about 133 MB with the models |
+| Play test (play mode) | passes, 52 checks across the whole loop, see "Headless" below |
+| macOS build | `Builds/NaijaRise-Lagos.app`, about 314 MB with the stadium, tree and character models |
 | WebGL build | menu item exists, not yet exercised |
 | Open in editor | no errors; the serialization and deprecation analyzers are quiet |
 
@@ -37,7 +37,9 @@ is on the physical right. Every query takes Unity world positions unless its nam
 lines and street lights (gaps at junctions), bridge decks on their real height profiles with barriers and pillars,
 landmarks with lit sign boards, market stalls, bus-stop shelters, the four rentable properties, the four businesses,
 corridor towers and compounds, region-aware procedural housing, the Lekki toll plaza, footbridges, POS kiosks and
-roadside vendors. Static and batched.
+roadside vendors. The National Stadium is the web edition's stadium model fitted to its footprint, and about thirty
+trees (tropical, maple, pine, height-fitted with jitter) stand in the Surulere plots and along the Eko Atlantic shore,
+kept off the road shoulders. Static and batched.
 
 **Look** (`Scripts/World/PostFx.cs`, `DayNightCycle.cs`). URP with an HDR frame, soft bloom that shows on street lights
 at night, a neutral grade, ACES tone mapping, FXAA and a light vignette. One game hour per 45 s, a new game starts at
@@ -53,15 +55,17 @@ cost speed and condition. You start with one keke; Dayo at Ladipo sells okada, k
 prices and services vehicles parked nearby. Owned vehicles persist where you parked them. Refuel at Mobil. Any stopped
 traffic vehicle can be taken for Heat +1.
 
-**People** (`Scripts/Entities/CharacterRig.cs`, `Scripts/World/ContactSystem.cs`, `PedestrianSystem.cs`). The player,
-the 32 contacts and the 70 pedestrians are the Ready Player Me avatar the web edition streams (`Resources/Models/
-Characters/readyplayer.me.glb`, imported with glTFast), driven by a legacy `Animation` with Ready Player Me's Idle,
-Walk and Run clips. The clips ship as separate GLBs whose curves point at a different root, so
-`Editor/CharacterImport.cs` rebinds every curve by bone name onto the avatar and saves `Resources/Characters/rpm_*.anim`
-(211 to 301 curves each, none dropped); it runs before the smoke test and every build. Each character is scaled to its
-height, faces +z by checking where the eyes sit relative to the head bone, and has its outfit, trousers, skin and cap
-tinted from the wardrobe colours. Walk and run clips are scaled to movement speed and cross-fade from the controller
-state, as in `character.js`. The mannequin remains the fallback when the assets are missing.
+**People** (`Scripts/Entities/CharacterRig.cs`, `Fabrics.cs`, `Scripts/World/ContactSystem.cs`, `PedestrianSystem.cs`).
+The player, the 32 contacts and the 70 pedestrians are real humans: the Ready Player Me avatar the web edition streams
+(rig 0, 70 % of the street) and Khronos' CesiumMan (30 %), imported with glTFast and driven by legacy `Animation`
+clips. The Ready Player Me Idle / Walk / Run clips ship as separate GLBs whose curves point at a different root, so
+`Editor/CharacterImport.cs` rebinds every curve by bone name onto the avatar and saves `Resources/Characters/*.anim`;
+it runs before the smoke test and every build. Clothing wears the procedural Nigerian fabric prints from `wardrobe.js`
+(ankara, adire, aso-oke, lace, Super Eagles jersey, plain) drawn as 128-pixel tiles onto the outfit material; trousers,
+skin, hair and cap are tinted per look, and the street draws random looks so no two pedestrians match. The player's look
+is saved; the mall's outfit cycles the fabric and the barber the hair colour. Walk and run clips scale to movement speed
+and cross-fade from the controller state; CesiumMan freezes when idle, as in `character.js`. The mannequin remains the
+fallback when the assets are missing.
 
 **Story and GPS** (`Scripts/Story/Story.cs`, `Scripts/Session.Story.cs`, `Scripts/World/Navigation.cs`). The shared
 prologue (The First Run, Make the Delivery, Get Paid, Raise Your Game, Hot Delivery and its police-chased drop), the
@@ -135,7 +139,8 @@ The editor must be closed: Unity allows one instance per project. The same comma
 
 The smoke test prepares the character clips, builds the whole city in edit mode and checks object counts, that every
 job and contact resolves to a place, the spawn region and street, the Eko Bridge deck height, the coordinate mirror,
-the rig (three legacy clips, 1.80 m tall, facing +z) and a Kenney sedan scaled to its class length with four wheels. The play test enters play
+the rigs (three legacy clips on the avatar with a fabric print applied, CesiumMan with its walk), the stadium model and
+tree count, and a Kenney sedan scaled to its class length with four wheels. The play test enters play
 mode, boots the game and plays through the loop: The First Run with Baba K (taking the clean path), a shift, buying a
 sedan from Dayo and driving it, renting a room and sleeping, buying the kiosk and collecting a pay cycle, a danfo ride,
 pursuit and arrest at Heat 3, delivering the documents to Amaka, the Cold Chain task along the GPS, learning web design
@@ -144,10 +149,8 @@ with 0 on success (no `-quit`: it quits itself). Both are CI-ready.
 
 ## Not here yet
 
-- The wardrobe's procedural fabric prints (ankara, adire, aso-oke) and the eleven customisation slots: clothing is
-  tinted, not printed. CesiumMan as a second pedestrian body. The landmark GLBs under `../assets/landmarks` (stadium,
-  mosque, theatre) and the vegetation: they import the same way as the vehicles now that glTFast and the Meshopt
-  decoder are in the project, and are the next asset pass.
+- The rest of the eleven customisation slots (face, body type, hair style, facial hair, glasses and chain) and the
+  Character app to edit them; the outfit silhouettes (senator, agbada, gown) on the rig; animals (the dog and cat GLBs).
 - Yaba Tech and the school evening class; family and relationships; the phone and its apps; weather; the AJ City
   errand and the hustle-hub side missions; the football tournament tiers.
 - Insurance, liveries and danfo slogans; go-slow incidents and road-construction diversions; tenants and property
@@ -166,6 +169,6 @@ Measure, then decide. Suggested checks against the web build on the same machine
 3. Controller feel on the same PlayStation pad; the Input System's action maps are the path to native console bindings.
 4. Build output: the macOS app's size and startup time, and a WebGL build for parity with the Vercel deployment.
 
-If Unity wins on 1 and 3, the remaining port is: landmark models and fabric prints, the phone, family and education
-extras, quality profiles, console action maps. If it does not, the slice has still produced a JSON export of the whole game
+If Unity wins on 1 and 3, the remaining port is: the Character app and outfit silhouettes, the phone, family and
+education extras, quality profiles, console action maps. If it does not, the slice has still produced a JSON export of the whole game
 data that other tools can use.

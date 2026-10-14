@@ -51,6 +51,20 @@ namespace NaijaRise.EditorTools
                 made++;
                 Debug.Log($"NAIJA RISE: {outPath} ← {Path.GetFileName(file)}: {bound} curves bound, {dropped} dropped, {src.length:0.00} s");
             }
+            // CesiumMan carries its own walk clip; keep it as a legacy clip on its own hierarchy (no rebinding needed).
+            const string cesium = "Assets/NaijaRise/Resources/Models/Characters/CesiumMan.glb";
+            AnimationClip cesiumSrc = null;
+            foreach (var o in AssetDatabase.LoadAllAssetRepresentationsAtPath(cesium)) if (o is AnimationClip c) { cesiumSrc = c; break; }
+            if (cesiumSrc != null)
+            {
+                string outPath = $"{OutDir}/cesium_walk.anim";
+                var dst = new AnimationClip { legacy = true, wrapMode = WrapMode.Loop, frameRate = cesiumSrc.frameRate, name = "cesium_walk" };
+                foreach (var b in AnimationUtility.GetCurveBindings(cesiumSrc)) AnimationUtility.SetEditorCurve(dst, b, AnimationUtility.GetEditorCurve(cesiumSrc, b));
+                var existing = AssetDatabase.LoadAssetAtPath<AnimationClip>(outPath);
+                if (existing != null) { EditorUtility.CopySerialized(dst, existing); EditorUtility.SetDirty(existing); } else AssetDatabase.CreateAsset(dst, outPath);
+                made++;
+                Debug.Log($"NAIJA RISE: {outPath} ← CesiumMan.glb: {cesiumSrc.length:0.00} s");
+            }
             AssetDatabase.SaveAssets();
             Debug.Log($"NAIJA RISE: character assets prepared ({made} clips, {bones.Count} bones on the avatar)");
         }

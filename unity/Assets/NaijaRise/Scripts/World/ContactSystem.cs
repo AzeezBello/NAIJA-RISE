@@ -34,7 +34,8 @@ namespace NaijaRise.World
                 Color pants = Mannequin.Hex(world.pants.Length > 0 ? world.pants[rng.Next(world.pants.Length)] : "#26312d");
                 Color skin = Mannequin.Hex(world.skins.Length > 0 ? world.skins[rng.Next(world.skins.Length)] : "#8a5a3c");
                 Color? cap = c.id == "babak" || c.id == "ikorodu_trader" ? (Color?)new Color(0.12f, 0.23f, 0.37f) : null;
-                if (CharacterRig.Available) CharacterRig.Build(go.transform, top, pants, skin, cap);
+                int fabric = Mathf.Abs(c.id.GetHashCode()) % Mathf.Max(1, world.fabrics.Length);
+                if (CharacterRig.Available) CharacterRig.Build(go.transform, new Look { Fabric = fabric, Pants = pants, Skin = skin, Hair = Mannequin.Hex("#120b08"), Cap = cap });
                 else Mannequin.Build(go.transform, top, pants, skin, cap);
                 Mannequin.Label(go.transform, c.name, accent);
                 contacts.Add(new Contact { data = c, t = go.transform, pos = pos, rest = go.transform.rotation });
