@@ -30,7 +30,7 @@ namespace NaijaRise.World
         public void Build(WorldData data)
         {
             Data = data;
-            standard = Shader.Find("Universal Render Pipeline/Lit");
+            standard = ShaderLib.Lit;
             font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             Root = new GameObject("Lagos").transform;
             Root.SetParent(transform, false);

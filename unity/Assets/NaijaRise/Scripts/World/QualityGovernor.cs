@@ -41,7 +41,7 @@ namespace NaijaRise.World
             Auto = auto; cinematic = cinematicLook; follow = playerTransform; clock = dayNight;
             Level = Auto ? Detect() : Mathf.Clamp(savedLevel, 0, 2);
             Apply();
-            if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null)
+            if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null && !DiagFlags.Has("noprobe"))
             {
                 var go = new GameObject("Environment probe"); go.transform.SetParent(transform, false);
                 Probe = go.AddComponent<ReflectionProbe>();
@@ -61,11 +61,12 @@ namespace NaijaRise.World
             {
                 urp.renderScale = RenderScale;
                 urp.shadowDistance = ShadowRange[Level];
-                urp.supportsHDR = Level > 0 && cinematic;
+                urp.supportsHDR = Level > 0 && cinematic && !DiagFlags.Has("nohdr");
             }
-            var volume = GetComponent<Volume>(); if (volume != null) volume.enabled = cinematic && Level > 0;
+            bool post = cinematic && Level > 0 && !DiagFlags.Has("nopost");
+            var volume = GetComponent<Volume>(); if (volume != null) volume.enabled = post;
             var cam = UnityEngine.Camera.main;
-            if (cam != null) { var cd = cam.GetComponent<UniversalAdditionalCameraData>(); if (cd != null) { cd.renderPostProcessing = cinematic && Level > 0; cd.antialiasing = Level == 2 ? AntialiasingMode.FastApproximateAntialiasing : AntialiasingMode.None; } }
+            if (cam != null) { var cd = cam.GetComponent<UniversalAdditionalCameraData>(); if (cd != null) { cd.renderPostProcessing = post; cd.antialiasing = Level == 2 ? AntialiasingMode.FastApproximateAntialiasing : AntialiasingMode.None; } }
             QualitySettings.shadows = Level == 0 ? UnityEngine.ShadowQuality.Disable : UnityEngine.ShadowQuality.All;
         }
 

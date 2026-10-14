@@ -16,7 +16,7 @@ namespace NaijaRise.Vehicles
         {
             string key = hex + gloss;
             if (materials.TryGetValue(key, out var m)) return m;
-            standard ??= Shader.Find("Universal Render Pipeline/Lit");
+            standard ??= ShaderLib.Lit;
             m = new Material(standard); ColorUtility.TryParseHtmlString(hex, out var c); m.color = c; m.SetFloat("_Smoothness", gloss);
             return materials[key] = m;
         }

@@ -10,6 +10,9 @@ namespace NaijaRise
     // save, spawns the player and wires the camera, clock, traffic, pedestrians, contacts, session, minimap and HUD.
     public class GameBootstrap : MonoBehaviour
     {
+        // Keeps the collider classes CreatePrimitive needs out of engine code stripping (belt and braces with Assets/link.xml).
+        static readonly System.Type[] KeepPhysics = { typeof(SphereCollider), typeof(CapsuleCollider), typeof(BoxCollider), typeof(MeshCollider) };
+
         public string WorldResource = "world/lagos";
         public int TrafficCount = 110, PedestrianCount = 70;
         public bool ContinueSave = true;
@@ -116,6 +119,15 @@ namespace NaijaRise
             governor.Init(state.S.quality, state.S.qualityAuto, state.S.cinematic, Player.transform, Clock);
             governor.Notify = t => state.Toast(t);
             Session.Governor = governor;
+            // Diagnostic switches (see DiagFlags): remove one feature at a time from a player build.
+            if (DiagFlags.Has("noshadows")) sun.shadows = LightShadows.None;
+            if (DiagFlags.Has("norain")) weather.enabled = false;
+            if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline is UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset diagUrp)
+            {
+                if (DiagFlags.Has("noaddlights")) typeof(UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset).GetField("m_AdditionalLightsRenderingMode", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(diagUrp, UnityEngine.Rendering.Universal.LightRenderingMode.Disabled);
+                if (DiagFlags.Has("nomsaa")) diagUrp.msaaSampleCount = 1;
+                if (DiagFlags.Has("noshadowasset")) diagUrp.shadowDistance = 0.1f;
+            }
             if (state.S.qualityAuto) state.S.quality = governor.Level;
 
             var minimap = gameObject.AddComponent<Minimap>();

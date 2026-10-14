@@ -39,7 +39,7 @@ namespace NaijaRise.World
                     u.edges.Add((v, d)); v.edges.Add((u, d));
                 }
             }
-            var unlit = Shader.Find("Universal Render Pipeline/Unlit");
+            var unlit = ShaderLib.Unlit;
             var go = new GameObject("GPS route"); go.transform.SetParent(parent, false);
             line = go.AddComponent<LineRenderer>();
             line.material = new Material(unlit) { color = new Color(0.24f, 1f, 0.47f, 0.85f) };

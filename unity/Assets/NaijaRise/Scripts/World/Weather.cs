@@ -27,7 +27,7 @@ namespace NaijaRise.World
             var emission = rain.emission; emission.rateOverTime = 1500f;
             var shape = rain.shape; shape.shapeType = ParticleSystemShapeType.Box; shape.scale = new Vector3(80f, 1f, 80f); shape.position = new Vector3(0f, 22f, 0f);
             var r = rain.GetComponent<ParticleSystemRenderer>(); r.renderMode = ParticleSystemRenderMode.Stretch; r.lengthScale = 6f; r.velocityScale = 0.02f;
-            var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit"); if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+            var shader = ShaderLib.ParticlesUnlit; if (shader == null) shader = ShaderLib.Unlit;
             r.sharedMaterial = new Material(shader) { color = new Color(0.75f, 0.83f, 0.9f, 0.55f) };
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             rain.Stop();
