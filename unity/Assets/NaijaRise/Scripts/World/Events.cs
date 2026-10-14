@@ -16,7 +16,7 @@ namespace NaijaRise.World
         WorldData data; DayNightCycle clock; Weather weather;
         readonly List<GameObject> props = new List<GameObject>();
         float jamT = 60f, outageT = 120f;
-        public System.Action<string, string> Notify;   // (who, text)
+        [System.NonSerialized] public System.Action<string, string> Notify;   // (who, text)
 
         public void Init(WorldData world, DayNightCycle dayNight, Weather w) { data = world; clock = dayNight; weather = w; }
 

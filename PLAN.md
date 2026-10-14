@@ -24,7 +24,7 @@ The PRD's §25 "Version 0.1" MVP list, checked against the current build:
 | Inventory | **Done** | Consumables and mission items |
 | Character customisation | **Done** | |
 | Day/night cycle | **Done** | Gradient sky, sun, clouds, street lights, lit windows, NEPA outages |
-| Basic multiplayer | **Not started** | See Phase 5 |
+| Basic multiplayer | **Client ready (Unity)** | Rooms per district, player sync and chat over Supabase Realtime in `unity/`; needs a Supabase project and `supabase/schema.sql` applied. Web shell: see Phase 5 |
 | Unity edition | **Vertical slice** | Playable slice in `unity/` built from the same data; evaluation only, see §2b |
 
 Systems that go beyond the MVP list and are already in: heat with police pursuit and arrest, FRSC speeding tickets, army checkpoint, agbero levies (a pet dog keeps them away), rush-hour slowdowns and go-slow traffic, public-transport stop service with passenger turnover and fare-based boarding, Owambe parties, church/mosque, filling station, phone with ten apps, GPS routing along the road grid, Level titles (Newcomer → Hustler → Entrepreneur → Mogul) with app unlocks at Level 2, keyboard/arrow keys, touch and gamepad controls including on-foot jump.
@@ -83,12 +83,12 @@ Computer Village is a market destination; Ikeja also includes the New Afrika Shr
 
 Goal: make the economy loop deep enough that a player can spend an hour running a legitimate life, and finish the MVP checklist.
 
-1. **Accounts and server save** — Supabase Auth in `web/`, a `players` + `saves` schema (PRD §27), the engine's state blob synced on autosave; local save remains the offline fallback.
+1. **Accounts and server save** — Supabase Auth in `web/`, a `players` + `saves` schema (PRD §27, now in `supabase/schema.sql` and implemented by the Unity edition), the engine's state blob synced on autosave; local save remains the offline fallback.
 2. **Colyseus room per district** — player position, heading, vehicle and look synced at 10 Hz; other players rendered with the same character builder; chat bubble over the HUD.
-3. **Crews** — create or join, treasury, HQ at an owned property, crew tag on the player card, shared GPS pins.
-4. **Co-op missions** — the race and getaway templates accept a second player; payout split.
+3. **Crews** — create or join, treasury, HQ at an owned property, crew tag on the player card, shared GPS pins. *Implemented in the Unity edition (`Session.Crew.cs`) against `supabase/schema.sql`.*
+4. **Co-op missions** — the race and getaway templates accept a second player; payout split. *The co-op race is in the Unity edition; the getaway is next.*
 5. **TypeScript port** — `src/data/` and `src/systems/` first, with JSDoc-to-TS types shared by the Next shell.
-6. **Admin dashboard v0** — a `/admin` route listing players, economy totals and the mission/job/business tables, editable without a rebuild.
+6. **Admin dashboard v0** — a `/admin` route listing players, economy totals and the mission/job/business tables, editable without a rebuild. *`/admin` and `/account` exist in `web/` on the shared schema; editing the data tables is still to do.*
 7. **Audio v2** — recorded ambience and owambe music behind the existing Sound toggle.
 8. **QA gate** — run headless and browser smoke tests across the registry, including loading Yaba and checking interior entry/exit without console errors.
 
@@ -98,7 +98,7 @@ Exit criteria: two players see each other in one Surulere room, saves round-trip
 
 ## 2b. Unity edition — vertical slice (13 October 2026)
 
-The native-engine vertical slice that the Multi-Platform Technical Roadmap below asks for exists in [`unity/`](unity/README.md): Unity 6000.6.5f1, Universal Render Pipeline 17.6, Input System 1.19, glTFast 6.0.1 (the Built-in pipeline and the Input Manager are deprecated in Unity 6 and are not used). It was built in twelve increments in one day and is verified headless: the C# compiles clean, an edit-mode smoke test builds the city from the exported data, a play-mode test plays through the whole loop, and a macOS player builds from the command line.
+The native-engine vertical slice that the Multi-Platform Technical Roadmap below asks for exists in [`unity/`](unity/README.md): Unity 6000.6.5f1, Universal Render Pipeline 17.6, Input System 1.19, glTFast 6.0.1 (the Built-in pipeline and the Input Manager are deprecated in Unity 6 and are not used). It was built in fourteen increments in one day and is verified headless: the C# compiles clean, an edit-mode smoke test builds the city from the exported data, a play-mode test plays through the whole loop, and a macOS player builds from the command line.
 
 | Increment | What it added |
 |---|---|
@@ -114,6 +114,8 @@ The native-engine vertical slice that the Multi-Platform Technical Roadmap below
 | 10 · The street and the long game | Agberos and their levy, the pet dog, uniformed officers, night hustlers behind a mature toggle, the owambe crowd; go-slow jams, road works with a diversion, the overturned keke, the storm flood and NEPA outages; tenants, complaints and home upgrades; business staff and the rival trader; vehicle insurance, liveries and slogans |
 | 11 · Water and bodies | Swimming in the lagoon, vehicles that stall and sink when driven in, pedestrian colliders |
 | 12 · Graphics compatibility | The quality governor from `core/quality.js`: GPU auto-detect, automatic level step-down under slow frames, dynamic resolution with hysteresis and no-gain back-off; a realtime reflection probe and wet-road gloss |
+| 13 · Accounts and multiplayer | Supabase Auth accounts, the server-side save (`supabase/schema.sql`, shared with the web edition), a Realtime room per district with other players rendered as rigged characters or vehicles, chat; a loopback bus keeps the same code path offline and in tests |
+| 14 · Crews, co-op, web and consoles | Crews (code, treasury, HQ, shared pins) and the co-op race on their own channel; the Input System action maps asset; macOS / Windows / WebGL build entries; the web shell's `/account` and `/admin` pages on the shared schema |
 
 Everything in the web edition's Alpha 1.0 is now in the slice; the web edition's Phases 5 and 6 (multiplayer, accounts, server save) are ahead of both editions, and the roadmap's console work (action maps, platform builds) is next for the Unity side.
 

@@ -54,6 +54,8 @@ namespace NaijaRise
         public List<string> let = new List<string>();                      // owned homes let to tenants
         public List<PropertyUpgrades> upgrades = new List<PropertyUpgrades>();
         public bool rivalTold;
+        // Crew (PLAN Phase 5)
+        public string crewId = "", crewName = "", crewTag = "", crewCode = "", crewHq = ""; public int crewTreasury;
     }
 
     [Serializable] public class FamilyRel { public string id; public float score = 50f, food = 100f, companionship = 100f, education = 100f; public int lastVisitDay; }
@@ -93,7 +95,7 @@ namespace NaijaRise
                 S = JsonUtility.FromJson<SaveData>(File.ReadAllText(SavePath));
                 S.skills ??= new SkillSet(); S.rep ??= new RepSet(); S.items ??= new List<string>(); S.vehicles ??= new List<OwnedVehicle>();
                 S.path ??= ""; S.arc ??= ""; S.taskType ??= ""; S.taskDest ??= ""; S.taskItem ??= ""; S.taskObj ??= ""; S.courses ??= new List<string>();
-                S.familyRel ??= new List<FamilyRel>(); S.familyDone ??= new List<string>(); S.familyRequest ??= ""; S.contactRel ??= new List<ContactRel>(); S.let ??= new List<string>(); S.upgrades ??= new List<PropertyUpgrades>(); foreach (var b in S.biz) b.staff ??= new List<string>();
+                S.familyRel ??= new List<FamilyRel>(); S.familyDone ??= new List<string>(); S.familyRequest ??= ""; S.contactRel ??= new List<ContactRel>(); S.let ??= new List<string>(); S.upgrades ??= new List<PropertyUpgrades>(); S.crewId ??= ""; S.crewName ??= ""; S.crewTag ??= ""; S.crewCode ??= ""; S.crewHq ??= ""; foreach (var b in S.biz) b.staff ??= new List<string>();
                 return S != null;
             }
             catch (Exception e) { Debug.LogWarning("Save could not be read: " + e.Message); return false; }

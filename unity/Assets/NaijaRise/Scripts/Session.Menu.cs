@@ -7,7 +7,8 @@ namespace NaijaRise
     // Agent Kunle, the home, businesses, bus stops, kiosks and the police. W/S or the stick to move, E to choose,
     // X to close, or press the option's number.
     public class MenuOption { public string Label; public bool Enabled = true; public System.Action Action; }
-    public class Menu { public string Title, Subtitle, Line; public List<MenuOption> Options = new List<MenuOption>(); public int Index; }
+    public class MenuField { public string Label, Value = ""; public bool Password; }
+    public class Menu { public string Title, Subtitle, Line; public List<MenuOption> Options = new List<MenuOption>(); public List<MenuField> Fields = new List<MenuField>(); public int Index; }
 
     public partial class Session
     {
@@ -37,6 +38,7 @@ namespace NaijaRise
         {
             var m = ActiveMenu;
             Player.InputEnabled = false;
+            if (m.Fields.Count > 0 && Typing) return;   // a text field has the keyboard
             menuNavT -= Time.deltaTime;
             float v = GameInput.Move.y;
             if (menuNavT <= 0f && Mathf.Abs(v) > 0.5f && m.Options.Count > 1)

@@ -83,6 +83,7 @@ namespace NaijaRise.UI
                 string extra = "";
                 if (session.Nav != null && session.Nav.Target != null) extra = $"{session.Nav.RouteLength:0} m along the road";
                 if (st.items.Count > 0) extra += (extra.Length > 0 ? "  ·  " : "") + "carrying " + string.Join(", ", st.items);
+                if (session.Pins.Count > 0) extra += (extra.Length > 0 ? "  ·  " : "") + $"crew pin: {session.Pins[session.Pins.Count - 1].label} ({session.Pins[session.Pins.Count - 1].by})";
                 if (!string.IsNullOrEmpty(extra)) GUILayout.Label(extra, small);
                 GUILayout.EndArea();
             }
@@ -107,7 +108,7 @@ namespace NaijaRise.UI
                 GUI.DrawTexture(pr, Portrait.Texture, ScaleMode.StretchToFill);
             }
             GUILayout.BeginArea(new Rect(W - 318 * s, H - 172 * s, 300 * s, 156 * s), cardStyle);
-            GUILayout.Label($"₦{st.cash:N0} cash", title);
+            GUILayout.Label($"₦{st.cash:N0} cash{(session.InCrew ? $"   [{session.CrewTag}]" : "")}", title);
             GUILayout.Label($"₦{st.bank:N0} RiseBank  ·  Level {st.level} {session.State.Title}", body);
             GUILayout.Label($"Rep  public {st.rep.publicRep}  ·  street {st.rep.street}  ·  business {st.rep.business}", small);
             var xpRect = GUILayoutUtility.GetRect(260 * s, 8 * s); Bar(xpRect, st.xp / 100f, new Color(0.96f, 0.77f, 0.09f));
@@ -133,6 +134,15 @@ namespace NaijaRise.UI
                 if (!string.IsNullOrEmpty(menu.Subtitle)) GUILayout.Label(menu.Subtitle, small);
                 if (!string.IsNullOrEmpty(menu.Line)) { GUILayout.Space(4 * s); GUILayout.Label($"“{menu.Line}”", body); }
                 GUILayout.Space(6 * s);
+                for (int f = 0; f < menu.Fields.Count; f++)
+                {
+                    GUILayout.BeginHorizontal(); GUILayout.Label(menu.Fields[f].Label, body, GUILayout.Width(110 * s));
+                    GUI.SetNextControlName("field" + f);
+                    menu.Fields[f].Value = menu.Fields[f].Password ? GUILayout.PasswordField(menu.Fields[f].Value ?? "", '•', 64) : GUILayout.TextField(menu.Fields[f].Value ?? "", 64);
+                    GUILayout.EndHorizontal();
+                }
+                if (menu.Fields.Count > 0 && Cursor.lockState == CursorLockMode.Locked) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
+                session.Typing = menu.Fields.Count > 0 && GUI.GetNameOfFocusedControl().StartsWith("field");
                 for (int i = 0; i < menu.Options.Count; i++)
                 {
                     var o = menu.Options[i];
@@ -141,6 +151,23 @@ namespace NaijaRise.UI
                 }
                 GUILayout.Label("W/S choose · E confirm · X close", small);
                 GUILayout.EndArea();
+            }
+
+            // Chat: lines from players in your district, and the input box on T / Enter.
+            if (session.Players != null)
+            {
+                float cy = H - 230 * s;
+                for (int i = session.Players.Chat.Count - 1; i >= 0 && i >= session.Players.Chat.Count - 5; i--) { var c = session.Players.Chat[i]; GUI.Label(new Rect(W * 0.5f - 300 * s, cy, 600 * s, 22 * s), $"{c.name}: {c.text}", body); cy -= 22 * s; }
+                if (session.ChatOpen)
+                {
+                    if (Cursor.lockState == CursorLockMode.Locked) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
+                    GUI.SetNextControlName("chat");
+                    var e = Event.current;
+                    if (e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)) { session.SubmitChat(); e.Use(); }
+                    else if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape) { session.ChatOpen = false; e.Use(); }
+                    else { session.ChatDraft = GUI.TextField(new Rect(W * 0.5f - 300 * s, H - 118 * s, 600 * s, 26 * s), session.ChatDraft, 140); GUI.FocusControl("chat"); }
+                }
+                GUI.Label(new Rect(W - 238 * s, 118 * s, 220 * s, 20 * s), session.Players.Status, small);
             }
 
             // Wanted banner.

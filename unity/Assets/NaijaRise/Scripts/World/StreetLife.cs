@@ -11,9 +11,9 @@ namespace NaijaRise.World
     public class StreetLife : MonoBehaviour
     {
         public class Agbero { public Transform t; public Vector3 pos; public BusStopData stop; public float cool; }
-        public readonly List<Agbero> Agberos = new List<Agbero>();
+        [System.NonSerialized] public readonly List<Agbero> Agberos = new List<Agbero>();
         public readonly List<Transform> Service = new List<Transform>();
-        public readonly List<(Transform t, string name)> Nightlife = new List<(Transform, string)>();
+        [System.NonSerialized] public readonly List<(Transform t, string name)> Nightlife = new List<(Transform, string)>();
         readonly List<Transform> crowd = new List<Transform>();
         Transform pet; Animation petAnim; int partyDay = -1;
         WorldData data; Transform player; DayNightCycle clock; Transform root;
@@ -112,6 +112,6 @@ namespace NaijaRise.World
             for (int i = 0; i < crowd.Count; i++) crowd[i].rotation = Quaternion.Euler(0f, Mathf.Sin(Time.time * 0.5f + i) * 30f, 0f);
         }
 
-        public bool mature;
+        [System.NonSerialized] public bool mature;
     }
 }

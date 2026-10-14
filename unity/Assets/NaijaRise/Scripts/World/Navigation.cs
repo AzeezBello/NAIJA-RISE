@@ -17,7 +17,7 @@ namespace NaijaRise.World
         readonly List<Node> nodes = new List<Node>();
         readonly Dictionary<string, List<Node>> onRoad = new Dictionary<string, List<Node>>();
 
-        public Vector3? Target;          // world position of the objective, or null
+        [System.NonSerialized] public Vector3? Target;   // world position of the objective, or null (runtime only)
         public float RouteLength { get; private set; }
         public Vector3 NextWaypoint { get; private set; }
 

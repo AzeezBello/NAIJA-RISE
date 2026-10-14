@@ -15,8 +15,8 @@ namespace NaijaRise.World
         public bool Storm { get; private set; }
         public bool Harmattan => clock != null && clock.Day % 10 >= 7;
         public float Wet => Raining ? 0.7f : 1f;   // grip factor for driving
-        public System.Action<string> Notify;
-        public System.Action<bool> OnWet;
+        [System.NonSerialized] public System.Action<string> Notify;
+        [System.NonSerialized] public System.Action<bool> OnWet;
 
         public void Init(WorldData world, DayNightCycle dayNight, Transform cameraTransform)
         {

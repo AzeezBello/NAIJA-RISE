@@ -32,6 +32,11 @@ namespace NaijaRise
             bool restored = ContinueSave && state.Load();
             if (!restored) state.NewGame();
 
+            // Accounts and cloud save (Supabase; offline without Resources/cloud.json).
+            var cloudConfig = Net.CloudConfig.Load();
+            var account = gameObject.AddComponent<Net.Account>(); account.Init(cloudConfig);
+            var cloud = gameObject.AddComponent<Net.CloudSave>(); cloud.Init(account);
+
             var sun = FindSun();
             Clock = gameObject.AddComponent<DayNightCycle>();
             Clock.Init(sun, state.S.clock, Data.meta.hoursPerSecond, Builder.LampHead);
@@ -94,6 +99,18 @@ namespace NaijaRise
             var street = gameObject.AddComponent<StreetLife>();
             street.Init(Data, Player.transform, Clock, Builder.Root);
             Session.Street = street;
+
+            Session.Account = account; Session.Cloud = cloud;
+            if (account.SignedIn) cloud.Pull(remote => { var newer = Net.CloudSave.Newer(state.S, remote); if (newer != state.S) { state.S = newer; state.Toast("Cloud save is newer — restart to continue from it"); } });
+
+            // Multiplayer: Supabase Realtime when configured, else the local loopback bus (single player, same code path).
+            string selfId = PlayerPrefs.GetString("nr.player", ""); if (string.IsNullOrEmpty(selfId)) { selfId = System.Guid.NewGuid().ToString("N").Substring(0, 12); PlayerPrefs.SetString("nr.player", selfId); }
+            Net.IRealtimeTransport transport = cloudConfig.Enabled ? new Net.SupabaseRealtimeTransport(cloudConfig.RealtimeUrl) : new Net.LoopbackTransport();
+            var net = gameObject.AddComponent<Net.Multiplayer>();
+            net.DisplayName = account.SignedIn && !string.IsNullOrEmpty(account.Email) ? account.Email.Split('@')[0] : "Tunde";
+            net.Init(Data, transport, selfId, Player.transform, Session.NetState, Builder.Root);
+            Session.Players = net;
+            Session.AfterNetInit();
 
             var governor = gameObject.AddComponent<QualityGovernor>();
             governor.Init(state.S.quality, state.S.qualityAuto, state.S.cinematic, Player.transform, Clock);

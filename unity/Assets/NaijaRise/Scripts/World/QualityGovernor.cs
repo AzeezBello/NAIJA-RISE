@@ -21,12 +21,12 @@ namespace NaijaRise.World
         public float Ema { get; private set; } = 1f / 60f;
         public float Fps => Ema > 0f ? 1f / Ema : 0f;
         public float RenderScale => ScaleCap[Level] * DynSteps[DynIndex];
-        public System.Action<string> Notify;
+        [System.NonSerialized] public System.Action<string> Notify;
         public ReflectionProbe Probe { get; private set; }
 
         float tick, fastT; int slowTicks, fastTicks, recoverTicks = 5; float streakBase; float noGainUntil, levelLockUntil; float probeT; int probeHour = -1;
         Transform follow; DayNightCycle clock; bool cinematic = true;
-        public bool SimulateSlow;   // test hook: pretend every frame is slow
+        [System.NonSerialized] public bool SimulateSlow;   // test hook: pretend every frame is slow
 
         public static int Detect()
         {
