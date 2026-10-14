@@ -101,9 +101,9 @@ namespace NaijaRise.EditorTools
                     Check(car != null && s.Parked.Count == 2 && s.State.S.vehicles.Count == 2, $"bought a sedan from Dayo ({s.Parked.Count} owned vehicles)");
                     if (car == null) { Finish(); return; }
                     var road = boot.Data.RoadAt(boot.Data.Spawn, 2f);
-                    car.transform.position = road.Point(road.Along(boot.Data.Spawn) + 40f, road.k + road.width * 0.5f - 2.2f) + Vector3.up * 0.12f;
-                    car.transform.rotation = Quaternion.LookRotation(road.Forward(1), Vector3.up);
+                    car.Place(road.Point(road.Along(boot.Data.Spawn) + 40f, road.k + road.width * 0.5f - 2.2f) + Vector3.up * 0.12f, Quaternion.LookRotation(road.Forward(1), Vector3.up));
                     s.Enter(car);
+                    Check((car.transform.position - boot.Data.Spawn).magnitude < 60f, $"sedan placed on Adeniran Ogunsanya at {car.transform.position}");
                     Check(s.Vehicle == car && !boot.Player.gameObject.activeSelf, "entered the sedan");
                     carStart = car.transform.position;
                     s.Script(1f, 0f, 0f);
@@ -115,7 +115,7 @@ namespace NaijaRise.EditorTools
                     s.Script(0f, 1f, 0f);
                     Check(moved > 5f, $"car moved {moved:0.0} m");
                     Check(s.State.S.skills.driving > 0f, $"driving skill trained ({s.State.S.skills.driving:0.000})");
-                    Check(s.Vehicle.Condition > 95f, $"no phantom crashes on open road (condition {s.Vehicle.Condition:0}%)");
+                    Check(s.Vehicle.Condition > 95f, $"no phantom crashes on open road (condition {s.Vehicle.Condition:0}%, last hit: {s.Vehicle.LastHit ?? "none"}, car at {s.Vehicle.transform.position})");
                     stage = 3; stageT = 0f; return;
                 case 3:   // brake, exit, save, reload
                     s.Script(0f, 1f, 0f);
@@ -196,6 +196,10 @@ namespace NaijaRise.EditorTools
                         Check(s.Study(web) && s.State.HasCourse("web"), $"learned {web?.name}: certificates {string.Join(",", s.State.S.courses)}");
                         s.State.S.skills.business = Mathf.Max(s.State.S.skills.business, 12f);
                         Check(webdev != null && s.State.CanTake(webdev), "Web Freelancer unlocked by the certificate");
+                        int fabric = s.State.S.lookFabric; s.NextFabric();
+                        Check(s.State.S.lookFabric == fabric + 1 && boot.Player.Fabric == fabric + 1, $"outfit changed to {s.FabricName()}");
+                        var pedSys = boot.GetComponent<World.PedestrianSystem>();
+                        Check(pedSys != null && pedSys.CesiumCount > 5 && pedSys.CesiumCount < 40, $"pedestrian bodies mixed ({pedSys?.CesiumCount} CesiumMan of {pedSys?.RiggedCount})");
                         float fit = s.State.S.skills.fitness; s.State.S.stamina = 100f;
                         Check(s.Train("Cardio", 5, 0, boot.Data.gym.dayPass) && s.State.S.skills.fitness == fit + 5, $"gym cardio: fitness {s.State.S.skills.fitness}");
                         s.State.S.stamina = 10f;
@@ -211,7 +215,7 @@ namespace NaijaRise.EditorTools
                         if (!s.Racing) { Check(s.Vehicle != null && s.State.S.skills.driving >= 6f, $"race won: driving {s.State.S.skills.driving:0.0}, cash ₦{s.State.S.cash:N0}"); s.Exit(); stage = 11; stageT = 0f; return; }
                         if (stageT < 0.25f) return; stageT = 0f;
                         var cp = s.ActiveRace.Cps[s.ActiveRace.I]; cp.y = s.Vehicle.transform.position.y;
-                        s.Vehicle.GetComponent<Rigidbody>().position = cp; s.Vehicle.transform.position = cp;
+                        s.Vehicle.Place(cp, s.Vehicle.transform.rotation);
                         return;
                     }
                 case 11:  // a few more frames with everything running, then save

@@ -38,6 +38,7 @@ namespace NaijaRise
         // Education and activities (src/systems/education.js, places.js)
         public List<string> courses = new List<string>();
         public int gymUntil, gymSessions, outfits;
+        public int lookFabric, lookSkin = 2, lookPants, lookHair, lookCap = 1;   // indices into the exported wardrobe lists; cap 1 = fila
     }
 
     [Serializable] public class RepSet { public int publicRep, business, street, social;
@@ -215,6 +216,21 @@ namespace NaijaRise
             }
             S.bank += total;
             Toast($"RiseBank · Credit alert · ₦{total:N0} business income");
+        }
+
+        // ---- look (src/data/characters.js LOOK) ----
+        public Entities.Look Look
+        {
+            get
+            {
+                var l = Entities.Look.Default; l.Fabric = S.lookFabric;
+                if (data.skins.Length > 0) l.Skin = Entities.Mannequin.Hex(data.skins[Mathf.Clamp(S.lookSkin, 0, data.skins.Length - 1)]);
+                if (data.pants.Length > 0) l.Pants = Entities.Mannequin.Hex(data.pants[Mathf.Clamp(S.lookPants, 0, data.pants.Length - 1)]);
+                string[] hair = { "#120b08", "#3a2214", "#6b3e1a", "#b0b0b0", "#d62828" };
+                l.Hair = Entities.Mannequin.Hex(hair[Mathf.Clamp(S.lookHair, 0, hair.Length - 1)]);
+                l.Cap = S.lookCap == 1 ? (Color?)Entities.Mannequin.Hex("#1f3a5f") : S.lookCap == 2 ? (Color?)Entities.Mannequin.Hex("#d62828") : null;
+                return l;
+            }
         }
 
         // ---- education (src/systems/education.js completeCourse) ----

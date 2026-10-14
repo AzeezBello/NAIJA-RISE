@@ -128,7 +128,8 @@ namespace NaijaRise.World
             }
         }
 
-        float LaneOffset(Vehicle v) => v.road.width * (0.25f + 0.17f * v.lane);
+        // Lane 0 sits a little inside the quarter line so kerb-parked vehicles (at half width minus 2.2 m) are clear of it.
+        float LaneOffset(Vehicle v) => v.road.width * (0.22f + 0.17f * v.lane);
         // Right-hand traffic: the lane is on the right of the direction of travel. In data units the sign of
         // "right" depends on the axis and direction; derive it from the world right vector.
         float LaneOffsetSign(Vehicle v)
