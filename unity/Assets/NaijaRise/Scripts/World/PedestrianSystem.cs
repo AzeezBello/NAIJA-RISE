@@ -45,7 +45,8 @@ namespace NaijaRise.World
             Color skin = data.skins.Length > 0 ? Mannequin.Hex(data.skins[rng.Next(data.skins.Length)]) : new Color(0.45f, 0.3f, 0.2f);
             Color? cap = rng.NextDouble() < 0.3 ? (Color?)Mannequin.Hex(rng.NextDouble() < 0.5 ? "#1f3a5f" : "#6e1a2c") : null;
             string[] hair = { "#120b08", "#3a2214", "#6b3e1a", "#b0b0b0" };
-            var look = new Look { Fabric = fabric, Pants = pants, Skin = skin, Hair = Mannequin.Hex(hair[rng.Next(hair.Length)]), Cap = cap };
+            var look = new Look { Fabric = fabric, Pants = pants, Skin = skin, Hair = Mannequin.Hex(hair[rng.Next(hair.Length)]), Cap = cap,
+                Outfit = rng.Next(Mathf.Max(1, data.outfits.Length)), BodyType = rng.Next(Mathf.Max(1, data.bodyTypes.Length)), HairStyle = rng.Next(Mathf.Max(1, data.hairStyles.Length)), FacialHair = rng.NextDouble() < 0.35 ? rng.Next(Mathf.Max(1, data.facialHair.Length)) : 0, Accessory = cap.HasValue ? 1 : rng.NextDouble() < 0.2 ? 3 + rng.Next(2) : 0 };
             // Rig 0 (Ready Player Me) weight 0.7, CesiumMan 0.3, as in src/data/config.js CHARACTER.rigs.
             if (CharacterRig.Available) rig = CharacterRig.Build(go.transform, look, 0, 1.62f + (float)rng.NextDouble() * 0.3f, rng.NextDouble() < 0.3);
             else Mannequin.Build(go.transform, top, pants, skin, cap, 0, 0.9f + (float)rng.NextDouble() * 0.2f);

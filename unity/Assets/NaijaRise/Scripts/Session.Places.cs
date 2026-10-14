@@ -11,13 +11,13 @@ namespace NaijaRise
 
         LandmarkData NearPlace(Vector3 pos) =>
             Data.NearestLandmark("gym", pos, 12f) ?? Data.NearestLandmark("restaurant", pos, 12f) ?? Data.NearestLandmark("mall", pos, 18f) ??
-            Data.NearestLandmark("cafe", pos, 12f) ?? Data.NearestLandmark("pitch", pos, 20f);
+            Data.NearestLandmark("cafe", pos, 12f) ?? Data.NearestLandmark("pitch", pos, 20f) ?? Data.NearestLandmark("school", pos, 12f);
 
-        string PlacePrompt(LandmarkData p) => p.kind switch { "gym" => "ENTER GYM", "restaurant" => $"ENTER {p.name.ToUpper()}", "mall" => "ENTER MALL", "cafe" => "ENTER CYBER CAFÉ", "pitch" => "JOIN THE FOOTBALL", _ => $"ENTER {p.shortName}" };
+        string PlacePrompt(LandmarkData p) => p.kind switch { "gym" => "ENTER GYM", "restaurant" => $"ENTER {p.name.ToUpper()}", "mall" => "ENTER MALL", "cafe" => "ENTER CYBER CAFÉ", "pitch" => "JOIN THE FOOTBALL", "school" => p.id == "yabatech" ? "ENTER YABA TECH" : "VISIT SCHOOL · EVENING CLASS", _ => $"ENTER {p.shortName}" };
 
         void OpenPlaceMenu(LandmarkData p)
         {
-            switch (p.kind) { case "gym": OpenGymMenu(); break; case "restaurant": OpenFoodMenu(p); break; case "mall": OpenMallMenu(); break; case "cafe": OpenCafeMenu(); break; case "pitch": OpenFootballMenu(); break; }
+            switch (p.kind) { case "gym": OpenGymMenu(); break; case "restaurant": OpenFoodMenu(p); break; case "mall": OpenMallMenu(); break; case "cafe": OpenCafeMenu(); break; case "pitch": OpenFootballMenu(); break; case "school": OpenSchoolMenu(p); break; }
         }
 
         void Hours(float h) => Clock.Advance(h);
@@ -141,27 +141,16 @@ namespace NaijaRise
             return State.CompleteCourse(c);
         }
 
-        // ---- street football (Captain Tunde) ----
+        // ---- street football (Captain Tunde): quick match, neighbourhood tournament, Lagos championship ----
         void OpenFootballMenu()
         {
-            var f = Data.football;
-            var menu = new Menu { Title = "Captain Tunde", Subtitle = "Street football · Teslim Balogun", Line = "You sabi ball? Prove am." };
-            menu.Options.Add(new MenuOption { Label = $"Quick match · wager ₦{f.wager:N0}", Action = () => PlayFootball(f.wager) });
-            menu.Options.Add(new MenuOption { Label = "Kick about (free)", Action = () => { if (State.S.stamina < 20f) { State.Toast("Too tired"); return; } State.S.stamina -= 20f; State.GainSkill("fitness", 1); Hours(1f); State.AddXp(2); State.Toast("Good kick about · Fitness +1"); } });
+            var c = Data.football; var st = State.S; int tier = Mathf.Clamp(st.footballTier, 0, Mathf.Max(0, c.tiers.Length - 1));
+            int prize = c.prizes != null && tier < c.prizes.Length ? c.prizes[tier] : 0;
+            var menu = new Menu { Title = "Captain Tunde", Subtitle = "Street football · Teslim Balogun", Line = st.footballWins > 0 ? $"{st.footballWins} win{(st.footballWins > 1 ? "s" : "")}. Next: {c.tiers[tier]}{(prize > 0 ? $" — ₦{prize:N0} prize" : "")}." : $"Five-a-side. ₦{c.wager:N0} wager or just play. You sabi ball?" };
+            menu.Options.Add(new MenuOption { Label = $"{c.tiers[tier]}{(prize > 0 ? "" : $" · ₦{c.wager:N0} wager")}", Action = () => PlayMatch(tier, true) });
+            menu.Options.Add(new MenuOption { Label = "Friendly kickabout (no money)", Action = () => PlayMatch(0, false) });
             menu.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(menu);
-        }
-
-        public bool PlayFootball(int wager)
-        {
-            if (State.S.stamina < 30f) { State.Toast("Too tired to play"); return false; }
-            if (!State.Pay(wager)) { State.Toast("Not enough money for the wager"); return false; }
-            State.S.stamina -= 30f; Hours(1.5f); State.GainSkill("fitness", 2);
-            float chance = Mathf.Clamp(0.45f + State.S.skills.fitness * 0.01f, 0.3f, 0.85f);
-            bool won = Random.value < chance;
-            if (won) { State.Earn(wager * 2); State.AddRep("social", 3); State.AddRep("street", 2); State.AddXp(10); State.Toast($"Omo, you sabi ball! +₦{wager * 2:N0}"); }
-            else { State.AddXp(3); State.Toast("Dem beat you. Train and come back."); }
-            return won;
         }
     }
 }

@@ -39,7 +39,20 @@ namespace NaijaRise
         public List<string> courses = new List<string>();
         public int gymUntil, gymSessions, outfits;
         public int lookFabric, lookSkin = 2, lookPants, lookHair, lookCap = 1;   // indices into the exported wardrobe lists; cap 1 = fila
+        public int lookFace, lookBody = 1, lookHairStyle, lookFacialHair;         // stored for the Character app; not yet shown on the rig
+        public int footballWins, footballTier;
+        public int collegeSemester = -1; public bool collegeGraduated;            // -1 = not enrolled
+        public int quality = 2; public bool cinematic = true;                      // 0 low, 1 medium, 2 high
+        public int lookOutfit, lookAccessory = 1;                                   // outfit silhouette; accessory 1 = fila (cap index kept in lookCap)
+        // Family (src/systems/family.js) and contact relationships (src/systems/relationships.js)
+        public List<FamilyRel> familyRel = new List<FamilyRel>();
+        public List<string> familyDone = new List<string>();
+        public string familyRequest = ""; public int familyRequestDay = -1;
+        public List<ContactRel> contactRel = new List<ContactRel>();
     }
+
+    [Serializable] public class FamilyRel { public string id; public float score = 50f, food = 100f, companionship = 100f, education = 100f; public int lastVisitDay; }
+    [Serializable] public class ContactRel { public string id; public float trust = 20f, respect = 15f; public int talkDay = -1; }
 
     [Serializable] public class RepSet { public int publicRep, business, street, social;
         public int Get(string k) => k == "public" ? publicRep : k == "business" ? business : k == "street" ? street : k == "social" ? social : 0;
@@ -74,6 +87,7 @@ namespace NaijaRise
                 S = JsonUtility.FromJson<SaveData>(File.ReadAllText(SavePath));
                 S.skills ??= new SkillSet(); S.rep ??= new RepSet(); S.items ??= new List<string>(); S.vehicles ??= new List<OwnedVehicle>();
                 S.path ??= ""; S.arc ??= ""; S.taskType ??= ""; S.taskDest ??= ""; S.taskItem ??= ""; S.taskObj ??= ""; S.courses ??= new List<string>();
+                S.familyRel ??= new List<FamilyRel>(); S.familyDone ??= new List<string>(); S.familyRequest ??= ""; S.contactRel ??= new List<ContactRel>();
                 return S != null;
             }
             catch (Exception e) { Debug.LogWarning("Save could not be read: " + e.Message); return false; }
@@ -114,7 +128,7 @@ namespace NaijaRise
 
         public void GainSkill(string skill, float n) => S.skills.Add(skill, n);
         public int JobPay(JobData j) => Mathf.RoundToInt(j.pay * (1f + S.skills.Get(j.skill) * 0.01f));   // +1% per skill point
-        public bool HasCourse(string id) => !string.IsNullOrEmpty(id) && S.courses.Contains(id);
+        public bool HasCourse(string id) => !string.IsNullOrEmpty(id) && (S.courses.Contains(id) || (id == "yabatech" && S.collegeGraduated));
         public bool CanTake(JobData j) => S.skills.Get(j.skill) >= j.min && (string.IsNullOrEmpty(j.needCourse) || HasCourse(j.needCourse));
 
         public void AddRep(string k, int n) => S.rep.Add(k, n);
@@ -218,6 +232,34 @@ namespace NaijaRise
             Toast($"RiseBank · Credit alert · ₦{total:N0} business income");
         }
 
+        // ---- relationships (src/systems/relationships.js) ----
+        public ContactRel Rel(string id) { foreach (var r in S.contactRel) if (r.id == id) return r; var n = new ContactRel { id = id }; S.contactRel.Add(n); return n; }
+        public string RelTier(string id) { var r = Rel(id); float score = (r.trust + r.respect) * 0.5f; return score >= 70f ? "close" : score >= 45f ? "friend" : score >= 25f ? "known" : "stranger"; }
+        public bool TalkedToday(string id) => Rel(id).talkDay == S.day;
+        public void BumpRel(string id, float trust, float respect) { var r = Rel(id); r.trust = Mathf.Clamp(r.trust + trust, 0f, 100f); r.respect = Mathf.Clamp(r.respect + respect, 0f, 100f); }
+
+        public FamilyRel Family(string id) { foreach (var r in S.familyRel) if (r.id == id) return r; var n = new FamilyRel { id = id }; S.familyRel.Add(n); return n; }
+
+        // ---- Yaba Tech (src/systems/education.js completeYabaTechSemester) ----
+        public bool CompleteSemester()
+        {
+            if (S.collegeSemester < 0 || S.collegeGraduated) return false;
+            S.collegeSemester++;
+            GainSkill("business", 4); GainSkill("charisma", 1);
+            if (S.collegeSemester >= data.school.semesters)
+            {
+                S.collegeGraduated = true; AddXp(30);
+                Toast("Yaba Tech Diploma completed · IT Support Technician unlocked");
+                Message("cafeguy", "Congratulations! Your Yaba Tech diploma don ready. Alagomeji Tech Hub dey hire IT Support Technicians.");
+            }
+            else { AddXp(10); Toast($"Yaba Tech semester {S.collegeSemester} of {data.school.semesters} completed"); }
+            return true;
+        }
+
+        // Cash ↔ bank (src/ui/apps/bank.js)
+        public bool Deposit(int n) { if (n <= 0 || S.cash < n) return false; S.cash -= n; S.bank += n; return true; }
+        public bool Withdraw(int n) { if (n <= 0 || S.bank < n) return false; S.bank -= n; S.cash += n; return true; }
+
         // ---- look (src/data/characters.js LOOK) ----
         public Entities.Look Look
         {
@@ -229,6 +271,7 @@ namespace NaijaRise
                 string[] hair = { "#120b08", "#3a2214", "#6b3e1a", "#b0b0b0", "#d62828" };
                 l.Hair = Entities.Mannequin.Hex(hair[Mathf.Clamp(S.lookHair, 0, hair.Length - 1)]);
                 l.Cap = S.lookCap == 1 ? (Color?)Entities.Mannequin.Hex("#1f3a5f") : S.lookCap == 2 ? (Color?)Entities.Mannequin.Hex("#d62828") : null;
+                l.Outfit = S.lookOutfit; l.BodyType = S.lookBody; l.HairStyle = S.lookHairStyle; l.FacialHair = S.lookFacialHair; l.Accessory = S.lookAccessory;
                 return l;
             }
         }

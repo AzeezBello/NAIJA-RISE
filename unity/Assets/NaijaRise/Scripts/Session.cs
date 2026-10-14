@@ -26,6 +26,7 @@ namespace NaijaRise
         float saveT, heatT = 45f;
 
         [System.NonSerialized] public TrafficLights Lights;
+        [System.NonSerialized] public Weather Weather;
         int lastDay;
 
         public void Init(WorldData data, GameState state, DayNightCycle clock, PlayerController player, ThirdPersonCamera camera, TrafficSystem traffic, ContactSystem contacts, TrafficLights lights)
@@ -62,11 +63,13 @@ namespace NaijaRise
             UpdateTolls();
             UpdateTask(dt);
             UpdateRace(dt);
+            UpdateFamily(dt);
             if (Nav != null) { Nav.Target = ObjectivePosition; Nav.Tick(Focus.position); }
             Contacts.SetArrow(!HasTask && MissionActive ? CurrentMission.Who : null);
 
             if (Working != null) { UpdateShift(dt); return; }
-            if (ActiveMenu != null) { UpdateMenu(); return; }
+            if (ActiveMenu == null && GameInput.PhonePressed) { OpenPhone(); return; }
+            if (ActiveMenu != null) { UpdateMenu(); if (ActiveMenu == null && PhoneOpen) PhoneOpen = false; return; }
             if (Vehicle != null) { UpdateDriving(dt); return; }
             UpdateOnFoot();
         }
@@ -137,6 +140,7 @@ namespace NaijaRise
         {
             var st = State.S;
             if (st.taskType == "steal") return "HAND THE SEDAN TO DAYO";
+            if (st.taskMission < 0 && ActiveRun != null) return $"DELIVER THE {ActiveRun.Label.ToUpper()}";
             if (Data.TryPlace(st.taskDest, out var d)) return $"DELIVER TO {d.name.ToUpper()}";
             return "DELIVER";
         }
@@ -145,8 +149,10 @@ namespace NaijaRise
         public void TalkTo(ContactSystem.Contact c)
         {
             if (IsMissionContact(c)) { OpenStoryDialogue(c); return; }
+            if (IsFamily(c)) { OpenFamilyMenu(c); return; }
             if (c.data.id == "dayo") { OpenDealerMenu(c); return; }
             if (c.data.id == "speedy") { OpenRaceMenu(c); return; }
+            if (IsHub(c)) { OpenHubMenu(c); return; }
             OpenDialogue(c);
         }
 
@@ -163,7 +169,7 @@ namespace NaijaRise
         // ---- dialogue and shifts (src/systems/interaction.js) ----
         public void OpenDialogue(ContactSystem.Contact c)
         {
-            var menu = new Menu { Title = c.data.name, Subtitle = c.data.role, Line = c.data.line };
+            var menu = new Menu { Title = c.data.name, Subtitle = $"{c.data.role} · {State.RelTier(c.data.id)}", Line = GreetLine(c) };
             foreach (var j in Data.JobsAt(c.data.at))
             {
                 bool ok = State.CanTake(j) && (!j.night || Clock.IsNight);
@@ -171,6 +177,7 @@ namespace NaijaRise
                 var job = j;
                 menu.Options.Add(new MenuOption { Label = ok ? $"Work shift — {j.title} · ₦{State.JobPay(j):N0} · {j.dur}h" : $"{j.title} ({why})", Enabled = ok, Action = () => StartShift(job) });
             }
+            AddRelationshipOptions(menu, c);
             menu.Options.Add(new MenuOption { Label = "Not now — I go find another hustle", Action = () => State.Toast("The story can wait. Jobs, courses, the gym and business dey.") });
             OpenMenu(menu);
         }
@@ -226,6 +233,7 @@ namespace NaijaRise
             float h = GameInput.Steer, gas = GameInput.Gas, brake = GameInput.Brake;
             bool boost = GameInput.Sprint, hand = GameInput.Handbrake;
             if (ScriptedInput) { gas = ScriptGas; brake = ScriptBrake; h = ScriptSteer; boost = false; hand = false; }
+            Vehicle.Wet = Weather != null ? Weather.Wet : 1f;
             Vehicle.Drive(gas, brake, boost, hand, h, State.S.fuel / 100f, dt);
             if (Vehicle.LastImpact > 2f) { State.Toast(Vehicle.LastImpact > 8f ? "Crash! Vehicle damaged" : "Scrape"); Vehicle.LastImpact = 0f; }
             bool slow = Mathf.Abs(Vehicle.Speed) < 2f;
