@@ -32,6 +32,11 @@ namespace NaijaRise
             bool restored = ContinueSave && state.Load();
             if (!restored) state.NewGame();
 
+            // Accounts and cloud save (Supabase; offline without Resources/cloud.json).
+            var cloudConfig = Net.CloudConfig.Load();
+            var account = gameObject.AddComponent<Net.Account>(); account.Init(cloudConfig);
+            var cloud = gameObject.AddComponent<Net.CloudSave>(); cloud.Init(account);
+
             var sun = FindSun();
             Clock = gameObject.AddComponent<DayNightCycle>();
             Clock.Init(sun, state.S.clock, Data.meta.hoursPerSecond, Builder.LampHead);
@@ -39,7 +44,8 @@ namespace NaijaRise
 
             var spawn = new Vector3(state.S.px, state.S.py, state.S.pz);
             if (!restored) spawn.y = Data.DeckHeightAt(spawn) + 0.6f;
-            Player = PlayerController.Create(spawn, state.S.yaw);
+            Entities.CharacterRig.Data = Data;
+            Player = PlayerController.Create(spawn, state.S.yaw, state.Look);
 
             var cam = Camera.main;
             if (cam == null) { cam = new GameObject("Main Camera").AddComponent<Camera>(); cam.tag = "MainCamera"; }
@@ -50,8 +56,12 @@ namespace NaijaRise
             follow.Target = Player.transform; follow.Player = Player; follow.Yaw = state.S.yaw;
             Player.CameraTransform = cam.transform;
 
+            var lights = gameObject.AddComponent<TrafficLights>();
+            lights.Build(Data, Builder.Root);
+
             var traffic = gameObject.AddComponent<TrafficSystem>();
             traffic.Count = TrafficCount;
+            traffic.Lights = lights;
             traffic.Init(Data, Clock, Builder.Root);
 
             var peds = gameObject.AddComponent<PedestrianSystem>();
@@ -62,16 +72,64 @@ namespace NaijaRise
             contacts.Init(Data, Player.transform, Builder.Root);
 
             Session = gameObject.AddComponent<Session>();
-            Session.Init(Data, state, Clock, Player, follow, traffic, contacts);
+            Session.Init(Data, state, Clock, Player, follow, traffic, contacts, lights);
+
+            var law = gameObject.AddComponent<Law>();
+            law.Init(Session, Data, traffic, peds, lights);
+            Session.Law = law;
+
+            var nav = gameObject.AddComponent<Navigation>();
+            nav.Init(Data, Builder.Root);
+            Session.Nav = nav;
+
+            var weather = gameObject.AddComponent<Weather>();
+            weather.Init(Data, Clock, cam.transform);
+            weather.Notify = t => state.Toast("Weather · " + t);
+            weather.OnWet = wet => Builder.SetWet(wet);
+            Clock.Weather = weather; Session.Weather = weather;
+
+            var animals = gameObject.AddComponent<AnimalSystem>();
+            animals.Init(Data, Builder.Root);
+
+            var events = gameObject.AddComponent<Events>();
+            events.Init(Data, Clock, weather);
+            events.Notify = (who, t) => state.Toast(who + " · " + t);
+            Clock.Events = events; Session.Events = events; traffic.Events = events; traffic.Weather = weather;
+
+            var street = gameObject.AddComponent<StreetLife>();
+            street.Init(Data, Player.transform, Clock, Builder.Root);
+            Session.Street = street;
+
+            Session.Account = account; Session.Cloud = cloud;
+            if (account.SignedIn) cloud.Pull(remote => { var newer = Net.CloudSave.Newer(state.S, remote); if (newer != state.S) { state.S = newer; state.Toast("Cloud save is newer — restart to continue from it"); } });
+
+            // Multiplayer: Supabase Realtime when configured, else the local loopback bus (single player, same code path).
+            string selfId = PlayerPrefs.GetString("nr.player", ""); if (string.IsNullOrEmpty(selfId)) { selfId = System.Guid.NewGuid().ToString("N").Substring(0, 12); PlayerPrefs.SetString("nr.player", selfId); }
+            Net.IRealtimeTransport transport = cloudConfig.Enabled ? new Net.SupabaseRealtimeTransport(cloudConfig.RealtimeUrl) : new Net.LoopbackTransport();
+            var net = gameObject.AddComponent<Net.Multiplayer>();
+            net.DisplayName = account.SignedIn && !string.IsNullOrEmpty(account.Email) ? account.Email.Split('@')[0] : "Tunde";
+            net.Init(Data, transport, selfId, Player.transform, Session.NetState, Builder.Root);
+            Session.Players = net;
+            Session.AfterNetInit();
+
+            var governor = gameObject.AddComponent<QualityGovernor>();
+            governor.Init(state.S.quality, state.S.qualityAuto, state.S.cinematic, Player.transform, Clock);
+            governor.Notify = t => state.Toast(t);
+            Session.Governor = governor;
+            if (state.S.qualityAuto) state.S.quality = governor.Level;
 
             var minimap = gameObject.AddComponent<Minimap>();
             minimap.Init(Player.transform);
 
+            var portrait = gameObject.AddComponent<Portrait>();
+            portrait.Init(Player.transform);
+
             var hud = gameObject.AddComponent<Hud>();
             hud.Init(Data, Clock, Session, minimap);
+            hud.Portrait = portrait;
 
             state.Toast(restored ? $"Welcome back to Lagos · Day {state.S.day}" : "Welcome to Lagos. Baba K dey wait for you at Ojuelegba.");
-            Debug.Log($"NAIJA RISE — {Data.meta.name} {Data.meta.version}: {Data.roads.Length} roads, {Data.landmarks.Length} landmarks, {Builder.ObjectCount} world objects, {contacts.Contacts.Count} contacts, save {(restored ? "restored" : "new")}.");
+            Debug.Log($"NAIJA RISE — {Data.meta.name} {Data.meta.version}: {Data.roads.Length} roads, {Data.landmarks.Length} landmarks, {Builder.ObjectCount} world objects ({Builder.StadiumModels} stadium models, {Builder.Trees} trees), {lights.Count} lit junctions, {contacts.Contacts.Count} contacts, save {(restored ? "restored" : "new")}.");
         }
 
         void LateUpdate()

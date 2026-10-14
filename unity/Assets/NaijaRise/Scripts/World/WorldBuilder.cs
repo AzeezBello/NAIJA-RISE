@@ -48,6 +48,8 @@ namespace NaijaRise.World
             BuildTolls();
             BuildFootbridges();
             BuildStreetFurniture();
+            BuildBusinesses();
+            BuildVegetation();
 
             StaticBatchingUtility.Combine(Root.gameObject);
         }
@@ -133,7 +135,7 @@ namespace NaijaRise.World
             var water = Mat("water", Water, 0.92f);
             foreach (var w in Data.waters)
                 Box(w.name, WorldData.W((w.minX + w.maxX) * 0.5f, 0.06f, (w.minZ + w.maxZ) * 0.5f),
-                    new Vector3(w.maxX - w.minX, 0.12f, w.maxZ - w.minZ), water);
+                    new Vector3(w.maxX - w.minX, 0.12f, w.maxZ - w.minZ), water, null, false);   // no collider: you swim, vehicles sink
         }
 
         // ---------- roads ----------
@@ -297,8 +299,11 @@ namespace NaijaRise.World
                 var body = Mat("lm-" + l.color, l.color, l.kind == "bank" || l.kind == "hotel" ? 0.45f : 0.15f);
                 if (l.stadium)
                 {
-                    Cylinder(l.name, pos, 34f, 14f, grey, group);
-                    Cylinder(l.name + " bowl", pos + Vector3.up * 14f, 26f, 1.5f, Mat("pitch", Pitch), group);
+                    if (!BuildStadiumModel(l, pos, group))
+                    {
+                        Cylinder(l.name, pos, 34f, 14f, grey, group);
+                        Cylinder(l.name + " bowl", pos + Vector3.up * 14f, 26f, 1.5f, Mat("pitch", Pitch), group);
+                    }
                     Sign(l.shortName, pos + new Vector3(0, 18f, 36f), l.sign, 2.2f, group);
                     continue;
                 }
@@ -330,6 +335,72 @@ namespace NaijaRise.World
                 Box(l.name + " board", signPos, new Vector3(Mathf.Min(fp.x * 0.9f, 2.2f + l.shortName.Length * 1.05f), 1.8f, 0.25f), Mat("board", "#1b1b1f"), group, false);
                 Sign(l.shortName, signPos + new Vector3(0, 0, 0.2f), l.sign, 1f, group);
                 if (l.kind == "market") BuildMarketStalls(pos, fp, group);
+            }
+        }
+
+        // Wet asphalt reflects the lamps and the sky: raise the roads' smoothness while it rains.
+        public void SetWet(bool wet) { foreach (var key in new[] { "asphalt", "asphalt-hi" }) if (materials.TryGetValue(key, out var m)) m.SetFloat("_Smoothness", wet ? 0.82f : 0.15f); }
+
+        public int StadiumModels { get; private set; }
+        public int Trees { get; private set; }
+
+        // The real stadium models (src/world/assets.js): fitted to the web edition's footprint, feet on the ground.
+        bool BuildStadiumModel(LandmarkData l, Vector3 pos, Transform group)
+        {
+            bool teslim = (l.id + l.name).ToLower().Contains("teslim");
+            var prefab = Resources.Load<GameObject>("Models/Landmarks/" + (teslim ? "teslim_balogun_stadium" : "national_stadium"));
+            if (prefab == null) return false;
+            Vector3 target = teslim ? new Vector3(50f, 23f, 46f) : new Vector3(54f, 25f, 50f);
+            var go = Instantiate(prefab, group); go.name = l.name + " model";
+            go.transform.position = pos; go.transform.rotation = Quaternion.identity; go.transform.localScale = Vector3.one;
+            var b = Entities.CharacterRig.Bounds(go);
+            if (b.size.x <= 0f || b.size.y <= 0f || b.size.z <= 0f) { Remove(go); return false; }
+            float fit = Mathf.Min(target.x / b.size.x, target.z / b.size.z, target.y / b.size.y);
+            go.transform.localScale = Vector3.one * fit;
+            b = Entities.CharacterRig.Bounds(go);
+            go.transform.position += new Vector3(pos.x - b.center.x, pos.y - b.min.y, pos.z - b.center.z);
+            b = Entities.CharacterRig.Bounds(go);
+            foreach (var c in go.GetComponentsInChildren<Collider>()) Remove(c);
+            var col = go.AddComponent<BoxCollider>(); col.center = go.transform.InverseTransformPoint(b.center); col.size = new Vector3(b.size.x / fit, b.size.y / fit, b.size.z / fit);
+            foreach (var t in go.GetComponentsInChildren<Transform>()) t.gameObject.isStatic = true;
+            StadiumModels++; ObjectCount++;
+            return true;
+        }
+
+        // Trees (src/world/assets.js spawnVegetation): tropical, maple and pine models in the Surulere plot interiors
+        // and along the Eko Atlantic shore, height-fitted with a little jitter, kept off the road shoulders.
+        void BuildVegetation()
+        {
+            var group = new GameObject("Vegetation").transform; group.SetParent(Root, false);
+            var plan = new (string model, int count, float height)[] { ("jabami_anime_tree-grass_v1", 18, 6f), ("maple_tree", 8, 5.5f), ("tree_spruce_pine", 5, 7f) };
+            var zones = new (float x0, float x1, float z0, float z1)[] { (-120, -22, -120, -22), (22, 120, -120, -22), (-120, -22, 22, 120), (22, 120, 22, 120), (346, 614, 315, 330) };
+            var rng = new System.Random(42);
+            foreach (var (model, count, height) in plan)
+            {
+                var prefab = Resources.Load<GameObject>("Models/Vegetation/" + model);
+                if (prefab == null) continue;
+                for (int i = 0; i < count; i++)
+                {
+                    var z = zones[rng.Next(zones.Length)];
+                    bool placed = false;
+                    for (int attempt = 0; attempt < 48 && !placed; attempt++)
+                    {
+                        float dx = Mathf.Lerp(z.x0 + 2f, z.x1 - 2f, (float)rng.NextDouble()), dz = Mathf.Lerp(z.z0 + 2f, z.z1 - 2f, (float)rng.NextDouble());
+                        if (Data.InWaterData(dx, dz) || NearRoadData(dx, dz, 7f) || ReservedData(dx, dz)) continue;
+                        var tree = Instantiate(prefab, group); tree.name = model;
+                        var pos = WorldData.W(dx, 0f, dz); pos.y = Data.DeckHeightAtData(dx, dz);
+                        tree.transform.position = pos; tree.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f); tree.transform.localScale = Vector3.one;
+                        var b = Entities.CharacterRig.Bounds(tree);
+                        float jitter = 0.85f + (float)rng.NextDouble() * 0.3f, k = b.size.y > 0.01f ? height * jitter / b.size.y : 1f;
+                        tree.transform.localScale = Vector3.one * k;
+                        b = Entities.CharacterRig.Bounds(tree);
+                        tree.transform.position += new Vector3(pos.x - b.center.x, pos.y - b.min.y, pos.z - b.center.z);
+                        foreach (var c in tree.GetComponentsInChildren<Collider>()) Remove(c);
+                        var trunk = tree.AddComponent<BoxCollider>(); trunk.center = tree.transform.InverseTransformPoint(new Vector3(pos.x, pos.y + height * 0.5f, pos.z)); trunk.size = new Vector3(0.6f / k, height / k, 0.6f / k);
+                        foreach (var t in tree.GetComponentsInChildren<Transform>()) t.gameObject.isStatic = true;
+                        Trees++; ObjectCount++; placed = true;
+                    }
+                }
             }
         }
 
@@ -513,6 +584,20 @@ namespace NaijaRise.World
                     Box("Tower", r.Point(f.at, across, 3.1f), new Vector3(2.6f, 6.2f, 2.6f), steel, group);
                     Box("Rail", r.Point(f.at + 1.5f * (h ? 1 : 0), r.k + (h ? 0 : 1.5f), 7.0f), h ? new Vector3(0.1f, 1.2f, span) : new Vector3(span, 1.2f, 0.1f), steel, group, false);
                 }
+            }
+        }
+
+        // The four businesses for sale (src/data/businesses.js): small shops with a painted sign.
+        void BuildBusinesses()
+        {
+            var group = new GameObject("Businesses").transform; group.SetParent(Root, false);
+            foreach (var b in Data.businesses)
+            {
+                var pos = b.World();
+                string colour = b.id == "kiosk" ? "#2e7d32" : b.id == "phone" ? "#1565c0" : b.id == "buka" ? "#c0392b" : "#f39c12";
+                Box(b.name, pos + Vector3.up * 2f, new Vector3(8f, 4f, 6f), Mat("biz-" + colour, colour), group);
+                Box(b.name + " awning", pos + new Vector3(0, 3.3f, 3.6f), new Vector3(8.4f, 0.15f, 1.6f), Mat("awning", "#f1ecdf"), group, false);
+                Sign(b.name.ToUpper(), pos + new Vector3(0, 4.9f, 3.2f), "#ffffff", 0.8f, group);
             }
         }
 
