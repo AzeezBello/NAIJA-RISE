@@ -1,0 +1,22 @@
+# Web checks on every push and pull request: engine syntax + data checks, the Unity data export staying in sync
+# with the committed JSON, and the Next.js production build. Unity tests need an editor licence and run locally
+# (see unity/README.md "Headless"); a self-hosted runner with a Unity licence is the route to CI for those.
+name: web
+on:
+  push:
+  pull_request:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci || npm install
+      - run: npm run check
+      - name: Unity export is up to date
+        run: |
+          node scripts/export-world.mjs
+          git diff --exit-code unity/Assets/NaijaRise/Resources/world/lagos.json
+      - run: npm --prefix web ci || npm --prefix web install
+      - run: npm run web:build
