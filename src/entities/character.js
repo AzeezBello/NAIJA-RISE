@@ -8,7 +8,7 @@ import { mat } from '../world/builders.js';
 import { fabricTexture, fabricMaterial, fabricOf } from './wardrobe.js';
 import { current } from '../core/quality.js';
 
-// NAIJA RISE Character Pipeline v1.
+// RISE Character Pipeline v1.
 // One rigged GLB (Mixamo-compatible skeleton, Idle/Walk/Run clips) is loaded once and cloned per character.
 // A character starts as a primitive placeholder so the game runs immediately and offline; when the base rig
 // arrives the visuals swap in place. Customisation (G.state.look) tints materials by slot and attaches accessories

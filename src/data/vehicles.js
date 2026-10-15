@@ -1,5 +1,5 @@
 // ============================================================
-// NAIJA RISE — Vehicle Configuration
+// RISE — Vehicle Configuration
 // ============================================================
 // Vehicle classes:
 // max / boost = metres per second (m/s)

@@ -20,7 +20,7 @@ const paints = {};
 
 
 // ============================================================
-// NAIJA RISE — Vehicle GLB Loader
+// RISE — Vehicle GLB Loader
 // ============================================================
 // Runtime: /assets/vehicles/...  (sync-engine: ../assets → web/public/assets)
 // ============================================================

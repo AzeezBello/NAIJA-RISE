@@ -42,7 +42,7 @@ Bake clips **in place** (lock root XZ). Name them exactly as in the table (or al
 ## Unity edition
 
 The Unity project in `../../unity` uses the same Ready Player Me sample avatar and locomotion clips, copied to
-`unity/Assets/NaijaRise/Resources/Models/Characters` and imported with glTFast. `Editor/CharacterImport.cs` rebinds the
+`unity/Assets/Rise/Resources/Models/Characters` and imported with glTFast. `Editor/CharacterImport.cs` rebinds the
 clip curves onto the avatar hierarchy as legacy clips, and `Scripts/Entities/CharacterRig.cs` scales, orients and
 tints each instance and cross-fades Idle / Walk / Run from the controller state. To ship your own rig there, drop it
 beside the avatar with the same contract (Mixamo-compatible skeleton, in-place Idle / Walk / Run) and point

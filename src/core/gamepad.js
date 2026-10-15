@@ -2,7 +2,7 @@ import { G } from './context.js';
 import { emit } from './events.js';
 
 /*
- * NAIJA RISE — DualSense / Gamepad Controls
+ * RISE — DualSense / Gamepad Controls
  *
  * ON FOOT
  * ─────────────────────────────────────────

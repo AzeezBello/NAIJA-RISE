@@ -9,7 +9,7 @@ const pairs = [['../src', 'engine'], ['../styles', 'styles'], ['../assets', 'pub
 for (const [from, to] of pairs) {
   const src = resolve(web, from), dst = resolve(web, to);
   if (!existsSync(src) && to === 'public/assets') continue;   // custom character assets are optional
-  if (!existsSync(src)) { console.error(`[sync-engine] missing ${src} — the Next app must sit inside the NAIJA RISE repo`); process.exit(1); }
+  if (!existsSync(src)) { console.error(`[sync-engine] missing ${src} — the Next app must sit inside the RISE repo`); process.exit(1); }
   rmSync(dst, { recursive: true, force: true }); mkdirSync(dst, { recursive: true });
   cpSync(src, dst, { recursive: true });
   console.log(`[sync-engine] ${from} → web/${to}`);

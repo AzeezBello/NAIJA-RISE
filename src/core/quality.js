@@ -154,7 +154,7 @@ function updateOverlay(ft) {
   const r = G.renderer, info = r?.info;
   const active = a => (a || []).filter(x => x.g?.visible !== false && !x.hidden).length;
   overlayEl.textContent = [
-    'NAIJA RISE DEV',
+    'RISE DEV',
     `FPS        ${(1 / ema).toFixed(0)}`,
     `Frame      ${(ema * 1000).toFixed(1)} ms`,
     `Draw Calls ${info?.render.calls ?? '—'}`,

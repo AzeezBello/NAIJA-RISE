@@ -44,7 +44,7 @@ export default function AccountPage() {
 
   return (
     <main className="site" style={{ padding: '3rem 1.5rem', maxWidth: 640, margin: '0 auto' }}>
-      <p><Link href="/">← NAIJA RISE</Link></p>
+      <p><Link href="/">← RISE</Link></p>
       <h1>Account</h1>
       {!user ? (
         <form onSubmit={e => { e.preventDefault(); void signIn(); }} style={{ display: 'grid', gap: '0.75rem' }}>

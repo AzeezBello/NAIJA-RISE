@@ -1,4 +1,4 @@
-# NAIJA RISE — Three.js vs Unity: verified state
+# RISE — Three.js vs Unity: verified state
 
 Run on 14 October 2026 against the working tree on `feat/unity-slice-urp` (base `85305d3`), macOS 15.8.1 on an Intel
 Core i7, Unity 6000.6.5f1, Node 24.15. This file records what was executed and what each result proves. It answers the
@@ -83,6 +83,35 @@ networking checks; it now forces offline (`DiagFlags` `offline`, on while the pl
 Still unmeasured: frame rate and memory on a real GPU (SwiftShader is software), Safari and Firefox, iPhone, the 118 MB
 compressed data file's load time over a real connection, and whether the macOS window renders as the WebGL one does.
 
+
+## First real-browser observation (14 October, owner)
+
+The owner ran the Unity WebGL build on their own Mac in Chrome and Safari, with a local server (`serve_webgl.py` in the
+gitignored `Builds/WebGL`), and reports that **it plays far better than the Three.js version in both browsers**. This is
+the first evidence from a real GPU and from Safari, which the headless run could not give. It is an observation, not a
+measurement: no frame times, memory or load times were recorded, and "better" is unquantified. It moves two gates from
+"unknown" to "promising": P2 (performance on the target Mac) and P3 (WebGL in the target browsers). It does not close
+them. To turn it into evidence, record the same route (spawn to Eko Bridge at 20:00, default quality) in both editions:
+frames per second and frame-time spread from the browser's performance panel, tab memory, and time to first playable
+frame on a cold cache. Note the Unity data file is 118 MB compressed, so first load on a slow connection will be the
+cost side of the comparison.
+
+## Live Supabase project (reported by the owner, 15 October)
+
+Project `naija-rise` (eu-west-1) is active with the migrations applied. Reported by the owner from the Supabase side,
+not re-verified from this repo's tooling (my shell cannot reach `*.supabase.co` and the connector does not list the
+project): row-level security is on for `players`, `saves`, `crews` and `crew_members`; the six crew functions exist, are
+denied to `anon` and granted to `authenticated`. Advisors: the six `SECURITY DEFINER` functions are flagged (accepted by
+design, see the note in `supabase/schema.sql`), plus two missing foreign-key indexes and two RLS policies that call
+`auth.uid()` per row.
+
+Repo changes for that: `supabase/migrations/20261015_advisor_fixes.sql` (idempotent; run it on the live project) and the
+same fixes in `schema.sql`. `supabase/tests/crews_authorization.sql` is a functional test to run in the SQL editor: it
+creates three throwaway users, checks that anon is refused, an outsider sees and changes nothing, joining needs the
+code, direct writes to the crew tables are refused, members can deposit but not withdraw or set the HQ, the owner can
+withdraw only up to the balance, and leaving removes access, then rolls everything back. **It has not been run**; all
+three SQL files parse as valid PostgreSQL, which is all that has been checked.
+
 ## Limits of the evidence
 
 - **Unit of proof.** The play test calls game methods directly (`Choose`, `StartRace`, `Place`, `FinishTask`) and
@@ -105,8 +134,8 @@ compressed data file's load time over a real connection, and whether the macOS w
 |---|---|
 | P0 reproducible baseline, weak assertions fixed | **Done in this run**; web regression run (recorded gameplay in the browser) still to do |
 | P1 gameplay parity, including the bridge, flyover, underpass and collision cases | Not started as a side-by-side; Unity automated coverage exists |
-| P2 measured performance on Mac and iPhone, Low/Medium/High | Not started |
-| P3 WebGL load test; live Supabase save and two-client multiplayer; crew functions applied and tested | WebGL builds; nothing else |
+| P2 measured performance on Mac and iPhone, Low/Medium/High | Owner reports Unity WebGL plays far better than Three.js on this Mac in Chrome and Safari (unmeasured); iPhone and quality levels not started |
+| P3 WebGL load test; live Supabase save and two-client multiplayer; crew functions applied and tested | WebGL runs in Chrome and Safari on the owner's Mac; live Supabase and crew functions still untested |
 | P4 each announced platform built and tested on hardware | Not started (macOS builds; Windows module not installed; consoles need platform access) |
 | P5 freeze, tag, switch, rollback window, remove | Not started. Do not remove Three.js. |
 

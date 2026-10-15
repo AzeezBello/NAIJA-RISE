@@ -54,6 +54,6 @@ unity/*.slnx
 unity/.vs/
 
 # Backend settings: copy cloud.example.json to cloud.json (the anon key is public, but keep project ids out of git)
-unity/Assets/NaijaRise/Resources/cloud.json
-unity/Assets/NaijaRise/Resources/cloud.json.meta
+unity/Assets/Rise/Resources/cloud.json
+unity/Assets/Rise/Resources/cloud.json.meta
 .nr-archive/

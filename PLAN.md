@@ -1,6 +1,6 @@
-# NAIJA RISE — Lagos · Product Plan
+# RISE — Lagos · Product Plan
 
-Working title in the PRD: **Lagos Life**. Shipping name in this repo: **NAIJA RISE — Lagos**.
+Working title in the PRD: **Lagos Life**. Shipping name in this repo: **RISE — Lagos**.
 Original IP: original characters, missions, story and systems. The inspiration is open-world action plus Lagos-style life simulation; the district uses real Surulere place and street names on a stylised map.
 
 Pitch: **Build your life. Build your empire. Survive the city.**
@@ -79,7 +79,7 @@ Computer Village is a market destination; Ikeja also includes the New Afrika Shr
 
 **Also queued:** replace or improve the existing non-CC0 keke and okada models, and replace the temporary Volkswagen Crafter BRT and generic heavy-commercial tanker models with purpose-built Lagos vehicles; none of these vehicle types is supplied by the Kenney CC0 kit. Add a building facade kit; production character rig (see the open decision above) with turn/stop/jump and vehicle enter/exit animation clips (on-foot jump controls already work); real outfit meshes per clothing slot instead of tints; NPC uniform meshes (police, LASTMA, agbero caps) on the rig. First-pass artisan workshops, agency uniforms and enterable interiors need a visual/interaction play-test before being treated as fully polished.
 
-**Then (Alpha 1.1+):** Phase 5 dynamic world (NPC schedules, random encounters, neighbourhood stories) and Phase 6 the NAIJA RISE MCP server (world, player, NPC, mission, business, education and community tools) feeding an AI world director; multiplayer groundwork and accounts as planned before.
+**Then (Alpha 1.1+):** Phase 5 dynamic world (NPC schedules, random encounters, neighbourhood stories) and Phase 6 the RISE MCP server (world, player, NPC, mission, business, education and community tools) feeding an AI world director; multiplayer groundwork and accounts as planned before.
 
 Goal: make the economy loop deep enough that a player can spend an hour running a legitimate life, and finish the MVP checklist.
 
@@ -147,9 +147,9 @@ What has and has not been verified, with the defects it found, is in [MIGRATION-
 
 
 
-# NAIJA RISE — Multi-Platform Technical Roadmap
+# RISE — Multi-Platform Technical Roadmap
 
-Project: NAIJA RISE — Lagos · Target: Web, PlayStation, Xbox, Nintendo Switch, and VR
+Project: RISE — Lagos · Target: Web, PlayStation, Xbox, Nintendo Switch, and VR
 
 We'll treat this as a platform-readiness and architecture audit, not a rewrite. The existing playable game is the foundation we must protect.
 
@@ -312,7 +312,7 @@ Exit criteria: a short, stable first-person Lagos experience with reliable inter
 
 Run a native-engine feasibility spike
 
-Build one small, representative NAIJA RISE scene in the leading candidate engine. It should include a Lagos street, a player character, a vehicle, a bridge, basic collision and controller input.
+Build one small, representative RISE scene in the leading candidate engine. It should include a Lagos street, a player character, a vehicle, a bridge, basic collision and controller input.
 
 Measure:
 
@@ -340,7 +340,7 @@ Exit criteria: stable platform builds that pass the relevant technical and publi
 
 ## P5
 
-Unify the NAIJA RISE ecosystem
+Unify the RISE ecosystem
 
 - Define account and save synchronization across supported platforms.
 - Establish shared game-data and content-versioning rules.
@@ -377,4 +377,4 @@ The next development sprint should focus on these deliverables, in order:
 
 One practical constraint: I could inspect the repository, but the connected GitHub integration denied permission to create a branch. I have not modified the production branch or claimed that any new code has been committed. The roadmap above is based on the repository inspection and is ready to be added as a version-controlled project document.
 
-The key decision is to preserve the playable Three.js version while proving the native-console path in a small, isolated prototype. That lets NAIJA RISE continue growing today without locking the project into an expensive engine migration prematurely.
+The key decision is to preserve the playable Three.js version while proving the native-console path in a small, isolated prototype. That lets RISE continue growing today without locking the project into an expensive engine migration prematurely.
