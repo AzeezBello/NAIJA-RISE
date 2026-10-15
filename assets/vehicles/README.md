@@ -14,7 +14,7 @@ or moving a model, update both the model registry and path mapping.
 
 ## Unity edition
 
-The Unity project in `../../unity` loads the Kenney kit from `unity/Assets/NaijaRise/Resources/Models/Vehicles` (a copy
+The Unity project in `../../unity` loads the Kenney kit from `unity/Assets/Rise/Resources/Models/Vehicles` (a copy
 of `kenney/`, including the licence) through glTFast with the Meshopt decoder, so the compressed files import as they
 are. `VehicleBodies.cs` maps classes to models (sedan, SUV, hatchback and taxi for cars; police, garbage truck, fire
 truck, ambulance, van, delivery, truck), scales each to its class length and spins the `wheel-*` nodes; the Lagos

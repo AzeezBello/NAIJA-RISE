@@ -6,6 +6,6 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/NaijaRise/Scenes/Lagos.unity
+    path: Assets/Rise/Scenes/Lagos.unity
     guid: b59fab965a2004751a17e87cd5e23aad
   m_configObjects: {}

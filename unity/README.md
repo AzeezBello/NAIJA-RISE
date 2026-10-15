@@ -1,4 +1,4 @@
-# NAIJA RISE — Lagos · Unity edition
+# RISE — Lagos · Unity edition
 
 A Unity 6 project that builds the same Lagos as the Three.js game in `../src`, from the same data files. It started on
 13 October 2026 as the "native-engine vertical slice" that `../PLAN.md` (Multi-Platform Technical Roadmap, §2) asks for
@@ -14,14 +14,16 @@ Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFa
 | Compile | clean, no warnings |
 | Smoke test (edit mode) | passes: 85 roads, 120 landmarks, about 6,000 objects in under a second; every job and contact resolves; mirror correct |
 | Play test (play mode) | passes, 107 checks across the whole loop, see "Headless" below |
-| macOS build | `Builds/NaijaRise-Lagos.app`, about 350 MB with the stadium, tree, character and animal models |
-| WebGL build | builds (130 MB); boots and plays in headless Chrome with 0 console errors; real-GPU performance unmeasured |
+| macOS build | `Builds/Rise-Lagos.app`, about 350 MB with the stadium, tree, character and animal models |
+| WebGL build | builds (about 130 MB); plays in headless Chrome with 0 console errors and, per the owner, in desktop Chrome and Safari (unmeasured); iPhone Safari renders, touch controls added, performance not yet re-measured |
+| Vehicles | 17 classes, all GLB models (15 Kenney + 10 Lagos models: danfo, keke, korope, okada, BRT, army, tanker, pickup, motorcycles); 0 procedural. Four heavy models are decimated copies in `Resources/Models/Vehicles`, originals stay in `assets/vehicles/` |
+| Mobile | `TouchControls`: floating joystick, drag-to-look, ACT / JUMP / RUN / BRAKE / phone buttons, tappable menus. On phones: Low graphics, 24 traffic and 24 pedestrians, no stadium models, 30 fps cap |
 | Open in editor | no errors; the serialization and deprecation analyzers are quiet |
 
 ## What is here
 
 **Shared data.** `npm run export:unity` (repo root) runs `scripts/export-world.mjs`, which imports the engine's data
-modules and writes `Assets/NaijaRise/Resources/world/lagos.json`: the merged district map (roads with class, width,
+modules and writes `Assets/Rise/Resources/world/lagos.json`: the merged district map (roads with class, width,
 extent and named segments, the four bridge decks, junctions, landmarks, bus stops, properties, water, tolls,
 footbridges, kiosks, vendors, compound cells), the 18 jobs, 32 placed contacts, 17 vehicle classes, the 4 businesses,
 Dayo's price list, wardrobe fabrics and skin tones, level titles and unlocks, place-activity prices, café courses and
@@ -175,7 +177,7 @@ have no mission). The co-op race invites the crew to Speedy's two laps: both dri
 is split. Online the crew lives in the `crews` and `crew_members` tables and its own Realtime channel; offline it lives
 in the save and the loopback bus.
 
-**Input action maps** (`Resources/Input/NaijaRise.inputactions`, `Scripts/GameInput.cs`). The Gameplay map carries
+**Input action maps** (`Resources/Input/Rise.inputactions`, `Scripts/GameInput.cs`). The Gameplay map carries
 every binding for the Keyboard and Gamepad control schemes; the Input System's Gamepad layout is what DualShock, Xbox
 and Switch controllers all map to, so console ports rebind here rather than in code. The accessors fall back to direct
 device polling when the asset is missing.
@@ -188,13 +190,13 @@ holders' modules and licences.
 card and a north-up minimap bottom-left; cash, RiseBank, level, XP, reputation and speed / fuel / condition
 bottom-right; health and stamina bars with the prompt bottom-centre; toasts, menus, shift overlay, wanted banner.
 
-Everything is created from code at startup by `GameBootstrap` in `Assets/NaijaRise/Scenes/Lagos.unity`; the scene
+Everything is created from code at startup by `GameBootstrap` in `Assets/Rise/Scenes/Lagos.unity`; the scene
 only holds a camera, a sun and that one component. Pipeline assets in `Assets/Settings` come from the editor's own
 `urp-blank` template.
 
 ## Run it
 
-Open `unity/` in Unity Hub (editor 6000.6.5f1), open `Assets/NaijaRise/Scenes/Lagos.unity` and press Play.
+Open `unity/` in Unity Hub (editor 6000.6.5f1), open `Assets/Rise/Scenes/Lagos.unity` and press Play.
 
 | Input | On foot | Driving |
 |---|---|---|
@@ -222,6 +224,7 @@ standard gamepad, so there is no actions asset to maintain; `activeInputHandler`
 - `GameObject.CreatePrimitive` needs the collider classes kept: `Assets/link.xml` preserves the physics module.
 - The macOS build must be universal (`BuildMac` sets it); the default is Apple Silicon only.
 - WebGL uses quality level 0 (`Mobile`) and gzip compression: serve `Build/*.gz` with `Content-Encoding: gzip`.
+- Phones: `?diag=touch` shows the touch controls on a desktop (the mouse acts as a finger) and `?diag=mobile` applies the phone defaults. `?diag=showroom` lays out every vehicle class in a row. IMGUI text fields do not open the iOS keyboard, so sign-in and chat need a native input on phones (not done).
 - Diagnostic switches for any player: `index.html?diag=noshadows,noprobe,nopost,nohdr,noaddlights,norain,nomsaa` (WebGL) or
   the `NR_DIAG` environment variable (desktop); `offline` ignores `cloud.json`.
 
@@ -230,14 +233,14 @@ standard gamepad, so there is no actions asset to maintain; `activeInputHandler`
 ```bash
 UNITY="/Applications/Unity/Hub/Editor/6000.6.5f1/Unity.app/Contents/MacOS/Unity"
 npm run export:unity                                   # refresh the data after editing src/data
-"$UNITY" -batchmode -quit -nographics -projectPath unity -executeMethod NaijaRise.EditorTools.SceneSetup.SmokeTest -logFile -
-"$UNITY" -batchmode       -nographics -projectPath unity -executeMethod NaijaRise.EditorTools.PlayTest.Run        -logFile -
-"$UNITY" -batchmode -quit -nographics -projectPath unity -executeMethod NaijaRise.EditorTools.SceneSetup.BuildMac   -logFile -
-open unity/Builds/NaijaRise-Lagos.app
+"$UNITY" -batchmode -quit -nographics -projectPath unity -executeMethod Rise.EditorTools.SceneSetup.SmokeTest -logFile -
+"$UNITY" -batchmode       -nographics -projectPath unity -executeMethod Rise.EditorTools.PlayTest.Run        -logFile -
+"$UNITY" -batchmode -quit -nographics -projectPath unity -executeMethod Rise.EditorTools.SceneSetup.BuildMac   -logFile -
+open unity/Builds/Rise-Lagos.app
 ```
 
 The editor must be closed: Unity allows one instance per project. The same commands are in the editor under the
-`NAIJA RISE` menu.
+`RISE` menu.
 
 The smoke test prepares the character clips, builds the whole city in edit mode and checks object counts, that every
 job and contact resolves to a place, the spawn region and street, the Eko Bridge deck height, the coordinate mirror,

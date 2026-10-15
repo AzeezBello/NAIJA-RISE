@@ -14,7 +14,7 @@ export default async function AdminPage() {
   if (!supabase) {
     return (
       <main className="site" style={{ padding: '3rem 1.5rem', maxWidth: 900, margin: '0 auto' }}>
-        <p><Link href="/">← NAIJA RISE</Link></p>
+        <p><Link href="/">← RISE</Link></p>
         <h1>Admin</h1>
         <p>Offline: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY on the server.</p>
       </main>
@@ -30,7 +30,7 @@ export default async function AdminPage() {
 
   return (
     <main className="site" style={{ padding: '3rem 1.5rem', maxWidth: 900, margin: '0 auto' }}>
-      <p><Link href="/">← NAIJA RISE</Link></p>
+      <p><Link href="/">← RISE</Link></p>
       <h1>Admin</h1>
       <p>{o.players} players · {o.saves} saves · ₦{Number(o.total_naira).toLocaleString()} in the economy · average level {Number(o.avg_level).toFixed(1)} · {o.crews} crews</p>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>

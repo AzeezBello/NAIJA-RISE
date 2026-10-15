@@ -17,6 +17,6 @@ jobs:
       - name: Unity export is up to date
         run: |
           node scripts/export-world.mjs
-          git diff --exit-code unity/Assets/NaijaRise/Resources/world/lagos.json
+          git diff --exit-code unity/Assets/Rise/Resources/world/lagos.json
       - run: npm --prefix web ci || npm --prefix web install
       - run: npm run web:build

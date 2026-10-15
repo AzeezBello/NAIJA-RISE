@@ -30,7 +30,7 @@ import {
 } from '../data/locations.js';
 
 /*
- * NAIJA RISE — Lagos HUD
+ * RISE — Lagos HUD
  *
  * - Player status / money / XP
  * - Wanted / heat
@@ -97,7 +97,7 @@ export function buildHud(root) {
       <button id="pauseBtn" class="pause-btn" type="button" aria-label="Pause game" title="Pause game">Ⅱ</button>
       <div id="pauseScreen" class="pause-screen" role="dialog" aria-modal="true" aria-labelledby="pauseTitle" hidden>
         <div class="pause-card glass">
-          <span class="pause-kicker">NAIJA RISE</span>
+          <span class="pause-kicker">RISE</span>
           <h2 id="pauseTitle">Game paused</h2>
           <p>Your game is paused. Resume when you’re ready.</p>
           <button id="resumeBtn" class="btn" type="button">Resume</button>

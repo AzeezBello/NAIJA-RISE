@@ -13,7 +13,7 @@ globalThis.location ??= { hash: '', search: '' };
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const load = f => import(pathToFileURL(resolve(root, f)).href);
 const [L, C, J, Ch, V, F, B] = await Promise.all([load('src/data/districts/lagos.js'), load('src/data/config.js'), load('src/data/jobs.js'), load('src/data/characters.js'), load('src/data/vehicles.js'), load('src/data/family.js'), load('src/data/businesses.js')]);
-const out = process.argv[2] ? resolve(process.argv[2]) : resolve(root, 'unity/Assets/NaijaRise/Resources/world/lagos.json');
+const out = process.argv[2] ? resolve(process.argv[2]) : resolve(root, 'unity/Assets/Rise/Resources/world/lagos.json');
 
 const AXES = ['h', 'v'];
 const roads = AXES.flatMap(axis => L.ROADS[axis].map(k => {

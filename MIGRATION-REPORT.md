@@ -1,4 +1,4 @@
-# NAIJA RISE — Three.js vs Unity: verified state
+# RISE — Three.js vs Unity: verified state
 
 Run on 14 October 2026 against the working tree on `feat/unity-slice-urp` (base `85305d3`), macOS 15.8.1 on an Intel
 Core i7, Unity 6000.6.5f1, Node 24.15. This file records what was executed and what each result proves. It answers the
@@ -95,6 +95,22 @@ them. To turn it into evidence, record the same route (spawn to Eko Bridge at 20
 frames per second and frame-time spread from the browser's performance panel, tab memory, and time to first playable
 frame on a cold cache. Note the Unity data file is 118 MB compressed, so first load on a slow connection will be the
 cost side of the comparison.
+
+## Live Supabase project (reported by the owner, 15 October)
+
+Project `naija-rise` (eu-west-1) is active with the migrations applied. Reported by the owner from the Supabase side,
+not re-verified from this repo's tooling (my shell cannot reach `*.supabase.co` and the connector does not list the
+project): row-level security is on for `players`, `saves`, `crews` and `crew_members`; the six crew functions exist, are
+denied to `anon` and granted to `authenticated`. Advisors: the six `SECURITY DEFINER` functions are flagged (accepted by
+design, see the note in `supabase/schema.sql`), plus two missing foreign-key indexes and two RLS policies that call
+`auth.uid()` per row.
+
+Repo changes for that: `supabase/migrations/20261015_advisor_fixes.sql` (idempotent; run it on the live project) and the
+same fixes in `schema.sql`. `supabase/tests/crews_authorization.sql` is a functional test to run in the SQL editor: it
+creates three throwaway users, checks that anon is refused, an outsider sees and changes nothing, joining needs the
+code, direct writes to the crew tables are refused, members can deposit but not withdraw or set the HQ, the owner can
+withdraw only up to the balance, and leaving removes access, then rolls everything back. **It has not been run**; all
+three SQL files parse as valid PostgreSQL, which is all that has been checked.
 
 ## Limits of the evidence
 
