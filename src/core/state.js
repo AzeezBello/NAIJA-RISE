@@ -32,7 +32,7 @@ export const DEFAULT = {
   familyDone: {},                        // { [reqId]: lastCompletedDay }
 };
 
-const LEGACY_KEYS = ['naijarise.alpha09', 'naijarise.alpha08', 'naijarise.alpha07', 'naijarise.alpha06', 'naijarise.alpha05'];
+const LEGACY_KEYS = ['naijarise.alpha10', 'naijarise.alpha09', 'naijarise.alpha08', 'naijarise.alpha07', 'naijarise.alpha06', 'naijarise.alpha05'];
 // Keep the first copy of a save we are about to discard (corrupt JSON, or written by a newer build) so it can be recovered
 // by hand; the autosave would otherwise overwrite it within 15 seconds of starting a fresh game.
 function stashSave(raw, tag) {

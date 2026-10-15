@@ -1,4 +1,4 @@
--- NAIJA RISE — accounts and server-side save (PRD §27), shared by the web and Unity editions.
+-- RISE — accounts and server-side save (PRD §27), shared by the web and Unity editions.
 -- Apply in the Supabase SQL editor (or `supabase db push`). Auth is Supabase Auth (email + password).
 
 create table if not exists public.players (
@@ -20,8 +20,8 @@ alter table public.players enable row level security;
 alter table public.saves enable row level security;
 
 -- Every player sees and writes only their own rows.
-create policy "players: own row" on public.players for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create policy "saves: own rows" on public.saves for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "players: own row" on public.players for all using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "saves: own rows" on public.saves for all using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 
 -- Keep last_seen fresh whenever a save lands.
 create or replace function public.touch_player() returns trigger language plpgsql security definer as $$
@@ -56,6 +56,10 @@ create table if not exists public.crew_members (
   joined_at timestamptz not null default now(),
   primary key (crew_id, user_id)
 );
+-- Foreign-key indexes (the performance advisor flags unindexed foreign keys).
+create index if not exists crews_owner_idx on public.crews (owner);
+create index if not exists crew_members_user_idx on public.crew_members (user_id);
+
 alter table public.crews enable row level security;
 alter table public.crew_members enable row level security;
 
@@ -119,6 +123,9 @@ end $$;
 
 revoke all on function public.create_crew, public.join_crew, public.leave_crew, public.crew_deposit, public.crew_withdraw, public.set_crew_hq from public, anon;
 grant execute on function public.create_crew, public.join_crew, public.leave_crew, public.crew_deposit, public.crew_withdraw, public.set_crew_hq to authenticated;
+-- The six functions are SECURITY DEFINER on purpose (they perform writes the tables forbid to clients), so the security
+-- advisor will list them; each checks auth.uid() itself, executes only for `authenticated`, and is covered by
+-- supabase/tests/crews_authorization.sql. Review that warning as accepted, not ignored.
 -- Shared GPS pins, chat and co-op race messages travel on realtime:crew:<crew id>; nothing is stored.
 
 -- ---- Admin dashboard (web /admin, service role only) ----

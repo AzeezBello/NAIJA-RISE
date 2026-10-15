@@ -53,7 +53,7 @@ export const TitleScene = {
         <div class="title-top">
           <div class="title-location">
             <span class="status-dot"></span>
-            <span>NAIJA RISE WORLD</span>
+            <span>RISE WORLD</span>
             <span class="separator">/</span>
             <span>LAGOS</span>
           </div>
@@ -74,7 +74,6 @@ export const TitleScene = {
 
           <div class="title-brand">
             <div class="title-name">
-              NAIJA
               <b>RISE</b>
             </div>
 
