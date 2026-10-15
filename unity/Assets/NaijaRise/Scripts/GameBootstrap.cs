@@ -36,7 +36,7 @@ namespace NaijaRise
             if (!restored) state.NewGame();
 
             // Accounts and cloud save (Supabase; offline without Resources/cloud.json).
-            var cloudConfig = Net.CloudConfig.Load();
+            var cloudConfig = DiagFlags.Has("offline") ? new Net.CloudConfig() : Net.CloudConfig.Load();
             var account = gameObject.AddComponent<Net.Account>(); account.Init(cloudConfig);
             var cloud = gameObject.AddComponent<Net.CloudSave>(); cloud.Init(account);
 

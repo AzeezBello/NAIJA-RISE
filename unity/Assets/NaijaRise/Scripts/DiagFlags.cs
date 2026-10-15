@@ -9,11 +9,16 @@ namespace NaijaRise
     //   nopost     no post-processing volume          nohdr       HDR off in the URP asset
     //   norain     weather never starts               noaddlights additional lights off
     //   nomsaa     MSAA off                           noshadowasset  shadows disabled in the URP asset itself
+    //   offline    ignore Resources/cloud.json (no account, no cloud save, loopback multiplayer); always on in the play test
     public static class DiagFlags
     {
         static string[] flags;
         public static bool Has(string flag)
         {
+#if UNITY_EDITOR
+            // The headless play test must never touch a developer's real backend: it runs offline on the loopback bus.
+            if (flag == "offline" && UnityEditor.EditorPrefs.GetBool("NaijaRise.PlayTest.Active", false)) return true;
+#endif
             if (flags == null)
             {
                 string raw = "";

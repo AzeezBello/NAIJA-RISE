@@ -27,7 +27,12 @@ namespace NaijaRise.EditorTools
         }
 
         [MenuItem("NAIJA RISE/Build macOS Player")]
-        public static void BuildMac() => BuildPlayer(BuildTarget.StandaloneOSX, "Builds/NaijaRise-Lagos.app");
+        public static void BuildMac()
+        {
+            // Universal (Intel + Apple Silicon): the default is Apple Silicon only, which cannot launch on Intel Macs.
+            EditorUserBuildSettings.SetPlatformSettings("Standalone", "OSXUniversal", "Architecture", "x64ARM64");
+            BuildPlayer(BuildTarget.StandaloneOSX, "Builds/NaijaRise-Lagos.app");
+        }
 
         [MenuItem("NAIJA RISE/Build Windows Player")]
         public static void BuildWindows() => BuildPlayer(BuildTarget.StandaloneWindows64, "Builds/Windows/NaijaRise-Lagos.exe");
