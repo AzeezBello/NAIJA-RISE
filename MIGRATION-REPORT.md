@@ -83,6 +83,19 @@ networking checks; it now forces offline (`DiagFlags` `offline`, on while the pl
 Still unmeasured: frame rate and memory on a real GPU (SwiftShader is software), Safari and Firefox, iPhone, the 118 MB
 compressed data file's load time over a real connection, and whether the macOS window renders as the WebGL one does.
 
+
+## First real-browser observation (14 October, owner)
+
+The owner ran the Unity WebGL build on their own Mac in Chrome and Safari, with a local server (`serve_webgl.py` in the
+gitignored `Builds/WebGL`), and reports that **it plays far better than the Three.js version in both browsers**. This is
+the first evidence from a real GPU and from Safari, which the headless run could not give. It is an observation, not a
+measurement: no frame times, memory or load times were recorded, and "better" is unquantified. It moves two gates from
+"unknown" to "promising": P2 (performance on the target Mac) and P3 (WebGL in the target browsers). It does not close
+them. To turn it into evidence, record the same route (spawn to Eko Bridge at 20:00, default quality) in both editions:
+frames per second and frame-time spread from the browser's performance panel, tab memory, and time to first playable
+frame on a cold cache. Note the Unity data file is 118 MB compressed, so first load on a slow connection will be the
+cost side of the comparison.
+
 ## Limits of the evidence
 
 - **Unit of proof.** The play test calls game methods directly (`Choose`, `StartRace`, `Place`, `FinishTask`) and
@@ -105,8 +118,8 @@ compressed data file's load time over a real connection, and whether the macOS w
 |---|---|
 | P0 reproducible baseline, weak assertions fixed | **Done in this run**; web regression run (recorded gameplay in the browser) still to do |
 | P1 gameplay parity, including the bridge, flyover, underpass and collision cases | Not started as a side-by-side; Unity automated coverage exists |
-| P2 measured performance on Mac and iPhone, Low/Medium/High | Not started |
-| P3 WebGL load test; live Supabase save and two-client multiplayer; crew functions applied and tested | WebGL builds; nothing else |
+| P2 measured performance on Mac and iPhone, Low/Medium/High | Owner reports Unity WebGL plays far better than Three.js on this Mac in Chrome and Safari (unmeasured); iPhone and quality levels not started |
+| P3 WebGL load test; live Supabase save and two-client multiplayer; crew functions applied and tested | WebGL runs in Chrome and Safari on the owner's Mac; live Supabase and crew functions still untested |
 | P4 each announced platform built and tested on hardware | Not started (macOS builds; Windows module not installed; consoles need platform access) |
 | P5 freeze, tag, switch, rollback window, remove | Not started. Do not remove Three.js. |
 
