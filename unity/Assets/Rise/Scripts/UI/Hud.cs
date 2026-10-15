@@ -100,20 +100,27 @@ namespace Rise.UI
                 GUI.Label(new Rect(r.x, r.y - 24 * s, r.width, 22 * s), "N ▲", small);
             }
 
-            // Bottom-right: money, level, XP (and speed / fuel while driving).
-            if (Portrait != null && Portrait.Texture != null)
+            // Bottom-right: money, level, XP (and speed / fuel while driving). On touch screens the controls own that corner,
+            // so the same facts sit in one compact strip at the top centre.
+            if (TouchControls.Active)
+            {
+                GUI.Box(new Rect(W * 0.5f - 190 * s, 10 * s, 380 * s, 34 * s), GUIContent.none, barBg);
+                GUI.Label(new Rect(W * 0.5f - 190 * s, 14 * s, 380 * s, 28 * s), $"₦{st.cash:N0}  ·  Lv {st.level}" + (session.Vehicle != null ? $"  ·  {session.Vehicle.Kmh:0} km/h" : ""), title);
+            }
+            else if (Portrait != null && Portrait.Texture != null)
             {
                 var pr = new Rect(W - 318 * s - 92 * s, H - 172 * s, 84 * s, 84 * s);
                 GUI.Box(new Rect(pr.x - 3, pr.y - 3, pr.width + 6, pr.height + 6), GUIContent.none, barBg);
                 GUI.DrawTexture(pr, Portrait.Texture, ScaleMode.StretchToFill);
             }
+            if (!TouchControls.Active) {
             GUILayout.BeginArea(new Rect(W - 318 * s, H - 172 * s, 300 * s, 156 * s), cardStyle);
             GUILayout.Label($"₦{st.cash:N0} cash{(session.InCrew ? $"   [{session.CrewTag}]" : "")}", title);
             GUILayout.Label($"₦{st.bank:N0} RiseBank  ·  Level {st.level} {session.State.Title}", body);
             GUILayout.Label($"Rep  public {st.rep.publicRep}  ·  street {st.rep.street}  ·  business {st.rep.business}", small);
             var xpRect = GUILayoutUtility.GetRect(260 * s, 8 * s); Bar(xpRect, st.xp / 100f, new Color(0.96f, 0.77f, 0.09f));
             if (session.Vehicle != null) GUILayout.Label($"{session.Vehicle.Kmh:0} km/h  ·  fuel {st.fuel:0}%  ·  condition {session.Vehicle.Condition:0}%", body);
-            GUILayout.EndArea();
+            GUILayout.EndArea(); }
 
             // Bottom-centre: health, stamina, prompt or hint.
             float cw = 420 * s, cx = W * 0.5f - cw * 0.5f;
@@ -122,7 +129,7 @@ namespace Rise.UI
             if (!string.IsNullOrEmpty(session.Prompt) && session.ActiveMenu == null && session.Working == null)
                 GUI.Label(new Rect(cx, H - 70 * s, cw, 40 * s), $"[{(TouchControls.Active ? "ACT" : "E")}]  {session.Prompt}", prompt);
             else if (Time.time < hintUntil && session.ActiveMenu == null && session.Working == null)
-                GUI.Label(new Rect(cx - 120 * s, H - 66 * s, cw + 240 * s, 32 * s), TouchControls.Active ? "Left thumb moves  ·  drag right to look  ·  ACT to interact  ·  ☎ phone" : "WASD / left stick move  ·  Shift sprint  ·  Space jump  ·  Mouse or Z/C look  ·  E interact  ·  P phone  ·  Esc frees the cursor", small);
+                GUI.Label(new Rect(cx - 120 * s, H - 66 * s, cw + 240 * s, 32 * s), TouchControls.Active ? "Left thumb moves  ·  drag right to look  ·  ACT to interact  ·  PHONE for the phone" : "WASD / left stick move  ·  Shift sprint  ·  Space jump  ·  Mouse or Z/C look  ·  E interact  ·  P phone  ·  Esc frees the cursor", small);
 
             // Menu card (dialogue, agent, home, business, bus stop, kiosk, police).
             var menu = session.ActiveMenu;
