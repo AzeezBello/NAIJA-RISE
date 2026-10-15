@@ -20,7 +20,7 @@ export function buildPhone(root) {
     <div class="pstatus"><span id="pTime">00:00</span><span class="sig">5G ▂▄▆ <i class="batt"></i></span><button class="pclose" data-act="close" aria-label="Close phone">×</button></div>
     <div class="pscreen">
       <div class="papp home show" id="app-home">
-        <div class="ptop"><div class="plogo">NAIJA <b>RISE</b><small>${GAME.subtitle}</small></div><div class="pclock" id="pClock">00:00</div><div class="pdate" id="pDate"></div></div>
+        <div class="ptop"><div class="plogo"><b>RISE</b><small>${GAME.subtitle}</small></div><div class="pclock" id="pClock">00:00</div><div class="pdate" id="pDate"></div></div>
         <div class="pgrid">${grid}</div>
       </div>
       ${screens}

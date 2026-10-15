@@ -44,7 +44,7 @@ export default function Home() {
       <header className="site-header">
 
         <Link href="/" className="site-logo">
-          NAIJA <b>RISE</b>
+          <b>RISE</b>
         </Link>
 
         <div className="site-status">
@@ -79,13 +79,12 @@ export default function Home() {
 
           <div className="hero-kicker">
             <span className="hero-live-dot" />
-            NAIJA RISE WORLD
+            RISE WORLD
             <i />
             LAGOS, NIGERIA
           </div>
 
           <h1>
-            NAIJA
             <b>RISE</b>
           </h1>
 
@@ -264,7 +263,7 @@ export default function Home() {
           </div>
 
           <p>
-            NAIJA RISE is more than a driving game.
+            RISE is more than a driving game.
             It is a life simulation where your decisions,
             relationships, hustle and reputation shape
             the world around you.
@@ -334,7 +333,7 @@ export default function Home() {
             href="/play"
             className="final-play"
           >
-            <span>PLAY NAIJA RISE</span>
+            <span>PLAY RISE</span>
             <b>→</b>
           </Link>
 
@@ -354,7 +353,7 @@ export default function Home() {
       <footer className="site-footer">
 
         <div className="footer-brand">
-          NAIJA <b>RISE</b>
+          <b>RISE</b>
         </div>
 
         <div className="footer-copy">
