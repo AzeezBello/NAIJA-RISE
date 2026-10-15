@@ -15,7 +15,7 @@ Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFa
 | Smoke test (edit mode) | passes: 85 roads, 120 landmarks, about 6,000 objects in under a second; every job and contact resolves; mirror correct |
 | Play test (play mode) | passes, 107 checks across the whole loop, see "Headless" below |
 | macOS build | `Builds/NaijaRise-Lagos.app`, about 350 MB with the stadium, tree, character and animal models |
-| WebGL build | builds (129 MB); not yet loaded in a browser |
+| WebGL build | builds (130 MB); boots and plays in headless Chrome with 0 console errors; real-GPU performance unmeasured |
 | Open in editor | no errors; the serialization and deprecation analyzers are quiet |
 
 ## What is here
@@ -215,6 +215,15 @@ through the service role key) against the same schema; copy `web/.env.example` t
 
 Input goes through the Input System package (`Scripts/GameInput.cs`), polled directly from the keyboard, mouse and a
 standard gamepad, so there is no actions asset to maintain; `activeInputHandler` is Input System only.
+
+### Player-build pitfalls (found the hard way)
+
+- Runtime `new Material(Shader.Find(...))` throws in players; use `ShaderLib` (templates in `Resources/Materials`).
+- `GameObject.CreatePrimitive` needs the collider classes kept: `Assets/link.xml` preserves the physics module.
+- The macOS build must be universal (`BuildMac` sets it); the default is Apple Silicon only.
+- WebGL uses quality level 0 (`Mobile`) and gzip compression: serve `Build/*.gz` with `Content-Encoding: gzip`.
+- Diagnostic switches for any player: `index.html?diag=noshadows,noprobe,nopost,nohdr,noaddlights,norain,nomsaa` (WebGL) or
+  the `NR_DIAG` environment variable (desktop); `offline` ignores `cloud.json`.
 
 ### Headless
 
