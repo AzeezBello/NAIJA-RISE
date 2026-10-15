@@ -51,7 +51,7 @@ namespace NaijaRise.World
             {
                 var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder); go.name = "Objective arrow";
                 go.transform.localScale = new Vector3(0.9f, 0.45f, 0.9f);
-                var m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(1f, 0.77f, 0.18f) }; m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", new Color(1f, 0.77f, 0.18f) * 1.5f);
+                var m = new Material(ShaderLib.Lit) { color = new Color(1f, 0.77f, 0.18f) }; m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", new Color(1f, 0.77f, 0.18f) * 1.5f);
                 go.GetComponent<MeshRenderer>().sharedMaterial = m; Destroy(go.GetComponent<Collider>());
                 arrow = go.transform; arrow.SetParent(transform, false);
             }
