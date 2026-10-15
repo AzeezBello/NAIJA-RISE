@@ -23,7 +23,9 @@ namespace Rise.UI
         public bool SprintHeld { get; private set; }
         public bool HandbrakeHeld { get; private set; }
         bool jump, interact, decline, phone; int menuTap = -1; Vector2 look;
-        bool active, touchedOnce;
+        bool active, mouseAsFinger; Vector2 mouseLast;
+        struct Pt { public int id; public UnityEngine.InputSystem.TouchPhase phase; public Vector2 pos, delta; }
+        readonly System.Collections.Generic.List<Pt> pts = new System.Collections.Generic.List<Pt>();
 
         int joyFinger = -1, lookFinger = -1; Vector2 joyOrigin, joyNow; float joyRadius;
         readonly System.Collections.Generic.Dictionary<int, Button> held = new System.Collections.Generic.Dictionary<int, Button>();
@@ -41,7 +43,7 @@ namespace Rise.UI
         {
             I = this;
             EnhancedTouchSupport.Enable();
-            if (DiagFlags.Has("touch")) { TouchSimulation.Enable(); active = true; }
+            if (DiagFlags.Has("touch")) { mouseAsFinger = true; active = true; }
             else if (Application.isMobilePlatform) active = true;
             disc = new Texture2D(64, 64, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
             for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++) { float d = Vector2.Distance(new Vector2(x, y), new Vector2(31.5f, 31.5f)); float a = Mathf.Clamp01(31f - d); disc.SetPixel(x, y, new Color(1f, 1f, 1f, a)); }
@@ -80,15 +82,25 @@ namespace Rise.UI
         void Update()
         {
             var touches = ETouch.activeTouches;
-            if (!active && touches.Count > 0 && Touchscreen.current != null) { active = true; touchedOnce = true; }
+            if (!active && touches.Count > 0 && Touchscreen.current != null) { active = true; }
+            pts.Clear();
+            foreach (var t in touches) pts.Add(new Pt { id = t.finger.index, phase = t.phase, pos = t.screenPosition, delta = t.delta });
+            var mouse = mouseAsFinger ? Mouse.current : null;   // desktop testing: the left button is a finger
+            if (mouse != null)
+            {
+                Vector2 mp = mouse.position.ReadValue();
+                if (mouse.leftButton.wasPressedThisFrame) { pts.Add(new Pt { id = 99, phase = UnityEngine.InputSystem.TouchPhase.Began, pos = mp }); mouseLast = mp; }
+                else if (mouse.leftButton.wasReleasedThisFrame) pts.Add(new Pt { id = 99, phase = UnityEngine.InputSystem.TouchPhase.Ended, pos = mp });
+                else if (mouse.leftButton.isPressed) { pts.Add(new Pt { id = 99, phase = UnityEngine.InputSystem.TouchPhase.Moved, pos = mp, delta = mp - mouseLast }); mouseLast = mp; }
+            }
             if (!active) { Move = Vector2.zero; return; }
             bool menuOpen = MenuOpen != null && MenuOpen();
             joyRadius = U * 1.1f;
             bool joyAlive = false, lookAlive = false;
             var alive = new System.Collections.Generic.HashSet<int>();
-            foreach (var t in touches)
+            foreach (var t in pts)
             {
-                int id = t.finger.index; alive.Add(id); var pos = t.screenPosition;
+                int id = t.id; alive.Add(id); var pos = t.pos;
                 if (t.phase == UnityEngine.InputSystem.TouchPhase.Began)
                 {
                     var b = ButtonAt(pos);
@@ -142,7 +154,7 @@ namespace Rise.UI
                 if (b == Button.None || !Rect(b, out var c, out var r)) continue;
                 bool down = false; foreach (var h in held.Values) if (h == b) down = true;
                 Circle(c, r, b == Button.Act ? new Color(0.96f, 0.77f, 0.09f, down ? 0.75f : 0.5f) : new Color(1f, 1f, 1f, down ? 0.45f : 0.22f));
-                string label = b == Button.Act ? "ACT" : b == Button.Jump ? "JUMP" : b == Button.Sprint ? (drive ? "BOOST" : "RUN") : b == Button.Hand ? "BRAKE" : b == Button.Phone ? "☎" : "X";
+                string label = b == Button.Act ? "ACT" : b == Button.Jump ? "JUMP" : b == Button.Sprint ? (drive ? "BOOST" : "RUN") : b == Button.Hand ? "BRAKE" : b == Button.Phone ? "PHONE" : "X";
                 GUI.color = Color.white; GUI.Label(new Rect(c.x - r, H - c.y - r, r * 2f, r * 2f), label, style);
             }
             GUI.color = old;
