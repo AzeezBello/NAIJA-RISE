@@ -47,7 +47,7 @@ namespace NaijaRise.World
             Current = new Jam { road = road, from = -20f, to = 60f, until = 150f, flood = true };
             var water = GameObject.CreatePrimitive(PrimitiveType.Cube); water.name = "Flood"; Destroy(water.GetComponent<Collider>());
             water.transform.position = road.Point(20f, road.k, 0.22f); water.transform.localScale = new Vector3(80f, 0.12f, road.width + 6f);
-            var m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(0.35f, 0.3f, 0.2f, 1f) }; m.SetFloat("_Smoothness", 0.9f); water.GetComponent<MeshRenderer>().sharedMaterial = m;
+            var m = new Material(ShaderLib.Lit) { color = new Color(0.35f, 0.3f, 0.2f, 1f) }; m.SetFloat("_Smoothness", 0.9f); water.GetComponent<MeshRenderer>().sharedMaterial = m;
             props.Add(water);
             Notify?.Invoke("Weather", "Storm! Ojuelegba underpass don flood — Itire Road is a go-slow.");
         }
@@ -87,7 +87,7 @@ namespace NaijaRise.World
             else Notify?.Invoke("Traffic", $"Go-slow on {name} — danfos dey crawl. Find another route.");
         }
 
-        static Material Mat(string hex) { var m = new Material(Shader.Find("Universal Render Pipeline/Lit")); ColorUtility.TryParseHtmlString(hex, out var c); m.color = c; return m; }
+        static Material Mat(string hex) { var m = new Material(ShaderLib.Lit); ColorUtility.TryParseHtmlString(hex, out var c); m.color = c; return m; }
         GameObject Prop(PrimitiveType type, Vector3 pos, Vector3 scale, Material m)
         {
             var go = GameObject.CreatePrimitive(type); go.transform.SetParent(transform, false); go.transform.position = pos; go.transform.localScale = scale; go.GetComponent<MeshRenderer>().sharedMaterial = m;

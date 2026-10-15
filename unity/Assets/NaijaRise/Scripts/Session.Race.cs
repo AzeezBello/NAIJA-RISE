@@ -38,7 +38,7 @@ namespace NaijaRise
             if (ring == null)
             {
                 var g = GameObject.CreatePrimitive(PrimitiveType.Cylinder); g.name = "Race ring"; g.transform.SetParent(transform, false); g.transform.localScale = new Vector3(6.4f, 0.12f, 6.4f);
-                var m = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = new Color(1f, 0.36f, 0.62f, 0.9f) };
+                var m = new Material(ShaderLib.Unlit) { color = new Color(1f, 0.36f, 0.62f, 0.9f) };
                 g.GetComponent<MeshRenderer>().sharedMaterial = m; Destroy(g.GetComponent<Collider>()); ring = g.transform;
             }
             ring.gameObject.SetActive(true); ring.position = cps[0] + Vector3.up * 0.4f;

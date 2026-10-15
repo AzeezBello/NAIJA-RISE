@@ -15,8 +15,8 @@ does not exist, it says so.
 | Unity compile | 0 errors, 0 warnings | | |
 | Unity edit-mode smoke test | pass | City builds from data (85 roads, 120 landmarks, ~6,000 objects); every job and contact resolves; coordinate mirror; rigs, fabric print, stadium and tree counts, Kenney sedan scale | Look or feel |
 | Unity play-mode test | pass, 107 checks | The scripted loop runs end to end in the editor on the null graphics device (see limits) | Real rendering, input devices, performance |
-| Unity macOS build | succeeded, ~350 MB | The player compiles and links | That it launches and plays well |
-| Unity WebGL build | succeeded, 129 MB (`WebGL.data.gz`, `.wasm.gz`, loader) | The WebGL target compiles; first time ever exercised | That it loads in a browser, runs at a usable frame rate, or persists saves |
+| Unity macOS build | succeeded, 389 MB, universal (x86_64 + arm64); **launched** on this Mac (Metal, Iris Plus 655) | The player starts, builds the world (6,011 objects) and logs no exceptions | That the window renders correctly: my screenshot captured only the desktop |
+| Unity WebGL build | succeeded, 130 MB; **loaded and driven in headless Chrome** (see "WebGL repair") | The player boots in a browser, builds the world, takes keyboard input, opens the phone, with 0 console errors | Frame rate on a real GPU, Safari or Firefox, save persistence |
 
 CI: before this run there was no `.github/workflows`. `.github/workflows/web.yml` now runs the engine check, the
 export-drift check and the Next build on every push and pull request. It has not run yet (no push). Unity tests need an
@@ -39,6 +39,49 @@ editor licence and still run locally; a self-hosted runner is the way to put the
    from client roles. **This schema has not been applied to any database, so the SQL is unexecuted and unreviewed by
    Postgres.** The Unity crew client currently keeps crews in the save and the loopback channel; wiring it to these
    functions is the live-crew work.
+
+
+## WebGL repair (14 October, second session)
+
+The WebGL build had never been loaded in a browser. It was loaded in headless Chrome (SwiftShader, WebGL 2.0) through
+a small gzip-aware static server, console captured. What it found, in the order found:
+
+1. **`ArgumentNullException: Value cannot be null. Parameter name: shader`**, 7 seconds in, before any scene content.
+   Cause: every material was built with `Shader.Find("Universal Render Pipeline/Lit")` at runtime. In a player,
+   `Shader.Find` only finds shaders that an asset references; runtime-created materials reference nothing, so the first
+   `Awake` threw and the game never built (bare skybox). It works in the editor, which is why 107 checks never saw it.
+   Fix: `ShaderLib` loads the shaders from template material assets in `Resources/Materials` (an emissive template
+   covers the `_EMISSION` variant), `Editor/ShaderSetup.cs` creates them and lists the shaders under Always Included, and
+   the smoke test now checks both.
+2. **643 × `Can't add component because class 'SphereCollider' doesn't exist`.** Engine code stripping removed the
+   class `GameObject.CreatePrimitive` needs by name. Fix: `Assets/link.xml` preserves the physics module, and a
+   `KeepPhysics` type list references the collider classes.
+3. **254 × `GL_INVALID_OPERATION: Mismatch between texture format and sampler type`**, then the browser's "too many
+   errors". Not a rendering setting: URL-switchable diagnostics (`?diag=noshadows,noprobe,nopost,nohdr,noaddlights,norain`,
+   `DiagFlags.cs`) were added to test each, and after fixes 1 and 2 the count is zero in the default configuration and
+   in all eight combinations, so these errors were a consequence of the missing components.
+4. **Not defects.** The messages that the post-processing passes for Gaussian and Bokeh Depth of Field, Panini
+   Projection and FSR upscaling "will not execute" come from URP creating those passes while the build strips their
+   shaders, because nothing active uses them. Both URP assets now use a Linear upscaling filter explicitly. The
+   `GrayscaleHigh` cookie-format notice, the UnityCache `Content-Length` note (a property of my test server) and the
+   `persistentDataPath` sync deprecation are informational.
+
+Audit findings about the configuration, for the record: `QualitySettings` maps the **WebGL platform to quality level 0
+(`Mobile`)**, so the web player uses `Mobile_RPAsset` and the forward `Mobile_Renderer` (no renderer features, so no
+`Blit FSR Upscaling` feature exists; the message is the built-in upscaling pass). The `PC` asset uses the deferred path
+with SSAO and is not suitable for WebGL. The global default volume profile is the URP template's and contains Depth of
+Field and Panini Projection components, inactive in practice.
+
+Verified in the browser after the fix: the street, buildings, shadows, rigged player, pedestrians, traffic, minimap,
+portrait and HUD draw; holding W moved the player (objective distance 154 → 182 → 225 m); Shift+W and P opened the phone
+with its twelve entries; zero console errors in a 150-second run and in eight 60-second runs with feature switches.
+
+**Also found by actually launching things:** the macOS build was Apple Silicon only (`bad CPU type in executable` on this
+Intel Mac). `BuildMac` now builds universal. The headless play test found a developer's real `cloud.json` and failed ten
+networking checks; it now forces offline (`DiagFlags` `offline`, on while the play test runs). Play test: 107 checks pass.
+
+Still unmeasured: frame rate and memory on a real GPU (SwiftShader is software), Safari and Firefox, iPhone, the 118 MB
+compressed data file's load time over a real connection, and whether the macOS window renders as the WebGL one does.
 
 ## Limits of the evidence
 
@@ -69,8 +112,9 @@ editor licence and still run locally; a self-hosted runner is the way to put the
 
 ## Next, in order of value per hour
 
-1. Serve `unity/Builds/WebGL` over HTTP and load it in Chrome and Safari: does it start, run, and save? This decides the
-   web question.
+1. Open the WebGL build on a real GPU in Chrome, Safari and Firefox (serve `unity/Builds/WebGL` with gzip
+   `Content-Encoding`, for example the script in the scratchpad of this session or any server that sets it) and measure
+   frame time, memory and save persistence. It starts and plays under software rendering; that is not a performance result.
 2. Profile the same route (spawn to Eko Bridge at 20:00) in both engines on this Mac, then on an iPhone.
 3. Create a Supabase project (billed; the organisation is your choice), apply `supabase/schema.sql`, set the URL and
    anon key, and run two clients in one district. Then wire the Unity crew client to the crew functions.
