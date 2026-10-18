@@ -5,7 +5,6 @@ Thumbs.db
 # Dependencies / tooling
 node_modules/
 npm-debug.log*
-package-lock.json
 
 # Editors
 .vscode/

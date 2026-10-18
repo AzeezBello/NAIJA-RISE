@@ -9,5 +9,5 @@ if (!process.env.RENDER) {
   process.exit(0);
 }
 const run = cmd => { console.log(`[render-build] ${cmd}`); execSync(cmd, { stdio: 'inherit' }); };
-run('npm --prefix web ci --include=dev');
+run('npm --prefix web install --include=dev');
 run('npm --prefix web run build');
