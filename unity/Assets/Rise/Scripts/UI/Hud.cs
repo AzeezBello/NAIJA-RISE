@@ -245,14 +245,14 @@ namespace Rise.UI
             string place = region != null ? region.name : data.meta.name;
 
             float pad = 12f * s, accent = 3f * s;
-            float tw = Mathf.Max(TW(heading, place), string.IsNullOrEmpty(street) ? 0f : TW(small, street), TW(overline, "RISE · LAGOS"));
+            float tw = Mathf.Max(TW(heading, place), string.IsNullOrEmpty(street) ? 0f : TW(small, street), TW(overline, "RISE · HUSTLE OR DIE TRYING"));
             float w = Mathf.Clamp(tw + pad * 2f + accent + 4f * s, 190f * s, 340f * s);
             float h = pad * 2f + LH(overline) + LH(heading) + (string.IsNullOrEmpty(street) ? 0f : LH(small) - 2f * s);
             var r = new Rect(m, m, w, h);
             Box(r, panel, Color.white);
             Box(new Rect(r.x + pad * 0.6f, r.y + pad, accent, h - pad * 2f), rSmall, Gold);
             float x = r.x + pad + accent + 4f * s, y = r.y + pad, iw = r.xMax - pad - x;
-            Label(new Rect(x, y, iw, LH(overline)), "RISE · LAGOS", overline, A(Gold, 1f)); y += LH(overline);
+            Label(new Rect(x, y, iw, LH(overline)), "RISE · HUSTLE OR DIE TRYING", overline, A(Gold, 1f)); y += LH(overline);
             Label(new Rect(x, y, iw, LH(heading)), place, heading); y += LH(heading) - 2f * s;
             if (!string.IsNullOrEmpty(street)) Label(new Rect(x, y, iw, LH(small)), street, small);
         }

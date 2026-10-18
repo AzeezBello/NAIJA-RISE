@@ -54,12 +54,13 @@ namespace Rise.EditorTools
         {
             if (!System.IO.File.Exists(indexPath)) return;
             var html = System.IO.File.ReadAllText(indexPath);
+            html = System.Text.RegularExpressions.Regex.Replace(html, @"<title>.*?</title>", "<title>Rise: Hustle or Die Trying</title>");
             html = html.Replace("// config.autoSyncPersistentDataPath = true;", "config.autoSyncPersistentDataPath = true;");
             html = html.Replace(
                 "fullscreenContainer.style.width = \"960px\";\n        fullscreenContainer.style.height = \"600px\";",
                 "document.querySelector(\"#unity-container\").className = \"unity-mobile\";\n        canvas.className = \"unity-mobile\";");
             if (!html.Contains("overflow:hidden;background:#07100e"))
-                html = html.Replace("</head>", "  <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#07100e;}</style>\n  </head>");
+                html = html.Replace("</head>", "  <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#07100e;}#unity-logo,#unity-footer,#unity-logo-title-footer{display:none!important;}</style>\n  </head>");
             System.IO.File.WriteAllText(indexPath, html);
             var pkgScript = System.IO.Path.GetFullPath("../scripts/package-webgl.mjs");
             if (System.IO.File.Exists(pkgScript))

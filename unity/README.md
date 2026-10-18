@@ -1,4 +1,4 @@
-# RISE — Lagos · Unity
+# Rise: Hustle or Die Trying · Unity
 
 Unity 6 project that builds Lagos from the shared data files in `../src/data`.
 
