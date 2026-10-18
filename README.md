@@ -1,26 +1,22 @@
 # RISE — Lagos · Alpha 1.0
 
-A browser-playable open-world life simulation set in a living Nigeria. Original IP: original characters, missions and story, with real Nigeria place and street names on a stylised map.
+An open-world life simulation set in a living Nigeria. Original IP: original characters, missions and story, with real Nigerian place and street names on a stylised map.
 
 **Build your life. Build your empire. Survive the city.**
 
-See [PLAN.md](PLAN.md) for the product plan, what is done, and the next phase, and [DEPLOY.md](DEPLOY.md) for Vercel deployment.
+See [PLAN.md](PLAN.md) for the product plan, completed systems, and upcoming roadmap, and [unity/README.md](unity/README.md) for Unity architecture and build instructions.
 
-> **The Three.js web edition has been retired.** Its engine (`src/` apart from `src/data`), the static build
-> (`index.html`, `styles/`, `sw.js`) and the `/play` game mount in `web/` were removed. The last commit that contains
-> it is tagged `threejs-final`: `git checkout threejs-final` to run or recover it.
+## Game (`unity/`)
 
-## Unity edition
-
-The game lives in [unity/](unity/README.md): a Unity 6 project built from the shared data files. `npm run export:unity` writes the district map, jobs, contacts, vehicles, businesses, courses and rules from `src/data` to JSON, and C# systems build the city, the driving, the people (the same Ready Player Me rig and the full set of Kenney and Lagos vehicle GLBs, imported with glTFast), the story with its GPS, the law, housing, business, education and racing. It compiles clean, has headless smoke and play-mode tests, builds macOS and WebGL players (with touch controls for phones), and carries the account, cloud-save and district-multiplayer client against the Supabase schema in `supabase/schema.sql`.
+The game lives in [unity/](unity/README.md): a Unity 6 project (Universal Render Pipeline 17.6, Input System 1.19, glTFast 6.0.1) built from the shared data files in `src/data/`. `npm run export:unity` exports the district map, jobs, contacts, vehicles, businesses, courses and rules from `src/data/` to `unity/Assets/Rise/Resources/world/lagos.json`. C# runtime systems build the city, 3D interiors, driving physics, rigged characters (Ready Player Me and CesiumMan), Kenney and Lagos vehicle GLBs, story missions with Dijkstra GPS routing, law enforcement, housing, business management with employee shifts, education, street football, synthesized audio, offline earnings, and Supabase account / cloud-save / district-multiplayer / crew systems.
 
 ```bash
-npm run export:unity        # after editing src/data
-open unity                  # then open Assets/Rise/Scenes/Lagos.unity in Unity 6000.6 and press Play
+npm run export:unity        # export src/data → unity/Assets/Rise/Resources/world/lagos.json
+open unity                  # open Assets/Rise/Scenes/Lagos.unity in Unity 6000.6 and press Play
 python3 webgl_server.py     # serve a WebGL build from unity/Builds/WebGL with gzip headers
 ```
 
-## Website
+## Website (`web/`)
 
 Next.js 16 site (landing page, `/play`, `/account`, `/admin`), Turbopack in dev and build:
 
@@ -30,104 +26,52 @@ npm run dev          # http://localhost:3000
 npm run build && npm start
 ```
 
-Render deploys this site from the repo root: its build command (`yarn`) runs the root `postinstall`, which builds `web/`
-when `RENDER` is set (`scripts/render-build.mjs`), and `yarn start` runs `next start` on Render's `PORT`. Set the
-`NEXT_PUBLIC_SUPABASE_*` and service-role variables from `web/.env.example` in the Render dashboard for `/account` and
-`/admin`, and set `NEXT_PUBLIC_WEBGL_URL` to your hosted itch.io HTML5 embed URL (packaged with `npm run package:webgl` →
-`unity/Builds/Rise-Lagos-WebGL.zip`) so `/play` streams the Unity WebGL build. On other hosts use `npm run build` then
-`npm start` from the root.
+Render deploys this site from the repo root: its build command (`yarn`) runs the root `postinstall`, which builds `web/` when `RENDER` is set (`scripts/render-build.mjs`), and `yarn start` runs `next start` on Render's `PORT`. Set the `NEXT_PUBLIC_SUPABASE_*` and service-role variables from `web/.env.example` in the Render dashboard for `/account` and `/admin`, and set `NEXT_PUBLIC_WEBGL_URL` to your hosted HTML5 embed URL (packaged with `npm run package:webgl` → `unity/Builds/Rise-Lagos-WebGL.zip`) so `/play` streams the Unity WebGL build. On other hosts use `npm run build` then `npm start` from the root.
 
-## What was in Alpha 1.0 (Three.js edition)
+## Features in Alpha 1.0
 
-The feature notes below describe the retired Three.js edition (tag `threejs-final`); paths under `src/` other than `src/data` refer to files in that tag. The Unity edition ports these systems; see [unity/README.md](unity/README.md) for its current state.
+**Corridors & Districts** — **Falomo Bridge** carries Marina south over Five Cowrie Creek into **Victoria Island** (Civic Centre, RiseBank VI, The Yellow Chilli, Eko Hotel, the Eko Atlantic shore with its palm line, Adeola Odeku, Ahmadu Bello Way, Akin Adesola) and past the **Lekki Toll Gate** onto the Lekki–Epe Expressway through **Lekki Phase 1**, **Ajah**, and **Eleko Beach**. **Third Mainland Bridge** carries Broad Street north over the lagoon into **Yaba** (Tejuosho Market, Yaba Tech, the UNILAG gate, Jibowu bus stop, Herbert Macaulay and Murtala Muhammed Way), and **Ikorodu Road** runs the full width of the mainland from Jibowu through **Ebute Metta** to **Ikorodu Garage**, joined to Surulere by Western Avenue. The western and northern corridors include **Apapa** (port and Tincan Island), **Ajegunle (AJ City)**, **Makoko** (lagoon stilt settlement and canoe docks), **Oyingbo**, **Ikeja** (Computer Village, New Afrika Shrine, Kalakuta Museum, and Murtala Muhammed Airport with terminal, control tower, runway and parked aircraft), **Agege**, and **Ojo / Badagry Expressway** (Alaba International Market, LASU).
 
-**Corridors (1.0)** — the map now runs the whole PRD corridor set. **Falomo Bridge** carries Marina south over Five Cowrie Creek into **Victoria Island** (Civic Centre, RiseBank VI, The Yellow Chilli, Eko Hotel, the Eko Atlantic shore with its palm line, Adeola Odeku, Ahmadu Bello Way, Akin Adesola) and on past the **Lekki Toll Gate** onto the Lekki–Epe Expressway and a **Lekki Phase 1** stub on Admiralty Way. **Third Mainland Bridge** carries Broad Street north over the lagoon into **Yaba** (Tejuosho Market, Yaba Tech, the UNILAG gate, Jibowu bus stop, Herbert Macaulay and Murtala Muhammed Way), and **Ikorodu Road** runs the full width of the mainland from Jibowu through **Ebute Metta** to **Ikorodu Garage**, joined to Surulere by Western Avenue. Infrastructure: pedestrian bridges over the expressway, Ikorodu Road and Adeola Odeku; danfo queues at the Costain, CMS and Jibowu terminals; a toll plaza that charges ₦1,200 per crossing (jump it and LASTMA notes your plate); road-construction diversions with cones, barriers and a DIVERSION sign that close a lane for a while; every bridge has the rush-hour profile. Three long-distance jobs (Lekki dispatch, Yaba campus courier, Ikorodu haulage) make the trip the work. Roads, medians, highway lamp posts, street lights, junction signs and traffic lights are all generated from the district data, so the next district (Ikeja, Apapa…) is a data file.
+**Natural Lagos Light & Graphics Compatibility** — Universal Render Pipeline with an HDR frame, soft bloom on street lights at night, ACES tone mapping, and a realtime reflection probe so car paint and wet night asphalt reflect the sky and lamps. `World/QualityGovernor.cs` auto-detects the GPU (Low, Medium, High) and steps down automatically when frames stay slow, with four-step dynamic resolution scaling.
 
-**Natural Lagos light (0.11)** — rendering goes through `src/core/postfx.js` with a light touch: an HDR frame, a soft bloom that only really shows on neon and street lights at night, a neutral grade (no colour tint) and ACES tone mapping. An environment map gives car paint, glass and wet night asphalt reflections. The sky keeps the natural daytime palette with a brighter moonlit night, and a new game starts at 08:30. "Cinematic look" (the bloom pass) can be toggled in Settings; it is off by default on the low-end phone profile.
+**Vehicles & Dressed-Up Houses** — 17 vehicle classes powered by Meshopt-compressed GLB models (`Resources/Models/Vehicles`): sedans, SUVs, hatchbacks, taxis, danfo, korope, keke napep, okada, BRT, police cruisers, LAWMA garbage trucks, fire trucks, ambulances, army trucks, and fuel tankers. Dayo at Ladipo sells vehicles, services condition, sells insurance (half repair cost, half crash damage), applies liveries and danfo slogans, and sells a protection weapon required to hijack commercial vehicles. Houses feature compound fences, water tanks, split-unit ACs, balconies, and generators.
 
-**Real vehicles and dressed-up houses** — traffic and parked vehicles are now Kenney's CC0 Car Kit models (`assets/vehicles/kenney`, see `assets/LICENSES.md`): sedans, SUVs, hatchbacks and taxis for cars, a garbage truck in LAWMA orange, a fire truck, an olive army truck and a police car with its light bar. The loader (`src/entities/vehicleModels.js`) finds each model's paint on the palette and repaints only that hue, so liveries work on real models and glass, lights and chrome stay put; wheels roll with speed. The danfo and korope are the original hand-built yellow buses with their black stripe, and keke, okada, BRT and the tanker are procedural too; `USE_MODELS` in `src/data/vehicles.js` switches the Kenney models off entirely. Shipped GLB geometry uses high-precision Meshopt compression; embedded textures and scene transforms are preserved, and both loaders decode Meshopt assets. Duplicate compressed variants of stadium, keke, Crafter, ID. Buzz and Ninja models have been removed. Every house now carries Lagos detail: floor ledges, street-side balconies with railings, split-unit ACs, a black water tank and satellite dish on the roof, shop awnings and a generator by the fence.
+**Education & Career Progression** — Surulere Cyber Café teaches five certificate courses (web design, graphic design, coding, POS and bookkeeping, defensive driving) that unlock gated jobs (Web Freelancer, Graphics Freelancer, Junior Coder) and freelance gigs. Community Grammar School runs an evening adult class, and Yaba Tech offers a three-semester Computer Systems diploma that unlocks the IT Support Technician job.
 
-**Education (1.1)** — the cyber café teaches five courses (web design, graphic design, coding, POS and bookkeeping, defensive driving), each costing money, hours and stamina and paying out skill points, XP and a certificate (`src/systems/education.js`). Certificates unlock Web Freelancer, Graphics Freelancer and Junior Coder jobs, which the Jobs app shows locked with the certificate they need; a freelance gig opens after the first course. Community Grammar School runs an evening adult class, with extra credit once you have paid Chioma's school levy for the family.
+**People, Wardrobe & Relationships** — 64 named contacts (including 17 district hustle hubs and 32 Surulere street contacts on their real streets) and ambient pedestrians (with trader, office, youth, and wander schedules) use the Ready Player Me and Khronos CesiumMan rigs with 11 customisation slots and procedural Nigerian fabric prints (ankara, adire, aso-oke, lace, Super Eagles jersey). Mama Tunde and Chioma follow daily routines at the family compound and raise household requests. Every contact tracks trust and respect across relationship tiers (`stranger`, `known`, `friend`, `close`).
 
-**Graphics compatibility** — Settings › Graphics offers Auto, Low, Medium and High. Auto reads the GPU (software and phone GPUs start Low, Intel and unknown chips Medium, Apple M-series, NVIDIA and AMD High) and then steps down one level whenever frames stay slow for a few seconds, with a notice. Levels set pixel ratio, shadow map size, the cinematic look (HDR target and bloom: Medium and High; 2× MSAA on High, FXAA on Medium), reflections, fog distance, how many pedestrians and vehicles are active, and how far characters animate and cast shadows. The post-processing composer is only built while the cinematic look is on, bloom is skipped in daylight, and the HDR target falls back to 8-bit where half-float buffers are unsupported. Dynamic resolution moves in four steps (100 / 85 / 70 / 55 %) with hysteresis, and backs off when shrinking the frame does not help (CPU-bound or a display capped at 30 fps). Off-screen characters are no longer drawn.
+**Living Places & Enterable Interiors** — Surulere Fitness Gym (cardio, weights, personal trainer, boxing sparring), restaurants, Adeniran Ogunsanya Mall (outfits, supermarket groceries, laptop, barber, cinema), RiseBank branches, nightlife clubs and bars (20:00–04:00), Saturday Owambe parties at Surulere Event Centre (spray ₦5,000), churches and mosques (pray to clear 1 Heat), Rita Lori Hotel, Area C Police Station (settle fines), PHCN office (pay for generator diesel during NEPA outages), POS kiosks (pure water, suya, ₦20,000 cash withdrawal), roadside vendors, and enterable 3D interiors for homes, shops, and offices.
 
-**People, not buildings** — Baba K, Amaka, Dayo, Mama Nkechi, Oga Driver, Coach Bayo, Coach Emeka, the mall and cyber café attendants and Captain Tunde stand outside their places as real characters (`src/entities/contacts.js`). The current objective's contact carries a bobbing yellow arrow over their head; the mission marker, GPS route, objective distance and the "Talk to…" prompt all point at the person. Contacts turn to face you as you approach.
+**Businesses, Property & "Lagos Never Sleeps"** — Four properties to rent through Agent Kunle or buy from the landlord (let out extra homes to tenants, fix tenant complaints, install generator/water tank/security upgrades). Four businesses to buy, restock, price-tune, and staff with up to three employees on configurable shifts (`morning`, `afternoon`, `night`, `all-day`). While you are away, businesses and tenants continue earning into RiseBank (up to 8 hours).
 
-**Real humans, real clothes** — the player is a Ready Player Me avatar (hoodie, jeans, sneakers, with Ready Player Me's own idle, walk and run clips) and pedestrians mix that body with the Khronos CesiumMan, both streamed from public CDNs: no more armour or mannequins. Clips are never borrowed across skeletons (that folded Mixamo's Michelle in half), so every rig ships its own Idle, Walk and Run. Outfits now cover everyday Lagos wear — ankara shirt, senator, buba and sokoto, agbada, Super Eagles jersey, t-shirt, singlet or tank top with jeans or shorts, jacket and jeans, gown, skirt and blouse — in fabric prints or plain colours, with sneakers on every build; the street draws random outfits, fabrics, skin tones, heights, body types, filas and caps so no two pedestrians look alike. Rigged characters are now on for phones too, preloaded behind the title screen so the city opens with the real character; the primitive body only shows if a download fails. The service-worker cache was renamed so old installs pick up the new engine on their next load.
+**Smartphone & GPS** — 12 phone apps: Messages, Jobs, RiseBank, Property, Businesses, Character, Contacts, Inventory, Crew, Account, Settings, and Map · GPS (search any landmark, bus stop, property, or contact and set a live GPS waypoint).
 
-**Character overhaul (0.10)** — the player and every pedestrian are now instances of one character pipeline (`src/entities/character.js`): a rigged GLB with a Mixamo-compatible skeleton is loaded once, cloned per character with `SkeletonUtils`, and driven by an `AnimationMixer` that cross-fades Idle, Walk and Run from the controller states (`G.moveState`), with clip speed matched to movement speed. The three.js `Soldier.glb` streams in as the development placeholder; drop a production rig at `assets/characters/player.glb` and it takes over (see `assets/characters/README.md` for the rig contract and the recommended Ready Player Me / custom Blender pipelines). Every character starts as the old primitive body so the game runs offline and on low-end phones, and swaps in place when the rig arrives. **Nigerian wardrobe** (`src/entities/wardrobe.js`): outfits are ankara shirt, senator (kaftan), buba and sokoto, agbada, Super Eagles jersey and t-shirt and jeans, in procedural fabric prints — ankara (sunset, emerald, royal), adire indigo, aso-oke stripes, white lace, plain kaftan — plus a tilted fila, face cap, glasses and chain. The default look is an ankara shirt, dark trousers and a fila; pedestrians spawn in the same wardrobe (mostly ankara, buba and senator, a few jerseys), while police, LASTMA, agberos and the other uniforms keep their plain colours. Customisation has eleven slots — skin, face, body type, hair, hair colour, facial hair, outfit, fabric, trousers, shoes, accessory — mapping the fabric print onto the rig's clothing material (or the whole body on the Soldier placeholder) and attaching accessories to the head bone; the Character app and the HUD portrait reflect all of them. Characters cast real skinned shadows; the procedural walk bob and sprint lean only apply to the primitive fallback. Settings has a "Rigged 3D characters" toggle (on by default on desktop, off on the low-end profile).
+**Audio** — Procedural synthesised engine hum pitched to vehicle speed, rain ambience, generator drone during NEPA outages, crash horn, and cash transaction chime (`Scripts/UI/SoundSystem.cs`), toggleable in Settings.
 
-**Bridges and corridors (0.9)** — the world now runs from Surulere east over the Costain interchange and Eko Bridge, across the Lagos Lagoon, to a first Lagos Island landing: CMS bus terminal, Broad Street, the Cathedral Church of Christ, Tafawa Balewa Square, a Broad Street tower and RiseBank Marina on the real Marina. The National Theatre stands at Iganmu by the Costain roundabout. Shitta Bridge is a flyover carrying Ogunlana Drive over Bode Thomas. Decks, ramps and pillars are real geometry: vehicles, pedestrians, the GPS line and the camera follow the elevation, deck barriers keep you on the bridge, and traffic understands the bridge with a rush-hour profile (crawling 7–10 and 16–19:30, flying at night).
+## Controls
 
-**Living City · Phase 1, streets** — every road has a class (expressway, highway, main, commercial, residential, market) that sets traffic speed, density and LASTMA speed limits. The Apapa–Oworonshoki Expressway runs along the north edge with a concrete median; Funsho Williams is a divided highway. Traffic lights at every junction cycle green, amber and red; traffic stops for them, and running a red near a LASTMA officer costs ₦5,000 or heat. Roadside vendors line Itire Road and the markets. Random road incidents drop an overturned keke into a lane and cause a go-slow.
+| Input | On foot | Driving |
+|---|---|---|
+| WASD / arrows, left stick | Move | Throttle & brake (W/S), steer (A/D) |
+| Right trigger / left trigger | | Gas / brake |
+| Shift, Square (X) | Sprint | Boost |
+| Space, Triangle (Y) | Jump | Handbrake (Space, Circle) |
+| E, Cross (A) | Talk, enter, take, buy, deliver | Exit, deliver, refuel (when stopped) |
+| P, Tab, Select | Open / close phone | Open / close phone |
+| T, Enter | District multiplayer chat | |
+| X, Backspace, Circle (B) | Close menu | |
+| 1–9 | Pick menu option | |
+| Mouse, right stick, Z / C | Orbit camera | Orbit camera |
 
-**Living City · Phase 2, places** — Surulere Fitness Gym (day pass, monthly membership, trainer, boxing once Fitness reaches 20), Chicken Republic (meals restore energy, a business lunch builds Business reputation), the Adeniran Ogunsanya Shopping Mall (outfits, a laptop, supermarket runs, barber, and a cinema with three Nollywood titles that trigger messages), Surulere Cyber Café (learn web design, graphics or coding, then take freelance gigs that pay double with a laptop), and street football at Teslim Balogun Stadium (friendlies, wagers, a neighbourhood tournament and the Lagos championship, with "Omo, you sabi ball!" opening a sponsor line). Every activity moves money, energy, skills, reputation and the clock.
-
-**The Lagos Experience HUD** — a commercial-game layout: brand, district and street top-left; clock, day/night icon and day counter top-right; the objective card with distance and a direction arrow above the minimap; a money and level card bottom-right with ₦ cash, bank, level title, XP and heat; health and energy bars with the interaction prompt bottom-centre. Prompts are explicit verbs: TALK TO BABA K, ENTER DANFO, ENTER GYM, DELIVER THE PACKAGE, CHECK IN, REFUEL.
-
-**Camera and controller feel** — the camera lags subtly on foot and tightens when driving, the look-at eases so it never swings, the FOV widens when sprinting or driving fast, entering a vehicle swings the camera behind it over a second instead of snapping, and occlusion pulls in quickly but eases back out. The player controller runs explicit states (idle, walk, run, turn, stop, jump) with ease-in acceleration, a pivot on sharp turns, a sprint lean and a stronger run bob; the states are exposed for character animation later.
-
-**Your choice of life** — every story dialogue can be declined with "Not now — I go find another hustle". The story pauses, the objective card points you to jobs, courses, the gym and business, and the mission resumes when you return to the contact or call them from the phone.
-
-**The city** — Surulere grid with Bode Thomas Street, Adeniran Ogunsanya Street, Ogunlana Drive, Funsho Williams Avenue and Itire/Ojuelegba Road, street signs at every junction. Ojuelegba Junction, Kilo, Shitta and Mushin bus stops, Yaba, Shitta and Mushin markets, National Stadium, Ladipo Garage, Marina, Area C Police Station, Fire Service, Army Barracks, LAWMA depot, FRSC checkpoint, LASTMA post, two RiseBank branches, Forties Bar, Lust Club, The Crib, Rita Lori Hotel, a school, Grace Chapel, Surulere Central Mosque, PHCN office, Mobil filling station, Surulere Event Centre, POS kiosks, three properties.
-
-**Traffic and vehicles** — danfo, korope, keke napep, okada, BRT, sedans, police cars, LAWMA trucks and fuel tankers follow the road grid with lane discipline, braking and random turns. Drivable: sedan, danfo, keke, korope, fire truck, army truck. Go-slow jams appear on named roads.
-
-**People and animals** — pedestrians, agberos at bus stops (pay the levy or risk heat; a pet dog keeps them away), police, soldiers, firemen, LAWMA sweepers, LASTMA and FRSC officers, school kids by day, an owambe crowd by night, goats, chickens and stray dogs.
-
-**Housing** — Surulere compounds: mostly bungalows with zinc roofs and 2–3 storey houses behind fences and gates, a few high-rises along Bode Thomas and Funsho Williams. Four homes to rent or buy (room, self-contain, flat, duplex). Agent Kunle at every gate takes a 10% fee on a 30-day lease; the landlord sells outright; owned homes you do not live in can be let to tenants who pay every morning. Leases expire with a warning three days out. Owned homes take upgrades (generator, water tank, security) and tenants raise complaints that halve rent until fixed.
-
-**Life** — ten jobs that train four skills (Driving, Business, Charisma, Fitness) and pay more as the skill grows, with skill-gated jobs like POS Agent, Bouncer and Tanker Driver; bank; businesses with named staff, price levels, stock that drains every payout, and a rival trader who undercuts anyone not on low prices; inventory; character customisation; phone with ten apps; five branching story missions including a police-chase delivery; Level titles (Newcomer → Hustler → Entrepreneur → Mogul) with app unlocks at Level 2.
-
-**Story** — after the shared prologue the road forks at Marina: Amaka's legit arc (Public reputation 0+) runs a timed cold-chain delivery, a fragile warehouse run under 90 km/h and the Marina race; Baba K's risk arc (Street 10+) runs a vehicle recovery, a police getaway and a territory race. Missions can fail (spoiled cargo, arrest, losing the race) and be retried.
-
-**Street racing** — Speedy at the Stadium bus stop races two laps on Funsho Williams Avenue for a ₦20,000 wager against a rival driver; winning trains Driving and Street reputation, and LASTMA sometimes clocks you.
-
-**Heat 4 and 5** — the army blocks Funsho Williams and Ogunlana Drive; at arrest the officer offers to settle on the spot (bribe, 60% works); standing at your own gate for ten seconds while wanted makes the patrols move on.
-
-**Reputation** — Public, Business, Street and Social reputations move with what you do (arrests, risk jobs, ownership, owambe, prayer) and show in the Character app.
-
-**Vehicles** — buy okada, keke, korope, danfo or a sedan from Dayo at Ladipo; owned vehicles stay where you parked them between sessions, lose condition in crashes (slower and looser steering), and can be serviced, insured (half-price service, half crash damage), repainted with liveries, or given a danfo slogan. Taking a vehicle that is not yours adds heat.
-
-**Lagos Never Sleeps** — businesses and tenants keep earning while you are away (capped at eight hours); a RiseBank summary greets you on return.
-
-**Law and consequences** — heat decays over time, Heat 3+ triggers police pursuit and arrest, FRSC speeding tickets, the army checkpoint, hitting pedestrians, settling fines at Area C, praying to ease heat.
-
-**City events** — moonlit day/night cycle with lit windows and solar street lights (NEPA outages darken homes but not the streets; pay for diesel at the PHCN office), rain and storms that darken the sky, slow traffic, cut grip and flood the Ojuelegba underpass, harmattan haze on days 7 to 9 of each ten, go-slow, Owambe parties (19:00–23:30), nightlife venues after 20:00. Pedestrians drift to the markets at midday and thin out late at night.
-
-**Audio** — synthesised engine hum, rain, generator drone during outages, horn on crashes and a cash chime, no audio files; toggle in Settings.
-
-**Graphics** — procedural facade, asphalt, concrete and ground textures, sidewalks and curbs, street lights with halos, gradient sky dome with sun and clouds, ACES tone mapping, soft shadows.
-
-**Playable core (0.8)** — smoother on-foot acceleration and turning with a walk bob; third-person camera with mouse orbit, wheel zoom, pinch-to-zoom and one-finger drag on touch, and occlusion against buildings; collisions against buildings, fences, poles, palms, parked and moving vehicles; a location indicator under the clock that names the street or landmark you are on.
-
-**Performance** — lane markings, fences, street-light poles, panels and lamp heads, palm trunks and leaves are merged into one mesh each; the shadow frustum follows the player at 2048 instead of covering the district at 4096; no per-frame allocations in movement and camera; GPS re-routes four times a second and the minimap redraws every other frame. Touch devices and small screens get a low-end profile: pixel ratio 1.5, no antialiasing, shadows off by default, fewer pedestrians, vehicles and raindrops, and no blur behind HUD panels.
-
-**Controls** — keyboard (WASD or arrow keys), mouse camera, touch (joystick, Jump and action buttons, auto on phones and tablets), gamepad (left stick move/steer, right stick camera, RT gas, LT brake; Xbox A / DualSense Cross interacts, B / Circle enters or exits, Y / Triangle opens the phone, X / Square jumps on foot, L3 sprints/boosts and RB / R1 handbrakes; D-pad selects dialogue choices).
-
-| Key | Action |
-|---|---|
-| WASD / arrows | Move, or steer and throttle when driving |
-| Shift | Sprint / boost |
-| Space | Jump on foot; handbrake while driving |
-| E | Interact: talk, work, sleep, bank, POS, pray, refuel, venues |
-| F | Enter / exit vehicle |
-| J / Esc | Phone open / close |
-| 1–3 | Dialogue choices |
-| H | Toggle control hints |
-| Right-drag, wheel, R | Camera orbit, zoom, reset |
-
-Settings (phone) cover camera sensitivity, minimap rotation, shadows, hints, touch controls, and the mature-content toggle (18+).
-
-## Project layout
+## Project Layout
 
 ```
-unity/                   Unity 6 edition (the game); see unity/README.md
+unity/                   Unity 6 project (the game); see unity/README.md
 src/data/                shared map and content data (districts/, config, jobs, characters, vehicles, family,
                          businesses, items, crew, schedules), exported to unity/ by scripts/export-world.mjs
 scripts/                 export-world.mjs (src/data → unity/Assets/Rise/Resources/world/lagos.json), check-data.mjs
 supabase/                schema, migrations and SQL tests for accounts, saves and crews
-web/                     Next.js 16 / React 19 / TypeScript site with a React Three Fiber landing hero
+web/                     Next.js 16 / React 19 / TypeScript site (/play, /account, /admin)
 webgl_server.py          local server for the Unity WebGL build (gzip headers)
 ```
 
@@ -136,5 +80,5 @@ Add a new area by creating `src/data/districts/<id>.js` with the same exports as
 ## QA
 
 - `npm run check`: `node --check` on every data module plus the place, job and contact reference checks.
-- CI ([.github/workflows/web.yml](.github/workflows/web.yml)) also fails if `lagos.json` drifts from a fresh export, and builds the Next.js site.
-- Unity tests run locally; see [unity/README.md](unity/README.md).
+- CI ([.github/workflows/web.yml](.github/workflows/web.yml)) fails if `lagos.json` drifts from a fresh export, and builds the Next.js site.
+- Unity headless smoke and play tests run locally; see [unity/README.md](unity/README.md).

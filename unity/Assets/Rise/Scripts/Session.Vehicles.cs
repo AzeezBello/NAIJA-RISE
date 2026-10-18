@@ -5,10 +5,12 @@ using Rise.World;
 
 namespace Rise
 {
-    // Dayo's dealership at Ladipo (src/systems/interaction.js dealerDialog), owned vehicles that persist where you
+    // Dayo's dealership at Ladipo: vehicle sales, protection weapon, owned vehicles that persist where you
     // parked them, and refuelling at the Mobil filling station.
     public partial class Session
     {
+        public const int WeaponPrice = 18000;
+
         void OpenDealerMenu(ContactSystem.Contact dayo)
         {
             var m = new Menu { Title = dayo.data.name, Subtitle = dayo.data.role, Line = "Bring the motor, I go check am. Or buy one — papers dey inside." };
@@ -17,6 +19,8 @@ namespace Rise
                 var cls = Data.VehicleClass(d.type); if (cls == null) continue; var deal = d;
                 m.Options.Add(new MenuOption { Label = $"{cls.name} · ₦{d.price:N0}", Action = () => BuyVehicle(deal.type) });
             }
+            bool hasWeapon = State.Has("weapon");
+            m.Options.Add(new MenuOption { Label = hasWeapon ? "Protection weapon · carried" : $"Protection weapon · ₦{WeaponPrice:N0}", Enabled = !hasWeapon, Action = () => BuyProtectionWeapon() });
             foreach (var v in Parked)
             {
                 if (!v.Owned || string.IsNullOrEmpty(v.OwnedId) || (v.transform.position - dayo.pos).magnitude > 30f) continue;
@@ -26,6 +30,15 @@ namespace Rise
             }
             m.Options.Add(new MenuOption { Label = "Not now", Action = null });
             OpenMenu(m);
+        }
+
+        public bool BuyProtectionWeapon()
+        {
+            if (State.Has("weapon")) { State.Toast("You already have a weapon"); return false; }
+            if (!State.Pay(WeaponPrice)) { State.Toast("Not enough money"); return false; }
+            State.AddItem("weapon");
+            State.Toast("Weapon added to your inventory");
+            return true;
         }
 
         public VehicleController BuyVehicle(string type)

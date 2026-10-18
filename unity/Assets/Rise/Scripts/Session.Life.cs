@@ -5,17 +5,19 @@ using Rise.Data;
 namespace Rise
 {
     // Life in the city: kiosks, Agent Kunle and the landlord, home and sleep, businesses, danfo transit, tolls.
-    // Rules mirror src/systems/interaction.js, transit.js and tolls.js.
     public partial class Session
     {
         // ---- kiosks ----
         void OpenKioskMenu()
         {
+            int posAmt = Data.meta.posAmount > 0 ? Data.meta.posAmount : 20000;
+            int posFee = Data.meta.posFee > 0 ? Data.meta.posFee : 200;
             var m = new Menu { Title = "POS Agent", Subtitle = "Roadside kiosk", Line = "Transfer or withdrawal? Network dey." };
             m.Options.Add(new MenuOption { Label = $"Pure water · ₦{Data.meta.priceWater:N0}  (stamina +20)", Action = () => { if (State.Pay(Data.meta.priceWater)) { State.S.stamina = Mathf.Min(100f, State.S.stamina + 20f); State.Toast("Pure water · cold one"); } else State.Toast("No money"); } });
             m.Options.Add(new MenuOption { Label = $"Suya · ₦{Data.meta.priceSuya:N0}  (stamina +40, health +10)", Action = () => { if (State.Pay(Data.meta.priceSuya)) { State.S.stamina = Mathf.Min(100f, State.S.stamina + 40f); State.S.health = Mathf.Min(100f, State.S.health + 10f); State.Toast("Suya · pepper dey"); } else State.Toast("No money"); } });
             m.Options.Add(new MenuOption { Label = $"Sachet water to carry · ₦{Data.meta.priceWater:N0}", Action = () => { if (State.Pay(Data.meta.priceWater)) { State.AddItem("water"); State.Toast("Pure water in your bag"); } else State.Toast("No money"); } });
             m.Options.Add(new MenuOption { Label = $"Suya to carry · ₦{Data.meta.priceSuya:N0}", Action = () => { if (State.Pay(Data.meta.priceSuya)) { State.AddItem("suya"); State.Toast("Suya wrapped for the road"); } else State.Toast("No money"); } });
+            m.Options.Add(new MenuOption { Label = $"Withdraw ₦{posAmt:N0} (fee ₦{posFee:N0})", Enabled = State.S.bank >= posAmt + posFee, Action = () => { if (State.S.bank >= posAmt + posFee) { State.S.bank -= posAmt + posFee; State.S.cash += posAmt; UI.SoundSystem.I?.PlayCash(); State.Toast($"POS withdrawal · +₦{posAmt:N0} cash (₦{posFee:N0} fee)"); } else State.Toast($"Need ₦{posAmt + posFee:N0} in bank"); } });
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(m);
         }
@@ -49,12 +51,13 @@ namespace Rise
         {
             var m = new Menu { Title = p.name, Subtitle = p.type, Line = p.perk == "heat0" ? "Gated, quiet. Sleeping here clears all heat and fills your last vehicle." : p.perk == "heat1" ? "Your own place. Sleeping here clears one heat." : "Shared bathroom, landlord upstairs. Home is home." };
             m.Options.Add(new MenuOption { Label = "Sleep till morning", Action = Sleep });
+            m.Options.Add(new MenuOption { Label = "Step inside", Action = () => EnterInterior(p.name, "home") });
             AddUpgradeOptions(m, p);
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(m);
         }
 
-        // src/systems/interaction.js sleep(): 07:00 next day, full health and stamina, heat per the home's perk.
+        // Sleep until 07:00 next day, restoring full health and stamina, and clearing heat per the home's perk.
         public void Sleep()
         {
             var p = State.Home;
@@ -90,7 +93,7 @@ namespace Rise
             OpenMenu(m);
         }
 
-        // ---- danfo transit (src/systems/transit.js, simplified: the bus is always about to leave) ----
+        // ---- danfo transit ----
         BusStopData NearBusStop(Vector3 pos)
         {
             BusStopData best = null; float bestD = 7f * 7f;
@@ -118,9 +121,41 @@ namespace Rise
         void OpenTransitMenu(BusStopData stop)
         {
             var m = new Menu { Title = "Oga Driver", Subtitle = stop.name, Line = $"{stop.shortName}! {stop.shortName}! Where you dey go? Enter with your change." };
-            foreach (var dest in Destinations(stop)) { var d = dest; m.Options.Add(new MenuOption { Label = $"{dest.name} · ₦{Fare(stop, dest):N0}", Action = () => Board(stop, d) }); }
+            foreach (var dest in Destinations(stop))
+            {
+                var d = dest;
+                m.Options.Add(new MenuOption { Label = $"{dest.name} · ₦{Fare(stop, dest):N0}", Action = () => Board(stop, d) });
+            }
+            foreach (var dest in Destinations(stop))
+            {
+                var d = dest;
+                int haggleFare = Mathf.RoundToInt(Fare(stop, dest) * 0.7f);
+                m.Options.Add(new MenuOption { Label = $"Negotiate · {dest.shortName} · ₦{haggleFare:N0} (70% fare)", Action = () => BoardNegotiated(stop, d) });
+            }
             m.Options.Add(new MenuOption { Label = "Wait for another bus", Action = null });
             OpenMenu(m);
+        }
+
+        public bool BoardNegotiated(BusStopData from, BusStopData to)
+        {
+            float chance = 0.45f + State.S.skills.charisma * 0.006f;
+            if (Random.value > chance)
+            {
+                State.AddRep("social", -1);
+                State.Toast("Conductor: 'Oga enter with your complete change or trek!'");
+                return false;
+            }
+            int fare = Mathf.RoundToInt(Fare(from, to) * 0.7f);
+            if (!State.Pay(fare)) { State.Toast("Not enough money for that fare"); return false; }
+            State.GainSkill("charisma", 0.5f);
+            float km = (to.World() - from.World()).magnitude / 1000f;
+            Clock.Advance(0.15f + km * 0.6f);
+            var pos = to.World(); pos.z += 4f; pos.y = Data.DeckHeightAt(pos) + 0.5f;
+            Player.Teleport(pos, 0f);
+            Camera.Yaw = 180f;
+            State.AddXp(1);
+            State.Toast($"Conductor agreed! Arrived at {to.name} · ₦{fare:N0}");
+            return true;
         }
 
         public bool Board(BusStopData from, BusStopData to)
@@ -137,7 +172,7 @@ namespace Rise
             return true;
         }
 
-        // ---- tolls (src/systems/tolls.js): crossing the barrier line in a vehicle charges the fee ----
+        // ---- tolls: crossing the barrier line in a vehicle charges the fee ----
         readonly Dictionary<string, int> tollSide = new Dictionary<string, int>();
         void UpdateTolls()
         {

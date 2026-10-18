@@ -5,7 +5,7 @@ using Rise.Vehicles;
 
 namespace Rise.World
 {
-    // Dynamic city events (src/systems/events.js): go-slow jams, road-construction diversions that close a lane
+    // Dynamic city events: go-slow jams, road-construction diversions that close a lane
     // with cones, barriers and a DIVERSION sign, an overturned keke, the storm flood at the Ojuelegba underpass, and
     // NEPA outages that take the street lights at night. Traffic crawls through the jam zone; so do you when flooded.
     public class Events : MonoBehaviour
@@ -19,6 +19,7 @@ namespace Rise.World
         [System.NonSerialized] public System.Action<string, string> Notify;   // (who, text)
 
         public void Init(WorldData world, DayNightCycle dayNight, Weather w) { data = world; clock = dayNight; weather = w; }
+        public void RestorePower() { Outage = 0f; }
 
         public bool InJam(RoadData road, float along) => Current != null && Current.road == road && along > Current.from && along < Current.to;
         public bool FloodedAt(Vector3 pos) => Current != null && Current.flood && Current.road != null && Mathf.Abs(Current.road.Across(pos) - Current.road.k) < 9f && InJam(Current.road, Current.road.Along(pos));

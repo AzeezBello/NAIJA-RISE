@@ -50,7 +50,9 @@ namespace Rise
         public string familyRequest = ""; public int familyRequestDay = -1;
         public List<ContactRel> contactRel = new List<ContactRel>();
         // Street and property life
-        public bool pet, mature;
+        public bool pet, mature, sound = true;
+        public string waypointId = "";
+        public int partyDay = -1, prayedDay = -1, awayTotal;
         public List<string> let = new List<string>();                      // owned homes let to tenants
         public List<PropertyUpgrades> upgrades = new List<PropertyUpgrades>();
         public bool rivalTold;
@@ -67,7 +69,7 @@ namespace Rise
     }
     [Serializable] public class OwnedVehicle { public string id, type; public float cond = 100f, x, y, z, yaw; public bool insured; public int livery = -1, slogan = -1; }
 
-    [Serializable] public class OwnedBusiness { public string id; public float stock = 100f; public string price = "normal"; public List<string> staff = new List<string>(); }
+    [Serializable] public class OwnedBusiness { public string id; public float stock = 100f; public string price = "normal"; public List<string> staff = new List<string>(); public List<string> shifts = new List<string>(); }
     [Serializable] public class PropertyUpgrades { public string id; public List<string> items = new List<string>(); public string complaint = ""; }
 
     public class GameState
@@ -98,7 +100,8 @@ namespace Rise
                 S = JsonUtility.FromJson<SaveData>(File.ReadAllText(path));
                 S.skills ??= new SkillSet(); S.rep ??= new RepSet(); S.items ??= new List<string>(); S.vehicles ??= new List<OwnedVehicle>();
                 S.path ??= ""; S.arc ??= ""; S.taskType ??= ""; S.taskDest ??= ""; S.taskItem ??= ""; S.taskObj ??= ""; S.courses ??= new List<string>();
-                S.familyRel ??= new List<FamilyRel>(); S.familyDone ??= new List<string>(); S.familyRequest ??= ""; S.contactRel ??= new List<ContactRel>(); S.let ??= new List<string>(); S.upgrades ??= new List<PropertyUpgrades>(); S.crewId ??= ""; S.crewName ??= ""; S.crewTag ??= ""; S.crewCode ??= ""; S.crewHq ??= ""; foreach (var b in S.biz) b.staff ??= new List<string>();
+                S.familyRel ??= new List<FamilyRel>(); S.familyDone ??= new List<string>(); S.familyRequest ??= ""; S.contactRel ??= new List<ContactRel>(); S.let ??= new List<string>(); S.upgrades ??= new List<PropertyUpgrades>(); S.crewId ??= ""; S.crewName ??= ""; S.crewTag ??= ""; S.crewCode ??= ""; S.crewHq ??= ""; S.waypointId ??= "";
+                foreach (var b in S.biz) { b.staff ??= new List<string>(); b.shifts ??= new List<string>(); while (b.shifts.Count < b.staff.Count) b.shifts.Add("all-day"); }
                 return S != null;
             }
             catch (Exception e) { Debug.LogWarning("Save could not be read: " + e.Message); return false; }
@@ -114,17 +117,18 @@ namespace Rise
 
         public static void ClearSave() { try { if (File.Exists(SavePath)) File.Delete(SavePath); if (File.Exists(LegacySavePath)) File.Delete(LegacySavePath); } catch { } }
 
-        // ---- economy (src/systems/economy.js) ----
+        // ---- economy ----
         public string Title => data.TitleFor(S.level);
 
         public bool Pay(int n)
         {
             if (S.cash + S.bank < n) return false;
             int c = Mathf.Min(S.cash, n); S.cash -= c; S.bank -= n - c;
+            UI.SoundSystem.I?.PlayCash();
             return true;
         }
 
-        public void Earn(int n) => S.cash += n;
+        public void Earn(int n) { S.cash += n; UI.SoundSystem.I?.PlayCash(); }
 
         public void AddXp(int n)
         {
@@ -203,7 +207,7 @@ namespace Rise
             u.complaint = ""; Toast($"{p.name} fixed · full rent again"); return true;
         }
 
-        // Called when the game day rolls over: tenants pay, complaints come up, leases run out.
+        // Called when the game day rolls over: tenants pay, maintenance is deducted, complaints come up, leases run out.
         public void NewDay(int day)
         {
             S.day = day;
@@ -222,23 +226,76 @@ namespace Rise
             else if (!string.IsNullOrEmpty(S.rentedId) && S.rentedUntil - day == 3) Toast("Your lease ends in 3 days");
         }
 
-        // ---- businesses (src/data/businesses.js, economy.js updateEconomy) ----
+        // ---- businesses ----
+        public static readonly string[] ShiftIds = { "all-day", "morning", "afternoon", "night" };
+        public static string ShiftLabel(string shift) => shift == "morning" ? "Morning · 06–14" : shift == "afternoon" ? "Afternoon · 14–22" : shift == "night" ? "Night · 22–06" : "All day";
+
         public OwnedBusiness Biz(string id) { foreach (var b in S.biz) if (b.id == id) return b; return null; }
         public float PriceEffect(string price) => price == "low" ? data.meta.priceLow : price == "high" ? data.meta.priceHigh : 1f;
         public bool RivalOpen => S.biz.Count >= data.rivalAfter;
-        public int BizIncome(BusinessData b)
+
+        public string StaffShift(OwnedBusiness o, int idx)
+        {
+            if (o == null || idx < 0 || idx >= o.staff.Count) return "all-day";
+            o.shifts ??= new List<string>();
+            while (o.shifts.Count < o.staff.Count) o.shifts.Add("all-day");
+            return string.IsNullOrEmpty(o.shifts[idx]) ? "all-day" : o.shifts[idx];
+        }
+
+        public bool StaffIsOnDuty(OwnedBusiness o, int idx, float? clockOverride = null)
+        {
+            if (o == null || idx < 0 || idx >= o.staff.Count) return false;
+            float hour = Mathf.Repeat(clockOverride ?? S.clock, 24f);
+            string s = StaffShift(o, idx);
+            if (s == "morning") return hour >= 6f && hour < 14f;
+            if (s == "afternoon") return hour >= 14f && hour < 22f;
+            if (s == "night") return hour >= 22f || hour < 6f;
+            return true;
+        }
+
+        public int StaffOnDuty(OwnedBusiness o, float? clockOverride = null)
+        {
+            if (o == null) return 0;
+            int n = 0;
+            for (int i = 0; i < o.staff.Count; i++) if (StaffIsOnDuty(o, i, clockOverride)) n++;
+            return n;
+        }
+
+        public void CycleStaffShift(BusinessData b, int idx)
+        {
+            var o = Biz(b.id); if (o == null || idx < 0 || idx >= o.staff.Count) return;
+            string cur = StaffShift(o, idx);
+            int next = (Array.IndexOf(ShiftIds, cur) + 1) % ShiftIds.Length;
+            o.shifts[idx] = ShiftIds[next];
+            Toast($"{o.staff[idx]} · {ShiftLabel(o.shifts[idx])} shift");
+        }
+
+        public int BizIncome(BusinessData b, float? clockOverride = null)
         {
             var o = Biz(b.id); if (o == null) return 0;
             float rival = RivalOpen && o.price != "low" ? data.rivalPenalty : 1f;
-            return Mathf.RoundToInt(b.income * (1f + o.staff.Count * data.staffBonus) * PriceEffect(o.price) * (1f + S.skills.business * 0.005f) * (o.stock / 100f) * rival);
+            int onDuty = StaffOnDuty(o, clockOverride);
+            return Mathf.RoundToInt(b.income * (1f + onDuty * data.staffBonus) * PriceEffect(o.price) * (1f + S.skills.business * 0.005f) * (o.stock / 100f) * rival);
         }
+
+        public int TotalBizIncome(float? clockOverride = null)
+        {
+            int total = 0;
+            foreach (var o in S.biz) { var b = data.Business(o.id); if (b != null) total += BizIncome(b, clockOverride); }
+            return total;
+        }
+
         public bool HireStaff(BusinessData b)
         {
             var o = Biz(b.id); if (o == null) return false;
             if (o.staff.Count >= data.maxStaff) { Toast("Full roster"); return false; }
             if (!Pay(data.staffCost)) { Toast("Not enough money to hire"); return false; }
             string name = data.staffNames.Length > 0 ? data.staffNames[(o.staff.Count + b.id.Length) % data.staffNames.Length] : "Staff";
-            o.staff.Add(name); Toast($"{name} joins {b.name} · +{Mathf.RoundToInt(data.staffBonus * 100)}% income");
+            o.staff.Add(name);
+            o.shifts ??= new List<string>();
+            o.shifts.Add("all-day");
+            GainSkill("business", 2f);
+            Toast($"{name} joins {b.name} · +{Mathf.RoundToInt(data.staffBonus * 100)}% income");
             return true;
         }
         public int RestockCost(BusinessData b) => Mathf.RoundToInt(b.income * 1.5f);
@@ -249,6 +306,7 @@ namespace Rise
             if (S.level < data.meta.propertyLevel) { Toast($"Businesses unlock at Level {data.meta.propertyLevel}"); return false; }
             if (!Pay(BizPrice(b))) { Toast($"You need ₦{BizPrice(b):N0} across cash and bank"); return false; }
             S.biz.Add(new OwnedBusiness { id = b.id });
+            AddRep("business", 8); GainSkill("business", 5f);
             Toast($"{b.name} is yours · ₦{BizIncome(b):N0} per pay cycle");
             Message("bank", $"Business account opened for {b.name}. Income lands in your RiseBank account.");
             return true;
@@ -261,7 +319,7 @@ namespace Rise
             o.stock = 100f; Toast($"{b.name} restocked"); return true;
         }
 
-        public void CyclePrice(BusinessData b) { var o = Biz(b.id); if (o == null) return; o.price = o.price == "low" ? "normal" : o.price == "normal" ? "high" : "low"; Toast($"{b.name} · prices {o.price}"); }
+        public void CyclePrice(BusinessData b) { var o = Biz(b.id); if (o == null) return; o.price = o.price == "low" ? "normal" : o.price == "normal" ? "high" : "low"; AddRep("business", o.price == "high" ? -3 : o.price == "low" ? 2 : 0); Toast($"{b.name} · prices {o.price}"); }
 
         // Owned businesses pay into the bank every pay cycle and drain stock.
         public void TickEconomy(float dt)
@@ -281,6 +339,26 @@ namespace Rise
             S.bank += total;
             if (RivalOpen && !S.rivalTold) { S.rivalTold = true; Message("nkechi", $"{data.rivalName} don open shop near your own. E dey undercut you. Drop your prices if you wan keep customers."); }
             Toast($"RiseBank · Credit alert · ₦{total:N0} business income");
+        }
+
+        // "Lagos Never Sleeps": businesses and tenants keep earning while the player is away.
+        public (int minutes, int biz, int rent, int upkeep, int net, int days)? ApplyAwayEarnings(DateTime? nowUtc = null)
+        {
+            if (string.IsNullOrEmpty(S.lastSeen)) return null;
+            if (!DateTime.TryParse(S.lastSeen, null, System.Globalization.DateTimeStyles.RoundtripKind, out var seen)) return null;
+            double elapsed = ((nowUtc ?? DateTime.UtcNow) - seen.ToUniversalTime()).TotalMinutes;
+            float minutes = Mathf.Min(data.meta.awayCapMinutes, (float)elapsed);
+            if (minutes < data.meta.awayMinMinutes) return null;
+            int biz = Mathf.RoundToInt(TotalBizIncome() * minutes);
+            int days = Mathf.FloorToInt(minutes / 18f);
+            int rent = 0, upkeep = 0;
+            foreach (var id in S.let) { var p = data.Property(id); if (p != null) rent += Mathf.RoundToInt(p.rent * data.tenantShare * days); }
+            foreach (var id in S.props) { var p = data.Property(id); if (p != null) upkeep += Mathf.RoundToInt((p.rent / 60f) * days); }
+            int net = biz + rent - upkeep;
+            S.bank += net;
+            S.awayTotal += net;
+            if (net > 0) Message("bank", $"Welcome back. While you were away ({Mathf.RoundToInt(minutes)} min), your businesses and tenants earned ₦{net:N0}.");
+            return (Mathf.RoundToInt(minutes), biz, rent, upkeep, net, days);
         }
 
         // ---- relationships (src/systems/relationships.js) ----
