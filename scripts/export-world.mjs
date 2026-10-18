@@ -12,7 +12,7 @@ globalThis.location ??= { hash: '', search: '' };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const load = f => import(pathToFileURL(resolve(root, f)).href);
-const [L, C, J, Ch, V, F, B] = await Promise.all([load('src/data/districts/lagos.js'), load('src/data/config.js'), load('src/data/jobs.js'), load('src/data/characters.js'), load('src/data/vehicles.js'), load('src/data/family.js'), load('src/data/businesses.js')]);
+const [L, C, J, Ch, V, F, B, It] = await Promise.all([load('src/data/districts/lagos.js'), load('src/data/config.js'), load('src/data/jobs.js'), load('src/data/characters.js'), load('src/data/vehicles.js'), load('src/data/family.js'), load('src/data/businesses.js'), load('src/data/items.js')]);
 const out = process.argv[2] ? resolve(process.argv[2]) : resolve(root, 'unity/Assets/Rise/Resources/world/lagos.json');
 
 const AXES = ['h', 'v'];
@@ -111,7 +111,11 @@ const world = {
   })),
   // Contacts who stand in the world (they have a place). The first entry wins when an id repeats.
   contacts: Ch.CONTACTS.filter((c, i, all) => c.at && all.findIndex(o => o.id === c.id) === i)
-    .map(c => ({ id: c.id, name: c.name, role: c.role || '', at: c.at, color: c.c || '#ffc52f', line: c.line || '', offsetX: c.offset?.x || 0, offsetZ: c.offset?.z || 0 })),
+    .map(c => ({
+      id: c.id, name: c.name, role: c.role || '', at: c.at, color: c.c || '#ffc52f', line: c.line || '', offsetX: c.offset?.x || 0, offsetZ: c.offset?.z || 0,
+      runs: (c.runs || []).map(r => ({ text: r.text, dest: r.dest, item: r.item, label: r.label, rep: r.rep || 'business', minutes: r.minutes, reward: r.reward, heat: r.heat || 0 })),
+    })),
+  items: Object.entries(It.ITEMS).map(([id, i]) => ({ id, name: i.name, desc: i.desc || '' })),
   allContacts: Ch.CONTACTS.filter((c, i, all) => all.findIndex(o => o.id === c.id) === i).map(c => ({ id: c.id, name: c.name })),
   vehicleClasses: Object.entries(V.VEH).map(([id, v]) => ({ id, name: v.name, len: v.len, wid: v.wid, max: v.max, boost: v.boost, accel: v.accel, commercial: !!v.commercial, fare: v.fare || 0 })),
   fabrics: Ch.FABRICS.map(f => ({ name: f.name, baseColor: f.base, accent: f.accent, pattern: f.pattern })),

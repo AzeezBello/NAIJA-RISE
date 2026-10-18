@@ -75,6 +75,21 @@ export const LANDMARKS = [
   { id: 'mushin', name: 'Mushin Market', short: 'MUSHIN MKT', x: -24, z: -120, c: '#5e4a3a', sign: '#ffc52f', h: 5, kind: 'market' },
   { id: 'stadium', name: 'National Stadium', short: 'STADIUM', x: -104, z: -104, c: '#8a8f93', sign: '#ffffff', stadium: true, kind: 'landmark' },
   { id: 'egbon-desk', name: 'Adugbo Community Desk', short: 'ADUGBO DESK', x: 144, z: 104, c: '#5b6540', sign: '#ffc52f', h: 4, kind: 'service' },
+  // Side streets of the adugbo: a street-name sign on the pavement of a grid road where the street's people hang out.
+  // Coordinates sit on the pavement centre line (road half-width + 1.6) clear of vendors, kiosks and bus stops.
+  { id: 'oduduwa', name: 'Oduduwa Street', short: 'ODUDUWA ST', x: 44, z: -76.6, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'nnobi', name: 'Nnobi Street', short: 'NNOBI ST', x: 104, z: -76.6, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'ladejobi', name: 'Ladejobi Street', short: 'LADEJOBI ST', x: -52, z: -76.6, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'olaitan', name: 'Olaitan Street', short: 'OLAITAN ST', x: 110, z: -12.6, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'abiodun', name: 'Abiodun Street', short: 'ABIODUN ST', x: -125, z: -12.6, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'ijero', name: 'Ijero Street', short: 'IJERO ST', x: 12.6, z: 110, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'olusesan-adetula', name: 'Olusesan Adetula Street', short: 'OLUSESAN ADETULA ST', x: -81.6, z: 45, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'adenowo', name: 'Adenowo Street', short: 'ADENOWO ST', x: -62.4, z: -112, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'cole', name: 'Cole Street', short: 'COLE ST', x: 85.6, z: -125, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'ladele-dada', name: 'Ladele Dada Street', short: 'LADELE DADA ST', x: 58.4, z: 110, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'ayodele', name: 'Ayodele Street', short: 'AYODELE ST', x: -12.6, z: -135, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'folawiyo-bankole', name: 'Folawiyo Bankole Street', short: 'FOLAWIYO BANKOLE ST', x: 12.6, z: -110, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'akpoguma', name: 'Akpoguma Street', short: 'AKPOGUMA ST', x: -81.6, z: 125, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
   // law and public services
   { id: 'police', name: 'Area C Police Station', short: 'POLICE', x: 96, z: -96, c: '#1f2b45', sign: '#ffffff', h: 6, kind: 'police' },
   { id: 'fire', name: 'Lagos State Fire Service', short: 'FIRE', x: 96, z: -48, c: '#8a2222', sign: '#ffffff', h: 6, kind: 'service' },

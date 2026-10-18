@@ -119,6 +119,14 @@ XP. Community Grammar School runs the evening adult class; Yaba Tech enrols you 
 paid semesters that graduate into the IT Support Technician job. Street football with Captain Tunde now climbs the three
 tiers: quick match on a wager, the neighbourhood tournament after three wins, the Lagos championship.
 
+**Surulere street people** (`src/data/characters.js`, `src/data/districts/surulere.js`). Thirty-two locals stand on
+thirteen side streets (Oduduwa, Nnobi, Ladejobi, Olaitan, Abiodun, Ijero, Olusesan Adetula, Adenowo, Cole, Ladele Dada,
+Ayodele, Folawiyo Bankole, Akpoguma, plus Kilo bus stop), each street marked by a green street-name sign on the pavement.
+Each person offers their own timed runs (36 in all): Peter the tailor's agbada and wedding dress, Mario's lost phone
+and car papers, KC Tata's jerrycan and trial boots, Dj Saha's speakers, Baby's risky package (adds heat), and so on.
+Runs are data: a contact's `runs` array is exported with the map and offered through the hub menu, so adding a person
+or a run is an edit in `src/data` plus `npm run export:unity`; `npm run check` validates every destination and item.
+
 **Weather and animals** (`Scripts/World/Weather.cs`, `AnimalSystem.cs`). A 15 % chance every minute of two to five
 minutes of rain: a particle curtain around the camera, darker light, wet roads that cut grip, braking and steering to
 70 % (as `movement.js` does), a storm variant, and harmattan haze on days 7 to 9 of every ten. Goats around the
@@ -188,9 +196,19 @@ device polling when the asset is missing.
 installed, so the Windows entry needs the Windows Build Support module, and console targets need the platform
 holders' modules and licences.
 
-**HUD** (`Scripts/UI/`). Brand, district and street or bridge top-left; clock, day and heat top-right; the objective
-card and a north-up minimap bottom-left; cash, RiseBank, level, XP, reputation and speed / fuel / condition
-bottom-right; health and stamina bars with the prompt bottom-centre; toasts, menus, shift overlay, wanted banner.
+**HUD** (`Scripts/UI/Hud.cs`). Dark glass cards with rounded corners in the website's palette and typeface (Inter, in
+`Resources/Fonts` under the SIL OFL; the built-in font had no ₦, ★ or ▲ glyph). Location top-left; clock, day/night,
+weather, heat pips and network status top-right; the objective card with the route distance and a north-up minimap
+with a heading arrow bottom-left; wallet, level, XP and reputation bottom-right, with the portrait on foot and a speed /
+fuel / condition cluster while driving; labelled health and stamina with a key-cap prompt bottom-centre; toasts that
+slide in and fade, menus with a highlighted row (a free mouse can hover and click), shift overlay, wanted capsule.
+Cards size to their text and every texture is generated in code, rebuilt when the screen scale changes.
+
+**QA tools.** `RISE ▸ Render Vehicle Sheet` (`Editor/VehicleSheet.cs`) renders every vehicle model to a contact sheet
+with its front marked, which is how the Lagos models that imported standing on end or on their side were found and
+fixed (`VehicleBodies.ModelFix`); the smoke test now also fails a model taller than it is long. `NR_DIAG=shots,nosave`
+on a desktop player (`?diag=shots,nosave` on WebGL) captures the HUD on foot, in a menu, driving and wanted, then quits
+(`Scripts/DiagShots.cs`); `nosave` keeps any diagnostic run from overwriting a real save.
 
 Everything is created from code at startup by `GameBootstrap` in `Assets/Rise/Scenes/Lagos.unity`; the scene
 only holds a camera, a sun and that one component. Pipeline assets in `Assets/Settings` come from the editor's own

@@ -9,7 +9,7 @@ namespace Rise
     // Community Grammar School and Yaba Tech (schoolMenu); street football tiers (footballMenu / playMatch).
     public partial class Session
     {
-        public class HubRun { public string Text, Dest, Item, Label, Rep; public float Minutes; public int Reward; }
+        public class HubRun { public string Text, Dest, Item, Label, Rep; public float Minutes; public int Reward, Heat; }
         static HubRun R(string text, string dest, string item, float minutes, int reward, string label, string rep) => new HubRun { Text = text, Dest = dest, Item = item, Minutes = minutes, Reward = reward, Label = label, Rep = rep };
 
         public static readonly Dictionary<string, (string name, string intro, HubRun[] runs)> Hubs = new Dictionary<string, (string name, string intro, HubRun[] runs)>
@@ -30,13 +30,25 @@ namespace Rise
 
         [System.NonSerialized] public HubRun ActiveRun;   // side task in progress (uses the task fields with taskMission = -1)
 
-        bool IsHub(ContactSystem.Contact c) => Hubs.ContainsKey(c.data.id);
+        // Hard-coded hubs, plus any contact whose data carries runs (the Surulere street people, src/data/characters.js).
+        bool IsHub(ContactSystem.Contact c) => Hubs.ContainsKey(c.data.id) || (c.data.runs != null && c.data.runs.Length > 0);
+
+        static HubRun FromData(RunData r) => new HubRun { Text = r.text, Dest = r.dest, Item = r.item, Minutes = r.minutes, Reward = r.reward, Label = r.label, Rep = r.rep, Heat = r.heat };
+
+        public (string name, string intro, HubRun[] runs) HubFor(ContactSystem.Contact c)
+        {
+            if (Hubs.TryGetValue(c.data.id, out var hub)) return hub;
+            var runs = new HubRun[c.data.runs.Length];
+            for (int i = 0; i < runs.Length; i++) runs[i] = FromData(c.data.runs[i]);
+            return (c.data.role, c.data.line, runs);
+        }
 
         void OpenHubMenu(ContactSystem.Contact c)
         {
-            var hub = Hubs[c.data.id];
-            var menu = new Menu { Title = c.data.name, Subtitle = hub.name, Line = $"{hub.intro ?? $"Welcome to {hub.name}."} Choose a local run. Deliveries pay when you reach the destination before the deadline." };
-            if (!HasTask) foreach (var run in hub.runs) { var r = run; menu.Options.Add(new MenuOption { Label = $"{run.Text} · ₦{run.Reward:N0} · {run.Minutes:0} min", Enabled = Data.TryPlace(run.Dest, out _), Action = () => StartRun(c, r) }); }
+            var hub = HubFor(c);
+            bool dataHub = !Hubs.ContainsKey(c.data.id);
+            var menu = new Menu { Title = c.data.name, Subtitle = dataHub ? $"{hub.name} · {State.RelTier(c.data.id)}" : hub.name, Line = dataHub ? hub.intro : $"{hub.intro ?? $"Welcome to {hub.name}."} Choose a local run. Deliveries pay when you reach the destination before the deadline." };
+            if (!HasTask) foreach (var run in hub.runs) { var r = run; menu.Options.Add(new MenuOption { Label = $"{run.Text} · ₦{run.Reward:N0} · {run.Minutes:0} min{(run.Heat > 0 ? " · risky" : "")}", Enabled = Data.TryPlace(run.Dest, out _), Action = () => StartRun(c, r) }); }
             else menu.Options.Add(new MenuOption { Label = "Finish your current mission first", Enabled = false });
             foreach (var j in Data.JobsAt(c.data.at)) { var job = j; bool ok = State.CanTake(j); menu.Options.Add(new MenuOption { Label = ok ? $"Work shift — {j.title} · ₦{State.JobPay(j):N0} · {j.dur}h" : $"{j.title} (needs {j.skill} {j.min})", Enabled = ok, Action = () => StartShift(job) }); }
             AddRelationshipOptions(menu, c);
@@ -59,7 +71,11 @@ namespace Rise
         {
             var run = ActiveRun; ActiveRun = null;
             if (run == null) return;
-            if (ok) { State.Earn(run.Reward); State.AddRep(run.Rep, 3); State.AddXp(15); State.Toast($"{run.Label} delivered · +₦{run.Reward:N0}"); }
+            if (ok)
+            {
+                State.Earn(run.Reward); State.AddRep(run.Rep, 3); State.AddXp(15); State.Toast($"{run.Label} delivered · +₦{run.Reward:N0}");
+                if (run.Heat > 0) State.AddHeat(run.Heat, run.Label);
+            }
             else State.Toast($"{run.Label} not delivered in time");
         }
 

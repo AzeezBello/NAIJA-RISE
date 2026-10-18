@@ -23,12 +23,12 @@ namespace Rise.World
             data = world; clock = dayNight; follow = cameraTransform;
             var go = new GameObject("Rain"); go.transform.SetParent(transform, false);
             rain = go.AddComponent<ParticleSystem>();
-            var main = rain.main; main.loop = true; main.startLifetime = 1.4f; main.startSpeed = 0f; main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.09f); main.maxParticles = 2400; main.startColor = new Color(0.75f, 0.83f, 0.9f, 0.55f); main.gravityModifier = 2.6f; main.simulationSpace = ParticleSystemSimulationSpace.World; main.playOnAwake = false;
+            var main = rain.main; main.loop = true; main.startLifetime = 1.4f; main.startSpeed = 0f; main.startSize = new ParticleSystem.MinMaxCurve(0.012f, 0.022f); main.maxParticles = 2400; main.startColor = new Color(0.78f, 0.85f, 0.92f, 0.4f); main.gravityModifier = 2.6f; main.simulationSpace = ParticleSystemSimulationSpace.World; main.playOnAwake = false;
             var emission = rain.emission; emission.rateOverTime = 1500f;
             var shape = rain.shape; shape.shapeType = ParticleSystemShapeType.Box; shape.scale = new Vector3(80f, 1f, 80f); shape.position = new Vector3(0f, 22f, 0f);
-            var r = rain.GetComponent<ParticleSystemRenderer>(); r.renderMode = ParticleSystemRenderMode.Stretch; r.lengthScale = 6f; r.velocityScale = 0.02f;
+            var r = rain.GetComponent<ParticleSystemRenderer>(); r.renderMode = ParticleSystemRenderMode.Stretch; r.lengthScale = 22f; r.velocityScale = 0.018f;
             var shader = ShaderLib.ParticlesUnlit; if (shader == null) shader = ShaderLib.Unlit;
-            r.sharedMaterial = new Material(shader) { color = new Color(0.75f, 0.83f, 0.9f, 0.55f) };
+            r.sharedMaterial = new Material(shader) { color = new Color(0.78f, 0.85f, 0.92f, 0.4f) };
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             rain.Stop();
         }

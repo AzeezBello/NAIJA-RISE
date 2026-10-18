@@ -121,7 +121,7 @@ namespace Rise
         void AppInventory()
         {
             var st = State.S; var sb = new StringBuilder();
-            sb.Append(st.items.Count > 0 ? "Carrying: " + string.Join(", ", st.items) : "Nothing in your hands.").Append('\n');
+            sb.Append(st.items.Count > 0 ? "Carrying: " + string.Join(", ", st.items.ConvertAll(Data.ItemName)) : "Nothing in your hands.").Append('\n');
             sb.Append("Vehicles: ").Append(st.vehicles.Count > 0 ? string.Join(", ", st.vehicles.ConvertAll(v => Data.VehicleClass(v.type)?.name ?? v.type)) : "none").Append('\n');
             sb.Append($"Fuel {st.fuel:0}% · stamina {st.stamina:0}% · health {st.health:0}%");
             Page("Inventory", "What you carry and own", sb.ToString());

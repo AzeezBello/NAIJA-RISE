@@ -145,6 +145,7 @@ namespace Rise
             var hud = gameObject.AddComponent<Hud>();
             hud.Init(Data, Clock, Session, minimap);
             hud.Portrait = portrait;
+            if (DiagFlags.Has("shots")) gameObject.AddComponent<DiagShots>().Session = Session;
             if (UI.TouchControls.I != null) { UI.TouchControls.I.MenuOpen = () => Session.ActiveMenu != null; UI.TouchControls.I.Driving = () => Session.Vehicle != null; UI.TouchControls.I.MenuRects = () => Session.ActiveMenu?.Rects; }
 
             state.Toast(restored ? $"Welcome back to Lagos · Day {state.S.day}" : "Welcome to Lagos. Baba K dey wait for you at Ojuelegba.");
