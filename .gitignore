@@ -33,11 +33,6 @@ node_modules/
 .vercel/
 web/.vercel/
 
-# Copied into the Next app at build time (scripts/sync-engine.mjs)
-web/engine/
-web/styles/
-web/public/assets/
-
 # Unity edition (unity/): generated folders, IDE solution files and local builds
 unity/Library/
 unity/Temp/

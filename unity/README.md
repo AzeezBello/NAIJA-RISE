@@ -1,9 +1,11 @@
 # RISE — Lagos · Unity edition
 
-A Unity 6 project that builds the same Lagos as the Three.js game in `../src`, from the same data files. It started on
+A Unity 6 project that builds Lagos from the shared data files in `../src/data`. It started on
 13 October 2026 as the "native-engine vertical slice" that `../PLAN.md` (Multi-Platform Technical Roadmap, §2) asks for
 before any decision to migrate, and has grown in five increments into a playable slice of the game: city, driving,
-people, story, law, housing, business, education and racing. The web edition remains the production baseline.
+people, story, law, housing, business, education and racing. It is now the only edition: the Three.js web edition was
+retired on 17 October 2026 (tag `threejs-final`). References below and in the C# comments to `src/systems`,
+`src/world` and other non-data paths point at files in that tag.
 
 Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFast 6.0.1 with the Meshopt decoder.
 
