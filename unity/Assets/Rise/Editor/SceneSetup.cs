@@ -61,6 +61,17 @@ namespace Rise.EditorTools
             if (!html.Contains("overflow:hidden;background:#07100e"))
                 html = html.Replace("</head>", "  <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#07100e;}</style>\n  </head>");
             System.IO.File.WriteAllText(indexPath, html);
+            var pkgScript = System.IO.Path.GetFullPath("../scripts/package-webgl.mjs");
+            if (System.IO.File.Exists(pkgScript))
+            {
+                try
+                {
+                    var psi = new System.Diagnostics.ProcessStartInfo("node", $"\"{pkgScript}\"") { UseShellExecute = false, CreateNoWindow = true };
+                    using var p = System.Diagnostics.Process.Start(psi);
+                    p?.WaitForExit(60000);
+                }
+                catch { }
+            }
         }
 
         static void BuildPlayer(BuildTarget target, string output)
