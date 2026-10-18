@@ -137,7 +137,7 @@ three SQL files parse as valid PostgreSQL, which is all that has been checked.
 | P2 measured performance on Mac and iPhone, Low/Medium/High | Owner reports Unity WebGL plays far better than Three.js on this Mac in Chrome and Safari (unmeasured); iPhone and quality levels not started |
 | P3 WebGL load test; live Supabase save and two-client multiplayer; crew functions applied and tested | WebGL runs in Chrome and Safari on the owner's Mac; live Supabase and crew functions still untested |
 | P4 each announced platform built and tested on hardware | Not started (macOS builds; Windows module not installed; consoles need platform access) |
-| P5 freeze, tag, switch, rollback window, remove | Not started. Do not remove Three.js. |
+| P5 freeze, tag, switch, rollback window, remove | **Done 17 October by owner decision**, ahead of P1–P4: tagged `threejs-final`, engine and static build removed. Roll back with `git checkout threejs-final`. |
 
 ## Next, in order of value per hour
 

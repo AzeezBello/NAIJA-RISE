@@ -77,6 +77,10 @@ namespace Rise.EditorTools
             int badJobs = 0, badContacts = 0, placedContacts = 0;
             foreach (var j in data.jobs) if (!data.TryPlace(j.at, out _)) badJobs++;
             foreach (var c in data.contacts) if (data.ContactSpot(c, out _)) placedContacts++; else badContacts++;
+            int runs = 0, badRuns = 0;
+            foreach (var c in data.contacts) if (c.runs != null) foreach (var r in c.runs) { runs++; if (!data.TryPlace(r.dest, out _)) badRuns++; }
+            Debug.Log($"RISE smoke test: {runs} contact runs ({badRuns} unresolved destinations), {data.items?.Length ?? 0} item names");
+            badContacts += badRuns;
             var cmsWorld = Data.WorldData.W(372f, 0f, -15f);   // CMS Bus Terminal, data (372, -15)
             bool mirrorOk = cmsWorld.x > spawn.x && cmsWorld.z > 0f && data.RoadAt(cmsWorld, 30f) != null;
             Debug.Log($"RISE smoke test: {data.jobs.Length} jobs ({badJobs} unresolved), {placedContacts} contacts placed ({badContacts} unresolved), {data.vehicleClasses.Length} vehicle classes; CMS at world {cmsWorld}, mirror {(mirrorOk ? "ok" : "WRONG")}");
@@ -129,7 +133,7 @@ namespace Rise.EditorTools
                 var probeHost = new GameObject("FitProbe"); var vb = Vehicles.VehicleBodies.Build(vc, probeHost.transform, new System.Random(3), out _);
                 var vi = vb.GetComponent<Vehicles.VehicleModelInfo>();
                 if (vi == null) procedural++;
-                else { fitted++; if (Mathf.Abs(vi.Length - vc.len) > 0.35f || vi.Width > vi.Length) badFit.Add($"{vc.id}:{vi.Model} {vi.Length:0.0}x{vi.Width:0.0}"); }
+                else { fitted++; if (Mathf.Abs(vi.Length - vc.len) > 0.35f || vi.Width > vi.Length || vi.Height > vi.Length) badFit.Add($"{vc.id}:{vi.Model} {vi.Length:0.0}x{vi.Width:0.0}x{vi.Height:0.0}"); }
                 Object.DestroyImmediate(probeHost);
             }
             Debug.Log($"RISE smoke test: vehicle models fitted for {fitted} classes, {procedural} procedural, bad fits: {(badFit.Count == 0 ? "none" : string.Join("; ", badFit))}");

@@ -50,7 +50,22 @@ namespace Rise.Vehicles
         };
         // Extra yaw (degrees) to bring a model's native front onto +z. glTFast keeps glTF +Z as Unity +z, so most models need
         // none; the keke's front is along glTF +X, which is -x in Unity (the web edition's MODEL_ROTATION says π/2 for it).
-        static readonly Dictionary<string, float> ModelYaw = new Dictionary<string, float> { ["keke_bajaj_re"] = 90f };
+        static readonly Dictionary<string, float> ModelYaw = new Dictionary<string, float> { ["keke_bajaj_re"] = 90f, ["suzuki_carry_minivan"] = -45f };   // the korope is modelled 45° off its axis
+        // Up-axis corrections (Euler degrees, applied before ModelYaw) for models exported with Z up or lying on a side,
+        // which otherwise import standing on end or on their side. Found with RISE ▸ Render Vehicle Sheet (Editor/VehicleSheet.cs).
+        public static readonly Dictionary<string, Vector3> ModelFix = new Dictionary<string, Vector3>
+        {
+            ["suzuki_carry_minivan"] = new Vector3(-90f, 0f, 0f),          // korope: lay on its wheels
+            ["keke_bajaj_re"] = new Vector3(-90f, 0f, 0f),                 // keke: was on its side
+            ["suzuki_gsx-r750"] = new Vector3(-90f, 0f, 0f),               // okada: stood on its tail
+            ["2008_kawasaki_ninja_zx-10r-em"] = new Vector3(-90f, 0f, 0f), // motorcycle: was on its side
+            ["suzuki_hayabusa_gsx-1300r-k8"] = new Vector3(-90f, 0f, 0f),  // motorcycle: stood on its tail
+            ["2003-gmc-topkick-c6500"] = new Vector3(-90f, 0f, 0f),        // army: stood on its tail
+            ["heavy_commercial_vehicle_hcv"] = new Vector3(-90f, 180f, 0f), // tanker: on its side and facing backwards
+            ["lightbody_90_md_pickup_-_low_poly_model"] = new Vector3(-90f, 0f, 0f),   // pickup: was on its side
+        };
+        // Tools can try other corrections without editing the table (VehicleSheet.RenderCandidates).
+        public static System.Func<string, Vector3?> FixOverride;
         public static bool UseModels = true;
 
         // Spin a wheel by its axle: imported wheels (named "wheel-…") turn about their local x, procedural ones about y.
@@ -62,32 +77,98 @@ namespace Rise.Vehicles
         {
             wheels = null; LastModelName = null;
             if (!UseModels || !Models.TryGetValue(cls.id, out var names)) return null;
-            string name = names[rng.Next(names.Length)];
+            return BuildModel(cls, names[rng.Next(names.Length)], parent, out wheels);
+        }
+
+        public static string[] ModelsFor(string classId) => Models.TryGetValue(classId, out var n) ? n : new string[0];
+
+        // Fit one named model to a class: up-axis fix, yaw, class length, wheels on the ground. Null if it does not load.
+        public static GameObject BuildModel(VehicleClassData cls, string name, Transform parent, out Transform[] wheels)
+        {
+            wheels = null; LastModelName = null;
             var prefab = Resources.Load<GameObject>("Models/Vehicles/" + name);
             if (prefab == null) return null;
             var go = new GameObject(cls.name); go.transform.SetParent(parent, false);
             var model = Object.Instantiate(prefab, go.transform, false);
             model.name = "Model";
-            model.transform.localRotation = Quaternion.Euler(0f, ModelYaw.TryGetValue(name, out var yaw) ? yaw : 0f, 0f);
+            // The Suzuki bikes come from a game rig: motion-blur copies of each wheel layered over the real ones, and light
+            // "glow" quads (a headlight beam among them) that need an additive shader and otherwise show as a black blade.
+            foreach (var rend in model.GetComponentsInChildren<Renderer>(true))
+            {
+                var n = rend.gameObject.name;
+                if ((n.StartsWith("Wheel_") && n.Contains("_Motion")) || (n.StartsWith("lights_") && n.Contains("_glows_"))) rend.gameObject.SetActive(false);   // inactive: also out of the fitting bounds
+            }
+            if (LitRemap.Contains(name)) RemapToLit(model);
+            var fix = FixOverride?.Invoke(name) ?? (ModelFix.TryGetValue(name, out var f) ? f : Vector3.zero);
+            model.transform.localRotation = Quaternion.Euler(0f, ModelYaw.TryGetValue(name, out var yaw) ? yaw : 0f, 0f) * Quaternion.Euler(fix);
             // A model whose long axis lies along x is turned a quarter so its length runs along z (the front/back ambiguity
             // cannot be read from bounds; ModelYaw carries the known cases).
-            var b = Entities.CharacterRig.Bounds(model);
-            if (b.size.x > b.size.z * 1.15f) { model.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * model.transform.localRotation; b = Entities.CharacterRig.Bounds(model); }
+            bool tight = TightFit.Contains(name);
+            var b = Measure(model, tight);
+            if (b.size.x > b.size.z * 1.15f) { model.transform.localRotation = Quaternion.Euler(0f, 90f, 0f) * model.transform.localRotation; b = Measure(model, tight); }
             // Scale to the class length, feet on the ground, centred on the axle line.
             float k = b.size.z > 0.01f ? cls.len / b.size.z : 1f;
             model.transform.localScale = Vector3.one * k;
-            b = Entities.CharacterRig.Bounds(model);
+            b = Measure(model, tight);
             model.transform.localPosition = new Vector3(-(b.center.x - go.transform.position.x), -(b.min.y - go.transform.position.y), -(b.center.z - go.transform.position.z));
-            b = Entities.CharacterRig.Bounds(model);
+            b = Measure(model, tight);
             var ws = new List<Transform>();
             foreach (var t in model.GetComponentsInChildren<Transform>()) if (t.name.StartsWith("wheel")) ws.Add(t);   // Kenney names its wheels; the Lagos models bake them into the body
             wheels = ws.ToArray();
-            foreach (var c in model.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            foreach (var c in model.GetComponentsInChildren<Collider>()) { if (Application.isPlaying) Object.Destroy(c); else Object.DestroyImmediate(c); }
             var info = go.AddComponent<VehicleModelInfo>(); info.Model = name; info.Height = b.size.y; info.Length = b.size.z; info.Width = b.size.x;
             var col = go.AddComponent<BoxCollider>();
             col.center = new Vector3(0f, b.size.y * 0.5f, 0f); col.size = new Vector3(cls.wid, b.size.y, cls.len);   // class width: the data's lanes assume it
             LastModelName = name;
             return go;
+        }
+
+        // Models whose parts carry rotated local boxes, so renderer bounds overstate them (the korope's read 3.8 m square):
+        // these are fitted on their vertices instead.
+        static readonly HashSet<string> TightFit = new HashSet<string> { "suzuki_carry_minivan" };
+        static readonly Dictionary<Mesh, Vector3[]> vertexCache = new Dictionary<Mesh, Vector3[]>();
+        static bool warnedUnreadable;
+
+        // Models whose glTF materials render black in player builds (the keke's uses KHR_materials_specular, which works in
+        // the editor only): their materials are rebuilt on URP Lit from the base colour texture and factor.
+        static readonly HashSet<string> LitRemap = new HashSet<string> { "keke_bajaj_re" };
+        static readonly Dictionary<Material, Material> litCache = new Dictionary<Material, Material>();
+
+        static void RemapToLit(GameObject model)
+        {
+            foreach (var r in model.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var src = mats[i]; if (src == null) continue;
+                    if (!litCache.TryGetValue(src, out var lit))
+                    {
+                        lit = new Material(ShaderLib.Lit) { name = src.name + " (Lit)" };
+                        if (src.HasProperty("baseColorTexture")) lit.SetTexture("_BaseMap", src.GetTexture("baseColorTexture"));
+                        if (src.HasProperty("baseColorFactor")) lit.SetColor("_BaseColor", src.GetColor("baseColorFactor"));
+                        lit.SetFloat("_Smoothness", 0.35f);
+                        litCache[src] = lit;
+                    }
+                    mats[i] = lit;
+                }
+                r.sharedMaterials = mats;
+            }
+        }
+
+        static Bounds Measure(GameObject model, bool tight)
+        {
+            if (!tight) return Entities.CharacterRig.Bounds(model);
+            bool any = false; var b = new Bounds();
+            foreach (var mf in model.GetComponentsInChildren<MeshFilter>())
+            {
+                var mesh = mf.sharedMesh; if (mesh == null) continue;
+                if (!mesh.isReadable) { if (!warnedUnreadable) { warnedUnreadable = true; Debug.LogWarning($"RISE: mesh '{mesh.name}' is not readable; fitting {model.transform.parent?.name} on renderer bounds"); } return Entities.CharacterRig.Bounds(model); }
+                if (!vertexCache.TryGetValue(mesh, out var verts)) vertexCache[mesh] = verts = mesh.vertices;
+                var m = mf.transform.localToWorldMatrix;
+                foreach (var v in verts) { var p = m.MultiplyPoint3x4(v); if (any) b.Encapsulate(p); else { b = new Bounds(p, Vector3.zero); any = true; } }
+            }
+            return any ? b : Entities.CharacterRig.Bounds(model);
         }
 
         public static GameObject Build(VehicleClassData cls, Transform parent, System.Random rng, out Transform[] wheels)

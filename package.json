@@ -2,11 +2,10 @@
   "name": "rise-lagos",
   "version": "1.0.0",
   "private": true,
-  "description": "RISE — Lagos: Three.js engine (src/) shared by the static build (index.html) and the Next.js shell (web/)",
+  "description": "RISE — Lagos: Unity edition (unity/), shared map and content data (src/data) and the Next.js site (web/)",
   "type": "module",
   "scripts": {
-    "start": "python3 -m http.server 4173",
-    "check": "for f in $(find src -name '*.js'); do node --check \"$f\" || exit 1; done && echo 'engine modules OK' && node scripts/check-data.mjs",
+    "check": "for f in $(find src -name '*.js'); do node --check \"$f\" || exit 1; done && echo 'data modules OK' && node scripts/check-data.mjs",
     "web": "npm --prefix web run dev",
     "web:build": "npm --prefix web run build",
     "export:unity": "node scripts/export-world.mjs"

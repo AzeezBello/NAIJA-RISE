@@ -325,6 +325,19 @@ namespace Rise.World
                         Box(l.name, pos + Vector3.up * 0.2f, new Vector3(50f, 0.4f, 40f), body, group);
                         Sign(l.shortName, pos + new Vector3(0, 4f, 22f), l.sign, 1.4f, group);
                         continue;
+                    case "street":
+                    {
+                        // A street-name sign on the pavement: a pole and a green board readable from both sides.
+                        Box(l.name + " pole", pos + Vector3.up * 1.6f, new Vector3(0.12f, 3.2f, 0.12f), Mat("signpole", "#5a5f63"), group, false);
+                        float bw = 1.2f + l.shortName.Length * 0.32f;
+                        Box(l.name + " board", pos + Vector3.up * 3.35f, new Vector3(bw, 0.55f, 0.06f), body, group, false);
+                        Sign(l.shortName, pos + new Vector3(0, 3.35f, 0.05f), l.sign, 0.42f, group);
+                        var back = new GameObject("Sign back"); back.transform.SetParent(group, false);
+                        back.transform.SetPositionAndRotation(pos + new Vector3(0, 3.35f, -0.05f), Quaternion.Euler(0f, 180f, 0f));
+                        Sign(l.shortName, back.transform.position, l.sign, 0.42f, back.transform);
+                        back.transform.GetChild(0).localRotation = Quaternion.identity;
+                        continue;
+                    }
                 }
                 var fp = Footprint(l);
                 float h = Mathf.Max(3f, l.h);
@@ -538,7 +551,7 @@ namespace Rise.World
         {
             foreach (var l in Data.landmarks)
             {
-                float r = l.stadium ? 40f : l.kind == "pitch" ? 30f : l.waterfront || l.kind == "settlement" || l.kind == "beach" ? 52f : l.big ? 24f : 19f;
+                float r = l.stadium ? 40f : l.kind == "pitch" ? 30f : l.waterfront || l.kind == "settlement" || l.kind == "beach" ? 52f : l.big ? 24f : l.kind == "street" ? 12f : 19f;
                 if ((l.x - x) * (l.x - x) + (l.z - z) * (l.z - z) < r * r) return true;
             }
             foreach (var b in Data.busStops) if ((b.x - x) * (b.x - x) + (b.z - z) * (b.z - z) < 14f * 14f) return true;

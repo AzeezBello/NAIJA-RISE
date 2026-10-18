@@ -5,7 +5,7 @@ export const META = { id: 'surulere', name: 'Surulere', state: 'Lagos', spawn: {
 // Regions of this world (PRD corridor map), as rectangles. The locale indicator names them.
 export const REGIONS = [
   { id: 'surulere', name: 'Surulere', x: [-60, 135], z: [-150, 150] },
-  { id: 'surulere-west', name: 'Surulere West', x: [-150, -60], z: [-150, 40] },
+  { id: 'surulere-west', name: 'Surulere West · Ikate', x: [-200, -60], z: [-150, 40] },
   { id: 'costain', name: 'Costain · Iganmu', x: [135, 165], z: [-150, 150] },
   { id: 'lagoon', name: 'Eko Bridge · Lagos Lagoon', x: [165, 340], z: [-250, 330] }, { id: 'island', name: 'Lagos Island', x: [340, 480], z: [-85, 100] },
   { id: 'thirdmainland', name: 'Third Mainland Bridge', x: [340, 480], z: [-250, -85] }, { id: 'yaba', name: 'Yaba', x: [340, 480], z: [-400, -250] },
@@ -14,18 +14,20 @@ export const REGIONS = [
   { id: 'lekki', name: 'Lekki Phase 1', x: [480, 620], z: [180, 330] },
 ];
 export const regionAt = (x, z = 0) => REGIONS.find(r => x >= r.x[0] && x < r.x[1] && z >= r.z[0] && z < r.z[1]) || REGIONS[0];
-export const ROADS = { h: [0, -66, 142, -330, -300, 240, 300], v: [0, 72, -72, 360, 440, 560] };
+export const ROADS = { h: [0, -66, 142, -330, -300, 240, 300], v: [0, 72, -72, 360, 440, 560, -196] };
 // Where each road physically runs. Bode Thomas continues east over Eko Bridge onto Lagos Island; Marina continues south over
 // Falomo Bridge into Victoria Island; Broad Street continues north over Third Mainland Bridge into Yaba; Ikorodu Road runs
-// the whole width of the mainland; Adeola Odeku becomes the Lekki–Epe Expressway past the toll gate.
+// the whole width of the mainland; Adeola Odeku becomes the Lekki–Epe Expressway past the toll gate. West of Ogunlana Drive,
+// Itire Road continues as Lawanson Road and Bode Thomas as Brown Road to Ijesha Road, framing Ikate (OpenStreetMap).
 export const ROAD_EXTENT = {
-  h: { 0: [-150, 470], '-66': [-150, 150], 142: [-150, 150], '-330': [-150, 480], '-300': [340, 480], 240: [340, 620], 300: [340, 480] },
-  v: { 0: [-150, 150], 72: [-330, 150], '-72': [-150, 150], 360: [-400, 80], 440: [-80, 330], 560: [180, 330] },
+  h: { 0: [-196, 470], '-66': [-196, 150], 142: [-150, 150], '-330': [-150, 480], '-300': [340, 480], 240: [340, 620], 300: [340, 480] },
+  v: { 0: [-150, 150], 72: [-330, 150], '-72': [-150, 150], 360: [-400, 80], 440: [-80, 330], 560: [180, 330], '-196': [-66, 0] },
 };
 export const roadExtent = (axis, k) => ROAD_EXTENT[axis][k] || [-150, 150];
 // Named segments along a road (coordinate ranges along its axis).
 export const ROAD_SEGMENTS = {
-  h: { 0: [[-150, 150, 'Bode Thomas Street'], [150, 160, 'Costain Interchange'], [160, 345, 'Eko Bridge'], [345, 470, 'Nnamdi Azikiwe Street · CMS']],
+  h: { 0: [[-196, -150, 'Brown Road'], [-150, 150, 'Bode Thomas Street'], [150, 160, 'Costain Interchange'], [160, 345, 'Eko Bridge'], [345, 470, 'Nnamdi Azikiwe Street · CMS']],
+       '-66': [[-196, -150, 'Lawanson Road'], [-150, 150, 'Itire Road · Ojuelegba Road']],
        '-330': [[-150, -100, 'Ikorodu Road · Ikorodu Garage'], [-100, 300, 'Ikorodu Road · Ebute Metta'], [300, 480, 'Ikorodu Road · Jibowu']],
        240: [[340, 480, 'Adeola Odeku Street'], [480, 505, 'Lekki Toll Gate'], [505, 620, 'Lekki–Epe Expressway']] },
   v: { 72: [[-330, -145, 'Western Avenue'], [-145, 150, 'Funsho Williams Avenue']],
@@ -41,7 +43,7 @@ export const roadNameAt = (axis, k, along) => { const seg = (ROAD_SEGMENTS[axis]
 // class: expressway | highway | main | commercial | residential | market
 export const ROAD_CLASS = {
   h: { 0: 'main', '-66': 'market', 142: 'expressway', '-330': 'highway', '-300': 'commercial', 240: 'highway', 300: 'main' },
-  v: { 0: 'commercial', 72: 'highway', '-72': 'residential', 360: 'highway', 440: 'main', 560: 'residential' },
+  v: { 0: 'commercial', 72: 'highway', '-72': 'residential', 360: 'highway', 440: 'main', 560: 'residential', '-196': 'commercial' },
 };
 export const CLASS_RULES = {
   expressway: { speed: 1.7, limit: 120, density: 1.3, lights: false, median: true },
@@ -59,9 +61,9 @@ export const roadRules = (axis, k) => CLASS_RULES[roadClass(axis, k)];
 // Real Surulere street names on the stylised grid. Keys are the road coordinates above.
 export const ROAD_NAMES = {
   h: { 0: 'Bode Thomas Street', '-66': 'Itire Road · Ojuelegba Road', 142: 'Apapa–Oworonshoki Expressway', '-330': 'Ikorodu Road', '-300': 'Herbert Macaulay Way', 240: 'Adeola Odeku Street · Lekki–Epe Expressway', 300: 'Ahmadu Bello Way' },
-  v: { 0: 'Adeniran Ogunsanya Street', 72: 'Funsho Williams Avenue', '-72': 'Ogunlana Drive · Shitta Bridge', 360: 'Broad Street · Third Mainland Bridge', 440: 'Marina · Falomo Bridge', 560: 'Admiralty Way' },
+  v: { 0: 'Adeniran Ogunsanya Street', 72: 'Funsho Williams Avenue', '-72': 'Ogunlana Drive · Shitta Bridge', 360: 'Broad Street · Third Mainland Bridge', 440: 'Marina · Falomo Bridge', 560: 'Admiralty Way', '-196': 'Ijesha Road' },
 };
-export const ROAD_WIDTHS = { h: { 0: 22, '-66': 18, 142: 36, '-330': 40, '-300': 18, 240: 38, 300: 22 }, v: { 0: 22, 72: 24, '-72': 16, 360: 36, 440: 22, 560: 18 } };
+export const ROAD_WIDTHS = { h: { 0: 22, '-66': 18, 142: 36, '-330': 40, '-300': 18, 240: 38, 300: 22 }, v: { 0: 22, 72: 24, '-72': 16, 360: 36, 440: 22, 560: 18, '-196': 14 } };
 export const roadName = (axis, k) => ROAD_NAMES[axis][k] || 'the main road';
 
 // kind: landmark | market | police | army | service | bank | venue | hotel | checkpoint | post
@@ -75,6 +77,25 @@ export const LANDMARKS = [
   { id: 'mushin', name: 'Mushin Market', short: 'MUSHIN MKT', x: -24, z: -120, c: '#5e4a3a', sign: '#ffc52f', h: 5, kind: 'market' },
   { id: 'stadium', name: 'National Stadium', short: 'STADIUM', x: -104, z: -104, c: '#8a8f93', sign: '#ffffff', stadium: true, kind: 'landmark' },
   { id: 'egbon-desk', name: 'Adugbo Community Desk', short: 'ADUGBO DESK', x: 144, z: 104, c: '#5b6540', sign: '#ffc52f', h: 4, kind: 'service' },
+  // Side streets of Ikate (Kilo–Masha side of Surulere): a street-name sign where the street's people hang out. Positions are
+  // the streets' real OpenStreetMap locations projected into the block they really sit in — west of Ogunlana Drive, between
+  // Lawanson/Itire Road and Brown Road/Bode Thomas, east of Ijesha Road — then nudged apart and clear of Shitta Market and
+  // RiseBank Shitta and round Kilo bus stop. Projection: x = -84 - (3.351 - lon) * 5667, z = -(lat - 6.489) * 3000.
+  { id: 'oduduwa', name: 'Oduduwa Street', short: 'ODUDUWA ST', x: -149.1, z: -43.7, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'nnobi', name: 'Nnobi Street', short: 'NNOBI ST', x: -95.3, z: -36.7, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'ladejobi', name: 'Ladejobi Street', short: 'LADEJOBI ST', x: -123.1, z: -37.7, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'olaitan', name: 'Olaitan Odularu Street', short: 'OLAITAN ST', x: -134.5, z: -37.7, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'abiodun', name: 'Abiodun Ogunayo Street', short: 'ABIODUN ST', x: -105.5, z: -28.2, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'olusesan-adetula', name: 'Olusesan Adetula Street', short: 'OLUSESAN ADETULA ST', x: -105.4, z: -37.8, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'cole', name: 'Cole Street', short: 'COLE ST', x: -113.5, z: -55.4, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'ladele-dada', name: 'Ladele Dada Street', short: 'LADELE DADA ST', x: -132.2, z: -47.6, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'ayodele', name: 'Ayodele Street', short: 'AYODELE ST', x: -138.7, z: -53.8, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'folawiyo-bankole', name: 'Folawiyo Bankole Street', short: 'FOLAWIYO BANKOLE ST', x: -99, z: -49.6, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  { id: 'akpoguma', name: 'Akpoguma Street', short: 'AKPOGUMA ST', x: -113.6, z: -41.4, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  // Adenowo is described as off Kilo bus stop (not in OpenStreetMap): beside Kilo, in Ikate.
+  { id: 'adenowo', name: 'Adenowo Street', short: 'ADENOWO ST', x: -107.9, z: -48.3, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
+  // Ijero Street: no map position found yet; still a placeholder on Adeniran Ogunsanya's pavement.
+  { id: 'ijero', name: 'Ijero Street', short: 'IJERO ST', x: 12.6, z: 110, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
   // law and public services
   { id: 'police', name: 'Area C Police Station', short: 'POLICE', x: 96, z: -96, c: '#1f2b45', sign: '#ffffff', h: 6, kind: 'police' },
   { id: 'fire', name: 'Lagos State Fire Service', short: 'FIRE', x: 96, z: -48, c: '#8a2222', sign: '#ffffff', h: 6, kind: 'service' },
@@ -104,7 +125,8 @@ export const LANDMARKS = [
   { id: 'fastfood', name: 'Chicken Republic', short: 'FAST FOOD', x: 48, z: -24, c: '#c62828', sign: '#ffffff', h: 5, kind: 'restaurant' },
   { id: 'mall', name: 'Adeniran Ogunsanya Shopping Mall', short: 'MALL', x: -24, z: 72, c: '#8a8f93', sign: '#ffc52f', h: 12, kind: 'mall', big: true },
   { id: 'cafe', name: 'Surulere Cyber Café', short: 'CYBER CAFE', x: -48, z: 72, c: '#3a4a7a', sign: '#5db8ff', h: 5, kind: 'cafe' },
-  { id: 'pitch', name: 'Teslim Balogun Stadium', short: 'TESLIM BALOGUN', x: -120, z: -48, c: '#2f7d49', sign: '#ffffff', kind: 'pitch' },
+  // Teslim Balogun sits beside the National Stadium, on its west side as in reality; Ikate now has the block it stood in.
+  { id: 'pitch', name: 'Teslim Balogun Stadium', short: 'TESLIM BALOGUN', x: -170, z: -100, c: '#2f7d49', sign: '#ffffff', kind: 'pitch' },
   // Costain / Iganmu corridor and Lagos Island (Phase: Bridges & Corridors)
   { id: 'theatre', name: 'National Theatre', short: 'NAT. THEATRE', x: 148, z: -44, c: '#8a8f93', sign: '#ffffff', kind: 'theatre', region: 'costain' },
   { id: 'cathedral', name: 'Cathedral Church of Christ, Marina', short: 'CATHEDRAL', x: 408, z: -24, c: '#d9d2c2', sign: '#ffc52f', h: 12, kind: 'worship', region: 'island' },
@@ -141,7 +163,8 @@ export const ISLAND_CELLS = [384, 408, 464].flatMap(x => [-72, -48, -24, 24, 48,
 export const VENDORS = [[-30, -56], [-10, -56], [10, -76], [30, -76], [-60, -56], [-96, -12], [-84, -36], [-36, -108]];
 
 export const BUSSTOPS = [
-  { id: 'kilo', name: 'Kilo Bus Stop', short: 'KILO', x: -40, z: 15, agberos: 2 },
+  // Kilo is in Ikate, where Olaitan (Odularu) Street meets Itire/Lawanson Road and the Masha road runs off: on the road's south pavement.
+  { id: 'kilo', name: 'Kilo Bus Stop', short: 'KILO', x: -128.2, z: -55.4, agberos: 2 },
   { id: 'ojstop', name: 'Ojuelegba Bus Stop', short: 'OJUELEGBA B/S', x: 18, z: -54, agberos: 1 },
   { id: 'stadstop', name: 'Stadium Bus Stop', short: 'STADIUM B/S', x: -86, z: -55, agberos: 0 },
   { id: 'mushinstop', name: 'Mushin Bus Stop', short: 'MUSHIN B/S', x: -30, z: -77, agberos: 1 },

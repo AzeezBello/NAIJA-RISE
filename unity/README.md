@@ -1,9 +1,11 @@
 # RISE — Lagos · Unity edition
 
-A Unity 6 project that builds the same Lagos as the Three.js game in `../src`, from the same data files. It started on
+A Unity 6 project that builds Lagos from the shared data files in `../src/data`. It started on
 13 October 2026 as the "native-engine vertical slice" that `../PLAN.md` (Multi-Platform Technical Roadmap, §2) asks for
 before any decision to migrate, and has grown in five increments into a playable slice of the game: city, driving,
-people, story, law, housing, business, education and racing. The web edition remains the production baseline.
+people, story, law, housing, business, education and racing. It is now the only edition: the Three.js web edition was
+retired on 17 October 2026 (tag `threejs-final`). References below and in the C# comments to `src/systems`,
+`src/world` and other non-data paths point at files in that tag.
 
 Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFast 6.0.1 with the Meshopt decoder.
 
@@ -117,6 +119,20 @@ XP. Community Grammar School runs the evening adult class; Yaba Tech enrols you 
 paid semesters that graduate into the IT Support Technician job. Street football with Captain Tunde now climbs the three
 tiers: quick match on a wager, the neighbourhood tournament after three wins, the Lagos championship.
 
+**Surulere street people** (`src/data/characters.js`, `src/data/districts/surulere.js`). Thirty-two locals stand on
+their streets, each marked by a green street-name sign. Eleven of the streets are where OpenStreetMap puts them, in Ikate
+on the Kilo–Masha side of Surulere: the block west of Ogunlana Drive between Lawanson/Itire Road and Brown Road/Bode
+Thomas, which the map now extends west to Ijesha Road. Their real coordinates are projected into that block
+(`x = -84 - (3.351 - lon) * 5667`, `z = -(lat - 6.489) * 3000`) and nudged apart; Teslim Balogun's pitch, which stood in
+that block, moved beside the National Stadium as it is in reality. Kilo bus stop moved there too: it stands on Itire/
+Lawanson Road's south pavement where Olaitan (Odularu) Street meets it, and Adenowo Street ("off Kilo") sits beside it;
+Ijero Street has no known position yet. Olaitan and Abiodun are the Olaitan Odularu and Abiodun Ogunayo streets of that
+cluster. `RISE ▸ Render Map Shot` (`Editor/MapShot.cs`) draws the block from above with every contact's spot marked.
+Each person offers their own timed runs (36 in all): Peter the tailor's agbada and wedding dress, Mario's lost phone
+and car papers, KC Tata's jerrycan and trial boots, Dj Saha's speakers, Baby's risky package (adds heat), and so on.
+Runs are data: a contact's `runs` array is exported with the map and offered through the hub menu, so adding a person
+or a run is an edit in `src/data` plus `npm run export:unity`; `npm run check` validates every destination and item.
+
 **Weather and animals** (`Scripts/World/Weather.cs`, `AnimalSystem.cs`). A 15 % chance every minute of two to five
 minutes of rain: a particle curtain around the camera, darker light, wet roads that cut grip, braking and steering to
 70 % (as `movement.js` does), a storm variant, and harmattan haze on days 7 to 9 of every ten. Goats around the
@@ -186,9 +202,19 @@ device polling when the asset is missing.
 installed, so the Windows entry needs the Windows Build Support module, and console targets need the platform
 holders' modules and licences.
 
-**HUD** (`Scripts/UI/`). Brand, district and street or bridge top-left; clock, day and heat top-right; the objective
-card and a north-up minimap bottom-left; cash, RiseBank, level, XP, reputation and speed / fuel / condition
-bottom-right; health and stamina bars with the prompt bottom-centre; toasts, menus, shift overlay, wanted banner.
+**HUD** (`Scripts/UI/Hud.cs`). Dark glass cards with rounded corners in the website's palette and typeface (Inter, in
+`Resources/Fonts` under the SIL OFL; the built-in font had no ₦, ★ or ▲ glyph). Location top-left; clock, day/night,
+weather, heat pips and network status top-right; the objective card with the route distance and a north-up minimap
+with a heading arrow bottom-left; wallet, level, XP and reputation bottom-right, with the portrait on foot and a speed /
+fuel / condition cluster while driving; labelled health and stamina with a key-cap prompt bottom-centre; toasts that
+slide in and fade, menus with a highlighted row (a free mouse can hover and click), shift overlay, wanted capsule.
+Cards size to their text and every texture is generated in code, rebuilt when the screen scale changes.
+
+**QA tools.** `RISE ▸ Render Vehicle Sheet` (`Editor/VehicleSheet.cs`) renders every vehicle model to a contact sheet
+with its front marked, which is how the Lagos models that imported standing on end or on their side were found and
+fixed (`VehicleBodies.ModelFix`); the smoke test now also fails a model taller than it is long. `NR_DIAG=shots,nosave`
+on a desktop player (`?diag=shots,nosave` on WebGL) captures the HUD on foot, in a menu, driving and wanted, then quits
+(`Scripts/DiagShots.cs`); `nosave` keeps any diagnostic run from overwriting a real save.
 
 Everything is created from code at startup by `GameBootstrap` in `Assets/Rise/Scenes/Lagos.unity`; the scene
 only holds a camera, a sun and that one component. Pipeline assets in `Assets/Settings` come from the editor's own

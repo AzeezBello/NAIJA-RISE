@@ -1,41 +1,38 @@
 # RISE — Lagos · Alpha 1.0
 
-A browser-playable open-world life simulation set in a living Surulere, Lagos. Original IP: original characters, missions and story, with real Lagos place and street names on a stylised map.
+A browser-playable open-world life simulation set in a living Nigeria. Original IP: original characters, missions and story, with real Nigeria place and street names on a stylised map.
 
 **Build your life. Build your empire. Survive the city.**
 
 See [PLAN.md](PLAN.md) for the product plan, what is done, and the next phase, and [DEPLOY.md](DEPLOY.md) for Vercel deployment.
 
+> **The Three.js web edition has been retired.** Its engine (`src/` apart from `src/data`), the static build
+> (`index.html`, `styles/`, `sw.js`) and the `/play` game mount in `web/` were removed. The last commit that contains
+> it is tagged `threejs-final`: `git checkout threejs-final` to run or recover it.
+
 ## Unity edition
 
-A Unity 6 edition of the same game lives in [unity/](unity/README.md). It is the native-engine vertical slice from the plan, built from the same data files: `npm run export:unity` writes the district map, jobs, contacts, vehicles, businesses, courses and rules to JSON, and C# systems build the city, the driving, the people (the same Ready Player Me rig and the full set of Kenney and Lagos vehicle GLBs, imported with glTFast), the story with its GPS, the law, housing, business, education and racing. It compiles clean, has headless smoke and play-mode tests, builds macOS and WebGL players (with touch controls for phones), and carries the account, cloud-save and district-multiplayer client against the Supabase schema in `supabase/schema.sql`. The web edition in `src/` and `web/` remains the production baseline; the Unity edition exists to be measured against it before any migration decision.
+The game lives in [unity/](unity/README.md): a Unity 6 project built from the shared data files. `npm run export:unity` writes the district map, jobs, contacts, vehicles, businesses, courses and rules from `src/data` to JSON, and C# systems build the city, the driving, the people (the same Ready Player Me rig and the full set of Kenney and Lagos vehicle GLBs, imported with glTFast), the story with its GPS, the law, housing, business, education and racing. It compiles clean, has headless smoke and play-mode tests, builds macOS and WebGL players (with touch controls for phones), and carries the account, cloud-save and district-multiplayer client against the Supabase schema in `supabase/schema.sql`.
 
 ```bash
 npm run export:unity        # after editing src/data
 open unity                  # then open Assets/Rise/Scenes/Lagos.unity in Unity 6000.6 and press Play
+python3 webgl_server.py     # serve a WebGL build from unity/Builds/WebGL with gzip headers
 ```
 
-## Play
+## Website
 
-Static build (no install):
-
-```bash
-python3 -m http.server 4173
-# open http://localhost:4173
-```
-
-Next.js 16 shell (landing page, `/play`, `/account`, `/admin`), Turbopack in dev and build:
+Next.js 16 site (landing page, `/account`, `/admin`; `/play` is a placeholder until the Unity WebGL build is hosted), Turbopack in dev and build:
 
 ```bash
-npm install          # repo root: the engine's own `three` dependency
 cd web && npm install
 npm run dev          # http://localhost:3000
 npm run build && npm start
 ```
 
-Three.js and fonts load from CDNs in the static build, so an internet connection is required for the first load; a service worker then caches the shell and the page installs as a PWA. Progress saves to the browser (localStorage).
+## What was in Alpha 1.0 (Three.js edition)
 
-## What is in Alpha 1.0
+The feature notes below describe the retired Three.js edition (tag `threejs-final`); paths under `src/` other than `src/data` refer to files in that tag. The Unity edition ports these systems; see [unity/README.md](unity/README.md) for its current state.
 
 **Corridors (1.0)** — the map now runs the whole PRD corridor set. **Falomo Bridge** carries Marina south over Five Cowrie Creek into **Victoria Island** (Civic Centre, RiseBank VI, The Yellow Chilli, Eko Hotel, the Eko Atlantic shore with its palm line, Adeola Odeku, Ahmadu Bello Way, Akin Adesola) and on past the **Lekki Toll Gate** onto the Lekki–Epe Expressway and a **Lekki Phase 1** stub on Admiralty Way. **Third Mainland Bridge** carries Broad Street north over the lagoon into **Yaba** (Tejuosho Market, Yaba Tech, the UNILAG gate, Jibowu bus stop, Herbert Macaulay and Murtala Muhammed Way), and **Ikorodu Road** runs the full width of the mainland from Jibowu through **Ebute Metta** to **Ikorodu Garage**, joined to Surulere by Western Avenue. Infrastructure: pedestrian bridges over the expressway, Ikorodu Road and Adeola Odeku; danfo queues at the Costain, CMS and Jibowu terminals; a toll plaza that charges ₦1,200 per crossing (jump it and LASTMA notes your plate); road-construction diversions with cones, barriers and a DIVERSION sign that close a lane for a while; every bridge has the rush-hour profile. Three long-distance jobs (Lekki dispatch, Yaba campus courier, Ikorodu haulage) make the trip the work. Roads, medians, highway lamp posts, street lights, junction signs and traffic lights are all generated from the district data, so the next district (Ikeja, Apapa…) is a data file.
 
@@ -118,25 +115,19 @@ Settings (phone) cover camera sensitivity, minimap rotation, shadows, hints, tou
 ## Project layout
 
 ```
-index.html, styles/      static build (shell + shared styles)
-src/                     Three.js engine (ES modules, no bundler needed)
-  core/      context, events, state, renderer, input, gamepad
-  data/      config, districts/ (surulere), vehicles, characters, jobs, businesses, missions, items
-  world/     textures, builders, district, daynight
-  entities/  player, vehicles, npcs, animals
-  systems/   movement, navigation, dialogue, interaction, economy, vitals, police, events
-  ui/        hud, minimap, phone, apps/, touch, components, feedback
-  scenes/    manager, title, city
-  game.js    createGame({ mount, ui }) — used by main.js and the Next shell
-web/                     Next.js 16 / React 19 / TypeScript shell with a React Three Fiber landing hero
-package.json             root: the engine's `three` dependency so web/ can bundle ../src with Turbopack
+unity/                   Unity 6 edition (the game); see unity/README.md
+src/data/                shared map and content data (districts/, config, jobs, characters, vehicles, family,
+                         businesses, items, crew, schedules), exported to unity/ by scripts/export-world.mjs
+scripts/                 export-world.mjs (src/data → unity/Assets/Rise/Resources/world/lagos.json), check-data.mjs
+supabase/                schema, migrations and SQL tests for accounts, saves and crews
+web/                     Next.js 16 / React 19 / TypeScript site with a React Three Fiber landing hero
+webgl_server.py          local server for the Unity WebGL build (gzip headers)
 ```
 
-Add a new area by creating `src/data/districts/<id>.js` with the same exports as `surulere.js` and registering it in `districts/index.js`; load it with `?district=<id>`.
+Add a new area by creating `src/data/districts/<id>.js` with the same exports as `surulere.js`, registering it in `districts/index.js` and `districts/lagos.js`, then running `npm run export:unity`.
 
 ## QA
 
-- `node --check` passes for every module.
-- Headless Chrome (puppeteer-core) runs with zero page errors: title → city, phone apps, jobs, bank, character, mission dialogue with a branching choice, driving, police pursuit, night lighting, mobile viewport with touch controls; the Next build serves `/` and `/play`.
-- Saves from Alpha 0.5 to 0.8 migrate automatically.
-- Append `#debug` to the URL to expose `window.__nr` for manual testing.
+- `npm run check`: `node --check` on every data module plus the place, job and contact reference checks.
+- CI ([.github/workflows/web.yml](.github/workflows/web.yml)) also fails if `lagos.json` drifts from a fresh export, and builds the Next.js site.
+- Unity tests run locally; see [unity/README.md](unity/README.md).

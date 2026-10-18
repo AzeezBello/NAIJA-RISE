@@ -41,9 +41,10 @@ namespace Rise.World
             }
             var unlit = ShaderLib.Unlit;
             var go = new GameObject("GPS route"); go.transform.SetParent(parent, false);
+            go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);   // TransformZ alignment: the strip lies flat on the road
             line = go.AddComponent<LineRenderer>();
-            line.material = new Material(unlit) { color = new Color(0.24f, 1f, 0.47f, 0.85f) };
-            line.widthMultiplier = 0.7f; line.numCornerVertices = 2; line.alignment = LineAlignment.View; line.positionCount = 0;
+            line.material = new Material(unlit) { color = new Color(0.2f, 0.9f, 0.42f, 0.85f) };
+            line.widthMultiplier = 0.55f; line.numCornerVertices = 3; line.numCapVertices = 3; line.alignment = LineAlignment.TransformZ; line.positionCount = 0;
             line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
             marker = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
@@ -93,7 +94,7 @@ namespace Rise.World
         List<Vector3> ToWorld(List<Vector2> pts)
         {
             var w = new List<Vector3>(pts.Count);
-            foreach (var p in pts) { var v = WorldData.W(p.x, 0f, p.y); v.y = data.DeckHeightAtData(p.x, p.y) + 0.35f; w.Add(v); }
+            foreach (var p in pts) { var v = WorldData.W(p.x, 0f, p.y); v.y = data.DeckHeightAtData(p.x, p.y) + 0.12f; w.Add(v); }
             return w;
         }
 
