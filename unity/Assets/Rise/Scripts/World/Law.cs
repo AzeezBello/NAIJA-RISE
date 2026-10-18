@@ -4,7 +4,7 @@ using Rise.Data;
 
 namespace Rise.World
 {
-    // Law and order (src/systems/police.js, trafficlights.js): FRSC speeding tickets, the army checkpoint, pedestrian
+    // Law and order: FRSC speeding tickets, the army checkpoint, pedestrian
     // hits, running reds under LASTMA's eye, police pursuit and arrest at Heat 3+, army roadblocks at Heat 4+, and
     // laying low at your own gate.
     public class Law : MonoBehaviour

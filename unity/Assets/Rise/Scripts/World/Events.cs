@@ -97,7 +97,12 @@ namespace Rise.World
         static void Label(Transform parent, string text)
         {
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            for (int side = 0; side < 2; side++) { var go = new GameObject("Label"); go.transform.SetParent(parent, false); go.transform.localPosition = new Vector3(0, 0, side == 0 ? -0.6f : 0.6f); go.transform.localRotation = Quaternion.Euler(0, side * 180f, 0); go.transform.localScale = new Vector3(1f / Mathf.Max(0.01f, parent.localScale.x), 1f / Mathf.Max(0.01f, parent.localScale.y), 1f); var tm = go.AddComponent<TextMesh>(); tm.text = text; tm.font = font; tm.fontSize = 48; tm.characterSize = 0.06f; tm.fontStyle = FontStyle.Bold; tm.anchor = TextAnchor.MiddleCenter; tm.alignment = TextAlignment.Center; tm.color = new Color(0.03f, 0.06f, 0.05f); go.GetComponent<MeshRenderer>().sharedMaterial = font.material; }
+            var go = new GameObject("Label"); go.transform.SetParent(parent, false); go.transform.localPosition = new Vector3(0, 0, -0.6f);
+            go.transform.localScale = new Vector3(1f / Mathf.Max(0.01f, parent.localScale.x), 1f / Mathf.Max(0.01f, parent.localScale.y), 1f);
+            var tm = go.AddComponent<TextMesh>(); tm.text = text; tm.font = font; tm.fontSize = 48; tm.characterSize = 0.06f; tm.fontStyle = FontStyle.Bold;
+            tm.anchor = TextAnchor.MiddleCenter; tm.alignment = TextAlignment.Center; tm.color = new Color(0.03f, 0.06f, 0.05f);
+            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            go.AddComponent<Entities.FacingLabel>();
         }
 
         public void Clear() { Current = null; foreach (var p in props) if (p != null) Destroy(p); props.Clear(); }

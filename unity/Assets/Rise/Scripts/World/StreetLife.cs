@@ -5,7 +5,7 @@ using Rise.Entities;
 
 namespace Rise.World
 {
-    // Agberos at the bus stops (src/entities/npcs.js spawnAgberos, dialogue.js runAgbero), uniformed service NPCs
+    // Agberos at the bus stops, uniformed service NPCs
     // standing at their posts, night hustlers outside the clubs after 20:00 (mature content, off by default), the owambe
     // crowd at the event centre from 19:00, and the pet dog that follows you and keeps agberos away.
     public class StreetLife : MonoBehaviour

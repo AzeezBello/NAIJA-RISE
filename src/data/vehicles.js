@@ -8,9 +8,7 @@
 // commercial = NPC public-transport fleet.
 // fare       = default passenger fare in NGN.
 //
-// GLB loading is handled by src/entities/vehicleModels.js.
-// That loader checks /vehicles/<model>.glb first, then the
-// legacy assets/vehicles/kenney/ path.
+// GLB loading is handled by unity/Assets/Rise/Scripts/Vehicles/VehicleBodies.cs.
 // ============================================================
 
 export const VEH = {

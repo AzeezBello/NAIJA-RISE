@@ -35,8 +35,8 @@ namespace Rise.Vehicles
         static Transform Wheel(Transform parent, Vector3 pos, float radius) =>
             Part(parent, PrimitiveType.Cylinder, pos, new Vector3(radius * 2f, 0.12f, radius * 2f), Mat("#141414", 0.2f), Quaternion.Euler(0, 0, 90));
 
-        // Models per class (Resources/Models/Vehicles), the same assignment as MODELS in src/data/vehicles.js: Kenney's Car Kit
-        // (CC0) for cars and services, and the owner's Lagos fleet (danfo, keke, korope, okada, BRT, army, tanker, pickup,
+        // Models per class (Resources/Models/Vehicles): Kenney's Car Kit
+        // (CC0) for cars and services, and the Lagos fleet (danfo, keke, korope, okada, BRT, army, tanker, pickup,
         // motorcycles, vans). A class with no model, or whose model fails to load, falls back to the procedural body.
         static readonly Dictionary<string, string[]> Models = new Dictionary<string, string[]>
         {
@@ -49,7 +49,7 @@ namespace Rise.Vehicles
             ["motorcycle"] = new[] { "2008_kawasaki_ninja_zx-10r-em", "suzuki_hayabusa_gsx-1300r-k8" },
         };
         // Extra yaw (degrees) to bring a model's native front onto +z. glTFast keeps glTF +Z as Unity +z, so most models need
-        // none; the keke's front is along glTF +X, which is -x in Unity (the web edition's MODEL_ROTATION says π/2 for it).
+        // none; the keke's front is along glTF +X, which is -x in Unity.
         static readonly Dictionary<string, float> ModelYaw = new Dictionary<string, float> { ["keke_bajaj_re"] = 90f, ["suzuki_carry_minivan"] = -45f };   // the korope is modelled 45° off its axis
         // Up-axis corrections (Euler degrees, applied before ModelYaw) for models exported with Z up or lying on a side,
         // which otherwise import standing on end or on their side. Found with RISE ▸ Render Vehicle Sheet (Editor/VehicleSheet.cs).

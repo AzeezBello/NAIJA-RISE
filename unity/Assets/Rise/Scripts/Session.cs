@@ -21,7 +21,7 @@ namespace Rise
         [System.NonSerialized] public readonly System.Collections.Generic.List<VehicleController> Parked = new System.Collections.Generic.List<VehicleController>();
 
         enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Vendor, Gate, Home, Business, BusStop, Deliver, Place, Hustler }
-        Target target; ContactSystem.Contact targetContact; VehicleController targetVehicle; TrafficSystem.Vehicle targetTraffic; Vector3 targetKiosk, targetVendor;
+        Target target; ContactSystem.Contact targetContact; VehicleController targetVehicle; TrafficSystem.Vehicle targetTraffic; Vector3 targetKiosk;
         PropertyData targetProperty; BusinessData targetBusiness; BusStopData targetStop;
         float saveT, heatT = 45f;
         bool sinking;

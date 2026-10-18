@@ -4,8 +4,8 @@ using Rise.Data;
 
 namespace Rise.World
 {
-    // Traffic lights at every grid junction whose roads carry lights (expressways excluded). One shared cycle, as in
-    // src/systems/trafficlights.js: h-green 12 s, amber 2 s, v-green 12 s, amber 2 s. Traffic stops on red; the player
+    // Traffic lights at every grid junction whose roads carry lights (expressways excluded). One shared cycle:
+    // h-green 12 s, amber 2 s, v-green 12 s, amber 2 s. Traffic stops on red; the player
     // running a red within sight of the LASTMA post pays ₦5,000 or picks up heat.
     public class TrafficLights : MonoBehaviour
     {

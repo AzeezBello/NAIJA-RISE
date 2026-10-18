@@ -1,7 +1,7 @@
 // Static data checks for the shared content files in src/data (exported to Unity by scripts/export-world.mjs).
 // Run with `npm run check` (or `node scripts/check-data.mjs`).
 // Catches the class of bug where a job or contact points at a place id that is missing from the merged Lagos map.
-// Story missions live in unity/Assets/Rise/Scripts/Story/Story.cs since the Three.js engine was retired.
+// Story missions live in unity/Assets/Rise/Scripts/Story/Story.cs.
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
 

@@ -6,7 +6,7 @@ using Rise.Data;
 
 namespace Rise
 {
-    // The saved player state (mirrors src/core/state.js DEFAULT): money, XP and level, heat, vitals, skills, time and
+    // The saved player state: money, XP and level, heat, vitals, skills, time and
     // position. Saved as JSON under Application.persistentDataPath.
     [Serializable]
     public class SkillSet { public float driving, business, charisma, fitness, strength;
@@ -23,19 +23,19 @@ namespace Rise
         public float px, py, pz, yaw;
         public SkillSet skills = new SkillSet();
         public string lastSeen;
-        // Housing and business (src/core/state.js: home, rented, props, owned, biz)
+        // Housing and business
         public string home = "", rentedId = ""; public int rentedUntil;
         public List<string> props = new List<string>();
         public List<OwnedBusiness> biz = new List<OwnedBusiness>();
         public float payIn = 60f;
-        // Story (src/data/missions.js): mission index, the prologue path, the arc after Crossroads, flags.
+        // Story: mission index, the prologue path, the arc after Crossroads, flags.
         public int mission; public string path = "", arc = ""; public bool chase, kioskDeal, done, storyPaused;
         public List<string> items = new List<string>();
         public RepSet rep = new RepSet();
         // Live task (one at a time): type is "" when none.
         public string taskType = "", taskDest = "", taskItem = "", taskObj = ""; public float taskDeadline, taskMaxKmh, taskClear; public int taskMission; public bool taskTaken;
         public List<OwnedVehicle> vehicles = new List<OwnedVehicle>();
-        // Education and activities (src/systems/education.js, places.js)
+        // Education and activities
         public List<string> courses = new List<string>();
         public int gymUntil, gymSessions, outfits;
         public int lookFabric, lookSkin = 2, lookPants, lookHair, lookCap = 1;   // indices into the exported wardrobe lists; cap 1 = fila
@@ -44,7 +44,7 @@ namespace Rise
         public int collegeSemester = -1; public bool collegeGraduated;            // -1 = not enrolled
         public int quality = 2; public bool cinematic = true, qualityAuto = true;   // 0 low, 1 medium, 2 high; auto picks and steps down
         public int lookOutfit, lookAccessory = 1;                                   // outfit silhouette; accessory 1 = fila (cap index kept in lookCap)
-        // Family (src/systems/family.js) and contact relationships (src/systems/relationships.js)
+        // Family and contact relationships
         public List<FamilyRel> familyRel = new List<FamilyRel>();
         public List<string> familyDone = new List<string>();
         public string familyRequest = ""; public int familyRequestDay = -1;
@@ -162,7 +162,7 @@ namespace Rise
 
         public void Toast(string text) => Toasts.Add((text, Time.time + 3.5f));
         public void Message(string from, string text) { Messages.Add((from, text)); Toast($"{data.ContactName(from)}: {text}"); }
-        // ---- housing (src/systems/interaction.js rentProperty / buyProperty, economy.js day handler) ----
+        // ---- housing ----
         public PropertyData Home => string.IsNullOrEmpty(S.home) ? null : data.Property(S.home);
         public bool Owns(PropertyData p) => S.props.Contains(p.id);
 
@@ -261,13 +261,14 @@ namespace Rise
             return n;
         }
 
-        public void CycleStaffShift(BusinessData b, int idx)
+        public string CycleStaffShift(BusinessData b, int idx)
         {
-            var o = Biz(b.id); if (o == null || idx < 0 || idx >= o.staff.Count) return;
+            var o = Biz(b.id); if (o == null || idx < 0 || idx >= o.staff.Count) return "all-day";
             string cur = StaffShift(o, idx);
             int next = (Array.IndexOf(ShiftIds, cur) + 1) % ShiftIds.Length;
             o.shifts[idx] = ShiftIds[next];
             Toast($"{o.staff[idx]} · {ShiftLabel(o.shifts[idx])} shift");
+            return o.shifts[idx];
         }
 
         public int BizIncome(BusinessData b, float? clockOverride = null)
@@ -361,7 +362,7 @@ namespace Rise
             return (Mathf.RoundToInt(minutes), biz, rent, upkeep, net, days);
         }
 
-        // ---- relationships (src/systems/relationships.js) ----
+        // ---- relationships ----
         public ContactRel Rel(string id) { foreach (var r in S.contactRel) if (r.id == id) return r; var n = new ContactRel { id = id }; S.contactRel.Add(n); return n; }
         public string RelTier(string id) { var r = Rel(id); float score = (r.trust + r.respect) * 0.5f; return score >= 70f ? "close" : score >= 45f ? "friend" : score >= 25f ? "known" : "stranger"; }
         public bool TalkedToday(string id) => Rel(id).talkDay == S.day;
@@ -369,7 +370,7 @@ namespace Rise
 
         public FamilyRel Family(string id) { foreach (var r in S.familyRel) if (r.id == id) return r; var n = new FamilyRel { id = id }; S.familyRel.Add(n); return n; }
 
-        // ---- Yaba Tech (src/systems/education.js completeYabaTechSemester) ----
+        // ---- Yaba Tech ----
         public bool CompleteSemester()
         {
             if (S.collegeSemester < 0 || S.collegeGraduated) return false;
@@ -385,7 +386,7 @@ namespace Rise
             return true;
         }
 
-        // Cash ↔ bank (src/ui/apps/bank.js)
+        // Cash ↔ bank
         public bool Deposit(int n) { if (n <= 0 || S.cash < n) return false; S.cash -= n; S.bank += n; return true; }
         public bool Withdraw(int n) { if (n <= 0 || S.bank < n) return false; S.bank -= n; S.cash += n; return true; }
 
@@ -405,7 +406,7 @@ namespace Rise
             }
         }
 
-        // ---- education (src/systems/education.js completeCourse) ----
+        // ---- education ----
         public bool CompleteCourse(CourseData c)
         {
             if (c == null || HasCourse(c.id)) return false;

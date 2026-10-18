@@ -4,7 +4,7 @@ using UnityEngine.Rendering.Universal;
 
 namespace Rise.World
 {
-    // The poster look (src/core/postfx.js) on URP: an HDR frame, a soft bloom that only really shows on neon and street
+    // The poster look on URP: an HDR frame, a soft bloom that only really shows on neon and street
     // lights at night, a neutral grade and ACES tone mapping, with a light vignette. One global Volume, built in code.
     public static class PostFx
     {

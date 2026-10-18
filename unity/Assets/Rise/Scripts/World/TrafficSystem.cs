@@ -148,9 +148,12 @@ namespace Rise.World
             var fwd = r.Forward(v.dir);
             var right = Vector3.Cross(Vector3.up, fwd);
             var p = r.Point(v.along, r.k) + right * LaneOffset(v);
-            p.y = data.DeckHeightAt(p) + 0.11f;
+            float y0 = data.DeckHeightAt(p);
+            float y1 = data.DeckHeightAt(p + fwd * 2f);
+            p.y = y0 + 0.11f;
             v.t.position = p;
-            v.t.rotation = Quaternion.LookRotation(fwd, Vector3.up);
+            var slopeFwd = (fwd * 2f + Vector3.up * (y1 - y0)).normalized;
+            v.t.rotation = Quaternion.LookRotation(slopeFwd, Vector3.up);
         }
     }
 }

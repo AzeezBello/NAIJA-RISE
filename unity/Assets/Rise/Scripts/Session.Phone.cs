@@ -57,7 +57,7 @@ namespace Rise
             var entries = new System.Collections.Generic.List<(string id, string label, float dist)>();
             var origin = Focus.position;
             foreach (var l in Data.landmarks)
-                if (string.IsNullOrEmpty(q) || l.name.ToLowerInvariant().Contains(q) || (l.sub != null && l.sub.ToLowerInvariant().Contains(q)))
+                if (string.IsNullOrEmpty(q) || l.name.ToLowerInvariant().Contains(q) || (l.shortName != null && l.shortName.ToLowerInvariant().Contains(q)))
                     entries.Add((l.id, $"Landmark · {l.name}", Vector3.Distance(origin, l.World())));
             foreach (var b in Data.busStops)
                 if (string.IsNullOrEmpty(q) || b.name.ToLowerInvariant().Contains(q) || b.shortName.ToLowerInvariant().Contains(q))

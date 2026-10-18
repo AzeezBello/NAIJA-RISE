@@ -235,8 +235,8 @@ namespace Rise.EditorTools
                         Check(s.PhoneOpen && s.ActiveMenu != null && s.ActiveMenu.Options.Count == 13, $"phone opens with twelve apps ({s.ActiveMenu?.Options.Count - 1})");
                         int cash = s.State.S.cash, bank = s.State.S.bank; s.Choose(2); s.Choose(0);   // RiseBank → deposit ₦10,000
                         Check(s.State.S.cash == cash - 10000 && s.State.S.bank == bank + 10000, $"bank deposit: cash ₦{s.State.S.cash:N0}, bank ₦{s.State.S.bank:N0}");
-                        s.AppMap("Shoprite");
-                        Check(s.ActiveMenu != null && s.ActiveMenu.Title == "Map · GPS" && s.ActiveMenu.Options.Exists(o => o.Label.Contains("Shoprite")), "Map · GPS app filters landmarks");
+                        s.AppMap("Adeniran");
+                        Check(s.ActiveMenu != null && s.ActiveMenu.Title == "Map · GPS" && s.ActiveMenu.Options.Exists(o => o.Label.Contains("Adeniran")), "Map · GPS app filters landmarks");
                         s.SetWaypoint("mall");
                         Check(s.State.S.waypointId == "mall" && s.ResolveWaypoint("mall", out _) != null, "GPS waypoint set to Adeniran Ogunsanya Mall");
                         s.SetWaypoint("");
@@ -304,14 +304,14 @@ namespace Rise.EditorTools
                         Check(s.State.HireStaff(kiosk) && s.State.BizIncome(kiosk) > income, $"hired {s.State.Biz(kiosk.id).staff[0]}: income ₦{income:N0} → ₦{s.State.BizIncome(kiosk):N0}");
                         Check(s.State.CycleStaffShift(kiosk, 0) == "morning" && s.State.CycleStaffShift(kiosk, 0) == "afternoon" && s.State.CycleStaffShift(kiosk, 0) == "night" && s.State.CycleStaffShift(kiosk, 0) == "all-day", "staff shift schedules cycle (morning → afternoon → night → all-day)");
                         s.State.S.lastSeen = System.DateTime.UtcNow.AddMinutes(-30).ToString("o");
-                        int awayEarned = s.State.ApplyAwayEarnings();
+                        int awayEarned = s.State.ApplyAwayEarnings()?.net ?? 0;
                         Check(awayEarned > 0 && s.State.S.awayTotal >= awayEarned, $"'Lagos Never Sleeps' offline earnings credited (+₦{awayEarned:N0})");
                         s.State.S.cash += 50000;
                         Check(s.BuyProtectionWeapon() && s.State.Has("weapon"), "bought protection weapon from Dayo");
                         s.EnterInterior("Test Room", "home");
-                        Check(s.InsideInterior, "entered 3D building interior");
+                        Check(s.InInterior, "entered 3D building interior");
                         s.LeaveInterior();
-                        Check(!s.InsideInterior, "exited 3D building interior back to the street");
+                        Check(!s.InInterior, "exited 3D building interior back to the street");
                         Check(UI.SoundSystem.I != null, "synthesised SoundSystem initialised");
                         s.State.BuyBusiness(boot.Data.businesses[1]);
                         Check(s.State.RivalOpen && s.State.BizIncome(kiosk) < Mathf.RoundToInt(income * 1.3f), $"{boot.Data.rivalName} opened after two businesses and undercuts normal prices");

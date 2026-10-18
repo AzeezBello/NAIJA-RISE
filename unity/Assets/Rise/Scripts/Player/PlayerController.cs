@@ -86,7 +86,7 @@ namespace Rise.Player
             velocity.y += Gravity * Time.deltaTime;
             cc.Move((horizontal + Vector3.up * velocity.y) * Time.deltaTime);
 
-            // Locomotion state → clip (src/entities/character.js: idle, walk, run cross-fades, clip speed matched to movement).
+            // Locomotion state → clip (idle, walk, run cross-fades, clip speed matched to movement).
             AnimState = speed < 0.3f ? "idle" : IsRunning && speed > 5.5f ? "run" : "walk";
             // Swimming: the body sits in the water and the walk plays slowly as a stroke.
             if (rig != null) { var rt = rig.Root.transform; var lp = rt.localPosition; lp.y = Mathf.Lerp(lp.y, Swimming ? -0.95f : 0f, 1f - Mathf.Exp(-6f * Time.deltaTime)); rt.localPosition = lp; }

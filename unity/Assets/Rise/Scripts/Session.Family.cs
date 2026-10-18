@@ -4,7 +4,7 @@ using Rise.World;
 
 namespace Rise
 {
-    // Family life (src/systems/family.js): Mama Tunde and Chioma follow their day plans between the compound, the
+    // Family life: Mama Tunde and Chioma follow their day plans between the compound, the
     // market, the school gate and church; household needs drift down each day and raise requests (chop money, a visit,
     // suya or sachet water, the school levy); completing them restores the need, bonds the family and pays XP and
     // social reputation. Family bond labels come from the data (Strained … Unshakable).
