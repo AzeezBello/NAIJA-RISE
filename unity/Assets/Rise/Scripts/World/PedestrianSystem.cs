@@ -12,13 +12,15 @@ namespace Rise.World
         public int Count = 70;
         public float SpawnRadius = 190f, RecycleRadius = 260f;
 
-        class Ped { public Transform t; public RigInstance rig; public RoadData road; public int side, dir; public float along, speed, phase; }
+        class Ped { public Transform t; public RigInstance rig; public RoadData road; public int side, dir; public float along, speed, phase; public string role; }
+        static readonly string[] Roles = { "trader", "office", "youth", "wander" };
         public int RiggedCount { get; private set; }
         public int CesiumCount { get; private set; }
         public int Alive => peds.Count;
         public int BodyColliders { get { int n = 0; foreach (var p in peds) if (p.t.GetComponent<CapsuleCollider>() != null) n++; return n; } }
 
         WorldData data;
+        DayNightCycle clock;
         Transform player, root;
         readonly List<Ped> peds = new List<Ped>();
         System.Random rng = new System.Random(7);
@@ -26,10 +28,12 @@ namespace Rise.World
         public void Init(WorldData world, Transform playerTransform, Transform parent)
         {
             data = world; player = playerTransform;
+            clock = FindAnyObjectByType<DayNightCycle>();
             root = new GameObject("Pedestrians").transform; root.SetParent(parent, false);
             for (int i = 0; i < Count; i++)
             {
-                var p = new Ped(); p.t = BuildBody(out p.rig).transform; if (p.rig != null) { RiggedCount++; if (p.rig.Cesium) CesiumCount++; }
+                var p = new Ped { role = Roles[i % Roles.Length] };
+                p.t = BuildBody(out p.rig).transform; if (p.rig != null) { RiggedCount++; if (p.rig.Cesium) CesiumCount++; }
                 if (!Respawn(p)) { Destroy(p.t.gameObject); continue; }
                 peds.Add(p);
             }
@@ -52,7 +56,7 @@ namespace Rise.World
             string[] hair = { "#120b08", "#3a2214", "#6b3e1a", "#b0b0b0" };
             var look = new Look { Fabric = fabric, Pants = pants, Skin = skin, Hair = Mannequin.Hex(hair[rng.Next(hair.Length)]), Cap = cap,
                 Outfit = rng.Next(Mathf.Max(1, data.outfits.Length)), BodyType = rng.Next(Mathf.Max(1, data.bodyTypes.Length)), HairStyle = rng.Next(Mathf.Max(1, data.hairStyles.Length)), FacialHair = rng.NextDouble() < 0.35 ? rng.Next(Mathf.Max(1, data.facialHair.Length)) : 0, Accessory = cap.HasValue ? 1 : rng.NextDouble() < 0.2 ? 3 + rng.Next(2) : 0 };
-            // Rig 0 (Ready Player Me) weight 0.7, CesiumMan 0.3, as in src/data/config.js CHARACTER.rigs.
+            // Ready Player Me weight 0.7, CesiumMan 0.3.
             if (CharacterRig.Available) rig = CharacterRig.Build(go.transform, look, 0, 1.62f + (float)rng.NextDouble() * 0.3f, rng.NextDouble() < 0.3);
             else Mannequin.Build(go.transform, top, pants, skin, cap, 0, 0.9f + (float)rng.NextDouble() * 0.2f);
             return go;
@@ -94,17 +98,30 @@ namespace Rise.World
             foreach (var p in peds) if (p.t == t) { p.along += p.dir * 4f; p.speed = 2.6f; return; }
         }
 
+        float SchedulePace(string role, float h)
+        {
+            switch (role)
+            {
+                case "trader": return h >= 6f && h <= 19f ? 1.12f : 0.8f;
+                case "office": return (h >= 7f && h <= 9.5f) || (h >= 17f && h <= 19.5f) ? 1.3f : 0.95f;
+                case "youth": return h >= 15f && h <= 23.5f ? 1.2f : 0.9f;
+                default: return 1f;
+            }
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;
+            float h = clock != null ? clock.Clock : 12f;
             foreach (var p in peds)
             {
-                p.along += p.dir * p.speed * dt;
+                float spd = p.speed * SchedulePace(p.role, h);
+                p.along += p.dir * spd * dt;
                 bool turn = p.along < p.road.from + 3f || p.along > p.road.to - 3f || data.OnBridge(p.road.axis, p.road.k, p.along);
                 var pos = Position(p);
                 if (!turn && data.InWater(pos)) turn = true;
                 if (turn) { p.dir = -p.dir; p.along += p.dir * 2f; pos = Position(p); }
-                if (p.rig != null) p.rig.SetState(p.speed > 2.2f ? "run" : "walk", p.speed > 2.2f ? p.speed / CharacterRig.RunClipSpeed : p.speed / CharacterRig.WalkClipSpeed);
+                if (p.rig != null) p.rig.SetState(spd > 2.2f ? "run" : "walk", spd > 2.2f ? spd / CharacterRig.RunClipSpeed : spd / CharacterRig.WalkClipSpeed);
                 else pos.y += Mathf.Abs(Mathf.Sin(Time.time * 7f + p.phase)) * 0.04f;
                 p.t.position = pos;
                 p.t.rotation = Quaternion.LookRotation(p.road.Forward(p.dir), Vector3.up);

@@ -5,7 +5,7 @@ using Rise.Entities;
 
 namespace Rise.World
 {
-    // Goats around the markets, chickens near compounds, stray dogs and cats (src/data ANIMALS, src/entities/animals.js).
+    // Goats around the markets, chickens near compounds, stray dogs and cats.
     // The dog is the rigged GLB with its walk and idle clips; the cat is the static GLB; goats and chickens are
     // primitives. Each wanders a small patch around its home spot.
     public class AnimalSystem : MonoBehaviour

@@ -29,8 +29,7 @@ const roads = AXES.flatMap(axis => L.ROADS[axis].map(k => {
 const segments = AXES.flatMap(axis => Object.entries(L.ROAD_SEGMENTS[axis] || {})
   .flatMap(([k, segs]) => (segs || []).map(([from, to, name]) => ({ axis, k: Number(k), from, to, name }))));
 
-// Bridge decks are declared in src/world/district.js (buildCorridors) rather than in the data modules; mirrored here.
-// profile: [along, height] pairs; halfW: half the deck width used for height queries.
+// Bridge deck profiles: [along, height] pairs; halfW: half the deck width used for height queries.
 const bridges = [
   { id: 'shitta', name: 'Shitta Bridge', axis: 'v', k: -72, halfW: 7, profile: [[-50, 0], [-16, 6.5], [16, 6.5], [50, 0]] },
   { id: 'eko', name: 'Eko Bridge', axis: 'h', k: 0, halfW: 10, profile: [[155, 0], [192, 9], [310, 9], [345, 0]] },
@@ -47,8 +46,10 @@ const world = {
     spawnX: L.META.spawn.x, spawnZ: L.META.spawn.z,
     minX: L.META.bounds.x[0], maxX: L.META.bounds.x[1], minZ: L.META.bounds.z[0], maxZ: L.META.bounds.z[1],
     startClock: C.TIME.startClock, hoursPerSecond: C.TIME.daySpeed,
+    venueOpen: C.TIME.venueOpen, venueClose: C.TIME.venueClose,
     startCash: C.ECON.startCash, startBank: C.ECON.startBank,
-    priceWater: C.PRICES.water, priceSuya: C.PRICES.suya, refuel: C.ECON.refuel,
+    priceWater: C.PRICES.water, priceSuya: C.PRICES.suya, posFee: C.PRICES.posFee, posAmount: C.PRICES.posAmount, refuel: C.ECON.refuel,
+    awayMinMinutes: C.AWAY.minMinutes, awayCapMinutes: C.AWAY.capMinutes,
     // law and economy rules (src/data/config.js LAW, ECON, RENT, BIZ)
     pursuitHeat: C.LAW.pursuitHeat, bustSeconds: C.LAW.bustSeconds, ticketKmh: C.LAW.ticketKmh, checkpointKmh: C.LAW.checkpointKmh,
     fineRate: C.ECON.fineRate, bustRate: C.ECON.bustRate, speedTicket: C.ECON.speedTicket, payCycle: C.ECON.payCycle,
@@ -63,7 +64,7 @@ const world = {
   landmarks: [...L.LANDMARKS, { id: F.FAMILY_HOME.id, name: F.FAMILY_HOME.name, short: 'FAMILY HOUSE', x: F.FAMILY_HOME.x, z: F.FAMILY_HOME.z, c: '#c9b48a', sign: '#e8b86d', h: 3.6, kind: 'home' }].map(l => ({
     id: l.id, name: l.name, shortName: l.short || l.name.toUpperCase(), kind: l.kind || 'landmark',
     color: l.c || '#8a7d6a', sign: l.sign || '#ffc52f', region: l.region || '',
-    x: l.x, z: l.z, h: l.h ?? 5, big: !!l.big, stadium: !!l.stadium, waterfront: !!l.waterfront,
+    x: l.x, z: l.z, h: l.h ?? 5, cost: l.cost || 0, big: !!l.big, stadium: !!l.stadium, waterfront: !!l.waterfront,
   })),
   busStops: L.BUSSTOPS.map(b => ({ id: b.id, name: b.name, shortName: b.short || b.name.toUpperCase(), x: b.x, z: b.z, agberos: b.agberos || 0 })),
   properties: L.PROPERTIES.map(p => ({

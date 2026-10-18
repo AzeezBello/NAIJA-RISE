@@ -9,15 +9,12 @@ export const WORLD = { bounds: { x: [-520, 1120], z: [-1000, 410] }, spawn: { x:
 const COARSE = typeof matchMedia !== 'undefined' && matchMedia('(pointer:coarse)').matches;
 const LOW_RAM = typeof navigator !== 'undefined' && (navigator.deviceMemory || 8) <= 2;
 export const PERF = { lowEnd: COARSE || LOW_RAM, npcs: { full: 110, low: 32 }, trafficCap: { full: 99, low: 16 }, rainDrops: { full: 1800, low: 700 } };
-// Character pipeline: the first reachable rig wins. Ship your own at assets/characters/player.glb (Mixamo-compatible
-// skeleton with Idle/Walk/Run clips); the three.js Soldier is the development placeholder.
 // Character rigs. Every rig is a real human: rig 0 (the player and most of the street) is a Ready Player Me avatar in a
 // hoodie, jeans and sneakers animated with Ready Player Me's own locomotion clips (their licence allows the clips only
-// on RPM avatars); CesiumMan (Khronos) walks with his own clip. Clips are never borrowed across skeletons: Mixamo's
-// Michelle driven by the Soldier clips came out folded in half, so each rig must ship its own Idle/Walk/Run.
-// Ship your own at assets/characters/player.glb (with Idle/Walk/Run baked in) and it replaces rig 0.
+// on RPM avatars); CesiumMan (Khronos) walks with his own clip. Clips are never borrowed across skeletons:
+// each rig must ship its own Idle/Walk/Run.
 // `slots` map material names to wardrobe slots: top wears the fabric print or its colour, bottom / shoes / skin / hair tint.
-const CDN = 'https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/models/gltf/', RPM_ANIM = 'https://raw.githubusercontent.com/readyplayerme/animation-library/master/masculine/glb/';
+const CDN = 'assets/characters/', RPM_ANIM = 'assets/characters/';
 export const CHARACTER = {
   height: 2.3, 
   blend: 0.25, 

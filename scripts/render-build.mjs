@@ -1,5 +1,5 @@
-// Render runs `yarn` (install) as its build command and `yarn start` to serve, from the repo root. Since the Three.js
-// static build was retired, what the root serves is the Next.js site in web/ (landing page, /account, /admin, /play).
+// Render runs `yarn` (install) as its build command and `yarn start` to serve, from the repo root.
+// What the root serves is the Next.js site in web/ (landing page, /account, /admin, /play).
 // Yarn runs this as the root `postinstall`; it only builds when Render is the one installing (Render sets RENDER=true),
 // so a local `npm install` or CI's own install is not slowed down by a second site build.
 import { execSync } from 'node:child_process';
@@ -9,5 +9,5 @@ if (!process.env.RENDER) {
   process.exit(0);
 }
 const run = cmd => { console.log(`[render-build] ${cmd}`); execSync(cmd, { stdio: 'inherit' }); };
-run('npm --prefix web ci --include=dev');
+run('npm --prefix web install --include=dev');
 run('npm --prefix web run build');

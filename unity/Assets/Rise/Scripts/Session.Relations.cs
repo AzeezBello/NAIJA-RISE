@@ -3,7 +3,7 @@ using Rise.World;
 
 namespace Rise
 {
-    // Contact relationships (src/systems/relationships.js): trust and respect per contact, moved by one greeting and
+    // Contact relationships: trust and respect per contact, moved by one greeting and
     // one work chat a day, with tiers stranger → known → friend → close that change the greeting and open leads.
     public partial class Session
     {

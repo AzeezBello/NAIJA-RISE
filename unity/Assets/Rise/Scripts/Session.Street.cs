@@ -6,7 +6,7 @@ namespace Rise
 {
     // Street encounters: the agbero levy (pay or risk heat; a pet dog or a home with security keeps them off), the
     // night hustlers outside the clubs (hookup, pickpockets), Mama Nkechi's dog, and tenants, upgrades, staff and
-    // vehicle customisation menus (src/systems/dialogue.js, interaction.js, ui/apps/businesses.js).
+    // vehicle customisation menus.
     public partial class Session
     {
         [System.NonSerialized] public StreetLife Street;
@@ -76,6 +76,13 @@ namespace Rise
         {
             var o = State.Biz(b.id); if (o == null) return;
             m.Options.Add(new MenuOption { Label = o.staff.Count >= Data.maxStaff ? $"Staff: {string.Join(", ", o.staff)} (full)" : $"Hire staff · ₦{Data.staffCost:N0} (+{Mathf.RoundToInt(Data.staffBonus * 100)}% income){(o.staff.Count > 0 ? " · " + string.Join(", ", o.staff) : "")}", Enabled = o.staff.Count < Data.maxStaff, Action = () => State.HireStaff(b) });
+            for (int i = 0; i < o.staff.Count; i++)
+            {
+                int idx = i; string name = o.staff[i];
+                string shift = GameState.ShiftLabel(State.StaffShift(o, i));
+                bool onDuty = State.StaffIsOnDuty(o, i, Clock.Clock);
+                m.Options.Add(new MenuOption { Label = $"{name} · {shift}{(onDuty ? " · ON SHIFT" : " · off duty")} (cycle shift)", Action = () => State.CycleStaffShift(b, idx) });
+            }
             if (State.RivalOpen) m.Options.Add(new MenuOption { Label = $"{Data.rivalName} dey undercut you — low prices keep your customers", Enabled = false });
         }
 

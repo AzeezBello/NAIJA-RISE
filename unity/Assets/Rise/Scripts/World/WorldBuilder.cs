@@ -106,19 +106,19 @@ namespace Rise.World
             return go;
         }
 
-        void Sign(string text, Vector3 position, string colour, float size = 1f, Transform parent = null)
+        void Sign(string text, Vector3 position, string colour, float size = 1f, Transform parent = null, float offsetZ = 0.18f)
         {
             var go = new GameObject("Sign " + text);
             go.transform.SetParent(parent ?? Root, false);
-            go.transform.position = position;
+            go.transform.position = position + new Vector3(0f, 0f, offsetZ);
+            go.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
             var tm = go.AddComponent<TextMesh>();
             tm.text = text; tm.font = font; tm.fontSize = 64; tm.characterSize = 0.07f * size; tm.fontStyle = FontStyle.Bold;
             tm.anchor = TextAnchor.MiddleCenter; tm.alignment = TextAlignment.Center; tm.color = Hex(colour, "#ffc52f");
             go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
-            // A second copy facing the other way so the sign reads from both sides of the street.
-            var back = Instantiate(go, go.transform.position, Quaternion.Euler(0, 180, 0), go.transform.parent);
-            back.name = go.name + " (back)";
-            ObjectCount += 2;
+            var fl = go.AddComponent<Entities.FacingLabel>();
+            fl.BoardSign = true; fl.BasePos = position; fl.OffsetZ = offsetZ;
+            ObjectCount++;
         }
 
         // ---------- ground and water ----------
@@ -314,14 +314,67 @@ namespace Rise.World
                         Sign(l.shortName, pos + new Vector3(0, 4.2f, 0), l.sign, 0.8f, group);
                         continue;
                     case "pitch":
+                    {
                         Box(l.name, pos + Vector3.up * 0.12f, new Vector3(44f, 0.24f, 30f), Mat("pitch", Pitch), group);
+                        var white = Mat("pitchline", "#f5f5f0");
+                        var postMat = Mat("goalpost", "#eeeeee", 0.5f);
+                        Box("Center line", pos + Vector3.up * 0.25f, new Vector3(0.25f, 0.02f, 28f), white, group, false);
+                        for (int side = -1; side <= 1; side += 2)
+                        {
+                            float gx = pos.x + side * 20.5f;
+                            Cylinder("Goal post L", new Vector3(gx, pos.y + 0.2f, pos.z - 2.8f), 0.08f, 2.4f, postMat, group, false);
+                            Cylinder("Goal post R", new Vector3(gx, pos.y + 0.2f, pos.z + 2.8f), 0.08f, 2.4f, postMat, group, false);
+                            Box("Crossbar", new Vector3(gx, pos.y + 2.6f, pos.z), new Vector3(0.14f, 0.14f, 5.76f), postMat, group, false);
+                        }
+                        for (int sx = -1; sx <= 1; sx += 2)
+                            for (int sz = -1; sz <= 1; sz += 2)
+                            {
+                                var fPos = pos + new Vector3(sx * 23f, 0.2f, sz * 16f);
+                                Cylinder("Floodlight pole", fPos, 0.15f, 10f, Mat("pole", Steel, 0.4f), group);
+                                Box("Floodlight head", fPos + Vector3.up * 10.2f, new Vector3(1.2f, 0.4f, 0.6f), LampHead, group, false);
+                            }
                         Sign(l.shortName, pos + new Vector3(0, 3.5f, 16f), l.sign, 1.2f, group);
                         continue;
+                    }
                     case "beach":
                         Box(l.name, pos + Vector3.up * 0.1f, new Vector3(60f, 0.2f, 40f), Mat("sand", Sand), group);
                         Sign(l.shortName, pos + new Vector3(0, 3.5f, 22f), l.sign, 1.2f, group);
                         continue;
-                    case "settlement": case "waterfront": case "airport": case "waypoint":
+                    case "airport":
+                    {
+                        var apron = Mat("apron", AsphaltLight);
+                        Box(l.name + " apron", pos + Vector3.up * 0.12f, new Vector3(70f, 0.24f, 48f), apron, group);
+                        Box(l.name + " terminal", pos + new Vector3(0f, 4.5f, 12f), new Vector3(36f, 9f, 14f), body, group);
+                        Box(l.name + " glass", pos + new Vector3(0f, 4.2f, 4.9f), new Vector3(32f, 5.5f, 0.3f), Mat("glass", Glass, 0.85f), group, false);
+                        Cylinder(l.name + " tower", pos + new Vector3(22f, 0.2f, 12f), 2.2f, 18f, Mat("concrete", Concrete), group);
+                        Box(l.name + " cab", pos + new Vector3(22f, 19.2f, 12f), new Vector3(6f, 2.6f, 6f), Mat("glass", Glass, 0.85f), group, false);
+                        // Runway strip & parked aircraft
+                        Box(l.name + " runway", pos + new Vector3(0f, 0.16f, -12f), new Vector3(66f, 0.1f, 12f), Mat("asphalt", Asphalt), group);
+                        var planeWhite = Mat("plane-white", "#f2f4f7", 0.6f);
+                        var planePos = pos + new Vector3(-8f, 1.8f, -12f);
+                        Box("Aircraft fuselage", planePos, new Vector3(18f, 2.2f, 2.2f), planeWhite, group);
+                        Box("Aircraft wings", planePos + new Vector3(0f, -0.2f, 0f), new Vector3(3.2f, 0.22f, 16f), planeWhite, group, false);
+                        Box("Aircraft tail", planePos + new Vector3(-8.2f, 1.8f, 0f), new Vector3(2.2f, 3.0f, 0.25f), Mat("plane-tail", "#1b6b3a", 0.5f), group, false);
+                        Sign(l.shortName, pos + new Vector3(0, 10.5f, 19.5f), l.sign, 1.4f, group);
+                        continue;
+                    }
+                    case "settlement": case "waterfront":
+                    {
+                        Box(l.name, pos + Vector3.up * 0.2f, new Vector3(50f, 0.4f, 40f), body, group);
+                        var wood = Mat("wood-stilt", "#5c4028");
+                        var zinc = Mat("zinc", Zinc, 0.5f);
+                        for (int i = -2; i <= 2; i++)
+                        {
+                            var hutPos = pos + new Vector3(i * 9f, 1.6f, -8f + (i % 2) * 5f);
+                            Box("Stilt hut", hutPos + Vector3.up * 1.2f, new Vector3(5.5f, 2.6f, 4.5f), wood, group);
+                            Box("Hut roof", hutPos + Vector3.up * 2.65f, new Vector3(6.1f, 0.22f, 5.1f), zinc, group, false);
+                            var canoePos = pos + new Vector3(i * 8f + 3f, 0.25f, -16f);
+                            Box("Canoe", canoePos, new Vector3(1.1f, 0.35f, 4.8f), wood, group, false);
+                        }
+                        Sign(l.shortName, pos + new Vector3(0, 4f, 22f), l.sign, 1.4f, group);
+                        continue;
+                    }
+                    case "waypoint":
                         Box(l.name, pos + Vector3.up * 0.2f, new Vector3(50f, 0.4f, 40f), body, group);
                         Sign(l.shortName, pos + new Vector3(0, 4f, 22f), l.sign, 1.4f, group);
                         continue;
@@ -331,11 +384,7 @@ namespace Rise.World
                         Box(l.name + " pole", pos + Vector3.up * 1.6f, new Vector3(0.12f, 3.2f, 0.12f), Mat("signpole", "#5a5f63"), group, false);
                         float bw = 1.2f + l.shortName.Length * 0.32f;
                         Box(l.name + " board", pos + Vector3.up * 3.35f, new Vector3(bw, 0.55f, 0.06f), body, group, false);
-                        Sign(l.shortName, pos + new Vector3(0, 3.35f, 0.05f), l.sign, 0.42f, group);
-                        var back = new GameObject("Sign back"); back.transform.SetParent(group, false);
-                        back.transform.SetPositionAndRotation(pos + new Vector3(0, 3.35f, -0.05f), Quaternion.Euler(0f, 180f, 0f));
-                        Sign(l.shortName, back.transform.position, l.sign, 0.42f, back.transform);
-                        back.transform.GetChild(0).localRotation = Quaternion.identity;
+                        Sign(l.shortName, pos + new Vector3(0, 3.35f, 0f), l.sign, 0.42f, group, 0.06f);
                         continue;
                     }
                 }
@@ -343,10 +392,10 @@ namespace Rise.World
                 float h = Mathf.Max(3f, l.h);
                 Box(l.name, pos + Vector3.up * h * 0.5f, new Vector3(fp.x, h, fp.y), body, group);
                 Box(l.name + " parapet", pos + Vector3.up * (h + 0.3f), new Vector3(fp.x + 0.6f, 0.6f, fp.y + 0.6f), Mat("parapet", "#6b655a"), group, false);
-                // Sign board on the street-facing side (north: data -z, world +z), as the Three.js edition does.
+                // Sign board on the street-facing side (north: data -z, world +z).
                 var signPos = pos + new Vector3(0, h + 1.3f, fp.y * 0.5f + 0.2f);
                 Box(l.name + " board", signPos, new Vector3(Mathf.Min(fp.x * 0.9f, 2.2f + l.shortName.Length * 1.05f), 1.8f, 0.25f), Mat("board", "#1b1b1f"), group, false);
-                Sign(l.shortName, signPos + new Vector3(0, 0, 0.2f), l.sign, 1f, group);
+                Sign(l.shortName, signPos, l.sign, 1f, group, 0.2f);
                 if (l.kind == "market") BuildMarketStalls(pos, fp, group);
             }
         }
@@ -357,7 +406,7 @@ namespace Rise.World
         public int StadiumModels { get; private set; }
         public int Trees { get; private set; }
 
-        // The real stadium models (src/world/assets.js): fitted to the web edition's footprint, feet on the ground.
+        // The real stadium models: fitted to the stadium footprint, feet on the ground.
         bool BuildStadiumModel(LandmarkData l, Vector3 pos, Transform group)
         {
             if (GameBootstrap.Mobile) return false;   // 182k-triangle model: too heavy for a phone, the procedural stand is used
@@ -366,9 +415,14 @@ namespace Rise.World
             if (prefab == null) return false;
             Vector3 target = teslim ? new Vector3(50f, 23f, 46f) : new Vector3(54f, 25f, 50f);
             var go = Instantiate(prefab, group); go.name = l.name + " model";
-            go.transform.position = pos; go.transform.rotation = Quaternion.identity; go.transform.localScale = Vector3.one;
+            go.transform.position = pos; go.transform.rotation = prefab.transform.localRotation; go.transform.localScale = Vector3.one;
             var b = Entities.CharacterRig.Bounds(go);
             if (b.size.x <= 0f || b.size.y <= 0f || b.size.z <= 0f) { Remove(go); return false; }
+            if (b.size.y > b.size.z || b.size.y > b.size.x)
+            {
+                go.transform.rotation = Quaternion.Euler(-90f, 0f, 0f) * go.transform.rotation;
+                b = Entities.CharacterRig.Bounds(go);
+            }
             float fit = Mathf.Min(target.x / b.size.x, target.z / b.size.z, target.y / b.size.y);
             go.transform.localScale = Vector3.one * fit;
             b = Entities.CharacterRig.Bounds(go);
@@ -376,12 +430,11 @@ namespace Rise.World
             b = Entities.CharacterRig.Bounds(go);
             foreach (var c in go.GetComponentsInChildren<Collider>()) Remove(c);
             var col = go.AddComponent<BoxCollider>(); col.center = go.transform.InverseTransformPoint(b.center); col.size = new Vector3(b.size.x / fit, b.size.y / fit, b.size.z / fit);
-            foreach (var t in go.GetComponentsInChildren<Transform>()) t.gameObject.isStatic = true;
             StadiumModels++; ObjectCount++;
             return true;
         }
 
-        // Trees (src/world/assets.js spawnVegetation): tropical, maple and pine models in the Surulere plot interiors
+        // Trees: tropical, maple and pine models in the Surulere plot interiors
         // and along the Eko Atlantic shore, height-fitted with a little jitter, kept off the road shoulders.
         void BuildVegetation()
         {
@@ -403,15 +456,21 @@ namespace Rise.World
                         if (Data.InWaterData(dx, dz) || NearRoadData(dx, dz, 7f) || ReservedData(dx, dz)) continue;
                         var tree = Instantiate(prefab, group); tree.name = model;
                         var pos = WorldData.W(dx, 0f, dz); pos.y = Data.DeckHeightAtData(dx, dz);
-                        tree.transform.position = pos; tree.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f); tree.transform.localScale = Vector3.one;
+                        tree.transform.position = pos; tree.transform.rotation = prefab.transform.localRotation; tree.transform.localScale = Vector3.one;
                         var b = Entities.CharacterRig.Bounds(tree);
+                        if (b.size.z > b.size.y || b.size.x > b.size.y)
+                        {
+                            tree.transform.rotation = Quaternion.Euler(-90f, 0f, 0f) * tree.transform.rotation;
+                            b = Entities.CharacterRig.Bounds(tree);
+                        }
+                        tree.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f) * tree.transform.rotation;
+                        b = Entities.CharacterRig.Bounds(tree);
                         float jitter = 0.85f + (float)rng.NextDouble() * 0.3f, k = b.size.y > 0.01f ? height * jitter / b.size.y : 1f;
                         tree.transform.localScale = Vector3.one * k;
                         b = Entities.CharacterRig.Bounds(tree);
                         tree.transform.position += new Vector3(pos.x - b.center.x, pos.y - b.min.y, pos.z - b.center.z);
                         foreach (var c in tree.GetComponentsInChildren<Collider>()) Remove(c);
                         var trunk = tree.AddComponent<BoxCollider>(); trunk.center = tree.transform.InverseTransformPoint(new Vector3(pos.x, pos.y + height * 0.5f, pos.z)); trunk.size = new Vector3(0.6f / k, height / k, 0.6f / k);
-                        foreach (var t in tree.GetComponentsInChildren<Transform>()) t.gameObject.isStatic = true;
                         Trees++; ObjectCount++; placed = true;
                     }
                 }
@@ -500,8 +559,11 @@ namespace Rise.World
             Box("House", pos + Vector3.up * h * 0.5f, new Vector3(w, h, d), Mat("house-" + colour, colour), group);
             if (zincRoof && h < 5f) Box("Roof", pos + Vector3.up * (h + 0.15f), new Vector3(w + 1f, 0.3f, d + 1f), Mat("zinc", Zinc, 0.5f), group, false);
             else Box("Parapet", pos + Vector3.up * (h + 0.25f), new Vector3(w + 0.4f, 0.5f, d + 0.4f), Mat("parapet", "#6b655a"), group, false);
-            // Water tank and generator: the Lagos rooftop.
+            // Water tank, AC unit, balcony, and generator: Lagos compound details.
             Cylinder("Tank", pos + new Vector3(w * 0.3f, h + (zincRoof && h < 5f ? 0.3f : 0.5f), d * 0.25f), 0.7f, 1.2f, Mat("tank", Black), group, false);
+            Box("AC unit", pos + new Vector3(-w * 0.28f, Mathf.Min(h - 0.8f, 2.6f), d * 0.5f + 0.18f), new Vector3(0.85f, 0.55f, 0.35f), Mat("ac-unit", "#d8dce0"), group, false);
+            Box("Generator", pos + new Vector3(w * 0.5f + 0.7f, 0.45f, -d * 0.25f), new Vector3(1.1f, 0.9f, 0.75f), Mat("gen-box", Yellow), group, false);
+            if (h >= 6.5f) Box("Balcony", pos + new Vector3(0f, 3.6f, d * 0.5f + 0.6f), new Vector3(w * 0.55f, 0.25f, 1.2f), Mat("concrete", Concrete), group, false);
         }
 
         // Fill the blocks between roads with housing where nothing else is placed, region-aware.
@@ -601,7 +663,7 @@ namespace Rise.World
             }
         }
 
-        // The four businesses for sale (src/data/businesses.js): small shops with a painted sign.
+        // The four businesses for sale: small shops with a painted sign.
         void BuildBusinesses()
         {
             var group = new GameObject("Businesses").transform; group.SetParent(Root, false);

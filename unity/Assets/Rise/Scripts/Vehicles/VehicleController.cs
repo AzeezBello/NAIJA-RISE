@@ -3,7 +3,7 @@ using Rise.Data;
 
 namespace Rise.Vehicles
 {
-    // Arcade driving model ported from src/systems/movement.js: approach-based speed with class max / boost / accel,
+    // Arcade driving model: approach-based speed with class max / boost / accel,
     // braking, slow reverse, handbrake, steering that firms up with speed and loosens as condition drops.
     // The Rigidbody carries the vehicle so bridge ramps, kerbs and buildings behave; rotation is driven by code.
     public class VehicleController : MonoBehaviour

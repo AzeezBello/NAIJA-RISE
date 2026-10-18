@@ -7,7 +7,7 @@ using Rise.World;
 
 namespace Rise
 {
-    // Story flow (src/systems/navigation.js, missions.js): the current mission, who to talk to, tasks (timed,
+    // Story flow: the current mission, who to talk to, tasks (timed,
     // fragile cargo, escape, vehicle recovery), completion at the destination, failure on arrest, and the objective
     // the HUD and GPS show.
     public partial class Session
@@ -21,10 +21,29 @@ namespace Rise
         public bool MissionActive => MissionAvailable && !State.S.storyPaused;
         public bool HasTask => !string.IsNullOrEmpty(State.S.taskType);
 
-        public string ObjectiveTitle => HasTask && State.S.taskMission < 0 ? "Side mission" : HasTask ? Missions.All[Mathf.Clamp(State.S.taskMission, 0, Missions.All.Count - 1)].Title : MissionAvailable ? CurrentMission.Title : State.S.done ? "Lagos is yours" : "Free roam";
-        public string ObjectiveText => Racing ? RaceStatus : HasTask ? State.S.taskObj : State.S.storyPaused ? "Story paused — talk to " + Data.ContactName(CurrentMission.Who) + " to resume" : MissionAvailable ? CurrentMission.Objective(this) : State.S.done ? "Build your empire: jobs, property, business." : "";
+        public Vector3? ResolveWaypoint(string id, out string label)
+        {
+            label = "";
+            if (string.IsNullOrEmpty(id)) return null;
+            if (Data.TryPlace(id, out var place)) { label = place.name; return place.World(); }
+            var prop = Data.Property(id);
+            if (prop != null) { label = prop.name; return prop.Door; }
+            if (Contacts != null) foreach (var c in Contacts.Contacts) if (c.data.id == id) { label = c.data.name; return c.pos; }
+            return null;
+        }
 
-        // Where the GPS points: the task destination, else the mission contact.
+        public void SetWaypoint(string id)
+        {
+            State.S.waypointId = id ?? "";
+            if (ResolveWaypoint(State.S.waypointId, out var label).HasValue) State.Toast($"GPS set to {label}");
+            else State.Toast("GPS cleared");
+            RefreshNav();
+        }
+
+        public string ObjectiveTitle => HasTask && State.S.taskMission < 0 ? "Side mission" : HasTask ? Missions.All[Mathf.Clamp(State.S.taskMission, 0, Missions.All.Count - 1)].Title : !string.IsNullOrEmpty(State.S.waypointId) && ResolveWaypoint(State.S.waypointId, out _).HasValue ? "GPS Waypoint" : MissionAvailable ? CurrentMission.Title : State.S.done ? "Lagos is yours" : "Free roam";
+        public string ObjectiveText => Racing ? RaceStatus : HasTask ? State.S.taskObj : !string.IsNullOrEmpty(State.S.waypointId) && ResolveWaypoint(State.S.waypointId, out var wpName).HasValue ? $"GPS to {wpName}" : State.S.storyPaused ? "Story paused — talk to " + Data.ContactName(CurrentMission.Who) + " to resume" : MissionAvailable ? CurrentMission.Objective(this) : State.S.done ? "Build your empire: jobs, property, business." : "";
+
+        // Where the GPS points: the task destination, custom waypoint, or the mission contact.
         public Vector3? ObjectivePosition
         {
             get
@@ -38,6 +57,8 @@ namespace Rise
                     if (Data.TryPlace(st.taskDest, out var d)) return d.World();
                     return null;
                 }
+                var wp = ResolveWaypoint(st.waypointId, out _);
+                if (wp.HasValue) return wp;
                 if (!MissionActive) return NearestPin(Focus.position);
                 var m = CurrentMission;
                 foreach (var c in Contacts.Contacts) if (c.data.id == m.Who) return c.pos;
@@ -74,7 +95,7 @@ namespace Rise
             RefreshNav();
         }
 
-        // ---- tasks (src/systems/missions.js) ----
+        // ---- tasks ----
         void StartTask(Mission m, int index)
         {
             var t = m.Task; var st = State.S;
@@ -102,6 +123,16 @@ namespace Rise
 
         void UpdateTask(float dt)
         {
+            if (!string.IsNullOrEmpty(State.S.waypointId))
+            {
+                var wp = ResolveWaypoint(State.S.waypointId, out var wpName);
+                if (wp.HasValue && Vector2.Distance(new Vector2(wp.Value.x, wp.Value.z), new Vector2(Focus.position.x, Focus.position.z)) < 14f)
+                {
+                    State.S.waypointId = "";
+                    State.Toast($"Arrived at {wpName}");
+                    RefreshNav();
+                }
+            }
             if (!HasTask) return;
             var st = State.S;
             switch (st.taskType)
@@ -127,7 +158,7 @@ namespace Rise
             }
         }
 
-        // Pressing E at the destination (src/systems/missions.js tryCompleteTask).
+        // Pressing E at the destination.
         public bool TaskDeliverable()
         {
             if (!HasTask) return false;

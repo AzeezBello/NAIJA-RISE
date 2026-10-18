@@ -4,8 +4,8 @@ using Rise.Data;
 
 namespace Rise
 {
-    // The smartphone (src/ui/phone.js, ui/apps/*): Messages, Jobs, Bank, Property, Businesses, Character, Contacts,
-    // Inventory and Settings, as pages of the choice card so they work with keyboard and pad alike. P / Select opens it.
+    // The smartphone: Messages, Jobs, Bank, Property, Businesses, Character, Contacts,
+    // Inventory, Crew, Account, Settings, and Map · GPS, as pages of the choice card so they work with keyboard and pad alike. P / Select opens it.
     public partial class Session
     {
         public bool PhoneOpen;
@@ -26,6 +26,7 @@ namespace Rise
             m.Options.Add(new MenuOption { Label = InCrew ? $"Crew · {State.S.crewName} [{CrewTag}]" : "Crew", Action = AppCrew });
             m.Options.Add(new MenuOption { Label = Account != null && Account.SignedIn ? $"Account · {Account.Email}" : "Account", Action = AppAccount });
             m.Options.Add(new MenuOption { Label = "Settings", Action = AppSettings });
+            m.Options.Add(new MenuOption { Label = "Map · GPS", Action = () => AppMap("") });
             m.Options.Add(new MenuOption { Label = "Put the phone away", Action = () => PhoneOpen = false });
             OpenMenu(m);
         }
@@ -34,6 +35,47 @@ namespace Rise
         {
             var m = new Menu { Title = title, Subtitle = subtitle, Line = body };
             foreach (var o in options) m.Options.Add(o);
+            m.Options.Add(new MenuOption { Label = "Back", Action = OpenPhone });
+            OpenMenu(m);
+        }
+
+        public void AppMap(string filter = "")
+        {
+            string q = (filter ?? "").Trim().ToLowerInvariant();
+            ResolveWaypoint(State.S.waypointId, out var currentWp);
+            var m = new Menu
+            {
+                Title = "Map · GPS",
+                Subtitle = !string.IsNullOrEmpty(currentWp) ? $"Active waypoint: {currentWp}" : $"{Data.landmarks.Length} landmarks · {Data.busStops.Length} bus stops · {Contacts.Contacts.Count} contacts",
+                Line = "Search any place, bus stop, property or contact in Lagos and tap to set a GPS route."
+            };
+            m.Fields.Add(new MenuField { Label = "Search Lagos", Value = filter ?? "" });
+            m.Options.Add(new MenuOption { Label = "Search / filter list", Action = () => AppMap(m.Fields[0].Value) });
+            if (!string.IsNullOrEmpty(State.S.waypointId))
+                m.Options.Add(new MenuOption { Label = $"Clear GPS ({currentWp})", Action = () => { SetWaypoint(""); AppMap(m.Fields[0].Value); } });
+
+            var entries = new System.Collections.Generic.List<(string id, string label, float dist)>();
+            var origin = Focus.position;
+            foreach (var l in Data.landmarks)
+                if (string.IsNullOrEmpty(q) || l.name.ToLowerInvariant().Contains(q) || (l.shortName != null && l.shortName.ToLowerInvariant().Contains(q)))
+                    entries.Add((l.id, $"Landmark · {l.name}", Vector3.Distance(origin, l.World())));
+            foreach (var b in Data.busStops)
+                if (string.IsNullOrEmpty(q) || b.name.ToLowerInvariant().Contains(q) || b.shortName.ToLowerInvariant().Contains(q))
+                    entries.Add((b.id, $"Bus Stop · {b.name}", Vector3.Distance(origin, b.World())));
+            foreach (var p in Data.properties)
+                if (string.IsNullOrEmpty(q) || p.name.ToLowerInvariant().Contains(q))
+                    entries.Add((p.id, $"Property · {p.name}", Vector3.Distance(origin, p.Door)));
+            foreach (var c in Contacts.Contacts)
+                if (string.IsNullOrEmpty(q) || c.data.name.ToLowerInvariant().Contains(q) || (c.data.role != null && c.data.role.ToLowerInvariant().Contains(q)))
+                    entries.Add((c.data.id, $"Contact · {c.data.name} ({c.data.role})", Vector3.Distance(origin, c.pos)));
+
+            entries.Sort((a, b) => a.dist.CompareTo(b.dist));
+            int count = Mathf.Min(8, entries.Count);
+            for (int i = 0; i < count; i++)
+            {
+                var entry = entries[i];
+                m.Options.Add(new MenuOption { Label = $"Set GPS → {entry.label} ({entry.dist:0} m)", Action = () => { SetWaypoint(entry.id); PhoneOpen = false; } });
+            }
             m.Options.Add(new MenuOption { Label = "Back", Action = OpenPhone });
             OpenMenu(m);
         }
@@ -83,12 +125,18 @@ namespace Rise
         void AppBusinesses()
         {
             var sb = new StringBuilder();
+            var opts = new System.Collections.Generic.List<MenuOption>();
             foreach (var b in Data.businesses)
             {
+                var biz = b;
                 var o = State.Biz(b.id);
                 sb.Append(b.name).Append(" — ").Append(o == null ? $"for sale ₦{State.BizPrice(b):N0} · ₦{b.income:N0}/cycle" : $"yours · stock {o.stock:0}% · prices {o.price} · staff {(o.staff.Count > 0 ? string.Join(", ", o.staff) : "none")} · ₦{State.BizIncome(b):N0}/cycle").Append('\n');
+                if (o != null)
+                    opts.Add(new MenuOption { Label = $"Manage {b.name} (stock {o.stock:0}%, prices {o.price})", Action = () => OpenBusinessMenu(biz) });
+                else
+                    opts.Add(new MenuOption { Label = $"Buy {b.name} · ₦{State.BizPrice(b):N0}", Enabled = State.S.level >= Data.meta.propertyLevel, Action = () => { State.BuyBusiness(biz); AppBusinesses(); } });
             }
-            Page("Businesses", $"{State.S.biz.Count} owned · next pay in {Mathf.Max(0f, State.S.payIn):0} s{(State.RivalOpen ? $" · {Data.rivalName} opened nearby" : "")}", sb.ToString().TrimEnd());
+            Page("Businesses", $"{State.S.biz.Count} owned · next pay in {Mathf.Max(0f, State.S.payIn):0} s{(State.RivalOpen ? $" · {Data.rivalName} opened nearby" : "")}", sb.ToString().TrimEnd(), opts.ToArray());
         }
 
         void AppCharacter()
@@ -179,10 +227,11 @@ namespace Rise
             var st = State.S; string[] q = World.QualityGovernor.Names;
             string level = Governor != null ? q[Governor.Level] : q[Mathf.Clamp(st.quality, 0, 2)];
             string perf = Governor != null ? $" · {Governor.Fps:0} fps · render scale {Governor.RenderScale * 100f:0} %" : "";
-            Page("Settings", $"Graphics {(st.qualityAuto ? "Auto → " : "")}{level}{perf} · cinematic look {(st.cinematic ? "on" : "off")}",
+            Page("Settings", $"Graphics {(st.qualityAuto ? "Auto → " : "")}{level}{perf} · cinematic look {(st.cinematic ? "on" : "off")} · sound {(st.sound ? "on" : "off")}",
                 "Auto reads the GPU and steps down whenever frames stay slow; dynamic resolution moves in four steps and climbs back when it can. The cinematic look is the HDR, bloom and tone-mapping pass. " + SystemInfo.graphicsDeviceName,
                 new MenuOption { Label = st.qualityAuto ? "Graphics: Auto (tap for Low)" : $"Graphics: {level} (tap for next)", Action = () => { if (st.qualityAuto) { st.qualityAuto = false; st.quality = 0; } else { st.quality = (st.quality + 1) % 3; if (st.quality == 0) st.qualityAuto = true; } ApplyQuality(); AppSettings(); } },
                 new MenuOption { Label = "Toggle cinematic look", Action = () => { st.cinematic = !st.cinematic; ApplyQuality(); AppSettings(); } },
+                new MenuOption { Label = $"Sound: {(st.sound ? "on" : "off")}", Action = () => { st.sound = !st.sound; AppSettings(); } },
                 new MenuOption { Label = $"Mature content (night hustlers): {(st.mature ? "on" : "off")}", Action = () => { st.mature = !st.mature; AppSettings(); } },
                 new MenuOption { Label = "Save now", Action = () => { AutoSave(); State.Toast("Saved"); AppSettings(); } },
                 new MenuOption { Label = "New game (erases the save)", Action = () => { GameState.ClearSave(); State.Toast("Save erased — restart to begin again"); AppSettings(); } });

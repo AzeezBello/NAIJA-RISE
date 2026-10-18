@@ -4,7 +4,7 @@ using Rise.Data;
 
 namespace Rise.World
 {
-    // GPS (src/systems/navigation.js): a bobbing marker on the objective and a dashed-feel route line along the road
+    // GPS: a bobbing marker on the objective and a dashed-feel route line along the road
     // grid. Junctions are nodes, stretches between neighbouring junctions are edges, and the endpoints join the graph
     // along their own road; Dijkstra finds the way. Everything in data coordinates, drawn in world coordinates.
     public class Navigation : MonoBehaviour
@@ -93,8 +93,22 @@ namespace Rise.World
 
         List<Vector3> ToWorld(List<Vector2> pts)
         {
-            var w = new List<Vector3>(pts.Count);
-            foreach (var p in pts) { var v = WorldData.W(p.x, 0f, p.y); v.y = data.DeckHeightAtData(p.x, p.y) + 0.12f; w.Add(v); }
+            var w = new List<Vector3>(pts.Count * 2);
+            for (int i = 0; i < pts.Count; i++)
+            {
+                if (i > 0)
+                {
+                    var a = pts[i - 1]; var b = pts[i];
+                    float dist = Vector2.Distance(a, b);
+                    int steps = Mathf.FloorToInt(dist / 8f);
+                    for (int s = 1; s <= steps; s++)
+                    {
+                        var p = Vector2.Lerp(a, b, (float)s / (steps + 1));
+                        var sv = WorldData.W(p.x, 0f, p.y); sv.y = data.DeckHeightAtData(p.x, p.y) + 0.16f; w.Add(sv);
+                    }
+                }
+                var v = WorldData.W(pts[i].x, 0f, pts[i].y); v.y = data.DeckHeightAtData(pts[i].x, pts[i].y) + 0.16f; w.Add(v);
+            }
             return w;
         }
 

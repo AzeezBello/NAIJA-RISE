@@ -4,7 +4,7 @@ using Rise.Data;
 
 namespace Rise.Entities
 {
-    // Procedural Nigerian fabric prints, ported from src/entities/wardrobe.js fabricCanvas(): a 128×128 tile per fabric
+    // Procedural Nigerian fabric prints: a 128×128 tile per fabric
     // (ankara, adire, aso-oke stripe, lace, jersey, plain), drawn once and shared by every character wearing it.
     public static class Fabrics
     {
