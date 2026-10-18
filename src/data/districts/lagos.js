@@ -156,7 +156,7 @@ const roadFootprintOverlap = (x, z, width, depth) =>
 const buildingFootprint = landmark => {
   if (
     landmark.stadium || landmark.waterfront ||
-    ['airport', 'beach', 'checkpoint', 'pitch', 'post', 'settlement', 'toll', 'waypoint'].includes(landmark.kind)
+    ['airport', 'beach', 'checkpoint', 'pitch', 'post', 'settlement', 'street', 'toll', 'waypoint'].includes(landmark.kind)
   ) return null;
   if (landmark.kind === 'artisan') return { width: 16, depth: 13 };
   if (landmark.big) return { width: 26, depth: 20 };
