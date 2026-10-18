@@ -229,12 +229,17 @@ namespace Rise.EditorTools
                         s.Vehicle.Place(cp, s.Vehicle.transform.rotation);
                         return;
                     }
-                case 11:  // phone, bank, weather, Yaba Tech, hub run, football tiers, animals
+                case 11:  // phone, bank, Map GPS, weather, Yaba Tech, hub run, football tiers, animals
                     {
                         s.OpenPhone();
-                        Check(s.PhoneOpen && s.ActiveMenu != null && s.ActiveMenu.Options.Count == 12, $"phone opens with eleven apps ({s.ActiveMenu?.Options.Count - 1})");
+                        Check(s.PhoneOpen && s.ActiveMenu != null && s.ActiveMenu.Options.Count == 13, $"phone opens with twelve apps ({s.ActiveMenu?.Options.Count - 1})");
                         int cash = s.State.S.cash, bank = s.State.S.bank; s.Choose(2); s.Choose(0);   // RiseBank → deposit ₦10,000
                         Check(s.State.S.cash == cash - 10000 && s.State.S.bank == bank + 10000, $"bank deposit: cash ₦{s.State.S.cash:N0}, bank ₦{s.State.S.bank:N0}");
+                        s.AppMap("Shoprite");
+                        Check(s.ActiveMenu != null && s.ActiveMenu.Title == "Map · GPS" && s.ActiveMenu.Options.Exists(o => o.Label.Contains("Shoprite")), "Map · GPS app filters landmarks");
+                        s.SetWaypoint("mall");
+                        Check(s.State.S.waypointId == "mall" && s.ResolveWaypoint("mall", out _) != null, "GPS waypoint set to Adeniran Ogunsanya Mall");
+                        s.SetWaypoint("");
                         s.CloseMenu(); s.PhoneOpen = false;
                         var weather = boot.GetComponent<World.Weather>(); weather.StartRain(2f, false);
                         Check(weather.Raining && Mathf.Approximately(weather.Wet, 0.7f), "rain started: wet roads");
@@ -245,7 +250,7 @@ namespace Rise.EditorTools
                         var it = System.Array.Find(boot.Data.jobs, j => j.id == "it-support"); if (it != null) s.State.S.skills.business = Mathf.Max(s.State.S.skills.business, it.min);
                         Check(s.State.S.collegeGraduated && it != null && s.State.CanTake(it), "Yaba Tech diploma unlocks IT Support Technician");
                         World.ContactSystem.Contact egbon = null; foreach (var c in s.Contacts.Contacts) if (c.data.id == "egbon") egbon = c;
-                        Check(egbon != null && Session.Hubs.ContainsKey("egbon"), "Egbon Adugbo runs the Surulere hub");
+                        Check(egbon != null && Session.Hubs.ContainsKey("egbon") && Session.Hubs.ContainsKey("apapa_dispatch") && Session.Hubs.ContainsKey("ojo_trader"), "all 17 district hubs and 32 Surulere contacts registered");
                         if (egbon != null) { s.StartRun(egbon, Session.Hubs["egbon"].runs[0]); Check(s.HasTask && s.State.Has("phone_parts") && s.ObjectiveTitle == "Side mission", $"hub run started: '{s.ObjectiveText}'"); cash = s.State.S.cash; s.FinishTask(true); Check(!s.HasTask && s.State.S.cash == cash + 18000, "parts crate delivered · +₦18,000"); }
                         s.State.S.skills.fitness = 200f; s.State.S.stamina = 100f; int wins = s.State.S.footballWins;
                         s.PlayMatch(0, true); s.State.S.stamina = 100f; s.PlayMatch(0, true); s.State.S.stamina = 100f; s.PlayMatch(0, true);
@@ -273,7 +278,7 @@ namespace Rise.EditorTools
                         Check(boot.GetComponent<UI.Portrait>() != null, "portrait camera present (no render target on the null device)");
                         stage = 13; stageT = 0f; return;
                     }
-                case 13:  // street life, tenants, upgrades, staff, rival, vehicle customisation, events
+                case 13:  // street life, tenants, upgrades, staff shifts, offline earnings, interiors, weapon, rival, vehicle customisation, events
                     {
                         var street = boot.GetComponent<World.StreetLife>(); var events = boot.GetComponent<World.Events>();
                         Check(street != null && street.Agberos.Count > 10 && street.Service.Count == boot.Data.serviceNpcs.Length && street.Nightlife.Count == 4, $"street life: {street?.Agberos.Count} agberos, {street?.Service.Count} uniforms, {street?.Nightlife.Count} night hustlers (hidden until 20:00 and the mature toggle)");
@@ -294,9 +299,20 @@ namespace Rise.EditorTools
                         s.State.Upgrades(selfcon.id).complaint = "roof dey leak"; Check(s.State.FixComplaint(selfcon) && s.State.Upgrades(selfcon.id).complaint == "", "complaint fixed for ₦15,000");
                         var tank = System.Array.Find(boot.Data.upgrades, u => u.id == "tank"); var room = boot.Data.properties[0]; s.State.S.props.Add(room.id); s.State.S.home = room.id;
                         Check(tank != null && s.State.BuyUpgrade(room, tank) && s.State.HomeHas("tank"), "water tank installed at home");
-                        // Staff and the rival.
+                        // Staff, shifts, offline earnings, and the rival.
                         var kiosk = boot.Data.businesses[0]; int income = s.State.BizIncome(kiosk);
                         Check(s.State.HireStaff(kiosk) && s.State.BizIncome(kiosk) > income, $"hired {s.State.Biz(kiosk.id).staff[0]}: income ₦{income:N0} → ₦{s.State.BizIncome(kiosk):N0}");
+                        Check(s.State.CycleStaffShift(kiosk, 0) == "morning" && s.State.CycleStaffShift(kiosk, 0) == "afternoon" && s.State.CycleStaffShift(kiosk, 0) == "night" && s.State.CycleStaffShift(kiosk, 0) == "all-day", "staff shift schedules cycle (morning → afternoon → night → all-day)");
+                        s.State.S.lastSeen = System.DateTime.UtcNow.AddMinutes(-30).ToString("o");
+                        int awayEarned = s.State.ApplyAwayEarnings();
+                        Check(awayEarned > 0 && s.State.S.awayTotal >= awayEarned, $"'Lagos Never Sleeps' offline earnings credited (+₦{awayEarned:N0})");
+                        s.State.S.cash += 50000;
+                        Check(s.BuyProtectionWeapon() && s.State.Has("weapon"), "bought protection weapon from Dayo");
+                        s.EnterInterior("Test Room", "home");
+                        Check(s.InsideInterior, "entered 3D building interior");
+                        s.LeaveInterior();
+                        Check(!s.InsideInterior, "exited 3D building interior back to the street");
+                        Check(UI.SoundSystem.I != null, "synthesised SoundSystem initialised");
                         s.State.BuyBusiness(boot.Data.businesses[1]);
                         Check(s.State.RivalOpen && s.State.BizIncome(kiosk) < Mathf.RoundToInt(income * 1.3f), $"{boot.Data.rivalName} opened after two businesses and undercuts normal prices");
                         // Vehicle insurance, livery, slogan.

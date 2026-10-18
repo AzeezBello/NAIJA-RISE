@@ -6,7 +6,7 @@ namespace Rise.Data
 {
     // Mirrors the JSON written by scripts/export-world.mjs from src/data/districts/lagos.js and the data modules.
     //
-    // Coordinates: the data is in Three.js world units (metres, +x east, +z south). Unity is left-handed, so placing
+    // Coordinates: the data is in map units (metres, +x east, +z south). Unity is left-handed, so placing
     // the data as-is mirrors the city (east ends up on your left when you face north). We therefore map data (x, z)
     // to Unity (x, -z): north is +z in the scene. Every conversion goes through W() / DataZ() below; the query methods
     // take Unity world positions unless their name ends in "Data".
@@ -14,8 +14,9 @@ namespace Rise.Data
     {
         public string id, name, version;
         public float spawnX, spawnZ, minX, maxX, minZ, maxZ;
-        public float startClock = 8.5f, hoursPerSecond = 1f / 45f;
-        public int startCash, startBank, priceWater = 100, priceSuya = 1500, refuel = 3000;
+        public float startClock = 8.5f, hoursPerSecond = 1f / 45f, venueOpen = 20f, venueClose = 4f;
+        public int startCash, startBank, priceWater = 100, priceSuya = 1500, posFee = 200, posAmount = 20000, refuel = 3000;
+        public int awayMinMinutes = 2, awayCapMinutes = 480;
         // Law and economy rules (src/data/config.js LAW, ECON, RENT, BIZ).
         public int pursuitHeat = 3, ticketKmh = 90, checkpointKmh = 60, fineRate = 10000, bustRate = 15000, speedTicket = 2000, leaseDays = 30, propertyLevel = 2;
         public float bustSeconds = 2.5f, payCycle = 60f, agentFeeRate = 0.1f, priceLow = 0.8f, priceHigh = 1.2f;
@@ -39,7 +40,7 @@ namespace Rise.Data
     [Serializable] public class ProfilePoint { public float along, height; }
     [Serializable] public class BridgeData { public string id, name, axis; public float k, halfW; public ProfilePoint[] profile; public float From => profile[0].along; public float To => profile[profile.Length - 1].along; }
     [Serializable] public class PointData { public float x, z; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
-    [Serializable] public class LandmarkData { public string id, name, shortName, kind, color, sign, region; public float x, z, h; public bool big, stadium, waterfront; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
+    [Serializable] public class LandmarkData { public string id, name, shortName, kind, color, sign, region; public float x, z, h; public int cost; public bool big, stadium, waterfront; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
     [Serializable] public class BusStopData { public string id, name, shortName; public float x, z; public int agberos; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
     [Serializable] public class PropertyData { public string id, name, type, style, color, sign, perk; public float x, z, h; public int rent, buy; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); public Vector3 Door => WorldData.W(x, 0f, z - 10.5f); }
     [Serializable] public class DealerData { public string type; public int price; }

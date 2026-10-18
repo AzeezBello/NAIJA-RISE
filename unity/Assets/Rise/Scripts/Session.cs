@@ -20,11 +20,12 @@ namespace Rise
         [System.NonSerialized] public JobData Working; [System.NonSerialized] public float WorkT, WorkDuration;   // shift in progress (real seconds)
         [System.NonSerialized] public readonly System.Collections.Generic.List<VehicleController> Parked = new System.Collections.Generic.List<VehicleController>();
 
-        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Gate, Home, Business, BusStop, Deliver, Place, Hustler }
-        Target target; ContactSystem.Contact targetContact; VehicleController targetVehicle; TrafficSystem.Vehicle targetTraffic; Vector3 targetKiosk;
+        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Vendor, Gate, Home, Business, BusStop, Deliver, Place, Hustler }
+        Target target; ContactSystem.Contact targetContact; VehicleController targetVehicle; TrafficSystem.Vehicle targetTraffic; Vector3 targetKiosk, targetVendor;
         PropertyData targetProperty; BusinessData targetBusiness; BusStopData targetStop;
         float saveT, heatT = 45f;
         bool sinking;
+        Vector3 lastShorePos;
 
         [System.NonSerialized] public TrafficLights Lights;
         [System.NonSerialized] public Weather Weather;
@@ -40,6 +41,7 @@ namespace Rise
         {
             Data = data; State = state; Clock = clock; Player = player; Camera = camera; Traffic = traffic; Contacts = contacts; Lights = lights;
             lastDay = clock.Day;
+            lastShorePos = data.Spawn;
             SpawnParkedVehicles();
             Traffic.PlayerObstacle = Player.transform;
         }
@@ -88,7 +90,7 @@ namespace Rise
             UpdateOnFoot();
         }
 
-        // ---- vitals (src/systems/vitals.js) ----
+        // ---- vitals ----
         void Vitals(float dt)
         {
             var s = State.S;
@@ -97,6 +99,22 @@ namespace Rise
                 float v = Mathf.Abs(Vehicle.Speed);
                 if (v > 0.5f) { s.fuel = Mathf.Max(0f, s.fuel - dt * 0.4f * (v / 24f)); State.GainSkill("driving", dt * 0.03f * Mathf.Min(1f, v / 15f)); }
                 s.stamina = Mathf.Min(100f, s.stamina + dt * 6f);
+            }
+            else if (Player != null && Player.Swimming)
+            {
+                s.stamina = Mathf.Max(0f, s.stamina - 8f * dt);
+                if (s.stamina <= 0f)
+                {
+                    s.health = Mathf.Max(0f, s.health - 12f * dt);
+                    if (s.health <= 0f)
+                    {
+                        s.health = 50f; s.stamina = 40f;
+                        Player.Swimming = false;
+                        Player.Teleport(lastShorePos + Vector3.up * 0.3f, 0f);
+                        State.Toast("Fishermen pulled you from the lagoon to shore.");
+                    }
+                }
+                Player.CanSprint = false;
             }
             else
             {
@@ -117,11 +135,13 @@ namespace Rise
         void UpdateOnFoot()
         {
             Player.InputEnabled = true;
+            if (UpdateInteriorOnFoot()) return;
             var pos = Player.transform.position;
             bool swimming = InWaterOffDeck(pos);
             if (swimming && !Player.Swimming) State.Toast("You are in the lagoon — swim back to land");
             Player.Swimming = swimming;
             if (swimming) { Player.CanSprint = false; Prompt = null; target = Target.None; return; }
+            lastShorePos = pos;
             target = Target.None; Prompt = null;
 
             targetVehicle = null; float best = 3.6f;
@@ -141,13 +161,14 @@ namespace Rise
             else if (targetTraffic != null && targetTraffic.speed < 1f) { target = Target.TrafficVehicle; Prompt = $"TAKE {targetTraffic.cls.name.ToUpper()}"; }
             else if (targetStop != null) { target = Target.BusStop; Prompt = $"TAKE DANFO FROM {targetStop.shortName}"; }
             else if (NearKiosk(pos, out targetKiosk)) { target = Target.Kiosk; Prompt = "POS KIOSK · PURE WATER, SUYA"; }
+            else if (NearVendor(pos, out targetVendor)) { target = Target.Vendor; Prompt = "ROADSIDE VENDOR · PURE WATER, GALA, SUYA"; }
             else if (Street != null && (targetHustler = Street.NearestNightlife(pos, 3.5f)) != null) { target = Target.Hustler; Prompt = $"TALK TO {targetHustler.Value.name.ToUpper()}"; }
 
             if (!Interact()) return;
             switch (target)
             {
                 case Target.Vehicle: Enter(targetVehicle); break;
-                case Target.TrafficVehicle: { var vc = Traffic.TakeVehicle(targetTraffic); Enter(vc); State.AddHeat(1, "Vehicle taken"); break; }
+                case Target.TrafficVehicle: TryHijackTrafficVehicle(targetTraffic); break;
                 case Target.Deliver: FinishTask(true); break;
                 case Target.Contact: TalkTo(targetContact); break;
                 case Target.Home: OpenHomeMenu(targetProperty); break;
@@ -156,8 +177,37 @@ namespace Rise
                 case Target.Place: OpenPlaceMenu(targetPlace); break;
                 case Target.BusStop: OpenTransitMenu(targetStop); break;
                 case Target.Kiosk: OpenKioskMenu(); break;
+                case Target.Vendor: OpenVendorMenu(); break;
                 case Target.Hustler: if (targetHustler.HasValue) OpenHustlerMenu(targetHustler.Value); break;
             }
+        }
+
+        // Commercial vehicles (danfo, keke, okada, fuel tanker, etc.) require a protection weapon to hijack,
+        // and the driver/conductor fight back before fleeing.
+        public bool TryHijackTrafficVehicle(TrafficSystem.Vehicle tv)
+        {
+            if (tv == null) return false;
+            if (tv.cls != null && tv.cls.commercial)
+            {
+                if (!State.Has("weapon"))
+                {
+                    State.Toast("The driver and passengers will fight back. You need a weapon to hijack this vehicle.");
+                    return false;
+                }
+                int dmg = Random.Range(20, 50);
+                State.S.health = Mathf.Max(15f, State.S.health - dmg);
+                State.AddHeat(2, "Armed commercial hijack");
+                State.AddRep("public", -8);
+                State.AddRep("street", -5);
+                State.Toast($"Driver and conductor fought back (-{dmg} health) before you took the {tv.cls.name}!");
+                var vc = Traffic.TakeVehicle(tv);
+                Enter(vc);
+                return true;
+            }
+            var plain = Traffic.TakeVehicle(tv);
+            Enter(plain);
+            State.AddHeat(1, "Vehicle taken");
+            return true;
         }
 
         string DeliverLabel()
@@ -190,7 +240,7 @@ namespace Rise
         static bool Interact() => GameInput.InteractPressed;
         static bool Decline() => GameInput.DeclinePressed;
 
-        // ---- dialogue and shifts (src/systems/interaction.js) ----
+        // ---- dialogue and shifts ----
         public void OpenDialogue(ContactSystem.Contact c)
         {
             var menu = new Menu { Title = c.data.name, Subtitle = $"{c.data.role} · {State.RelTier(c.data.id)}", Line = GreetLine(c) };
@@ -268,7 +318,7 @@ namespace Rise
             }
             else sinking = false;
             Vehicle.Drive(gas, brake, boost, hand, h, State.S.fuel / 100f, dt);
-            if (Vehicle.LastImpact > 2f) { State.Toast(Vehicle.LastImpact > 8f ? "Crash! Vehicle damaged" : "Scrape"); Vehicle.LastImpact = 0f; }
+            if (Vehicle.LastImpact > 2f) { UI.SoundSystem.I?.PlayHorn(); State.Toast(Vehicle.LastImpact > 8f ? "Crash! Vehicle damaged" : "Scrape"); Vehicle.LastImpact = 0f; }
             bool slow = Mathf.Abs(Vehicle.Speed) < 2f;
             Prompt = null;
             if (slow && TaskDeliverable()) { Prompt = DeliverLabel(); if (Interact()) { FinishTask(true); return; } }
