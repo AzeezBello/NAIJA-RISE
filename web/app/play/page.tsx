@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-export const metadata = { title: 'Play — RISE Lagos' };
+export const metadata = { title: 'Play — Rise: Hustle or Die Trying' };
 export const dynamic = 'force-dynamic';
 
 function resolveEmbedUrl(raw?: string): string | null {
@@ -44,7 +44,7 @@ export default function PlayPage() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <Link href="/" className="site-logo" style={{ fontSize: 18 }}>
-            <b>RISE</b>
+            <b>RISE</b>: HUSTLE OR DIE TRYING
           </Link>
           <span
             style={{
@@ -124,7 +124,7 @@ export default function PlayPage() {
         <div style={{ flex: 1, position: 'relative', width: '100%', height: 'calc(100vh - 44px)' }}>
           <iframe
             src={embedUrl}
-            title="RISE — Lagos (Unity WebGL)"
+            title="Rise: Hustle or Die Trying (Unity WebGL)"
             allow="autoplay; fullscreen *; gamepad; pointer-lock; accelerometer; gyroscope"
             allowFullScreen
             style={{
@@ -169,7 +169,7 @@ export default function PlayPage() {
               WEBGL HOST CONFIGURATION
             </div>
             <h1 style={{ margin: '0 0 10px', fontSize: 28, letterSpacing: '-.04em' }}>
-              RISE — Lagos
+              Rise: Hustle or Die Trying
             </h1>
             <p style={{ fontSize: 13, color: '#b7c4be', lineHeight: 1.6, margin: '0 0 18px' }}>
               Set <code style={{ color: '#fff' }}>NEXT_PUBLIC_WEBGL_URL</code> to your hosted itch.io HTML5 embed URL to stream the Unity WebGL build right here.
@@ -185,11 +185,11 @@ export default function PlayPage() {
             >
               <li>
                 Package the WebGL build with <code style={{ color: '#e3ece8' }}>npm run package:webgl</code> to produce{' '}
-                <code style={{ color: '#e3ece8' }}>unity/Builds/Rise-Lagos-WebGL.zip</code>.
+                <code style={{ color: '#e3ece8' }}>WebGL.zip</code>.
               </li>
               <li>
                 On <strong>itch.io → Create new project</strong>, set <em>Kind of project</em> to <strong>HTML</strong>, upload{' '}
-                <code style={{ color: '#e3ece8' }}>Rise-Lagos-WebGL.zip</code>, and check <em>This file will be played in the browser</em>.
+                <code style={{ color: '#e3ece8' }}>WebGL.zip</code>, and check <em>This file will be played in the browser</em>.
               </li>
               <li>
                 Open the project&apos;s <strong>Embed game → Direct link / Embed HTML</strong>, copy the{' '}

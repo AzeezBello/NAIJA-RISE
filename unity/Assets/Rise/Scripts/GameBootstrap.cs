@@ -154,7 +154,7 @@ namespace Rise
 
             var away = restored ? state.ApplyAwayEarnings() : null;
             state.Toast(restored ? (away.HasValue && away.Value.net > 0 ? $"Welcome back to Lagos · Day {state.S.day} · +₦{away.Value.net:N0} while away" : $"Welcome back to Lagos · Day {state.S.day}") : "Welcome to Lagos. Baba K dey wait for you at Ojuelegba.");
-            Debug.Log($"RISE — {Data.meta.name} {Data.meta.version}: {Data.roads.Length} roads, {Data.landmarks.Length} landmarks, {Builder.ObjectCount} world objects ({Builder.StadiumModels} stadium models, {Builder.Trees} trees), {lights.Count} lit junctions, {contacts.Contacts.Count} contacts, save {(restored ? "restored" : "new")}.");
+            Debug.Log($"Rise: Hustle or Die Trying · {Data.meta.name} {Data.meta.version}: {Data.roads.Length} roads, {Data.landmarks.Length} landmarks, {Builder.ObjectCount} world objects ({Builder.StadiumModels} stadium models, {Builder.Trees} trees), {lights.Count} lit junctions, {contacts.Contacts.Count} contacts, save {(restored ? "restored" : "new")}.");
         }
 
         void LateUpdate()

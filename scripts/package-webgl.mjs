@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Packages unity/Builds/WebGL into an itch.io-ready HTML5 zip archive (unity/Builds/Rise-Lagos-WebGL.zip)
+// Packages unity/Builds/WebGL into an itch.io-ready HTML5 zip archive (WebGL.zip and unity/Builds/WebGL.zip)
 // with index.html, Build/, and TemplateData/ at the archive root.
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,7 +12,8 @@ const webglDir = join(rootDir, 'unity', 'Builds', 'WebGL');
 const indexPath = join(webglDir, 'index.html');
 const buildDir = join(webglDir, 'Build');
 const templateDir = join(webglDir, 'TemplateData');
-const zipPath = join(rootDir, 'unity', 'Builds', 'Rise-Lagos-WebGL.zip');
+const zipPath = join(rootDir, 'WebGL.zip');
+const buildsWebglZipPath = join(rootDir, 'unity', 'Builds', 'WebGL.zip');
 
 if (!existsSync(indexPath) || !existsSync(buildDir) || !existsSync(templateDir)) {
   console.error('Missing WebGL build in unity/Builds/WebGL. Run Unity -> RISE -> Build WebGL Player first.');
@@ -145,16 +146,19 @@ const SHADOW_GUARD_SCRIPT = `  <script id="rise-webgl-shadow-guard">
     })();
   </script>`;
 
-// Ensure index.html is patched for full-viewport iframe embedding, automatic IndexedDB save syncing, and WebGL2 shadow-sampler safety.
+// Ensure index.html is patched for full-viewport iframe embedding, automatic IndexedDB save syncing, no watermarks, and WebGL2 shadow-sampler safety.
 let html = readFileSync(indexPath, 'utf8');
+html = html.replace(/<title>.*?<\/title>/, '<title>Rise: Hustle or Die Trying</title>');
+html = html.replace(/<div id="unity-build-title">.*?<\/div>/, '<div id="unity-build-title">Rise: Hustle or Die Trying</div>');
+html = html.replace('productName: "RISE Lagos"', 'productName: "Rise: Hustle or Die Trying"');
+html = html.replace('companyName: "DefaultCompany"', 'companyName: "Rise"');
 html = html.replace('// config.autoSyncPersistentDataPath = true;', 'config.autoSyncPersistentDataPath = true;');
 html = html.replace(
   'fullscreenContainer.style.width = "960px";\n        fullscreenContainer.style.height = "600px";',
   'document.querySelector("#unity-container").className = "unity-mobile";\n        canvas.className = "unity-mobile";'
 );
-if (!html.includes('overflow:hidden;background:#07100e')) {
-  html = html.replace('</head>', '  <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#07100e;}</style>\n  </head>');
-}
+html = html.replace(/<style>html,body\{width:100%;height:100%;margin:0;overflow:hidden;background:#07100e;\}[^<]*<\/style>\s*/g, '');
+html = html.replace('</head>', '  <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#07100e;}#unity-logo,#unity-footer,#unity-logo-title-footer{display:none!important;}</style>\n  </head>');
 html = html.replace(/<script id="rise-webgl-shadow-guard">[\s\S]*?<\/script>\s*/g, '');
 html = html.replace('</head>', `${SHADOW_GUARD_SCRIPT}\n  </head>`);
 writeFileSync(indexPath, html);
@@ -169,16 +173,19 @@ for (const entry of readdirSync(buildDir)) {
   }
 }
 
-if (existsSync(zipPath)) rmSync(zipPath, { force: true });
+for (const p of [zipPath, buildsWebglZipPath]) {
+  if (existsSync(p)) rmSync(p, { force: true });
+}
 
 execFileSync('zip', ['-r', '-q', zipPath, 'index.html', 'Build', 'TemplateData', '-x', '*.DS_Store'], {
   cwd: webglDir,
   stdio: 'inherit',
 });
+copyFileSync(zipPath, buildsWebglZipPath);
 
 const mb = bytes => (bytes / (1024 * 1024)).toFixed(1);
 const zipSize = statSync(zipPath).size;
-console.log(`Packaged ${zipPath} (${mb(zipSize)} MB)`);
+console.log(`Packaged ${zipPath} and ${buildsWebglZipPath} (${mb(zipSize)} MB)`);
 for (const entry of readdirSync(buildDir)) {
   const s = statSync(join(buildDir, entry)).size;
   console.log(`  Build/${entry}: ${mb(s)} MB`);

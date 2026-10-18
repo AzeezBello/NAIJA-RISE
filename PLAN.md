@@ -1,6 +1,6 @@
-# RISE — Lagos · Product Plan
+# Rise: Hustle or Die Trying · Product Plan
 
-Working title in the PRD: **Lagos Life**. Shipping name in this repo: **RISE — Lagos**.
+Working title in the PRD: **Lagos Life**. Shipping name in this repo: **Rise: Hustle or Die Trying**.
 Original IP: original characters, missions, story and systems. The inspiration is open-world action plus Lagos-style life simulation; districts use real Lagos place and street names on a stylised map.
 
 Pitch: **Build your life. Build your empire. Survive the city.**

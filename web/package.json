@@ -2,7 +2,7 @@
   "name": "rise-web",
   "version": "1.0.0",
   "private": true,
-  "description": "RISE — Lagos: Next.js site (landing, accounts, admin) for the Unity edition in ../unity",
+  "description": "Rise: Hustle or Die Trying — Next.js site (landing, accounts, admin) for the Unity edition in ../unity",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

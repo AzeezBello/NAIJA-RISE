@@ -2,7 +2,7 @@
   "name": "rise-lagos",
   "version": "1.0.0",
   "private": true,
-  "description": "RISE — Lagos: Unity edition (unity/), shared map and content data (src/data) and the Next.js site (web/)",
+  "description": "Rise: Hustle or Die Trying — Unity edition (unity/), shared map and content data (src/data) and the Next.js site (web/)",
   "type": "module",
   "scripts": {
     "check": "for f in $(find src -name '*.js'); do node --check \"$f\" || exit 1; done && echo 'data modules OK' && node scripts/check-data.mjs",

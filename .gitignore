@@ -39,6 +39,7 @@ unity/UserSettings/
 unity/MemoryCaptures/
 unity/Recordings/
 unity/Builds/
+WebGL.zip
 unity/*.csproj
 unity/*.sln
 unity/*.slnx
