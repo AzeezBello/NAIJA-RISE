@@ -11,7 +11,7 @@
     "export:unity": "node scripts/export-world.mjs",
     "package:webgl": "node scripts/package-webgl.mjs",
     "postinstall": "node scripts/render-build.mjs",
-    "build": "npm --prefix web ci --include=dev && npm --prefix web run build",
+    "build": "npm --prefix web install --include=dev && npm --prefix web run build",
     "start": "npm --prefix web run start"
   }
 }
