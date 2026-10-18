@@ -1,5 +1,5 @@
 // Admin dashboard v0 (PLAN Phase 6): players, saves and economy totals, read on the server with the service role key.
-// Protect the route at the edge (Vercel password or an allowlist) before exposing it; there is no login here yet.
+// Protect the route at the edge (an allowlist or auth proxy) before exposing it; there is no login here yet.
 import Link from 'next/link';
 import { adminSupabase } from '@/lib/supabase';
 
