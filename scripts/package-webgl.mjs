@@ -19,7 +19,133 @@ if (!existsSync(indexPath) || !existsSync(buildDir) || !existsSync(templateDir))
   process.exit(1);
 }
 
-// Ensure index.html is patched for full-viewport iframe embedding and automatic IndexedDB save syncing.
+const SHADOW_GUARD_SCRIPT = `  <script id="rise-webgl-shadow-guard">
+    // WebGL2 / ANGLE rejects draw calls when URP leaves a dummy RGBA8 texture bound to an unused sampler2DShadow uniform
+    // (e.g. hlslcc_zcmp_AdditionalLightsShadowmapTexture or unshadowed cameras). Substitute a 1x1 depth shadow texture.
+    (() => {
+      if (typeof WebGL2RenderingContext === 'undefined') return;
+      const proto = WebGL2RenderingContext.prototype;
+      const depthFormats = new Set([0x1902, 0x81a5, 0x81a6, 0x81a7, 0x8cac, 0x88f0, 0x8cad]);
+      const depthTex = new WeakSet();
+      const shadowLocs = new WeakMap();
+      const progUnits = new WeakMap();
+      const origTexStorage2D = proto.texStorage2D;
+      const origTexImage2D = proto.texImage2D;
+      const origBindTexture = proto.bindTexture;
+      const origActiveTexture = proto.activeTexture;
+      const origUseProgram = proto.useProgram;
+      const origGetUniformLocation = proto.getUniformLocation;
+      const origUniform1i = proto.uniform1i;
+      const origUniform1iv = proto.uniform1iv;
+      const origDrawElements = proto.drawElements;
+      const origDrawElementsInstanced = proto.drawElementsInstanced;
+      const origDrawArrays = proto.drawArrays;
+      const stateMap = new WeakMap();
+      function getState(gl) {
+        let s = stateMap.get(gl);
+        if (!s) {
+          s = { active: 0, bound2D: new Array(32).fill(null), prog: null, fallback: null };
+          stateMap.set(gl, s);
+          const fallback = gl.createTexture();
+          const prevTex = gl.getParameter(gl.TEXTURE_BINDING_2D);
+          origBindTexture.call(gl, gl.TEXTURE_2D, fallback);
+          origTexImage2D.call(gl, gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT32F, 1, 1, 0, gl.DEPTH_COMPONENT, gl.FLOAT, new Float32Array([1]));
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+          origBindTexture.call(gl, gl.TEXTURE_2D, prevTex);
+          depthTex.add(fallback);
+          s.fallback = fallback;
+        }
+        return s;
+      }
+      proto.activeTexture = function(texture) {
+        getState(this).active = texture - 0x84c0;
+        return origActiveTexture.call(this, texture);
+      };
+      proto.bindTexture = function(target, texture) {
+        const s = getState(this);
+        if (target === 0x0de1) s.bound2D[s.active] = texture;
+        return origBindTexture.call(this, target, texture);
+      };
+      proto.texStorage2D = function(target, levels, internalformat, width, height) {
+        if (target === 0x0de1 && depthFormats.has(internalformat)) {
+          const s = getState(this), t = s.bound2D[s.active];
+          if (t) depthTex.add(t);
+        }
+        return origTexStorage2D.call(this, target, levels, internalformat, width, height);
+      };
+      proto.texImage2D = function(target, level, internalformat, ...rest) {
+        if (target === 0x0de1 && depthFormats.has(internalformat)) {
+          const s = getState(this), t = s.bound2D[s.active];
+          if (t) depthTex.add(t);
+        }
+        return origTexImage2D.call(this, target, level, internalformat, ...rest);
+      };
+      proto.useProgram = function(program) {
+        getState(this).prog = program;
+        return origUseProgram.call(this, program);
+      };
+      proto.getUniformLocation = function(program, name) {
+        const loc = origGetUniformLocation.call(this, program, name);
+        if (loc && typeof name === 'string' && name.includes('ShadowmapTexture')) {
+          shadowLocs.set(loc, program);
+        }
+        return loc;
+      };
+      function recordUnit(program, unit) {
+        let units = progUnits.get(program);
+        if (!units) { units = []; progUnits.set(program, units); }
+        if (!units.includes(unit)) units.push(unit);
+      }
+      proto.uniform1i = function(location, x) {
+        const prog = location && shadowLocs.get(location);
+        if (prog) recordUnit(prog, x);
+        return origUniform1i.call(this, location, x);
+      };
+      proto.uniform1iv = function(location, v, ...rest) {
+        const prog = location && shadowLocs.get(location);
+        if (prog && v && v.length) recordUnit(prog, v[0]);
+        return origUniform1iv.call(this, location, v, ...rest);
+      };
+      function guardShadowSamplers(gl) {
+        const s = stateMap.get(gl);
+        if (!s || !s.prog) return;
+        const units = progUnits.get(s.prog);
+        if (!units) return;
+        let switched = false;
+        const prevActive = s.active;
+        for (let i = 0; i < units.length; i++) {
+          const u = units[i];
+          const t = s.bound2D[u];
+          if (!t || !depthTex.has(t)) {
+            origActiveTexture.call(gl, 0x84c0 + u);
+            origBindTexture.call(gl, 0x0de1, s.fallback);
+            s.bound2D[u] = s.fallback;
+            switched = true;
+          }
+        }
+        if (switched) origActiveTexture.call(gl, 0x84c0 + prevActive);
+      }
+      proto.drawElements = function(mode, count, type, offset) {
+        guardShadowSamplers(this);
+        return origDrawElements.call(this, mode, count, type, offset);
+      };
+      proto.drawElementsInstanced = function(mode, count, type, offset, instanceCount) {
+        guardShadowSamplers(this);
+        return origDrawElementsInstanced.call(this, mode, count, type, offset, instanceCount);
+      };
+      proto.drawArrays = function(mode, first, count) {
+        guardShadowSamplers(this);
+        return origDrawArrays.call(this, mode, first, count);
+      };
+    })();
+  </script>`;
+
+// Ensure index.html is patched for full-viewport iframe embedding, automatic IndexedDB save syncing, and WebGL2 shadow-sampler safety.
 let html = readFileSync(indexPath, 'utf8');
 html = html.replace('// config.autoSyncPersistentDataPath = true;', 'config.autoSyncPersistentDataPath = true;');
 html = html.replace(
@@ -29,6 +155,8 @@ html = html.replace(
 if (!html.includes('overflow:hidden;background:#07100e')) {
   html = html.replace('</head>', '  <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#07100e;}</style>\n  </head>');
 }
+html = html.replace(/<script id="rise-webgl-shadow-guard">[\s\S]*?<\/script>\s*/g, '');
+html = html.replace('</head>', `${SHADOW_GUARD_SCRIPT}\n  </head>`);
 writeFileSync(indexPath, html);
 
 // Remove stale .gz files if .unityweb files are active (or vice versa) so the zip only packs active artifacts.
