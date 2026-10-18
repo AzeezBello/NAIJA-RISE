@@ -8,6 +8,10 @@
     "check": "for f in $(find src -name '*.js'); do node --check \"$f\" || exit 1; done && echo 'data modules OK' && node scripts/check-data.mjs",
     "web": "npm --prefix web run dev",
     "web:build": "npm --prefix web run build",
-    "export:unity": "node scripts/export-world.mjs"
+    "export:unity": "node scripts/export-world.mjs",
+    "package:webgl": "node scripts/package-webgl.mjs",
+    "postinstall": "node scripts/render-build.mjs",
+    "build": "npm --prefix web ci --include=dev && npm --prefix web run build",
+    "start": "npm --prefix web run start"
   }
 }

@@ -22,13 +22,20 @@ python3 webgl_server.py     # serve a WebGL build from unity/Builds/WebGL with g
 
 ## Website
 
-Next.js 16 site (landing page, `/account`, `/admin`; `/play` is a placeholder until the Unity WebGL build is hosted), Turbopack in dev and build:
+Next.js 16 site (landing page, `/play`, `/account`, `/admin`), Turbopack in dev and build:
 
 ```bash
 cd web && npm install
 npm run dev          # http://localhost:3000
 npm run build && npm start
 ```
+
+Render deploys this site from the repo root: its build command (`yarn`) runs the root `postinstall`, which builds `web/`
+when `RENDER` is set (`scripts/render-build.mjs`), and `yarn start` runs `next start` on Render's `PORT`. Set the
+`NEXT_PUBLIC_SUPABASE_*` and service-role variables from `web/.env.example` in the Render dashboard for `/account` and
+`/admin`, and set `NEXT_PUBLIC_WEBGL_URL` to your hosted itch.io HTML5 embed URL (packaged with `npm run package:webgl` →
+`unity/Builds/Rise-Lagos-WebGL.zip`) so `/play` streams the Unity WebGL build. On other hosts use `npm run build` then
+`npm start` from the root.
 
 ## What was in Alpha 1.0 (Three.js edition)
 
