@@ -1,4 +1,4 @@
-# Web checks on every push and pull request: engine syntax + data checks, the Unity data export staying in sync
+# Web checks on every push and pull request: src/data syntax + reference checks, the Unity data export staying in sync
 # with the committed JSON, and the Next.js production build. Unity tests need an editor licence and run locally
 # (see unity/README.md "Headless"); a self-hosted runner with a Unity licence is the route to CI for those.
 name: web

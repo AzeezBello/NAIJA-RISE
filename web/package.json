@@ -2,12 +2,9 @@
   "name": "rise-web",
   "version": "1.0.0",
   "private": true,
-  "description": "RISE — Lagos: Next.js shell (landing, accounts, launcher) hosting the Three.js game engine in ../src",
+  "description": "RISE — Lagos: Next.js site (landing, accounts, admin) for the Unity edition in ../unity",
   "scripts": {
-    "sync": "node scripts/sync-engine.mjs",
-    "predev": "npm run sync",
     "dev": "next dev",
-    "prebuild": "npm run sync",
     "build": "next build",
     "start": "next start"
   },
