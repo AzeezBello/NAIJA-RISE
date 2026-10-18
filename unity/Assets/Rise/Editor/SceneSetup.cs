@@ -38,7 +38,30 @@ namespace Rise.EditorTools
         public static void BuildWindows() => BuildPlayer(BuildTarget.StandaloneWindows64, "Builds/Windows/Rise-Lagos.exe");
 
         [MenuItem("RISE/Build WebGL Player")]
-        public static void BuildWebGL() => BuildPlayer(BuildTarget.WebGL, "Builds/WebGL");
+        public static void BuildWebGL()
+        {
+            // Gzip + decompression fallback keeps the .data archive under itch.io's 200 MB per-file cap
+            // while allowing static hosts (itch.io, CDNs) to unpack without custom Content-Encoding headers.
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
+            PlayerSettings.WebGL.decompressionFallback = true;
+            if (System.IO.Directory.Exists("Builds/WebGL/Build"))
+                System.IO.Directory.Delete("Builds/WebGL/Build", true);
+            BuildPlayer(BuildTarget.WebGL, "Builds/WebGL");
+            PatchWebGLIndex("Builds/WebGL/index.html");
+        }
+
+        static void PatchWebGLIndex(string indexPath)
+        {
+            if (!System.IO.File.Exists(indexPath)) return;
+            var html = System.IO.File.ReadAllText(indexPath);
+            html = html.Replace("// config.autoSyncPersistentDataPath = true;", "config.autoSyncPersistentDataPath = true;");
+            html = html.Replace(
+                "fullscreenContainer.style.width = \"960px\";\n        fullscreenContainer.style.height = \"600px\";",
+                "document.querySelector(\"#unity-container\").className = \"unity-mobile\";\n        canvas.className = \"unity-mobile\";");
+            if (!html.Contains("overflow:hidden;background:#07100e"))
+                html = html.Replace("</head>", "  <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#07100e;}</style>\n  </head>");
+            System.IO.File.WriteAllText(indexPath, html);
+        }
 
         static void BuildPlayer(BuildTarget target, string output)
         {
