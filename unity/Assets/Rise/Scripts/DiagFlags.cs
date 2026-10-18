@@ -11,6 +11,8 @@ namespace Rise
     //   nomsaa     MSAA off                           noshadowasset  shadows disabled in the URP asset itself
     //   showroom   one of every vehicle class laid out in front of the player, labelled with the model fitted
     //   offline    ignore Resources/cloud.json (no account, no cloud save, loopback multiplayer); always on in the play test
+    //   shots      capture HUD screenshots on foot, in a menu, driving and wanted, then quit (DiagShots.cs)
+    //   nosave     never write the save file (pair with shots or any experiment on a machine with a real save)
     public static class DiagFlags
     {
         static string[] flags;

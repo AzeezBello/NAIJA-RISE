@@ -67,7 +67,10 @@ namespace Rise.Data
     [Serializable] public class RoadPointData { public string axis, name; public float k, at; }
     [Serializable] public class CellData { public string style; public float x, z; public Vector3 World(float y = 0f) => WorldData.W(x, y, z); }
     [Serializable] public class JobData { public string id, title, where, at, by, skill, needCourse; public int pay, xp, min; public float dur; public bool night, far; }
-    [Serializable] public class ContactData { public string id, name, role, at, color, line; public float offsetX, offsetZ; }
+    [Serializable] public class ContactData { public string id, name, role, at, color, line; public float offsetX, offsetZ; public RunData[] runs; }
+    // A contact's own timed delivery (src/data/characters.js `runs`): offered through the hub menu in Session.Hustle.
+    [Serializable] public class RunData { public string text, dest, item, label, rep; public float minutes; public int reward, heat; }
+    [Serializable] public class ItemData { public string id, name, desc; }
     [Serializable] public class NameData { public string id, name; }
     [Serializable] public class VehicleClassData { public string id, name; public float len, wid, max, boost, accel; public bool commercial; public int fare; }
     [Serializable] public class FabricData { public string name, baseColor, accent, pattern; }
@@ -79,7 +82,7 @@ namespace Rise.Data
     {
         public string id, name, kind; public float x, z; public bool stadium, big, busStop;
         public Vector3 World(float y = 0f) => WorldData.W(x, y, z);
-        public float Depth => stadium ? 34f : big ? 20f : (kind == "hotel" || kind == "bank") ? 16f : 14f;
+        public float Depth => stadium ? 34f : big ? 20f : (kind == "hotel" || kind == "bank") ? 16f : kind == "street" ? 0f : 14f;
     }
 
     [Serializable]
@@ -110,6 +113,14 @@ namespace Rise.Data
         public PointData[] vendors;
         public JobData[] jobs;
         public ContactData[] contacts;
+        public ItemData[] items;
+        [NonSerialized] Dictionary<string, string> itemNames;
+        // Display name of an inventory item ("food_cooler" → "Jollof Cooler"); unknown ids are tidied.
+        public string ItemName(string id)
+        {
+            if (itemNames == null) { itemNames = new Dictionary<string, string>(); if (items != null) foreach (var i in items) itemNames[i.id] = i.name; }
+            return itemNames.TryGetValue(id ?? "", out var n) ? n : (id ?? "").Replace('_', ' ');
+        }
         public NameData[] allContacts;
         public VehicleClassData[] vehicleClasses;
         public FabricData[] fabrics;
@@ -169,6 +180,7 @@ namespace Rise.Data
             if (p.stadium) { x = p.x; z = p.z - 27f; }
             else if (p.kind == "pitch") { x = p.x + 8f; z = p.z - 13f; }
             else if (p.busStop) { x = p.x + 5f; z = p.z + 3f; }
+            else if (p.kind == "street") { x = p.x; z = p.z; }
             else { x = p.x + 3f; z = p.z - p.Depth * 0.5f - 2f; }
             world = W(x + c.offsetX, 0f, z + c.offsetZ);
             return true;

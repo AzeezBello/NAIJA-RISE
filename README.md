@@ -1,6 +1,6 @@
 # RISE — Lagos · Alpha 1.0
 
-A browser-playable open-world life simulation set in a living Surulere, Lagos. Original IP: original characters, missions and story, with real Lagos place and street names on a stylised map.
+A browser-playable open-world life simulation set in a living Nigeria. Original IP: original characters, missions and story, with real Nigeria place and street names on a stylised map.
 
 **Build your life. Build your empire. Survive the city.**
 

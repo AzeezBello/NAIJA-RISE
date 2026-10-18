@@ -70,6 +70,17 @@ namespace Rise.EditorTools
                     Check(boot.Player.transform.position.y > -5f && boot.Player.transform.position.y < 5f, $"player on the ground at {boot.Player.transform.position}");
                     Check(boot.Player.HasRig && boot.Player.GetComponentsInChildren<SkinnedMeshRenderer>().Length > 0 && boot.Player.AnimState == "idle", $"player wears the Ready Player Me rig, state {boot.Player.AnimState}");
                     Check(peds != null && peds.RiggedCount > 50, $"pedestrians rigged ({peds?.RiggedCount})");
+                    // The Surulere street people stand on their streets and offer their own runs.
+                    int streetPeople = 0; World.ContactSystem.Contact peter = null;
+                    foreach (var c in s.Contacts.Contacts) { if (c.data.runs != null && c.data.runs.Length > 0) streetPeople++; if (c.data.id == "peter") peter = c; }
+                    Check(streetPeople >= 32, $"Surulere street contacts placed ({streetPeople})");
+                    Check(peter != null, "Peter the tailor stands on Olaitan Street");
+                    if (peter != null)
+                    {
+                        s.TalkTo(peter);
+                        Check(s.ActiveMenu != null && s.ActiveMenu.Title == "Peter" && s.ActiveMenu.Options.Count >= 3 && s.ActiveMenu.Options[0].Label.Contains("agbada"), $"Peter offers his runs: '{s.ActiveMenu?.Options[0].Label}'");
+                        s.CloseMenu();
+                    }
                     // Walk over to Baba K and talk.
                     World.ContactSystem.Contact babak = null;
                     foreach (var c in s.Contacts.Contacts) if (c.data.id == "babak") babak = c;

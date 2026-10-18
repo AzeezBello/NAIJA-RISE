@@ -107,6 +107,7 @@ namespace Rise
         public void Save(Vector3 pos, float yaw, float clock, int day)
         {
             S.px = pos.x; S.py = pos.y; S.pz = pos.z; S.yaw = yaw; S.clock = clock; S.day = day; S.lastSeen = DateTime.UtcNow.ToString("o");
+            if (DiagFlags.Has("nosave")) return;   // diagnostic runs (screenshots) must not overwrite a real save
             try { File.WriteAllText(SavePath, JsonUtility.ToJson(S)); }
             catch (Exception e) { Debug.LogWarning("Save failed: " + e.Message); }
         }
