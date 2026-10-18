@@ -30,6 +30,11 @@ npm run dev          # http://localhost:3000
 npm run build && npm start
 ```
 
+Render deploys this site from the repo root: its build command (`yarn`) runs the root `postinstall`, which builds `web/`
+when `RENDER` is set (`scripts/render-build.mjs`), and `yarn start` runs `next start` on Render's `PORT`. Set the
+`NEXT_PUBLIC_SUPABASE_*` and service-role variables from `web/.env.example` in the Render dashboard for `/account` and
+`/admin`. On other hosts use `npm run build` then `npm start` from the root.
+
 ## What was in Alpha 1.0 (Three.js edition)
 
 The feature notes below describe the retired Three.js edition (tag `threejs-final`); paths under `src/` other than `src/data` refer to files in that tag. The Unity edition ports these systems; see [unity/README.md](unity/README.md) for its current state.
