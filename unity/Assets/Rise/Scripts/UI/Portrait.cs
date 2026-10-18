@@ -4,7 +4,7 @@ using UnityEngine.Rendering.Universal;
 namespace Rise.UI
 {
     // The HUD portrait: a small camera on the player's head rendered to a texture, so the look you choose in the
-    // Character app shows at the corner of the screen (the web edition's eleven-slot portrait).
+    // Character app shows at the corner of the screen.
     public class Portrait : MonoBehaviour
     {
         public RenderTexture Texture { get; private set; }

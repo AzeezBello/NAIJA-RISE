@@ -4,7 +4,7 @@ using UnityEngine.Rendering.Universal;
 
 namespace Rise.World
 {
-    // Graphics compatibility (src/core/quality.js): three levels, "auto" picks one from the GPU and then steps down
+    // Graphics compatibility: three levels, "auto" picks one from the GPU and then steps down
     // whenever frames stay slow; dynamic resolution moves URP's render scale in four steps with hysteresis, steps back up
     // after sustained fast frames (needing longer each time a recovery fails), and gives up shrinking when it buys
     // nothing (CPU-bound or a capped display). Also owns the environment reflection probe that follows the player.

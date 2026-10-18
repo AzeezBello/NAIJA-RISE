@@ -5,7 +5,7 @@ using Rise.World;
 
 namespace Rise
 {
-    // Street racing (src/systems/racing.js): two laps on Funsho Williams Avenue between the Itire Road junction and the
+    // Street racing: two laps on Funsho Williams Avenue between the Itire Road junction and the
     // south end, against Speedy's driver. Checkpoints are pink rings; the next one is the GPS target.
     public partial class Session
     {

@@ -61,7 +61,7 @@ export default function AccountPage() {
           {state ? (
             <p>Cloud save · Day {state.day ?? 1} · Level {state.level ?? 1} · ₦{(state.cash ?? 0).toLocaleString()} cash · ₦{(state.bank ?? 0).toLocaleString()} bank · updated {new Date(save!.updated_at).toLocaleString()}</p>
           ) : (
-            <p>No cloud save yet. Play in the Unity edition signed in, or wait for the web edition's sync.</p>
+            <p>No cloud save yet. Play RISE signed in to sync your save to the cloud.</p>
           )}
           <p><Link href="/play">Play</Link> · <button type="button" onClick={() => void signOut()}>Sign out</button></p>
         </section>

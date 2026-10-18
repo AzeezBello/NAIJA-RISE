@@ -106,19 +106,19 @@ namespace Rise.World
             return go;
         }
 
-        void Sign(string text, Vector3 position, string colour, float size = 1f, Transform parent = null)
+        void Sign(string text, Vector3 position, string colour, float size = 1f, Transform parent = null, float offsetZ = 0.18f)
         {
             var go = new GameObject("Sign " + text);
             go.transform.SetParent(parent ?? Root, false);
-            go.transform.position = position;
+            go.transform.position = position + new Vector3(0f, 0f, offsetZ);
+            go.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
             var tm = go.AddComponent<TextMesh>();
             tm.text = text; tm.font = font; tm.fontSize = 64; tm.characterSize = 0.07f * size; tm.fontStyle = FontStyle.Bold;
             tm.anchor = TextAnchor.MiddleCenter; tm.alignment = TextAlignment.Center; tm.color = Hex(colour, "#ffc52f");
             go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
-            // A second copy facing the other way so the sign reads from both sides of the street.
-            var back = Instantiate(go, go.transform.position, Quaternion.Euler(0, 180, 0), go.transform.parent);
-            back.name = go.name + " (back)";
-            ObjectCount += 2;
+            var fl = go.AddComponent<Entities.FacingLabel>();
+            fl.BoardSign = true; fl.BasePos = position; fl.OffsetZ = offsetZ;
+            ObjectCount++;
         }
 
         // ---------- ground and water ----------
@@ -384,11 +384,7 @@ namespace Rise.World
                         Box(l.name + " pole", pos + Vector3.up * 1.6f, new Vector3(0.12f, 3.2f, 0.12f), Mat("signpole", "#5a5f63"), group, false);
                         float bw = 1.2f + l.shortName.Length * 0.32f;
                         Box(l.name + " board", pos + Vector3.up * 3.35f, new Vector3(bw, 0.55f, 0.06f), body, group, false);
-                        Sign(l.shortName, pos + new Vector3(0, 3.35f, 0.05f), l.sign, 0.42f, group);
-                        var back = new GameObject("Sign back"); back.transform.SetParent(group, false);
-                        back.transform.SetPositionAndRotation(pos + new Vector3(0, 3.35f, -0.05f), Quaternion.Euler(0f, 180f, 0f));
-                        Sign(l.shortName, back.transform.position, l.sign, 0.42f, back.transform);
-                        back.transform.GetChild(0).localRotation = Quaternion.identity;
+                        Sign(l.shortName, pos + new Vector3(0, 3.35f, 0f), l.sign, 0.42f, group, 0.06f);
                         continue;
                     }
                 }
@@ -399,7 +395,7 @@ namespace Rise.World
                 // Sign board on the street-facing side (north: data -z, world +z).
                 var signPos = pos + new Vector3(0, h + 1.3f, fp.y * 0.5f + 0.2f);
                 Box(l.name + " board", signPos, new Vector3(Mathf.Min(fp.x * 0.9f, 2.2f + l.shortName.Length * 1.05f), 1.8f, 0.25f), Mat("board", "#1b1b1f"), group, false);
-                Sign(l.shortName, signPos + new Vector3(0, 0, 0.2f), l.sign, 1f, group);
+                Sign(l.shortName, signPos, l.sign, 1f, group, 0.2f);
                 if (l.kind == "market") BuildMarketStalls(pos, fp, group);
             }
         }
@@ -419,9 +415,14 @@ namespace Rise.World
             if (prefab == null) return false;
             Vector3 target = teslim ? new Vector3(50f, 23f, 46f) : new Vector3(54f, 25f, 50f);
             var go = Instantiate(prefab, group); go.name = l.name + " model";
-            go.transform.position = pos; go.transform.rotation = Quaternion.identity; go.transform.localScale = Vector3.one;
+            go.transform.position = pos; go.transform.rotation = prefab.transform.localRotation; go.transform.localScale = Vector3.one;
             var b = Entities.CharacterRig.Bounds(go);
             if (b.size.x <= 0f || b.size.y <= 0f || b.size.z <= 0f) { Remove(go); return false; }
+            if (b.size.y > b.size.z || b.size.y > b.size.x)
+            {
+                go.transform.rotation = Quaternion.Euler(-90f, 0f, 0f) * go.transform.rotation;
+                b = Entities.CharacterRig.Bounds(go);
+            }
             float fit = Mathf.Min(target.x / b.size.x, target.z / b.size.z, target.y / b.size.y);
             go.transform.localScale = Vector3.one * fit;
             b = Entities.CharacterRig.Bounds(go);
@@ -429,7 +430,6 @@ namespace Rise.World
             b = Entities.CharacterRig.Bounds(go);
             foreach (var c in go.GetComponentsInChildren<Collider>()) Remove(c);
             var col = go.AddComponent<BoxCollider>(); col.center = go.transform.InverseTransformPoint(b.center); col.size = new Vector3(b.size.x / fit, b.size.y / fit, b.size.z / fit);
-            foreach (var t in go.GetComponentsInChildren<Transform>()) t.gameObject.isStatic = true;
             StadiumModels++; ObjectCount++;
             return true;
         }
@@ -456,15 +456,21 @@ namespace Rise.World
                         if (Data.InWaterData(dx, dz) || NearRoadData(dx, dz, 7f) || ReservedData(dx, dz)) continue;
                         var tree = Instantiate(prefab, group); tree.name = model;
                         var pos = WorldData.W(dx, 0f, dz); pos.y = Data.DeckHeightAtData(dx, dz);
-                        tree.transform.position = pos; tree.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f); tree.transform.localScale = Vector3.one;
+                        tree.transform.position = pos; tree.transform.rotation = prefab.transform.localRotation; tree.transform.localScale = Vector3.one;
                         var b = Entities.CharacterRig.Bounds(tree);
+                        if (b.size.z > b.size.y || b.size.x > b.size.y)
+                        {
+                            tree.transform.rotation = Quaternion.Euler(-90f, 0f, 0f) * tree.transform.rotation;
+                            b = Entities.CharacterRig.Bounds(tree);
+                        }
+                        tree.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f) * tree.transform.rotation;
+                        b = Entities.CharacterRig.Bounds(tree);
                         float jitter = 0.85f + (float)rng.NextDouble() * 0.3f, k = b.size.y > 0.01f ? height * jitter / b.size.y : 1f;
                         tree.transform.localScale = Vector3.one * k;
                         b = Entities.CharacterRig.Bounds(tree);
                         tree.transform.position += new Vector3(pos.x - b.center.x, pos.y - b.min.y, pos.z - b.center.z);
                         foreach (var c in tree.GetComponentsInChildren<Collider>()) Remove(c);
                         var trunk = tree.AddComponent<BoxCollider>(); trunk.center = tree.transform.InverseTransformPoint(new Vector3(pos.x, pos.y + height * 0.5f, pos.z)); trunk.size = new Vector3(0.6f / k, height / k, 0.6f / k);
-                        foreach (var t in tree.GetComponentsInChildren<Transform>()) t.gameObject.isStatic = true;
                         Trees++; ObjectCount++; placed = true;
                     }
                 }

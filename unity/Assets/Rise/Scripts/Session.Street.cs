@@ -6,7 +6,7 @@ namespace Rise
 {
     // Street encounters: the agbero levy (pay or risk heat; a pet dog or a home with security keeps them off), the
     // night hustlers outside the clubs (hookup, pickpockets), Mama Nkechi's dog, and tenants, upgrades, staff and
-    // vehicle customisation menus (src/systems/dialogue.js, interaction.js, ui/apps/businesses.js).
+    // vehicle customisation menus.
     public partial class Session
     {
         [System.NonSerialized] public StreetLife Street;

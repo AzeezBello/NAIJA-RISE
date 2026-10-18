@@ -5,7 +5,7 @@ using Rise.World;
 
 namespace Rise
 {
-    // District hustle hubs (src/systems/places.js HUSTLE_HUBS): repeatable timed deliveries offered by local contacts;
+    // District hustle hubs: repeatable timed deliveries offered by local contacts;
     // Community Grammar School and Yaba Tech (schoolMenu); street football tiers (footballMenu / playMatch).
     public partial class Session
     {

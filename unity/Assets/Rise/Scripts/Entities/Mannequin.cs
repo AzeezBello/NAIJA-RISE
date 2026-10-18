@@ -48,21 +48,41 @@ namespace Rise.Entities
             if (Application.isPlaying) Object.Destroy(col); else Object.DestroyImmediate(col);
         }
 
-        // A floating name label readable from both sides.
+        // A floating name label that faces the camera horizontally so it never renders mirrored or overlapping.
         public static void Label(Transform parent, string text, Color colour, float height = 2.25f, float size = 0.6f)
         {
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            for (int side = 0; side < 2; side++)
+            var go = new GameObject("Label");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(0, height, 0);
+            var tm = go.AddComponent<TextMesh>();
+            tm.text = text; tm.font = font; tm.fontSize = 64; tm.characterSize = 0.07f * size; tm.fontStyle = FontStyle.Bold;
+            tm.anchor = TextAnchor.MiddleCenter; tm.alignment = TextAlignment.Center; tm.color = colour;
+            go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            go.AddComponent<FacingLabel>();
+        }
+    }
+
+    public class FacingLabel : MonoBehaviour
+    {
+        public bool BoardSign;
+        public Vector3 BasePos;
+        public float OffsetZ = 0.18f;
+
+        void LateUpdate()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+            if (BoardSign)
             {
-                var go = new GameObject("Label");
-                go.transform.SetParent(parent, false);
-                go.transform.localPosition = new Vector3(0, height, 0);
-                go.transform.localRotation = Quaternion.Euler(0, side * 180f, 0);
-                var tm = go.AddComponent<TextMesh>();
-                tm.text = text; tm.font = font; tm.fontSize = 64; tm.characterSize = 0.07f * size; tm.fontStyle = FontStyle.Bold;
-                tm.anchor = TextAnchor.MiddleCenter; tm.alignment = TextAlignment.Center; tm.color = colour;
-                go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+                bool north = cam.transform.position.z >= BasePos.z;
+                transform.position = new Vector3(BasePos.x, BasePos.y, BasePos.z + (north ? OffsetZ : -OffsetZ));
+                transform.rotation = north ? Quaternion.Euler(0f, 180f, 0f) : Quaternion.identity;
+                return;
             }
+            var d = transform.position - cam.transform.position;
+            d.y = 0f;
+            if (d.sqrMagnitude > 0.001f) transform.rotation = Quaternion.LookRotation(d, Vector3.up);
         }
     }
 }

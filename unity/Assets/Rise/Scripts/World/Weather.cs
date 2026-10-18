@@ -3,7 +3,7 @@ using Rise.Data;
 
 namespace Rise.World
 {
-    // Rain (src/systems/weather.js): a 15 % chance every minute of 2–5 minutes of rain with a particle curtain around
+    // Rain: a 15 % chance every minute of 2–5 minutes of rain with a particle curtain around
     // the camera, darker light, wet roads (less grip) and slower traffic; a storm floods nothing yet. Harmattan haze on
     // days 7–9 of every ten.
     public class Weather : MonoBehaviour

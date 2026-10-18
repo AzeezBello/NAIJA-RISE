@@ -138,16 +138,24 @@ namespace Rise.EditorTools
                 {
                     var cprobe = new GameObject("CesiumProbe");
                     var crig = Entities.CharacterRig.Build(cprobe.transform, Entities.Look.Default, 0, 1.7f, true);
+                    var cb0 = Entities.CharacterRig.Bounds(crig.Root);
+                    var wclip = crig.Anim.GetClip("walk");
+                    if (wclip != null) wclip.SampleAnimation(crig.Root, 0.25f);
                     var cb = Entities.CharacterRig.Bounds(crig.Root);
-                    bool cesiumOk = crig.Cesium && crig.Anim.GetClip("walk") != null && Mathf.Abs(cb.size.y - 1.7f) < 0.1f;
+                    bool cesiumOk = crig.Cesium && wclip != null && Mathf.Abs(cb.size.y - 1.7f) < 0.25f && cb.size.y > cb.size.x * 1.4f && cb.size.y > cb.size.z * 1.4f;
                     rigOk &= cesiumOk;
-                    Debug.Log($"RISE smoke test: CesiumMan rig {(cesiumOk ? "ok" : "FAIL")}, height {cb.size.y:0.00} m");
+                    Debug.Log($"RISE smoke test: CesiumMan rig {(cesiumOk ? "ok" : "FAIL")}, bind {cb0.size.x:0.00}x{cb0.size.y:0.00}x{cb0.size.z:0.00}, sampled {cb.size.x:0.00}x{cb.size.y:0.00}x{cb.size.z:0.00}");
                     Object.DestroyImmediate(cprobe);
                 }
                 else Debug.Log("RISE smoke test: CesiumMan not available");
-                Debug.Log($"RISE smoke test: {builder.StadiumModels} stadium models, {builder.Trees} trees placed");
+                bool uprightModels = true;
+                var veg = builder.Root.Find("Vegetation");
+                if (veg != null) foreach (Transform tr in veg) { var tb = Entities.CharacterRig.Bounds(tr.gameObject); if (tb.size.y < tb.size.x * 0.7f || tb.size.y < tb.size.z * 0.7f) uprightModels = false; }
+                var lms = builder.Root.Find("Landmarks");
+                if (lms != null) foreach (Transform lm in lms) if (lm.name.EndsWith(" model")) { var sb = Entities.CharacterRig.Bounds(lm.gameObject); if (sb.size.y > sb.size.x || sb.size.y > sb.size.z) uprightModels = false; }
+                Debug.Log($"RISE smoke test: {builder.StadiumModels} stadium models, {builder.Trees} trees placed, upright={uprightModels}");
                 int stadiums = 0; foreach (var l in data.landmarks) if (l.stadium) stadiums++;
-                rigOk &= builder.StadiumModels == stadiums && builder.Trees >= 20;
+                rigOk &= builder.StadiumModels == stadiums && builder.Trees >= 20 && uprightModels;
             }
             else Debug.Log("RISE smoke test: character rig not available (glTFast import or clips missing)");
             var sedan = data.VehicleClass("car");
