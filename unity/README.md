@@ -120,8 +120,14 @@ paid semesters that graduate into the IT Support Technician job. Street football
 tiers: quick match on a wager, the neighbourhood tournament after three wins, the Lagos championship.
 
 **Surulere street people** (`src/data/characters.js`, `src/data/districts/surulere.js`). Thirty-two locals stand on
-thirteen side streets (Oduduwa, Nnobi, Ladejobi, Olaitan, Abiodun, Ijero, Olusesan Adetula, Adenowo, Cole, Ladele Dada,
-Ayodele, Folawiyo Bankole, Akpoguma, plus Kilo bus stop), each street marked by a green street-name sign on the pavement.
+their streets, each marked by a green street-name sign. Eleven of the streets are where OpenStreetMap puts them, in Ikate
+on the Kilo–Masha side of Surulere: the block west of Ogunlana Drive between Lawanson/Itire Road and Brown Road/Bode
+Thomas, which the map now extends west to Ijesha Road. Their real coordinates are projected into that block
+(`x = -84 - (3.351 - lon) * 5667`, `z = -(lat - 6.489) * 3000`) and nudged apart; Teslim Balogun's pitch, which stood in
+that block, moved beside the National Stadium as it is in reality. Kilo bus stop moved there too: it stands on Itire/
+Lawanson Road's south pavement where Olaitan (Odularu) Street meets it, and Adenowo Street ("off Kilo") sits beside it;
+Ijero Street has no known position yet. Olaitan and Abiodun are the Olaitan Odularu and Abiodun Ogunayo streets of that
+cluster. `RISE ▸ Render Map Shot` (`Editor/MapShot.cs`) draws the block from above with every contact's spot marked.
 Each person offers their own timed runs (36 in all): Peter the tailor's agbada and wedding dress, Mario's lost phone
 and car papers, KC Tata's jerrycan and trial boots, Dj Saha's speakers, Baby's risky package (adds heat), and so on.
 Runs are data: a contact's `runs` array is exported with the map and offered through the hub menu, so adding a person
