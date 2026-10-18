@@ -29,10 +29,6 @@ web/next-env.d.ts
 web/tsconfig.tsbuildinfo
 node_modules/
 
-# Vercel
-.vercel/
-web/.vercel/
-
 # Unity edition (unity/): generated folders, IDE solution files and local builds
 unity/Library/
 unity/Temp/
