@@ -2,12 +2,12 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'RISE — Lagos',
+  title: 'Rise: Hustle or Die Trying',
   description: 'Build your life. Build your empire. Survive the city. An original Lagos open-world life simulation.',
   manifest: '/manifest.webmanifest',
-  applicationName: 'RISE',
-  openGraph: { title: 'RISE — Lagos', description: 'Build your life. Build your empire. Survive the city.', type: 'website' },
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'RISE' },
+  applicationName: 'Rise: Hustle or Die Trying',
+  openGraph: { title: 'Rise: Hustle or Die Trying', description: 'Build your life. Build your empire. Survive the city.', type: 'website' },
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Rise' },
 };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, maximumScale: 1, viewportFit: 'cover', themeColor: '#07100e' };
 

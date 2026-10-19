@@ -44,7 +44,7 @@ export default function AccountPage() {
 
   return (
     <main className="site" style={{ padding: '3rem 1.5rem', maxWidth: 640, margin: '0 auto' }}>
-      <p><Link href="/">← RISE</Link></p>
+      <p><Link href="/">← Rise: Hustle or Die Trying</Link></p>
       <h1>Account</h1>
       {!user ? (
         <form onSubmit={e => { e.preventDefault(); void signIn(); }} style={{ display: 'grid', gap: '0.75rem' }}>
@@ -61,7 +61,7 @@ export default function AccountPage() {
           {state ? (
             <p>Cloud save · Day {state.day ?? 1} · Level {state.level ?? 1} · ₦{(state.cash ?? 0).toLocaleString()} cash · ₦{(state.bank ?? 0).toLocaleString()} bank · updated {new Date(save!.updated_at).toLocaleString()}</p>
           ) : (
-            <p>No cloud save yet. Play RISE signed in to sync your save to the cloud.</p>
+            <p>No cloud save yet. Play Rise: Hustle or Die Trying signed in to sync your save to the cloud.</p>
           )}
           <p><Link href="/play">Play</Link> · <button type="button" onClick={() => void signOut()}>Sign out</button></p>
         </section>

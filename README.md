@@ -1,4 +1,4 @@
-# RISE — Lagos · Alpha 1.0
+# Rise: Hustle or Die Trying · Alpha 1.0
 
 An open-world life simulation set in a living Nigeria. Original IP: original characters, missions and story, with real Nigerian place and street names on a stylised map.
 
@@ -26,7 +26,7 @@ npm run dev          # http://localhost:3000
 npm run build && npm start
 ```
 
-Render deploys this site from the repo root: its build command (`yarn`) runs the root `postinstall`, which builds `web/` when `RENDER` is set (`scripts/render-build.mjs`), and `yarn start` runs `next start` on Render's `PORT`. Set the `NEXT_PUBLIC_SUPABASE_*` and service-role variables from `web/.env.example` in the Render dashboard for `/account` and `/admin`, and set `NEXT_PUBLIC_WEBGL_URL` to your hosted HTML5 embed URL (packaged with `npm run package:webgl` → `unity/Builds/Rise-Lagos-WebGL.zip`) so `/play` streams the Unity WebGL build. On other hosts use `npm run build` then `npm start` from the root.
+Render deploys this site from the repo root: its build command (`yarn`) runs the root `postinstall`, which builds `web/` when `RENDER` is set (`scripts/render-build.mjs`), and `yarn start` runs `next start` on Render's `PORT`. Set the `NEXT_PUBLIC_SUPABASE_*` and service-role variables from `web/.env.example` in the Render dashboard for `/account` and `/admin`, and set `NEXT_PUBLIC_WEBGL_URL` to your hosted HTML5 embed URL (packaged with `npm run package:webgl` → `WebGL.zip`) so `/play` streams the Unity WebGL build. On other hosts use `npm run build` then `npm start` from the root.
 
 ## Features in Alpha 1.0
 

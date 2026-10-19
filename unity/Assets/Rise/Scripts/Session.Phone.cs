@@ -13,7 +13,7 @@ namespace Rise
         public void OpenPhone()
         {
             PhoneOpen = true;
-            var m = new Menu { Title = "RISE", Subtitle = $"{Clock.ClockText} · Day {Clock.Day} · {Data.RegionAt(Focus.position)?.name}", Line = $"₦{State.S.cash:N0} cash · ₦{State.S.bank:N0} bank · Level {State.S.level} {State.Title}" };
+            var m = new Menu { Title = "Rise: Hustle or Die Trying", Subtitle = $"{Clock.ClockText} · Day {Clock.Day} · {Data.RegionAt(Focus.position)?.name}", Line = $"₦{State.S.cash:N0} cash · ₦{State.S.bank:N0} bank · Level {State.S.level} {State.Title}" };
             int unread = State.Messages.Count;
             m.Options.Add(new MenuOption { Label = $"Messages ({unread})", Action = AppMessages });
             m.Options.Add(new MenuOption { Label = "Jobs", Action = AppJobs });

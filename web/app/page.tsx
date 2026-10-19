@@ -44,12 +44,12 @@ export default function Home() {
       <header className="site-header">
 
         <Link href="/" className="site-logo">
-          <b>RISE</b>
+          <b>RISE</b>: HUSTLE OR DIE TRYING
         </Link>
 
         <div className="site-status">
           <span className="site-status-dot" />
-          <span>LAGOS</span>
+          <span>HUSTLE OR DIE TRYING</span>
           <i />
           <span>ALPHA</span>
         </div>
@@ -79,7 +79,7 @@ export default function Home() {
 
           <div className="hero-kicker">
             <span className="hero-live-dot" />
-            RISE WORLD
+            OPEN-WORLD LIFE SIMULATION
             <i />
             LAGOS, NIGERIA
           </div>
@@ -89,7 +89,7 @@ export default function Home() {
           </h1>
 
           <div className="hero-location">
-            LAGOS
+            HUSTLE OR DIE TRYING
             <span>01</span>
           </div>
 
@@ -100,13 +100,13 @@ export default function Home() {
             <br />
             <strong>YOUR HUSTLE.</strong>
             <br />
-            YOUR LAGOS.
+            YOUR EMPIRE.
           </p>
 
           <p className="hero-description">
-            Step into an evolving open-world life simulation set in
-            Lagos. Explore the streets, meet people, find opportunities,
-            make money, build relationships and create your own story.
+            Step into Rise: Hustle or Die Trying — an evolving open-world life
+            simulation set in Lagos. Explore the streets, meet people, find
+            opportunities, make money, build relationships and create your own story.
           </p>
 
           <div className="hero-actions">
@@ -118,8 +118,8 @@ export default function Home() {
               <span className="play-number">01</span>
 
               <span className="play-copy">
-                <strong>ENTER LAGOS</strong>
-                <small>START YOUR JOURNEY</small>
+                <strong>START HUSTLING</strong>
+                <small>ENTER THE CITY</small>
               </span>
 
               <span className="play-arrow">→</span>
@@ -172,10 +172,6 @@ export default function Home() {
                 <small>CURRENT DISTRICT</small>
                 <strong>SURULERE</strong>
                 <span>LAGOS</span>
-              </div>
-
-              <div className="preview-coordinates">
-                NR // 01
               </div>
 
             </div>
@@ -256,15 +252,15 @@ export default function Home() {
             <span>THE EXPERIENCE</span>
 
             <h2>
-              BUILD A LIFE.
+              HUSTLE OR
               <br />
-              <b>RISE IN LAGOS.</b>
+              <b>DIE TRYING.</b>
             </h2>
           </div>
 
           <p>
-            RISE is more than a driving game.
-            It is a life simulation where your decisions,
+            Rise: Hustle or Die Trying is more than a driving game.
+            It is an open-world life simulation where your decisions,
             relationships, hustle and reputation shape
             the world around you.
           </p>
@@ -326,7 +322,7 @@ export default function Home() {
           </h2>
 
           <p>
-            Your story starts in Lagos.
+            Hustle or die trying. Your story starts now.
           </p>
 
           <Link
@@ -339,10 +335,6 @@ export default function Home() {
 
         </div>
 
-        <div className="final-corner">
-          NR // LAGOS // 01
-        </div>
-
       </section>
 
 
@@ -353,11 +345,11 @@ export default function Home() {
       <footer className="site-footer">
 
         <div className="footer-brand">
-          <b>RISE</b>
+          <b>RISE</b>: HUSTLE OR DIE TRYING
         </div>
 
         <div className="footer-copy">
-          LAGOS OPEN-WORLD LIFE SIMULATION
+          OPEN-WORLD LIFE SIMULATION
         </div>
 
         <div className="footer-version">
