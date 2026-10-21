@@ -21,7 +21,11 @@ namespace Rise
             Data.NearestLandmark("worship", pos, 12f) ?? Data.NearestLandmark("hotel", pos, 13f) ??
             (State.S.heat > 0 ? Data.NearestLandmark("police", pos, 13f) : null) ?? Data.NearestLandmark("nepa", pos, 12f) ??
             Data.NearestLandmark("army", pos, 18f) ?? Data.NearestLandmark("navy", pos, 18f) ??
-            Data.NearestLandmark("cbn", pos, 18f) ?? Data.NearestLandmark("efcc", pos, 18f);
+            Data.NearestLandmark("cbn", pos, 18f) ?? Data.NearestLandmark("efcc", pos, 18f) ??
+            Data.NearestLandmark("hospital", pos, 16f) ?? Data.NearestLandmark("airport", pos, 22f) ??
+            Data.NearestLandmark("museum", pos, 15f) ?? Data.NearestLandmark("market", pos, 16f) ??
+            Data.NearestLandmark("warehouse", pos, 16f) ?? Data.NearestLandmark("garage", pos, 16f) ??
+            Data.NearestLandmark("rail", pos, 16f) ?? Data.NearestLandmark("checkpoint", pos, 16f);
 
         bool NearVendor(Vector3 pos, out Vector3 vendor)
         {
@@ -50,6 +54,14 @@ namespace Rise
             "navy" => $"ENTER {p.shortName} · NAVAL OPS",
             "cbn" => $"ENTER {p.shortName} · CENTRAL BANK TREASURY",
             "efcc" => $"ENTER {p.shortName} · ANTI-GRAFT COMMAND",
+            "hospital" => $"ENTER {p.shortName} · MEDICAL CARE",
+            "airport" => $"ENTER {p.shortName} · FLIGHT TERMINAL",
+            "museum" => $"VISIT {p.shortName} · HERITAGE TOUR",
+            "market" => $"ENTER {p.shortName} · TRADE & SUPPLY",
+            "warehouse" => $"ENTER {p.shortName} · DEPOT & HAULAGE",
+            "garage" => $"ENTER {p.shortName} · TRANSPORT HUB",
+            "rail" => $"BOARD TRAIN · {p.shortName} (METRO & NRC)",
+            "checkpoint" => $"INSPECT AT {p.shortName} · FRSC & CUSTOMS",
             _ => $"ENTER {p.shortName}"
         };
 
@@ -74,6 +86,14 @@ namespace Rise
                 case "navy": OpenBarracksMenu(p); break;
                 case "cbn": OpenCbnMenu(p); break;
                 case "efcc": OpenEfccMenu(p); break;
+                case "hospital": OpenHospitalMenu(p); break;
+                case "airport": OpenAirportMenu(p); break;
+                case "museum": OpenMuseumMenu(p); break;
+                case "market": OpenMarketMenu(p); break;
+                case "warehouse": OpenDepotMenu(p); break;
+                case "garage": OpenInterchangeMenu(p); break;
+                case "rail": OpenRailMenu(p); break;
+                case "checkpoint": OpenCheckpointMenu(p); break;
             }
         }
 
@@ -1043,6 +1063,365 @@ namespace Rise
             if (!InInterior)
                 m.Options.Add(new MenuOption { Label = "Step inside EFCC Zonal Command", Action = () => EnterInterior(p?.name ?? "EFCC Zonal Command", "police", () => OpenEfccMenu(p)) });
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
+            OpenMenu(m);
+        }
+
+        public void OpenHospitalMenu(LandmarkData p)
+        {
+            var m = new Menu
+            {
+                Title = p?.name ?? "General Hospital",
+                Subtitle = "Emergency Ward & Community Outreach",
+                Line = $"Health {State.S.health:0}/100 · Stamina {State.S.stamina:0}/100. Receive full medical treatment or sponsor free maternal & emergency care."
+            };
+            m.Options.Add(new MenuOption
+            {
+                Label = "Full Medical Checkup & IV Drip · ₦4,000 (+100 Health, +50 Stamina)",
+                Action = () =>
+                {
+                    if (!State.Pay(4000)) { State.Toast("Need ₦4,000 for medical checkup"); return; }
+                    State.S.health = 100f;
+                    State.S.stamina = Mathf.Min(100f, State.S.stamina + 50f);
+                    Hours(1f);
+                    State.Toast("Full medical checkup complete · Health 100%");
+                }
+            });
+            m.Options.Add(new MenuOption
+            {
+                Label = "Sponsor Ward Outreach Supplies · ₦10,000 (+5 Public Rep, +20 XP)",
+                Action = () =>
+                {
+                    if (!State.Pay(10000)) { State.Toast("Need ₦10,000 to sponsor hospital outreach"); return; }
+                    State.AddRep("public", 5);
+                    State.AddRep("social", 3);
+                    State.AddXp(20);
+                    State.Toast("Hospital outreach sponsored · Public Rep +5");
+                }
+            });
+            m.Options.Add(new MenuOption { Label = "Leave", Action = null });
+            OpenMenu(m);
+        }
+
+        public void OpenAirportMenu(LandmarkData p)
+        {
+            var m = new Menu
+            {
+                Title = p?.name ?? "Nigeria Aviation Terminal",
+                Subtitle = "Domestic Commercial Airlines (Air Peace · Ibom Air) & Executive Jet Charter",
+                Line = "Book a commercial domestic flight across Nigeria’s 6 Geopolitical Zones or charter a Private Executive Jet."
+            };
+            (string id, string label, int commercialFare)[] airports =
+            {
+                ("ikeja-airport", "Murtala Muhammed Int'l Airport (Lagos MMA)", 15000),
+                ("lekki-epe-airport", "Lekki–Epe International Airport (Lagos East)", 15000),
+                ("abuja-airport", "Nnamdi Azikiwe Int'l Airport (FCT Abuja)", 28000),
+                ("ph-airport", "Port Harcourt Int'l Airport (Rivers · Niger Delta)", 26000),
+                ("enugu-anambra-airport", "Akanu Ibiam / Anambra Airport (Enugu & Onitsha)", 25000),
+                ("kano-airport", "Mallam Aminu Kano Int'l Airport (Kano & North)", 32000),
+            };
+            foreach (var ap in airports)
+            {
+                if (p != null && p.id == ap.id) continue;
+                if (!Data.TryPlace(ap.id, out var destPlace)) continue;
+                var targetPos = destPlace.World() + new Vector3(0f, 0.6f, -10f);
+                var destName = ap.label;
+                int fare = ap.commercialFare;
+                m.Options.Add(new MenuOption
+                {
+                    Label = $"Commercial Flight to {destName} · ₦{fare:N0}",
+                    Action = () =>
+                    {
+                        if (!State.Pay(fare)) { State.Toast($"Need ₦{fare:N0} for commercial flight"); return; }
+                        if (Vehicle != null) Exit();
+                        Player.Teleport(targetPos, Player.transform.eulerAngles.y);
+                        Hours(1.0f);
+                        State.AddXp(15);
+                        State.Toast($"Landed at {destName}");
+                    }
+                });
+            }
+            if (Data.TryPlace(p != null && p.id == "abuja-airport" ? "ikeja-airport" : "abuja-airport", out var vipDest))
+            {
+                string vipLabel = p != null && p.id == "abuja-airport" ? "Lagos MMA VIP Presidential Wing" : "Abuja Presidential Wing (FCT)";
+                var vipPos = vipDest.World() + new Vector3(0f, 0.6f, -10f);
+                m.Options.Add(new MenuOption
+                {
+                    Label = $"Charter Executive Private Jet to {vipLabel} · ₦75,000 (+5 Business Rep, +3 Social Rep)",
+                    Action = () =>
+                    {
+                        if (!State.Pay(75000)) { State.Toast("Need ₦75,000 for Private Jet Charter"); return; }
+                        if (Vehicle != null) Exit();
+                        Player.Teleport(vipPos, Player.transform.eulerAngles.y);
+                        Hours(0.6f);
+                        State.AddRep("business", 5);
+                        State.AddRep("social", 3);
+                        State.AddXp(25);
+                        State.Toast($"Private Jet touched down at {vipLabel} · Business Rep +5");
+                    }
+                });
+            }
+            m.Options.Add(new MenuOption
+            {
+                Label = "Nigeria 36 States & FCT Interstate Directory",
+                Action = OpenStatesDirectory
+            });
+            m.Options.Add(new MenuOption { Label = "Leave", Action = null });
+            OpenMenu(m);
+        }
+
+        public void OpenMuseumMenu(LandmarkData p)
+        {
+            var m = new Menu
+            {
+                Title = p?.name ?? "Heritage Museum",
+                Subtitle = "Nigerian History, Afrobeat & Coastal Archives",
+                Line = "Explore archival exhibits, oral histories, and cultural monuments (+Charisma, +Social & Public Rep)."
+            };
+            m.Options.Add(new MenuOption
+            {
+                Label = "Guided Heritage & History Tour · ₦3,000 (+2 Charisma, +3 Public Rep, +15 XP)",
+                Action = () =>
+                {
+                    if (!State.Pay(3000)) { State.Toast("Need ₦3,000 for guided tour"); return; }
+                    State.GainSkill("charisma", 2);
+                    State.AddRep("public", 3);
+                    State.AddRep("social", 2);
+                    State.AddXp(15);
+                    Hours(1.5f);
+                    State.Toast($"Completed heritage tour at {p?.name ?? "the museum"} · Charisma +2");
+                }
+            });
+            m.Options.Add(new MenuOption { Label = "Leave", Action = null });
+            OpenMenu(m);
+        }
+
+        public void OpenMarketMenu(LandmarkData p)
+        {
+            bool isAuto = p != null && p.id.Contains("ladipo");
+            var m = new Menu
+            {
+                Title = p?.name ?? "Lagos Mega Market",
+                Subtitle = isAuto ? "Tokunbo Auto Spare Parts, Respray & Tuning" : "Wholesale Produce, Electronics & Container Trade",
+                Line = isAuto
+                    ? "Repair or respray your vehicle at Ladipo prices, or buy bulk tokunbo spare parts."
+                    : "Source wholesale market crates, restock your businesses, or grab fresh street provisions."
+            };
+            if (isAuto && Vehicle != null)
+            {
+                m.Options.Add(new MenuOption
+                {
+                    Label = "Ladipo Express Overhaul & Respray · ₦8,000 (100% Condition, Clear 1 Heat)",
+                    Action = () =>
+                    {
+                        if (!State.Pay(8000)) { State.Toast("Need ₦8,000 for Ladipo overhaul"); return; }
+                        Vehicle.Condition = 100f;
+                        if (State.S.heat > 0) State.S.heat = Mathf.Max(0, State.S.heat - 1);
+                        State.GainSkill("driving", 1);
+                        State.Toast("Ladipo overhaul complete · Vehicle 100%");
+                    }
+                });
+            }
+            m.Options.Add(new MenuOption
+            {
+                Label = "Buy Wholesale Trade Lot & Flip to Retailers · ₦12,000 → +₦16,500 (+2 Business Skill)",
+                Action = () =>
+                {
+                    if (State.S.stamina < 20f) { State.Toast("Too tired to hustle the market"); return; }
+                    if (!State.Pay(12000)) { State.Toast("Need ₦12,000 capital for wholesale lot"); return; }
+                    State.S.stamina -= 20f;
+                    Hours(1.5f);
+                    int revenue = 16500 + Mathf.RoundToInt(State.S.skills.business * 60f);
+                    State.Earn(revenue);
+                    State.GainSkill("business", 2);
+                    State.AddRep("business", 3);
+                    State.AddXp(16);
+                    State.Toast($"Flipped wholesale lot at {p?.shortName ?? "Market"} · +₦{revenue:N0}");
+                }
+            });
+            if (!InInterior)
+                m.Options.Add(new MenuOption { Label = $"Step inside {p?.shortName ?? "Market"} Trade Hall", Action = () => EnterInterior(p?.name ?? "Market Hall", "shop", () => OpenMarketMenu(p)) });
+            m.Options.Add(new MenuOption { Label = "Leave", Action = null });
+            OpenMenu(m);
+        }
+
+        public void OpenDepotMenu(LandmarkData p)
+        {
+            var m = new Menu
+            {
+                Title = p?.name ?? "Industrial Depot & Terminal",
+                Subtitle = "Refinery, Deep Sea Port, Tank Farm & Agro-Mill Operations",
+                Line = "Refuel vehicles at bulk depot rates, inspect industrial logistics, or step inside the operations floor."
+            };
+            if (Vehicle != null)
+            {
+                m.Options.Add(new MenuOption
+                {
+                    Label = "Bulk Depot Fuel & Maintenance · ₦1,500 (Full Tank & 100% Condition)",
+                    Action = () =>
+                    {
+                        if (!State.Pay(1500)) { State.Toast("Need ₦1,500 for depot refuel"); return; }
+                        State.S.fuel = 100f;
+                        if (Vehicle != null) Vehicle.Condition = 100f;
+                        State.Toast("Refuelled & serviced at industrial depot");
+                    }
+                });
+            }
+            foreach (var j in Data.JobsAt(p?.id ?? ""))
+            {
+                var job = j;
+                bool ok = State.CanTake(j);
+                m.Options.Add(new MenuOption
+                {
+                    Label = ok ? $"Work Shift — {j.title} · ₦{State.JobPay(j):N0}" : $"{j.title} (needs {j.skill} {j.min})",
+                    Enabled = ok,
+                    Action = () => StartShift(job)
+                });
+            }
+            if (!InInterior)
+                m.Options.Add(new MenuOption { Label = $"Step inside {p?.shortName ?? "Depot"} Operations Centre", Action = () => EnterInterior(p?.name ?? "Industrial Depot", "office", () => OpenDepotMenu(p)) });
+            m.Options.Add(new MenuOption { Label = "Leave", Action = null });
+            OpenMenu(m);
+        }
+
+        public void OpenInterchangeMenu(LandmarkData p)
+        {
+            var m = new Menu
+            {
+                Title = p?.name ?? "Transport Interchange",
+                Subtitle = "BRT, Danfo & Interstate Luxury Bus Terminal",
+                Line = "Board an express BRT shuttle across Lagos megacorridors or take an interstate luxury coach across Nigeria."
+            };
+            (string id, string label, int fare)[] hubs =
+            {
+                ("oshodi-interchange", "Oshodi 3-Terminal Interchange (Lagos)", 1000),
+                ("ojota-motor-park", "Ojota Interstate Motor Park (Lagos)", 1000),
+                ("mile-2", "Mile 2 Transport Hub (Lagos)", 1000),
+                ("ajah-town", "Ajah Bus Terminal (Lekki)", 1000),
+                ("ikorodu-garage-town", "Ikorodu Garage (Lagos)", 1000),
+                ("agege-garage", "Agege Bus Garage (Lagos)", 1000),
+                ("panseke-bus", "Panseke Motor Park (Abeokuta · Ogun)", 4000),
+                ("iwo-road-bus", "Iwo Road Mega Terminal (Ibadan · Oyo)", 6000),
+                ("utako-bus", "Utako Luxury Bus Terminal (FCT Abuja)", 18000),
+                ("upper-iweka-bus", "Upper Iweka Motor Park (Onitsha · Anambra)", 15000),
+                ("waterlines-bus", "Waterlines Junction (Port Harcourt · Rivers)", 16000),
+                ("sabon-gari-park", "Sabon Gari Luxury Park (Kano)", 22000),
+            };
+            foreach (var h in hubs)
+            {
+                if (p != null && p.id == h.id) continue;
+                if (!Data.TryPlace(h.id, out var dest)) continue;
+                var targetPos = dest.World() + new Vector3(0f, 0.6f, -8f);
+                var label = h.label;
+                int fare = h.fare;
+                m.Options.Add(new MenuOption
+                {
+                    Label = $"{(fare <= 1000 ? "Express BRT" : "Interstate Coach")} to {label} · ₦{fare:N0}",
+                    Action = () =>
+                    {
+                        if (!State.Pay(fare)) { State.Toast($"Need ₦{fare:N0} for bus fare"); return; }
+                        if (Vehicle != null) Exit();
+                        Player.Teleport(targetPos, Player.transform.eulerAngles.y);
+                        Hours(fare <= 1000 ? 0.4f : 1.5f);
+                        State.Toast($"Arrived at {label}");
+                    }
+                });
+            }
+            m.Options.Add(new MenuOption { Label = "Nigeria 36 States Interstate Coach Directory", Action = OpenStatesDirectory });
+            m.Options.Add(new MenuOption { Label = "Leave", Action = null });
+            OpenMenu(m);
+        }
+
+        public void OpenRailMenu(LandmarkData p)
+        {
+            var m = new Menu
+            {
+                Title = p?.name ?? "NRC & Lagos Metro Rail Station",
+                Subtitle = "Lagos Blue/Red Line Metro & NRC Standard-Gauge Interstate Railway",
+                Line = "Board a Lagos Metropolitan electric train (Marina · National Theatre · Ebute Metta) or an NRC Standard-Gauge express train to Abeokuta, Ibadan, Abuja, and Kano."
+            };
+            (string id, string label, int fare)[] stations =
+            {
+                ("marina-rail", "Marina Blue Line Station (Lagos Island)", 500),
+                ("theatre-rail", "National Theatre Station (Costain / Iganmu)", 500),
+                ("ebute-rail", "Mobolaji Johnson NRC Station (Ebute Metta)", 500),
+                ("abeokuta-rail", "Abeokuta Laderin NRC Station (Ogun State)", 3500),
+                ("ibadan-rail", "Obafemi Awolowo NRC Station · Moniya (Ibadan, Oyo)", 5000),
+                ("abuja-rail", "Idu NRC Standard-Gauge Terminal (FCT Abuja)", 10000),
+                ("kano-rail", "Kaduna–Kano NRC Standard-Gauge Terminal (Kano)", 12000),
+            };
+            foreach (var st in stations)
+            {
+                if (p != null && p.id == st.id) continue;
+                if (!Data.TryPlace(st.id, out var dest)) continue;
+                var targetPos = dest.World() + new Vector3(0f, 0.6f, -8f);
+                var label = st.label;
+                int fare = st.fare;
+                m.Options.Add(new MenuOption
+                {
+                    Label = $"{(fare <= 500 ? "Lagos Metro Train" : "NRC Standard-Gauge Express")} to {label} · ₦{fare:N0}",
+                    Action = () =>
+                    {
+                        if (!State.Pay(fare)) { State.Toast($"Need ₦{fare:N0} for rail ticket"); return; }
+                        if (Vehicle != null) Exit();
+                        Player.Teleport(targetPos, Player.transform.eulerAngles.y);
+                        Hours(fare <= 500 ? 0.25f : 1.0f);
+                        State.AddXp(10);
+                        State.Toast($"Arrived by rail at {label}");
+                    }
+                });
+            }
+            m.Options.Add(new MenuOption { Label = "Leave Station", Action = null });
+            OpenMenu(m);
+        }
+
+        public void OpenCheckpointMenu(LandmarkData p)
+        {
+            var m = new Menu
+            {
+                Title = p?.name ?? "Interstate Highway Checkpoint",
+                Subtitle = "FRSC · Nigeria Customs Service · NDLEA · Military JTF Border Gate",
+                Line = $"Heat {State.S.heat} · Inspect vehicle papers & waybills, clear interstate customs manifests, or run a highway border escort."
+            };
+            m.Options.Add(new MenuOption
+            {
+                Label = "Present Vehicle Papers & Waybill for FRSC Inspection (Clear 1 Heat, +2 Public Rep)",
+                Action = () =>
+                {
+                    if (State.S.heat > 0) State.S.heat = Mathf.Max(0, State.S.heat - 1);
+                    State.AddRep("public", 2);
+                    State.AddXp(10);
+                    State.Toast($"FRSC & Customs inspection passed at {p?.shortName ?? "Checkpoint"} · Public Rep +2");
+                }
+            });
+            m.Options.Add(new MenuOption
+            {
+                Label = "Stamp Interstate Haulage & Customs Manifesto · ₦5,000 (+3 Business Rep, +15 XP)",
+                Action = () =>
+                {
+                    if (!State.Pay(5000)) { State.Toast("Need ₦5,000 for Customs manifesto stamp"); return; }
+                    State.AddRep("business", 3);
+                    State.AddRep("public", 2);
+                    State.AddXp(15);
+                    State.Toast("Interstate Customs Manifesto stamped · Business Rep +3");
+                }
+            });
+            m.Options.Add(new MenuOption
+            {
+                Label = "Join Joint Highway Escort & Anti-Smuggling Patrol · +₦28,000 (+4 Public Rep, +20 XP)",
+                Action = () =>
+                {
+                    if (State.S.stamina < 20f) { State.Toast("Too tired for highway patrol"); return; }
+                    State.S.stamina -= 20f;
+                    Hours(1.5f);
+                    State.Earn(28000);
+                    State.AddRep("public", 4);
+                    State.GainSkill("driving", 2);
+                    State.AddXp(20);
+                    State.Toast($"Completed highway border patrol at {p?.shortName ?? "Checkpoint"} · +₦28,000");
+                }
+            });
+            m.Options.Add(new MenuOption { Label = "Nigeria 36 States & FCT Highway Directory", Action = OpenStatesDirectory });
+            m.Options.Add(new MenuOption { Label = "Proceed on Highway", Action = null });
             OpenMenu(m);
         }
     }

@@ -28,6 +28,8 @@ export const DISTRICT = createArea({
     { id: 'ikorodu-garage-town', name: 'Ikorodu Garage', short: 'IKORODU GARAGE', x: -450, z: -300, c: '#5c4933', sign: '#ffc52f', h: 5, kind: 'garage' },
     { id: 'ikorodu-market', name: 'Ikorodu Central Market', short: 'IKORODU MARKET', x: -270, z: -360, c: '#6b4737', sign: '#ffc52f', h: 6, kind: 'market' },
     { id: 'ikorodu-school', name: 'Ikorodu Senior Grammar School', short: 'IKORODU SCHOOL', x: -450, z: -270, c: '#8a7a4a', sign: '#ffffff', h: 6, kind: 'school' },
+    { id: 'imota-rice-mill', name: 'Lagos State Imota Rice Mill · Ikorodu Division', short: 'IMOTA MILL', x: -490, z: -396, c: '#5a6e52', sign: '#ffc52f', h: 11, kind: 'warehouse', big: true },
+    { id: 'baiyeku-ijede-jetty', name: 'Baiyeku & Ijede Lagoon Jetty · Ikorodu', short: 'IJEDE JETTY', x: -190, z: -252, c: '#35546a', sign: '#3dd68c', h: 5, kind: 'waypoint', waterfront: true },
   ],
   busStops: [
     { id: 'ikorodu-garage-stop', name: 'Ikorodu Garage Bus Stop', short: 'IKORODU', x: -360, z: -314, agberos: 2 },

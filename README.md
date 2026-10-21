@@ -65,17 +65,25 @@ Render deploys this site from the repo root: its build command (`yarn`) runs the
 
 ## Project Layout
 
-```
-unity/                   Unity 6 project (the game); see unity/README.md
-src/data/                shared map and content data (districts/, config, jobs, characters, vehicles, family,
-                         businesses, items, crew, schedules), exported to unity/ by scripts/export-world.mjs
-scripts/                 export-world.mjs (src/data → unity/Assets/Rise/Resources/world/lagos.json), check-data.mjs
-supabase/                schema, migrations and SQL tests for accounts, saves and crews
-web/                     Next.js 16 / React 19 / TypeScript site (/play, /account, /admin)
-webgl_server.py          local server for the Unity WebGL build (gzip headers)
+```text
+rise-lagos/
+├── .github/workflows/web.yml  CI: data check, lagos.json export drift check, Next.js build
+├── PLAN.md                    Product plan, milestones & multi-district / multi-state roadmap
+├── MIGRATION-REPORT.md        Reproducible verification report, test commands & platform status
+├── unity/                     Unity 6000.6.5f1 project (URP 17.6, Input System 1.19, glTFast 6.0.1); see unity/README.md
+├── src/data/
+│   ├── districts/             16 Lagos district modules (surulere, ikoyi, lekki, yaba, ikeja, ikorodu, apapa,
+│   │                          ajegunle, makoko, oyingbo, agege, ojo-badagry, west-mainland, east-mainland,
+│   │                          alimosho-oshodi, kosofe-magodo) merged by lagos.js
+│   ├── states/                Multi-state modules across Nigeria (ogun, oyo, fct, rivers, anambra, kano)
+│   └── *.js                   config, jobs (34), characters (106), vehicles (18), family, businesses, items, crew, schedules
+├── scripts/                   export-world.mjs, check-data.mjs, verify-supabase.mjs, package-webgl.mjs, render-build.mjs
+├── supabase/                  schema.sql, migrations/ and tests/ for Auth, saves, crews & live economy_config
+├── web/                       Next.js 16 / React 19 / TypeScript site (/play, /account, /admin, /api/economy)
+└── webgl_server.py            Local Gzip-aware HTTP server for Unity WebGL builds
 ```
 
-Add a new area by creating `src/data/districts/<id>.js` with the same exports as `surulere.js`, registering it in `districts/index.js` and `districts/lagos.js`, then running `npm run export:unity`.
+Add a new Lagos district by creating `src/data/districts/<id>.js` with `createArea()` (`src/data/districts/area.js`), registering it in `src/data/districts/index.js` and `src/data/districts/lagos.js`, or add a new Nigerian state in `src/data/states/<state>.js`, then run `npm run export:unity`.
 
 ## QA
 

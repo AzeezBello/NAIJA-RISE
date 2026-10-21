@@ -26,6 +26,18 @@ namespace Rise
         // Phones and tablets (or ?diag=mobile on a desktop): lighter crowds, no stadium models, 30 fps cap, Low graphics.
         public static bool Mobile => Application.isMobilePlatform || SystemInfo.deviceType == DeviceType.Handheld || DiagFlags.Has("mobile");
 
+        // Guarantees that even if a WebGL or standalone player boots an empty/default scene, GameBootstrap is created
+        // and builds the Lagos world instead of showing a blank skybox.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void EnsureBootstrapped()
+        {
+            if (FindObjectsByType<GameBootstrap>().Length == 0)
+            {
+                Debug.LogWarning("RISE: No GameBootstrap in loaded scene — auto-creating GameBootstrap.");
+                new GameObject("Game").AddComponent<GameBootstrap>();
+            }
+        }
+
         void Awake()
         {
             Data = WorldData.LoadFromResources(WorldResource);
@@ -37,29 +49,46 @@ namespace Rise
             Builder.Build(Data);
 
             var state = new GameState(Data);
-            bool restored = ContinueSave && state.Load();
+            bool restored = false;
+            try
+            {
+                restored = ContinueSave && state.Load();
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning("RISE: Corrupt or incompatible save ignored, starting new game: " + ex.Message);
+                restored = false;
+            }
             if (!restored) state.NewGame();
 
             // Accounts, cloud save, and live economy overrides (Supabase; offline without Resources/cloud.json).
             var cloudConfig = DiagFlags.Has("offline") ? new Net.CloudConfig() : Net.CloudConfig.Load();
             var account = gameObject.AddComponent<Net.Account>(); account.Init(cloudConfig);
             var cloud = gameObject.AddComponent<Net.CloudSave>(); cloud.Init(account);
-            var economy = gameObject.AddComponent<Net.CloudEconomy>(); economy.Init(cloudConfig, Data);
+            var economy = gameObject.AddComponent<Net.CloudEconomy>();
+            economy.OnLiveUpdate = n => state.Toast($"Live economy update applied ({n} values)");
+            economy.Init(cloudConfig, Data);
 
             var sun = FindSun();
             Clock = gameObject.AddComponent<DayNightCycle>();
             Clock.Init(sun, state.S.clock, Data.meta.hoursPerSecond, Builder.LampHead);
-            Clock.Day = state.S.day;
+            Clock.Day = Mathf.Max(1, state.S.day);
 
             var spawn = new Vector3(state.S.px, state.S.py, state.S.pz);
-            if (!restored) spawn.y = Data.DeckHeightAt(spawn) + 0.6f;
+            if (!restored || float.IsNaN(spawn.x) || float.IsNaN(spawn.y) || float.IsNaN(spawn.z) || spawn.y < -10f || spawn.y > 250f)
+            {
+                if (float.IsNaN(spawn.x) || float.IsNaN(spawn.z)) spawn = Data.Spawn;
+                spawn.y = Data.DeckHeightAt(spawn) + 0.6f;
+                state.S.px = spawn.x; state.S.py = spawn.y; state.S.pz = spawn.z;
+            }
+            if (float.IsNaN(state.S.yaw)) state.S.yaw = 0f;
             Entities.CharacterRig.Data = Data;
             Player = PlayerController.Create(spawn, state.S.yaw, state.Look);
 
             var cam = Camera.main;
             if (cam == null) { cam = new GameObject("Main Camera").AddComponent<Camera>(); cam.tag = "MainCamera"; }
             cam.nearClipPlane = 0.3f; cam.farClipPlane = 1800f; cam.fieldOfView = 60f;
-            PostFx.Setup(cam, gameObject);
+            try { PostFx.Setup(cam, gameObject); } catch (System.Exception ex) { Debug.LogWarning("RISE: PostFx skipped: " + ex.Message); }
             var follow = cam.gameObject.GetComponent<ThirdPersonCamera>();
             if (follow == null) follow = cam.gameObject.AddComponent<ThirdPersonCamera>();
             follow.Target = Player.transform; follow.Player = Player; follow.Yaw = state.S.yaw;

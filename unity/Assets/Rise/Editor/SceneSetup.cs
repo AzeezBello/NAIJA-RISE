@@ -260,7 +260,7 @@ namespace Rise.EditorTools
                 bool facesForward = le == null || head == null || probe.transform.InverseTransformDirection(le.position - head.position).z > 0f;
                 var print = Entities.Fabrics.Get(data, 0);
                 bool printed = print != null && print.width == 128 && rig.Top.Count > 0 && rig.Top[0].HasProperty("baseColorTexture") && rig.Top[0].GetTexture("baseColorTexture") == print;
-                rigOk = anim.GetClipCount() == 3 && Mathf.Abs(b.size.y - 1.8f) < 0.1f && facesForward && anim.GetClip("walk") != null && anim.GetClip("walk").legacy && printed;
+                rigOk = anim.GetClipCount() >= 7 && rig.HasClip("jump") && rig.HasClip("turn") && rig.HasClip("enter_vehicle") && rig.HasClip("exit_vehicle") && Mathf.Abs(b.size.y - 1.8f) < 0.1f && facesForward && anim.GetClip("walk") != null && anim.GetClip("walk").legacy && printed;
                 Debug.Log($"RISE smoke test: rig {anim.GetClipCount()} clips, height {b.size.y:0.00} m, faces +z {facesForward}, skinned renderers {anim.GetComponentsInChildren<SkinnedMeshRenderer>().Length}, top materials {rig.Top.Count}, fabric print applied {printed}");
                 Object.DestroyImmediate(probe);
                 if (Entities.CharacterRig.CesiumAvailable)

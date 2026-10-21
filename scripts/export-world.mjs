@@ -123,8 +123,11 @@ const world = {
   skins: Ch.LOOK.skin, pants: Ch.LOOK.pants,
   levels: C.LEVELS.map(([level, title]) => ({ level, title })),
   unlocks: Object.entries(C.UNLOCKS).map(([level, text]) => ({ level: Number(level), text })),
-  cells: [[L.VI_CELLS, 'vi'], [L.LEKKI_CELLS, 'lekki'], [L.YABA_CELLS, 'yaba'], [L.EBUTE_CELLS, 'ebute'], [L.ISLAND_CELLS, 'island']]
-    .flatMap(([cells, style]) => cells.map(([x, z]) => ({ style, x, z }))),
+  cells: [
+    ...[[L.VI_CELLS, 'vi'], [L.LEKKI_CELLS, 'lekki'], [L.YABA_CELLS, 'yaba'], [L.EBUTE_CELLS, 'ebute'], [L.ISLAND_CELLS, 'island']]
+      .flatMap(([cells, style]) => cells.map(([x, z]) => ({ style, x, z }))),
+    ...(L.AREA_CELLS || []).map(c => ({ style: c.style || 'mainland', x: c.x, z: c.z })),
+  ],
   states: St.NIGERIA_STATES.map(s => ({
     id: s.id, name: s.name, capital: s.capital, zone: s.zone, slogan: s.slogan,
     corridor: s.corridor, distanceKm: s.distanceKm, fare: s.fare, status: s.status,
