@@ -27,6 +27,14 @@ namespace Rise.Player
         public int Fabric => rig != null ? currentLook.Fabric : 0;
         Look currentLook = Look.Default;
         public void ApplyLook(Look look) { currentLook = look; if (rig != null) CharacterRig.Dress(rig, look); }
+        public string EquippedWeapon { get; private set; } = "";
+        float swingT;
+        public void SetWeapon(string weaponId)
+        {
+            EquippedWeapon = weaponId ?? "";
+            CharacterRig.SetWeapon(rig, transform, EquippedWeapon, Layer);
+        }
+        public void SwingWeapon() { swingT = 0.38f; }
         public string AnimState { get; private set; } = "idle";
 
         public static PlayerController Create(Vector3 position, float yaw) => Create(position, yaw, Look.Default);
@@ -92,6 +100,16 @@ namespace Rise.Player
             if (rig != null) { var rt = rig.Root.transform; var lp = rt.localPosition; lp.y = Mathf.Lerp(lp.y, Swimming ? -0.95f : 0f, 1f - Mathf.Exp(-6f * Time.deltaTime)); rt.localPosition = lp; }
             if (Swimming) AnimState = speed < 0.3f ? "idle" : "walk";
             rig?.SetState(AnimState, Swimming ? 0.6f : AnimState == "walk" ? speed / CharacterRig.WalkClipSpeed : AnimState == "run" ? speed / CharacterRig.RunClipSpeed : 1f);
+            if (swingT > 0f)
+            {
+                swingT = Mathf.Max(0f, swingT - Time.deltaTime);
+                var wRoot = rig != null ? rig.WeaponRoot : CharacterRig.Find(transform, "WeaponProp");
+                if (wRoot != null)
+                {
+                    float phase = Mathf.Sin((1f - swingT / 0.38f) * Mathf.PI);
+                    wRoot.localRotation = Quaternion.Euler(75f + phase * 65f, -phase * 25f, 0f);
+                }
+            }
 
             if (transform.position.y < -40f) Teleport(spawn, transform.eulerAngles.y);
         }

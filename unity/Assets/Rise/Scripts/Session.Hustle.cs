@@ -28,7 +28,7 @@ namespace Rise
             ["yaba_osoanya"] = ("Yaba Market", "We connect Yaba shoppers with traders and earn commission for each completed order. Help us get this purchase to the buyer.", new[] { R("Deliver a Yaba Market order to Computer Village", "ikeja-tech", "phone_parts", 40, 26000, "Electronics Order", "business"), R("Carry a clothing parcel from Yaba Market to Tejuosho Market", "tejuosho", "fabric_order", 25, 16000, "Clothing Parcel", "business") }),
             ["computer_village_osoanya"] = ("Computer Village", "We be Osoanya, commission agents. We match customers with trusted phone and computer traders, then earn when the order reaches its buyer.", new[] { R("Deliver a phone repair order from Computer Village to Yaba Market", "yaba", "phone_parts", 40, 24000, "Repair Order", "business"), R("Carry a laptop order from Computer Village to Ikeja City Centre", "ikeja-city", "laptop_parts", 25, 18000, "Laptop Order", "business") }),
             ["sisi"] = ("AJ City", null, new[] { R("Take donated football boots to Baba Goal at the AJ City Street Pitch", "ajpitch", "football_boots", 25, 12000, "Football Boots", "street") }),
-            ["makoko_fisher"] = ("Makoko", null, new[] { R("Carry the fresh fish crate to the Makoko Canoe Landing", "makoko-canoe-landing", "fish_crate", 18, 9000, "Fish Crate", "business") }),
+            ["makoko_fisher"] = ("Makoko", null, new[] { R("Carry the fresh fish crate to the Makoko Canoe Landing", "makoko-canoe-landing", "fish_crate", 18, 9000, "Fish Crate", "business"), R("Carry a basket of kiln-smoked fish from Makoko to Yaba Market", "yaba", "smoked_fish", 20, 13000, "Smoked Fish", "business"), R("Deliver fresh lagoon croaker on ice to The Yellow Chilli in VI", "yellowchilli", "fresh_croaker", 25, 18000, "Fresh Croaker", "business") }),
             ["shrine_host"] = ("New Afrika Shrine", null, new[] { R("Deliver audio cables to the Ikeja City Centre event crew", "ikeja-city", "event_cables", 45, 24000, "Event Cables", "social"), R("Take spare stage connectors to Kalakuta Republic", "kalakuta-republic", "event_cables", 50, 28000, "Event Cables", "social") }),
             ["kalakuta_guide"] = ("Kalakuta Republic", null, new[] { R("Deliver an archive box to the New Afrika Shrine history room", "new-afrika-shrine", "archive_box", 50, 28000, "Archive Box", "social") }),
         };
@@ -56,8 +56,36 @@ namespace Rise
             if (!HasTask) foreach (var run in hub.runs) { var r = run; menu.Options.Add(new MenuOption { Label = $"{run.Text} · ₦{run.Reward:N0} · {run.Minutes:0} min{(run.Heat > 0 ? " · risky" : "")}", Enabled = Data.TryPlace(run.Dest, out _), Action = () => StartRun(c, r) }); }
             else menu.Options.Add(new MenuOption { Label = "Finish your current mission first", Enabled = false });
             foreach (var j in Data.JobsAt(c.data.at)) { var job = j; bool ok = State.CanTake(j); menu.Options.Add(new MenuOption { Label = ok ? $"Work shift — {j.title} · ₦{State.JobPay(j):N0} · {j.dur}h" : $"{j.title} (needs {j.skill} {j.min})", Enabled = ok, Action = () => StartShift(job) }); }
+            if (c.data.id == "berger_dispatch" && Data.states != null && Data.states.Length > 0)
+                menu.Options.Add(new MenuOption { Label = $"Nigeria Interstate Directory · {Data.states.Length} States & Capitals", Action = () => OpenStatesDirectory() });
             AddRelationshipOptions(menu, c);
             menu.Options.Add(new MenuOption { Label = "Not now", Action = null });
+            OpenMenu(menu);
+        }
+
+        public void OpenStatesDirectory()
+        {
+            var menu = new Menu
+            {
+                Title = "Nigeria · 36 States & FCT",
+                Subtitle = "Interstate Corridors & Capitals (Provisioned from Ojodu Berger)",
+                Line = "All 36 Nigerian States and FCT Abuja with their capitals, highway corridors and distances from Lagos."
+            };
+            if (Data.states != null)
+            {
+                foreach (var st in Data.states)
+                {
+                    var s = st;
+                    string tag = s.status == "active" ? "ACTIVE NOW" : $"{s.distanceKm} km · ₦{s.fare:N0}";
+                    menu.Options.Add(new MenuOption
+                    {
+                        Label = $"{s.name} ({s.capital}) · {s.zone} · {tag}",
+                        Enabled = true,
+                        Action = () => State.Toast($"{s.name} State ({s.capital}) — \"{s.slogan}\" via {s.corridor}")
+                    });
+                }
+            }
+            menu.Options.Add(new MenuOption { Label = "Back", Action = null });
             OpenMenu(menu);
         }
 

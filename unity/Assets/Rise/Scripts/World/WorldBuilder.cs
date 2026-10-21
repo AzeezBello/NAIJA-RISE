@@ -9,8 +9,8 @@ namespace Rise.World
     // procedural housing, toll plazas and footbridges. Everything is static geometry and is batched at the end.
     public class WorldBuilder : MonoBehaviour
     {
-        public int MaxHouses = 2600;
-        public float HouseGrid = 26f;
+        public int MaxHouses = 6800;
+        public float HouseGrid = 22f;
 
         public WorldData Data { get; private set; }
         public Transform Root { get; private set; }
@@ -18,18 +18,26 @@ namespace Rise.World
         public int ObjectCount { get; private set; }
 
         readonly Dictionary<string, Material> materials = new Dictionary<string, Material>();
+        readonly List<Vector2> placedPlots = new List<Vector2>();
+        Transform blueLineTrain, redLineTrain;
         Font font;
         Shader standard;
 
         // Palette
         const string Earth = "#6f6a5c", Asphalt = "#3a3a3d", AsphaltLight = "#45454a", Pavement = "#9a958a", Concrete = "#b9b5aa",
             Water = "#2b6e8f", Sand = "#d9c8a0", Pitch = "#4f8a3a", Zinc = "#5b5f63", Glass = "#7fa6c4", Yellow = "#f5c518",
-            Black = "#141414", Steel = "#7d8287", LampWarm = "#ffd27a", Cream = "#e2d6bf";
-        static readonly string[] HouseColours = { "#e2d6bf", "#d8b98c", "#c9c2b3", "#b8c4cc", "#d9a66e", "#c7b7a2", "#e8e0d0", "#a9b7a1" };
+            Black = "#141414", Steel = "#7d8287", LampWarm = "#ffd27a", Cream = "#e2d6bf", BrtBlue = "#1559b8", LawmaOrange = "#ff6a00";
+        static readonly string[] HouseColours = { "#e2d6bf", "#d8b98c", "#c9c2b3", "#b8c4cc", "#d9a66e", "#c7b7a2", "#e8e0d0", "#a9b7a1", "#e6c786", "#c48b71", "#9bb0a8", "#d4c4a8" };
 
         public void Build(WorldData data)
         {
             Data = data;
+            placedPlots.Clear();
+            if (GameBootstrap.Mobile)
+            {
+                MaxHouses = Mathf.Min(MaxHouses, 2200);
+                HouseGrid = Mathf.Max(HouseGrid, 28f);
+            }
             standard = ShaderLib.Lit;
             font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             Root = new GameObject("Lagos").transform;
@@ -40,6 +48,7 @@ namespace Rise.World
             BuildWater();
             BuildRoads();
             BuildBridges();
+            BuildRailway();
             BuildLandmarks();
             BuildBusStops();
             BuildProperties();
@@ -47,11 +56,13 @@ namespace Rise.World
             BuildHousing();
             BuildTolls();
             BuildFootbridges();
+            BuildBillboards();
             BuildStreetFurniture();
             BuildBusinesses();
             BuildVegetation();
 
-            StaticBatchingUtility.Combine(Root.gameObject);
+            if (!GameBootstrap.Mobile) StaticBatchingUtility.Combine(Root.gameObject);
+            BuildMovingTrains();
         }
 
         // ---------- materials and primitives ----------
@@ -134,8 +145,8 @@ namespace Rise.World
         {
             var water = Mat("water", Water, 0.92f);
             foreach (var w in Data.waters)
-                Box(w.name, WorldData.W((w.minX + w.maxX) * 0.5f, 0.06f, (w.minZ + w.maxZ) * 0.5f),
-                    new Vector3(w.maxX - w.minX, 0.12f, w.maxZ - w.minZ), water, null, false);   // no collider: you swim, vehicles sink
+                Box(w.name, WorldData.W((w.minX + w.maxX) * 0.5f, -0.175f, (w.minZ + w.maxZ) * 0.5f),
+                    new Vector3(w.maxX - w.minX, 0.40f, w.maxZ - w.minZ), water, null, false);   // no collider: you swim, vehicles sink
         }
 
         // ---------- roads ----------
@@ -342,20 +353,98 @@ namespace Rise.World
                         continue;
                     case "airport":
                     {
-                        var apron = Mat("apron", AsphaltLight);
-                        Box(l.name + " apron", pos + Vector3.up * 0.12f, new Vector3(70f, 0.24f, 48f), apron, group);
-                        Box(l.name + " terminal", pos + new Vector3(0f, 4.5f, 12f), new Vector3(36f, 9f, 14f), body, group);
-                        Box(l.name + " glass", pos + new Vector3(0f, 4.2f, 4.9f), new Vector3(32f, 5.5f, 0.3f), Mat("glass", Glass, 0.85f), group, false);
-                        Cylinder(l.name + " tower", pos + new Vector3(22f, 0.2f, 12f), 2.2f, 18f, Mat("concrete", Concrete), group);
-                        Box(l.name + " cab", pos + new Vector3(22f, 19.2f, 12f), new Vector3(6f, 2.6f, 6f), Mat("glass", Glass, 0.85f), group, false);
-                        // Runway strip & parked aircraft
-                        Box(l.name + " runway", pos + new Vector3(0f, 0.16f, -12f), new Vector3(66f, 0.1f, 12f), Mat("asphalt", Asphalt), group);
-                        var planeWhite = Mat("plane-white", "#f2f4f7", 0.6f);
-                        var planePos = pos + new Vector3(-8f, 1.8f, -12f);
-                        Box("Aircraft fuselage", planePos, new Vector3(18f, 2.2f, 2.2f), planeWhite, group);
-                        Box("Aircraft wings", planePos + new Vector3(0f, -0.2f, 0f), new Vector3(3.2f, 0.22f, 16f), planeWhite, group, false);
-                        Box("Aircraft tail", planePos + new Vector3(-8.2f, 1.8f, 0f), new Vector3(2.2f, 3.0f, 0.25f), Mat("plane-tail", "#1b6b3a", 0.5f), group, false);
-                        Sign(l.shortName, pos + new Vector3(0, 10.5f, 19.5f), l.sign, 1.4f, group);
+                        var apron = Mat("apron", AsphaltLight, 0.25f);
+                        var conc = Mat("concrete", Concrete, 0.25f);
+                        var glassMat = Mat("glass-air", Glass, 0.9f);
+                        var whiteMat = Mat("plane-white", "#f2f5f8", 0.78f);
+                        var greenMat = Mat("plane-green", "#0c7b46", 0.65f);
+                        var navyMat = Mat("plane-navy", "#153b78", 0.65f);
+                        var darkMat = Mat("plane-dark", "#1c2026", 0.35f);
+
+                        // Wide concrete apron & taxiway
+                        Box(l.name + " apron", pos + Vector3.up * 0.12f, new Vector3(110f, 0.24f, 64f), apron, group);
+                        // Main International Terminal (MMIA) + Domestic Wing (MMA2)
+                        Box(l.name + " terminal", pos + new Vector3(0f, 5.5f, 16f), new Vector3(52f, 11f, 16f), body, group);
+                        Box(l.name + " upper concourse", pos + new Vector3(0f, 12.2f, 16f), new Vector3(36f, 2.8f, 12f), conc, group);
+                        Box(l.name + " glass", pos + new Vector3(0f, 5.2f, 7.85f), new Vector3(48f, 7.6f, 0.3f), glassMat, group, false);
+                        Box(l.name + " landside canopy", pos + new Vector3(0f, 4.2f, 26.5f), new Vector3(44f, 0.5f, 5.5f), conc, group, false);
+                        // 3 telescoping passenger jet bridges (aerobridges)
+                        foreach (float jx in new[] { -16f, 0f, 16f })
+                        {
+                            Box("Jetbridge", pos + new Vector3(jx, 4.2f, 2.5f), new Vector3(2.6f, 2.6f, 10.5f), conc, group);
+                            Box("Jetbridge glass", pos + new Vector3(jx, 4.4f, 2.5f), new Vector3(2.75f, 1.1f, 8.5f), glassMat, group, false);
+                        }
+                        // Control Tower with observation cab & radar dome
+                        Cylinder(l.name + " tower", pos + new Vector3(32f, 0.2f, 15f), 2.5f, 24f, conc, group);
+                        Box(l.name + " cab", pos + new Vector3(32f, 25.4f, 15f), new Vector3(7.2f, 3.2f, 7.2f), glassMat, group, false);
+                        Box(l.name + " tower roof", pos + new Vector3(32f, 27.3f, 15f), new Vector3(7.8f, 0.6f, 7.8f), conc, group, false);
+                        Cylinder(l.name + " radar", pos + new Vector3(32f, 27.6f, 15f), 0.9f, 1.8f, whiteMat, group, false);
+                        // Airport Hangar & Fuel Farm tanks on the west apron
+                        Box(l.name + " hangar", pos + new Vector3(-38f, 4.5f, 14f), new Vector3(18f, 9f, 16f), Mat("hangar", "#525e6a", 0.4f), group);
+                        Cylinder("Fuel tank 1", pos + new Vector3(-42f, 0.2f, -2f), 3.2f, 5.5f, whiteMat, group);
+                        Cylinder("Fuel tank 2", pos + new Vector3(-33f, 0.2f, -2f), 3.2f, 5.5f, whiteMat, group);
+
+                        // Full Runway strip with threshold piano keys & centreline dashes
+                        var rwPos = pos + new Vector3(0f, 0.17f, -18f);
+                        Box(l.name + " runway", rwPos, new Vector3(106f, 0.12f, 16f), Mat("asphalt", Asphalt), group);
+                        for (float rx = -44f; rx <= 44f; rx += 8f)
+                            Box("Runway line", rwPos + new Vector3(rx, 0.08f, 0f), new Vector3(4.2f, 0.02f, 0.35f), whiteMat, group, false);
+                        for (int s = -1; s <= 1; s += 2)
+                            for (float rz = -5.4f; rz <= 5.4f; rz += 1.8f)
+                                Box("Threshold key", rwPos + new Vector3(s * 49f, 0.08f, rz), new Vector3(3.8f, 0.02f, 0.9f), whiteMat, group, false);
+
+                        // 3 realistic parked aircraft: (1) Flagship wide-body airliner at gate, (2) Domestic jet at gate, (3) VIP jet on runway/taxiway
+                        BuildAircraft(pos + new Vector3(-11f, 2.2f, -5.5f), 90f, 1.05f, greenMat, whiteMat, darkMat, glassMat, group);
+                        BuildAircraft(pos + new Vector3(17f, 2.0f, -5.5f), 90f, 0.85f, navyMat, whiteMat, darkMat, glassMat, group);
+                        BuildAircraft(pos + new Vector3(-14f, 1.75f, -18f), 0f, 0.72f, greenMat, whiteMat, darkMat, glassMat, group);
+
+                        Sign("MURTALA MUHAMMED INT'L AIRPORT", pos + new Vector3(0, 14.5f, 24.4f), l.sign, 1.35f, group);
+                        continue;
+                    }
+                    case "banana":
+                    {
+                        // Banana Island waterfront ultra-luxury estate: security archway, tiered white & glass villas, infinity pool & moored yachts
+                        var whiteVilla = Mat("villa-white", "#f5f3ee", 0.6f);
+                        var glassVilla = Mat("villa-glass", "#5ca0c8", 0.92f);
+                        var teak = Mat("villa-teak", "#8a5a36", 0.4f);
+                        var poolMat = Mat("villa-pool", "#1ec8e6", 0.95f);
+                        var goldMat = Mat("villa-gold", "#e6b830", 0.75f);
+
+                        Compound(pos, 38f, 30f, group);
+                        // Gated security archway
+                        Box("Banana Arch L", pos + new Vector3(-4.5f, 2.6f, 15.1f), new Vector3(1.2f, 5.2f, 1.2f), whiteVilla, group);
+                        Box("Banana Arch R", pos + new Vector3(4.5f, 2.6f, 15.1f), new Vector3(1.2f, 5.2f, 1.2f), whiteVilla, group);
+                        Box("Banana Arch Top", pos + new Vector3(0f, 5.4f, 15.1f), new Vector3(11.4f, 1.1f, 1.6f), goldMat, group);
+
+                        // Main contemporary mansion + cantilevered glass upper deck
+                        Box(l.name + " ground", pos + new Vector3(-4f, 2.4f, -1f), new Vector3(20f, 4.8f, 14f), whiteVilla, group);
+                        Box(l.name + " second", pos + new Vector3(-2.5f, 6.8f, -1f), new Vector3(17f, 4.2f, 12f), whiteVilla, group);
+                        Box(l.name + " penthouse", pos + new Vector3(-1f, 10.6f, -1f), new Vector3(12f, 3.4f, 9f), glassVilla, group);
+                        Box(l.name + " terrace", pos + new Vector3(-2.5f, 4.9f, 5.5f), new Vector3(18f, 0.35f, 3.2f), teak, group, false);
+                        Box(l.name + " glass front", pos + new Vector3(-2.5f, 6.8f, 5.1f), new Vector3(15f, 3.4f, 0.25f), glassVilla, group, false);
+
+                        // Turquoise infinity swimming pool & deck
+                        Box("Infinity pool surround", pos + new Vector3(11f, 0.22f, 3f), new Vector3(9f, 0.44f, 13f), teak, group);
+                        Box("Infinity pool water", pos + new Vector3(11f, 0.46f, 3f), new Vector3(7.4f, 0.08f, 11.2f), poolMat, group, false);
+
+                        // Private lagoon jetty & luxury yacht moored off the north shore
+                        var pierPos = pos + new Vector3(0f, 0.35f, 24f);
+                        Box("Private jetty", pierPos, new Vector3(3.6f, 0.3f, 14f), teak, group);
+                        BuildYacht(pierPos + new Vector3(6.5f, 0.2f, 3f), whiteVilla, glassVilla, teak, group);
+                        BuildYacht(pierPos + new Vector3(-6.5f, 0.2f, 4f), whiteVilla, glassVilla, teak, group);
+
+                        Sign("BANANA ISLAND · IKOYI", pos + new Vector3(0f, 6.7f, 15.4f), "#ffd700", 1.15f, group);
+                        continue;
+                    }
+                    case "rail":
+                    {
+                        BuildRailStation(l, pos, group);
+                        continue;
+                    }
+                    case "army":
+                    case "navy":
+                    {
+                        BuildBarracks(l, pos, group, l.kind == "navy");
                         continue;
                     }
                     case "settlement": case "waterfront":
@@ -369,12 +458,17 @@ namespace Rise.World
                             Box("Stilt hut", hutPos + Vector3.up * 1.2f, new Vector3(5.5f, 2.6f, 4.5f), wood, group);
                             Box("Hut roof", hutPos + Vector3.up * 2.65f, new Vector3(6.1f, 0.22f, 5.1f), zinc, group, false);
                             var canoePos = pos + new Vector3(i * 8f + 3f, 0.25f, -16f);
-                            Box("Canoe", canoePos, new Vector3(1.1f, 0.35f, 4.8f), wood, group, false);
+                            BuildFishingBoat(canoePos, 0f, wood, zinc, group);
                         }
                         Sign(l.shortName, pos + new Vector3(0, 4f, 22f), l.sign, 1.4f, group);
                         continue;
                     }
                     case "waypoint":
+                        if (l.id.Contains("jetty") || l.id.Contains("canoe"))
+                        {
+                            BuildFishingJetty(l, pos, group);
+                            continue;
+                        }
                         Box(l.name, pos + Vector3.up * 0.2f, new Vector3(50f, 0.4f, 40f), body, group);
                         Sign(l.shortName, pos + new Vector3(0, 4f, 22f), l.sign, 1.4f, group);
                         continue;
@@ -397,6 +491,14 @@ namespace Rise.World
                 Box(l.name + " board", signPos, new Vector3(Mathf.Min(fp.x * 0.9f, 2.2f + l.shortName.Length * 1.05f), 1.8f, 0.25f), Mat("board", "#1b1b1f"), group, false);
                 Sign(l.shortName, signPos, l.sign, 1f, group, 0.2f);
                 if (l.kind == "market") BuildMarketStalls(pos, fp, group);
+                if (l.id.Contains("fire"))
+                {
+                    var redDoor = Mat("fire-door", "#e53935", 0.55f);
+                    var towerMat = Mat("fire-tower", "#8d2020", 0.3f);
+                    for (int bay = -1; bay <= 1; bay++)
+                        Box("Fire bay door", pos + new Vector3(bay * 5.2f, 1.8f, fp.y * 0.5f + 0.08f), new Vector3(3.8f, 3.4f, 0.14f), redDoor, group, false);
+                    Box("Drill & hose tower", pos + new Vector3(-fp.x * 0.38f, h + 3.2f, -fp.y * 0.28f), new Vector3(3.2f, 6.4f, 3.2f), towerMat, group, false);
+                }
             }
         }
 
@@ -439,7 +541,9 @@ namespace Rise.World
         void BuildVegetation()
         {
             var group = new GameObject("Vegetation").transform; group.SetParent(Root, false);
-            var plan = new (string model, int count, float height)[] { ("jabami_anime_tree-grass_v1", 18, 6f), ("maple_tree", 8, 5.5f), ("tree_spruce_pine", 5, 7f) };
+            var plan = GameBootstrap.Mobile
+                ? new (string model, int count, float height)[] { ("jabami_anime_tree-grass_v1", 10, 6f), ("tree_spruce_pine", 4, 7f) }
+                : new (string model, int count, float height)[] { ("jabami_anime_tree-grass_v1", 18, 6f), ("maple_tree", 8, 5.5f), ("tree_spruce_pine", 5, 7f) };
             var zones = new (float x0, float x1, float z0, float z1)[] { (-120, -22, -120, -22), (22, 120, -120, -22), (-120, -22, 22, 120), (22, 120, 22, 120), (346, 614, 315, 330) };
             var rng = new System.Random(42);
             foreach (var (model, count, height) in plan)
@@ -477,6 +581,292 @@ namespace Rise.World
             }
         }
 
+        void BuildAircraft(Vector3 pos, float yawDeg, float scale, Material accentMat, Material whiteMat, Material darkMat, Material glassMat, Transform group)
+        {
+            var plane = new GameObject("Aircraft").transform;
+            plane.SetParent(group, false);
+            plane.position = pos;
+            plane.rotation = Quaternion.Euler(0f, yawDeg, 0f);
+            plane.localScale = Vector3.one * scale;
+
+            // Cylindrical fuselage + nose cone + cockpit glass + windows + swept wings + twin under-wing turbofans + vertical tail fin + horizontal tailplane
+            Box("Fuselage", Vector3.zero, new Vector3(22f, 2.5f, 2.6f), whiteMat, plane);
+            Box("Livery stripe", new Vector3(0f, 0.25f, 0f), new Vector3(22.1f, 0.42f, 2.68f), accentMat, plane, false);
+            Box("Nose", new Vector3(11.8f, -0.15f, 0f), new Vector3(2.4f, 1.8f, 1.9f), whiteMat, plane, false);
+            Box("Cockpit glass", new Vector3(10.6f, 0.65f, 0f), new Vector3(1.8f, 0.75f, 2.1f), glassMat, plane, false);
+            Box("Wings", new Vector3(1.2f, -0.35f, 0f), new Vector3(3.8f, 0.24f, 21.5f), whiteMat, plane, false);
+            Box("Winglet L", new Vector3(0.4f, 0.45f, -10.7f), new Vector3(1.2f, 1.5f, 0.18f), accentMat, plane, false);
+            Box("Winglet R", new Vector3(0.4f, 0.45f, 10.7f), new Vector3(1.2f, 1.5f, 0.18f), accentMat, plane, false);
+            Box("Engine L", new Vector3(2.4f, -0.95f, -4.6f), new Vector3(2.8f, 1.15f, 1.15f), accentMat, plane, false);
+            Box("Engine R", new Vector3(2.4f, -0.95f, 4.6f), new Vector3(2.8f, 1.15f, 1.15f), accentMat, plane, false);
+            Box("Tail fin", new Vector3(-9.6f, 2.5f, 0f), new Vector3(3.2f, 3.8f, 0.28f), accentMat, plane, false);
+            Box("Tailplane", new Vector3(-9.8f, 0.6f, 0f), new Vector3(2.2f, 0.18f, 7.6f), whiteMat, plane, false);
+            Box("Landing gear N", new Vector3(9.2f, -1.6f, 0f), new Vector3(0.5f, 0.9f, 0.6f), darkMat, plane, false);
+            Box("Landing gear M", new Vector3(0.4f, -1.6f, 0f), new Vector3(0.7f, 0.9f, 3.6f), darkMat, plane, false);
+        }
+
+        void BuildYacht(Vector3 pos, Material hullMat, Material glassMat, Material deckMat, Transform group)
+        {
+            Box("Yacht hull", pos + Vector3.up * 0.45f, new Vector3(3.4f, 1.1f, 9.5f), hullMat, group, false);
+            Box("Yacht deck", pos + Vector3.up * 1.05f, new Vector3(3.1f, 0.18f, 8.8f), deckMat, group, false);
+            Box("Yacht cabin", pos + new Vector3(0f, 1.65f, -0.5f), new Vector3(2.6f, 1.1f, 4.8f), hullMat, group, false);
+            Box("Yacht bridge glass", pos + new Vector3(0f, 1.75f, 1.95f), new Vector3(2.4f, 0.75f, 0.3f), glassMat, group, false);
+            Box("Yacht flybridge", pos + new Vector3(0f, 2.4f, -0.8f), new Vector3(2.2f, 0.3f, 3.2f), hullMat, group, false);
+        }
+
+        void BuildRailStation(LandmarkData l, Vector3 pos, Transform group)
+        {
+            var brtMat = Mat("rail-blue", BrtBlue, 0.55f);
+            var whiteMat = Mat("rail-white", "#f2f4f8", 0.45f);
+            var conc = Mat("concrete", Concrete, 0.2f);
+            var glassMat = Mat("rail-glass", Glass, 0.88f);
+            var yellowLine = Mat("yellow", Yellow, 0.4f);
+
+            bool elevated = l.id == "marina-rail" || l.id == "theatre-rail";
+            float platY = elevated ? 7.6f : 0.8f;
+            if (elevated)
+            {
+                for (float px = -12f; px <= 12f; px += 8f)
+                    Cylinder("Station pier", pos + new Vector3(px, -1f, 0f), 0.95f, platY + 1f, conc, group);
+            }
+            Box(l.name + " concourse", pos + new Vector3(0f, 2.4f, 0f), new Vector3(24f, 4.8f, 12f), whiteMat, group);
+            Box(l.name + " glass", pos + new Vector3(0f, 2.5f, 6.08f), new Vector3(20f, 3.2f, 0.2f), glassMat, group, false);
+            Box(l.name + " platform", pos + new Vector3(0f, platY, 0f), new Vector3(28f, 0.6f, 11f), conc, group);
+            Box(l.name + " safety line", pos + new Vector3(0f, platY + 0.32f, 4.6f), new Vector3(27f, 0.04f, 0.3f), yellowLine, group, false);
+            Box(l.name + " canopy", pos + new Vector3(0f, platY + 3.8f, 0f), new Vector3(29f, 0.45f, 11.8f), brtMat, group, false);
+            Box(l.name + " fascia", pos + new Vector3(0f, platY + 4.15f, 0f), new Vector3(29.2f, 0.35f, 12.0f), whiteMat, group, false);
+            Sign(l.shortName, pos + new Vector3(0f, platY + 5.1f, 5.8f), "#ffffff", 1.1f, group);
+        }
+
+        void BuildBarracks(LandmarkData l, Vector3 pos, Transform group, bool isNavy)
+        {
+            var mainMat = Mat(isNavy ? "navy-base" : "army-base", isNavy ? "#13294b" : "#3b5323", 0.32f);
+            var trimMat = Mat(isNavy ? "navy-trim" : "army-trim", isNavy ? "#e8eef5" : "#8a9a68", 0.3f);
+            var roofMat = Mat("barracks-roof", isNavy ? "#1e3a5f" : "#2b3d1a", 0.45f);
+            var wallMat = Mat("barracks-wall", isNavy ? "#d8e0eb" : "#556b38", 0.25f);
+            var gateRed = Mat("barracks-gate-red", "#c62828", 0.5f);
+            var greenFlag = Mat("ng-green", "#008751", 0.4f);
+
+            // Parade ground apron
+            Box(l.name + " parade ground", pos + new Vector3(0f, 0.08f, 0f), new Vector3(26f, 0.16f, 20f), Mat("parade-asphalt", "#2b2f34", 0.2f), group);
+
+            // Main HQ & Quarterguard building + twin barracks blocks
+            float h = Mathf.Max(5.5f, l.h);
+            Box(l.name + " HQ", pos + new Vector3(0f, h * 0.5f, -3.5f), new Vector3(16f, h, 8.5f), mainMat, group);
+            Box(l.name + " HQ roof", pos + new Vector3(0f, h + 0.35f, -3.5f), new Vector3(16.8f, 0.7f, 9.2f), roofMat, group, false);
+            Box(l.name + " HQ veranda", pos + new Vector3(0f, h * 0.48f, 1.0f), new Vector3(15.6f, 0.3f, 1.6f), trimMat, group, false);
+
+            Box(l.name + " East Block", pos + new Vector3(9.5f, 2.4f, 2.5f), new Vector3(5.2f, 4.8f, 11f), trimMat, group);
+            Box(l.name + " East Roof", pos + new Vector3(9.5f, 5.0f, 2.5f), new Vector3(5.6f, 0.4f, 11.4f), roofMat, group, false);
+
+            // Perimeter walls + Quarterguard Archway & Boom Gate on street side (+z)
+            Box(l.name + " wall L", pos + new Vector3(-8.2f, 1.25f, 9.6f), new Vector3(9.2f, 2.5f, 0.55f), wallMat, group);
+            Box(l.name + " wall R", pos + new Vector3(8.2f, 1.25f, 9.6f), new Vector3(9.2f, 2.5f, 0.55f), wallMat, group);
+            Box(l.name + " gate pillar L", pos + new Vector3(-3.4f, 2.6f, 9.6f), new Vector3(1.1f, 5.2f, 1.1f), mainMat, group);
+            Box(l.name + " gate pillar R", pos + new Vector3(3.4f, 2.6f, 9.6f), new Vector3(1.1f, 5.2f, 1.1f), mainMat, group);
+            Box(l.name + " gate beam", pos + new Vector3(0f, 4.9f, 9.6f), new Vector3(8.4f, 1.0f, 1.2f), mainMat, group, false);
+            Box(l.name + " boom barrier", pos + new Vector3(0f, 1.15f, 9.6f), new Vector3(6.0f, 0.14f, 0.14f), gateRed, group, false);
+
+            // Corner Watchtower
+            var wtPos = pos + new Vector3(-11.2f, 0f, 8.2f);
+            Box("Watchtower legs", wtPos + Vector3.up * 3.2f, new Vector3(2.2f, 6.4f, 2.2f), mainMat, group);
+            Box("Watchtower cab", wtPos + Vector3.up * 7.1f, new Vector3(2.8f, 1.6f, 2.8f), trimMat, group, false);
+            Box("Watchtower roof", wtPos + Vector3.up * 8.1f, new Vector3(3.3f, 0.35f, 3.3f), roofMat, group, false);
+
+            // Flagpole with Nigerian Green-White-Green / Naval flag
+            var flagPos = pos + new Vector3(-4.8f, 0f, 4.2f);
+            Cylinder("Flagpole", flagPos, 0.08f, 8.5f, trimMat, group);
+            Box("Flag G1", flagPos + new Vector3(0.45f, 7.9f, 0f), new Vector3(0.32f, 0.65f, 0.05f), greenFlag, group, false);
+            Box("Flag W", flagPos + new Vector3(0.77f, 7.9f, 0f), new Vector3(0.32f, 0.65f, 0.05f), trimMat, group, false);
+            Box("Flag G2", flagPos + new Vector3(1.09f, 7.9f, 0f), new Vector3(0.32f, 0.65f, 0.05f), greenFlag, group, false);
+
+            // Naval gunboat / cutter at Naval Bases
+            if (isNavy)
+            {
+                var cutterPos = pos + new Vector3(0f, 0.4f, -13.5f);
+                var hullGrey = Mat("navy-cutter-hull", "#5c6873", 0.45f);
+                Box("Naval Cutter Hull", cutterPos, new Vector3(13.5f, 1.6f, 3.6f), hullGrey, group, false);
+                Box("Naval Cutter Bridge", cutterPos + new Vector3(1.2f, 1.5f, 0f), new Vector3(4.5f, 1.6f, 2.8f), trimMat, group, false);
+                Box("Naval Cutter Mast", cutterPos + new Vector3(0.8f, 3.1f, 0f), new Vector3(0.35f, 1.8f, 0.35f), hullGrey, group, false);
+                Box("Naval Deck Gun", cutterPos + new Vector3(4.8f, 1.15f, 0f), new Vector3(1.6f, 0.7f, 1.1f), mainMat, group, false);
+            }
+
+            Sign(l.shortName, pos + new Vector3(0f, 5.8f, 10.25f), l.sign, 0.92f, group, 0.18f);
+        }
+
+        void BuildFishingJetty(LandmarkData l, Vector3 pos, Transform group)
+        {
+            var wood = Mat("wood-stilt", "#5c4028");
+            var darkWood = Mat("wood-dark", "#3e2a19");
+            var brick = Mat("kiln-brick", "#8a4228");
+            var zinc = Mat("zinc", Zinc, 0.5f);
+            var iceMat = Mat("fish-cooler", "#2980b9", 0.6f);
+
+            // Timber boardwalk & pier extending toward water
+            Box(l.name + " apron", pos + new Vector3(0f, 0.25f, 0f), new Vector3(20f, 0.35f, 14f), wood, group);
+            Box(l.name + " pier", pos + new Vector3(0f, 0.35f, -12f), new Vector3(4.2f, 0.3f, 14f), wood, group);
+            for (int i = -2; i <= 2; i++)
+            {
+                Cylinder("Jetty piling L", pos + new Vector3(-1.9f, -0.8f, -6f + i * 3f), 0.16f, 2.6f, darkWood, group);
+                Cylinder("Jetty piling R", pos + new Vector3(1.9f, -0.8f, -6f + i * 3f), 0.16f, 2.6f, darkWood, group);
+            }
+
+            // Fish-smoking shed & traditional brick kilns + ice coolers
+            Box("Fish smoking shed", pos + new Vector3(-6.2f, 1.45f, 2.2f), new Vector3(5.8f, 2.5f, 4.4f), darkWood, group);
+            Box("Shed roof", pos + new Vector3(-6.2f, 2.85f, 2.2f), new Vector3(6.4f, 0.2f, 5.0f), zinc, group, false);
+            Box("Smoking kiln 1", pos + new Vector3(5.5f, 0.75f, 2.5f), new Vector3(2.2f, 1.1f, 2.2f), brick, group);
+            Box("Smoking kiln 2", pos + new Vector3(8.2f, 0.75f, 2.5f), new Vector3(2.2f, 1.1f, 2.2f), brick, group);
+            Box("Fish ice cooler", pos + new Vector3(2.4f, 0.65f, 3.2f), new Vector3(1.6f, 0.8f, 1.0f), iceMat, group, false);
+
+            // Moored motorized wooden fishing boats alongside the jetty
+            BuildFishingBoat(pos + new Vector3(-4.6f, 0.22f, -13f), 12f, wood, iceMat, group);
+            BuildFishingBoat(pos + new Vector3(4.8f, 0.22f, -14f), -8f, wood, brick, group);
+            Sign(l.shortName, pos + new Vector3(0f, 3.8f, 6.8f), l.sign, 1.05f, group);
+        }
+
+        void BuildFishingBoat(Vector3 pos, float yaw, Material woodMat, Material trimMat, Transform group)
+        {
+            var boat = new GameObject("Fishing Boat").transform;
+            boat.SetParent(group, false);
+            boat.position = pos;
+            boat.rotation = Quaternion.Euler(0f, yaw, 0f);
+            Box("Boat hull", Vector3.zero, new Vector3(1.55f, 0.48f, 6.2f), woodMat, boat, false);
+            Box("Boat gunwale", new Vector3(0f, 0.26f, 0f), new Vector3(1.68f, 0.14f, 6.4f), trimMat, boat, false);
+            Box("Boat thwarts", new Vector3(0f, 0.22f, 0.4f), new Vector3(1.45f, 0.08f, 2.6f), woodMat, boat, false);
+            Box("Fish basket", new Vector3(0f, 0.38f, 0.9f), new Vector3(0.85f, 0.35f, 1.1f), trimMat, boat, false);
+            Box("Outboard motor", new Vector3(0f, 0.36f, -3.25f), new Vector3(0.36f, 0.65f, 0.45f), Mat("outboard", "#1e293b", 0.6f), boat, false);
+        }
+
+        // Lagos Rail Mass Transit (LRMT):
+        // 1. Blue Line elevated concrete viaduct across the Lagos Lagoon (data z = -20, x = 135..368) from National Theatre / Costain to Marina.
+        // 2. Red Line mainland rail corridor (data x = 184, z = -470..-20) through Oyingbo, Yaba, and Ebute Metta (Mobolaji Johnson Station).
+        void BuildRailway()
+        {
+            var group = new GameObject("Lagos Railway").transform; group.SetParent(Root, false);
+            var viaductMat = Mat("rail-viaduct", "#9e9b93", 0.2f);
+            var ballastMat = Mat("rail-ballast", "#59554f", 0.1f);
+            var steelRail = Mat("rail-steel", "#aeb6bf", 0.75f);
+            var sleeperMat = Mat("rail-sleeper", "#4a3e35", 0.15f);
+            var brtStripe = Mat("rail-blue", BrtBlue, 0.55f);
+
+            // --- LRMT Blue Line Elevated Viaduct (East-West along data z = -20, x = 136..364) ---
+            float blueZ = -20f, blueY = 7.4f, blueLen = 364f - 136f, blueMidX = (136f + 364f) * 0.5f;
+            var blueCenter = WorldData.W(blueMidX, blueY, blueZ);
+            Box("Blue Line Viaduct Deck", blueCenter, new Vector3(blueLen, 0.9f, 6.6f), viaductMat, group);
+            Box("Blue Line Parapet N", blueCenter + new Vector3(0f, 0.75f, 3.1f), new Vector3(blueLen, 0.75f, 0.3f), brtStripe, group, false);
+            Box("Blue Line Parapet S", blueCenter + new Vector3(0f, 0.75f, -3.1f), new Vector3(blueLen, 0.75f, 0.3f), brtStripe, group, false);
+            Box("Blue Rail L1", blueCenter + new Vector3(0f, 0.52f, -1.3f), new Vector3(blueLen, 0.12f, 0.14f), steelRail, group, false);
+            Box("Blue Rail L2", blueCenter + new Vector3(0f, 0.52f, -0.3f), new Vector3(blueLen, 0.12f, 0.14f), steelRail, group, false);
+            Box("Blue Rail R1", blueCenter + new Vector3(0f, 0.52f, 0.3f), new Vector3(blueLen, 0.12f, 0.14f), steelRail, group, false);
+            Box("Blue Rail R2", blueCenter + new Vector3(0f, 0.52f, 1.3f), new Vector3(blueLen, 0.12f, 0.14f), steelRail, group, false);
+            for (float x = 144f; x <= 358f; x += 24f)
+            {
+                Cylinder("Blue Line Pier", WorldData.W(x, -3f, blueZ), 0.95f, blueY + 2.8f, viaductMat, group);
+                Cylinder("Catenary Mast", WorldData.W(x, blueY + 0.4f, blueZ), 0.1f, 4.2f, steelRail, group, false);
+            }
+
+            // --- LRMT Red Line Mainland Corridor (North-South along data x = 184, z = -475..-22) ---
+            float redX = 184f, redFrom = -475f, redTo = -22f;
+            var roadCuts = new List<Vector2>();
+            foreach (var r in Data.roads)
+            {
+                if (!r.Horizontal) continue;
+                if (redX < r.from - 2f || redX > r.to + 2f) continue;
+                roadCuts.Add(new Vector2(r.k - r.width * 0.5f - 1.5f, r.k + r.width * 0.5f + 1.5f));
+            }
+            foreach (var span in Split(redFrom, redTo, roadCuts))
+            {
+                float len = span.y - span.x, midZ = (span.x + span.y) * 0.5f;
+                var segPos = WorldData.W(redX, 0.12f, midZ);
+                Box("Red Line Ballast", segPos, new Vector3(5.6f, 0.22f, len), ballastMat, group, false);
+                Box("Red Rail W1", segPos + new Vector3(-1.2f, 0.15f, 0f), new Vector3(0.14f, 0.10f, len), steelRail, group, false);
+                Box("Red Rail W2", segPos + new Vector3(-0.3f, 0.15f, 0f), new Vector3(0.14f, 0.10f, len), steelRail, group, false);
+                Box("Red Rail E1", segPos + new Vector3(0.3f, 0.15f, 0f), new Vector3(0.14f, 0.10f, len), steelRail, group, false);
+                Box("Red Rail E2", segPos + new Vector3(1.2f, 0.15f, 0f), new Vector3(0.14f, 0.10f, len), steelRail, group, false);
+                for (float z = span.x + 3f; z < span.y - 2f; z += 5f)
+                    Box("Sleeper", WorldData.W(redX, 0.22f, z), new Vector3(4.4f, 0.06f, 0.35f), sleeperMat, group, false);
+            }
+        }
+
+        void BuildMovingTrains()
+        {
+            var trainsRoot = new GameObject("Active Trains").transform;
+            trainsRoot.SetParent(transform, false);
+            blueLineTrain = BuildMetroTrain("LRMT Blue Line Train", BrtBlue, 4, trainsRoot);
+            redLineTrain = BuildMetroTrain("LRMT Red Line Train", "#c62828", 4, trainsRoot);
+            UpdateTrains(0f);
+        }
+
+        Transform BuildMetroTrain(string name, string accentHex, int cars, Transform parent)
+        {
+            var t = new GameObject(name).transform;
+            t.SetParent(parent, false);
+            var white = Mat("train-white", "#f2f5f9", 0.72f);
+            var accent = Mat("train-" + accentHex, accentHex, 0.68f);
+            var glass = Mat("train-glass", "#182432", 0.92f);
+            var dark = Mat("train-under", "#1f2328", 0.25f);
+            var headLight = LampHead;
+
+            float carLen = 11.5f, gap = 0.7f;
+            float total = cars * carLen + (cars - 1) * gap;
+            for (int i = 0; i < cars; i++)
+            {
+                float cz = -total * 0.5f + carLen * 0.5f + i * (carLen + gap);
+                var car = new GameObject("Coach " + (i + 1)).transform;
+                car.SetParent(t, false);
+                car.localPosition = new Vector3(0f, 0f, cz);
+
+                CreateDynamicBox("Body", car, new Vector3(0f, 1.65f, 0f), new Vector3(2.85f, 2.5f, carLen), white);
+                CreateDynamicBox("LiveryBand", car, new Vector3(0f, 1.25f, 0f), new Vector3(2.91f, 0.55f, carLen + 0.02f), accent);
+                CreateDynamicBox("Roof", car, new Vector3(0f, 2.98f, 0f), new Vector3(2.4f, 0.24f, carLen - 0.4f), dark);
+                CreateDynamicBox("WindowStrip", car, new Vector3(0f, 1.95f, 0f), new Vector3(2.92f, 0.72f, carLen * 0.88f), glass);
+                CreateDynamicBox("BogieF", car, new Vector3(0f, 0.28f, carLen * 0.32f), new Vector3(2.2f, 0.48f, 2.1f), dark);
+                CreateDynamicBox("BogieR", car, new Vector3(0f, 0.28f, -carLen * 0.32f), new Vector3(2.2f, 0.48f, 2.1f), dark);
+                if (i == 0 || i == cars - 1)
+                {
+                    float fz = (i == cars - 1 ? 1f : -1f) * (carLen * 0.5f + 0.04f);
+                    CreateDynamicBox("CabWindshield", car, new Vector3(0f, 2.0f, fz), new Vector3(2.4f, 0.85f, 0.12f), glass);
+                    CreateDynamicBox("HeadlampL", car, new Vector3(-0.85f, 1.05f, fz), new Vector3(0.35f, 0.22f, 0.12f), headLight);
+                    CreateDynamicBox("HeadlampR", car, new Vector3(0.85f, 1.05f, fz), new Vector3(0.35f, 0.22f, 0.12f), headLight);
+                }
+            }
+            return t;
+        }
+
+        static void CreateDynamicBox(string name, Transform parent, Vector3 localPos, Vector3 scale, Material m)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = scale;
+            go.GetComponent<MeshRenderer>().sharedMaterial = m;
+            Remove(go.GetComponent<Collider>());
+        }
+
+        void Update()
+        {
+            UpdateTrains(Time.time);
+        }
+
+        void UpdateTrains(float t)
+        {
+            if (blueLineTrain != null)
+            {
+                float u = Mathf.PingPong(t * 0.045f, 1f);
+                float x = Mathf.Lerp(158f, 342f, Mathf.SmoothStep(0f, 1f, u));
+                blueLineTrain.position = WorldData.W(x, 7.95f, -20f);
+                blueLineTrain.rotation = Quaternion.Euler(0f, 90f, 0f);
+            }
+            if (redLineTrain != null)
+            {
+                float u = Mathf.PingPong(t * 0.032f + 0.35f, 1f);
+                float z = Mathf.Lerp(-445f, -48f, Mathf.SmoothStep(0f, 1f, u));
+                redLineTrain.position = WorldData.W(184f, 0.28f, z);
+                redLineTrain.rotation = Quaternion.identity;
+            }
+        }
+
         void BuildMarketStalls(Vector3 pos, Vector2 fp, Transform group)
         {
             var rng = new System.Random((int)(pos.x * 7 + pos.z * 13));
@@ -488,21 +878,60 @@ namespace Rise.World
                 Box("Stall", basePos + Vector3.up * 0.5f, new Vector3(2.4f, 1f, 1.4f), Mat("stall", "#7a5a3a"), group);
                 Box("Tarp", basePos + Vector3.up * 2.3f, new Vector3(3f, 0.1f, 2.2f), Mat("tarp" + i % tarps.Length, tarps[i % tarps.Length]), group, false);
             }
+            BuildLawmaBin(pos + new Vector3(fp.x * 0.5f + 2.2f, 0.15f, -fp.y * 0.5f), group, true);
         }
+
+        static bool IsBrtStop(string id) =>
+            id == "cms" || id == "costain" || id == "ojstop" || id == "jibowu" || id == "ebutebus" ||
+            id == "lekkibus" || id == "vibus" || id == "oyingbo-bus" || id == "maryland-bus" ||
+            id == "ojota-bus" || id == "ketu-bus" || id == "ikeja-bus" || id == "mile-12-bus";
 
         void BuildBusStops()
         {
             var group = new GameObject("Bus stops").transform; group.SetParent(Root, false);
             var yellow = Mat("yellow", Yellow, 0.3f);
+            var brtBlue = Mat("brt-blue", BrtBlue, 0.55f);
+            var brtRed = Mat("brt-red", "#d32f2f", 0.5f);
+            var glassMat = Mat("brt-glass", Glass, 0.85f);
             var pole = Mat("pole", Steel, 0.4f);
             foreach (var b in Data.busStops)
             {
                 var pos = b.World(0.3f);
-                Cylinder("Post", pos + new Vector3(-2.2f, 0, 0), 0.08f, 2.8f, pole, group);
-                Cylinder("Post", pos + new Vector3(2.2f, 0, 0), 0.08f, 2.8f, pole, group);
-                Box("Roof", pos + Vector3.up * 2.9f, new Vector3(5.4f, 0.18f, 2.4f), yellow, group, false);
-                Box("Bench", pos + Vector3.up * 0.5f, new Vector3(4.2f, 0.12f, 0.5f), Mat("bench", "#4a3a2a"), group);
-                Sign(b.shortName, pos + new Vector3(0, 3.7f, 0), "#141414", 0.7f, group);
+                bool brt = IsBrtStop(b.id);
+                Cylinder("Post", pos + new Vector3(-2.4f, 0, 0), 0.09f, 3.0f, pole, group);
+                Cylinder("Post", pos + new Vector3(2.4f, 0, 0), 0.09f, 3.0f, pole, group);
+                if (brt)
+                {
+                    Box("BRT Roof", pos + Vector3.up * 3.05f, new Vector3(6.2f, 0.24f, 2.7f), brtBlue, group, false);
+                    Box("BRT Trim", pos + Vector3.up * 3.22f, new Vector3(6.25f, 0.10f, 2.74f), brtRed, group, false);
+                    Box("BRT Glass Back", pos + new Vector3(0f, 1.55f, -1.05f), new Vector3(4.8f, 2.2f, 0.10f), glassMat, group, false);
+                    Box("Bench", pos + Vector3.up * 0.5f, new Vector3(4.4f, 0.14f, 0.55f), brtBlue, group);
+                    Sign("BRT · " + b.shortName, pos + new Vector3(0, 3.85f, 0), "#ffffff", 0.72f, group);
+                }
+                else
+                {
+                    Box("Roof", pos + Vector3.up * 2.9f, new Vector3(5.4f, 0.18f, 2.4f), yellow, group, false);
+                    Box("Bench", pos + Vector3.up * 0.5f, new Vector3(4.2f, 0.12f, 0.5f), Mat("bench", "#4a3a2a"), group);
+                    Sign(b.shortName, pos + new Vector3(0, 3.7f, 0), "#141414", 0.7f, group);
+                }
+                BuildLawmaBin(pos + new Vector3(3.4f, 0f, 0.2f), group, false);
+            }
+        }
+
+        // Iconic vivid-orange LAWMA street wheelie bins and roll-on dumpsters ("KEEP LAGOS CLEAN").
+        void BuildLawmaBin(Vector3 basePos, Transform group, bool skip)
+        {
+            var lawmaMat = Mat("lawma-orange", LawmaOrange, 0.45f);
+            var lidMat = Mat("lawma-lid", "#222428", 0.35f);
+            if (skip)
+            {
+                Box("LAWMA Skip", basePos + Vector3.up * 0.75f, new Vector3(2.4f, 1.4f, 1.5f), lawmaMat, group);
+                Box("LAWMA Skip Lid", basePos + Vector3.up * 1.5f, new Vector3(2.5f, 0.14f, 1.6f), lidMat, group, false);
+            }
+            else
+            {
+                Box("LAWMA Bin", basePos + Vector3.up * 0.55f, new Vector3(0.65f, 1.05f, 0.65f), lawmaMat, group, false);
+                Box("LAWMA Bin Lid", basePos + Vector3.up * 1.12f, new Vector3(0.72f, 0.10f, 0.72f), lidMat, group, false);
             }
         }
 
@@ -549,7 +978,7 @@ namespace Rise.World
 
         void Tower(Vector3 pos, float w, float d, float h, Transform group, System.Random rng)
         {
-            var glass = rng.NextDouble() < 0.5 ? Mat("glass", Glass, 0.85f) : Mat("tower", "#cfd3d6", 0.5f);
+            var glass = rng.NextDouble() < 0.55 ? Mat("glass", Glass, 0.85f) : Mat("tower", "#cfd3d6", 0.5f);
             Box("Tower", pos + Vector3.up * h * 0.5f, new Vector3(w, h, d), glass, group);
             Box("Crown", pos + Vector3.up * (h + 0.6f), new Vector3(w * 0.6f, 1.2f, d * 0.6f), Mat("parapet", "#6b655a"), group, false);
         }
@@ -566,34 +995,119 @@ namespace Rise.World
             if (h >= 6.5f) Box("Balcony", pos + new Vector3(0f, 3.6f, d * 0.5f + 0.6f), new Vector3(w * 0.55f, 0.25f, 1.2f), Mat("concrete", Concrete), group, false);
         }
 
-        // Fill the blocks between roads with housing where nothing else is placed, region-aware.
+        bool OverlapsPlot(float x, float z, float minSep = 15.5f)
+        {
+            float r2 = minSep * minSep;
+            for (int i = 0; i < placedPlots.Count; i++)
+            {
+                float dx = placedPlots[i].x - x, dz = placedPlots[i].y - z;
+                if (dx * dx + dz * dz < r2) return true;
+            }
+            return false;
+        }
+
+        void PlaceRegionalBuilding(float x, float z, Transform group, bool roadside)
+        {
+            var region = Data.RegionAtData(x, z);
+            string id = region != null ? region.id : "mainland";
+            var rng = new System.Random(Mathf.RoundToInt(x * 73f + z * 151f));
+            float jx = roadside ? 0f : ((float)rng.NextDouble() - 0.5f) * 3f;
+            float jz = roadside ? 0f : ((float)rng.NextDouble() - 0.5f) * 3f;
+            var pos = WorldData.W(x + jx, 0f, z + jz);
+            bool banana = id.Contains("banana");
+            bool dense = id.Contains("island") || id == "obalende" || id == "vi" || id.Contains("marina");
+            bool estate = id.Contains("lekki") || id.Contains("ajah") || id.Contains("ikoyi") || id.Contains("oniru") || id.Contains("eleko") || id.Contains("magodo");
+            bool industrial = id.Contains("apapa") || id.Contains("costain") || (z > 105f && z < 190f && x < 165f);
+
+            if (banana)
+            {
+                Compound(pos, 19f, 17f, group);
+                House(pos, 13f, 11f, 10.5f + (float)rng.NextDouble() * 4f, "#f5f3ee", false, group);
+            }
+            else if (dense)
+            {
+                Tower(pos, 14f, 12f, 14f + (float)rng.NextDouble() * 28f, group, rng);
+            }
+            else if (estate)
+            {
+                Compound(pos, 19f, 17f, group);
+                House(pos, 12f, 10f, 8f + (rng.NextDouble() < 0.4 ? 3.5f : 0f), Cream, false, group);
+            }
+            else if (industrial)
+            {
+                double roll = rng.NextDouble();
+                if (roll < 0.55)
+                {
+                    // Apapa / Costain / Oworonshoki warehouse & logistics depot
+                    float wh = 6.5f + (float)rng.NextDouble() * 5.5f;
+                    Box("Warehouse", pos + Vector3.up * wh * 0.5f, new Vector3(15f, wh, 12f), Mat("wh-" + (roll < 0.28 ? "#6c7a89" : "#b8c4cc"), roll < 0.28 ? "#6c7a89" : "#b8c4cc"), group);
+                    Box("Warehouse roof", pos + Vector3.up * (wh + 0.2f), new Vector3(15.6f, 0.35f, 12.6f), Mat("zinc", Zinc, 0.5f), group, false);
+                }
+                else
+                {
+                    Compound(pos, 19f, 17f, group);
+                    House(pos, 12f, 10f, 7f + rng.Next(0, 3) * 3.5f, HouseColours[rng.Next(HouseColours.Length)], false, group);
+                }
+            }
+            else
+            {
+                double roll = rng.NextDouble();
+                if (!roadside) Compound(pos, 19f, 17f, group);
+                if (roll < 0.35) House(pos, 11f, 9f, 4.2f, HouseColours[rng.Next(HouseColours.Length)], true, group);
+                else if (roll < 0.85) House(pos, 12f, 10f, 7.5f + rng.Next(0, 3) * 3.5f, HouseColours[rng.Next(HouseColours.Length)], false, group);
+                else House(pos, 13f, 11f, 16f + (float)rng.NextDouble() * 10f, "#c9c2b3", false, group);
+            }
+            placedPlots.Add(new Vector2(x, z));
+        }
+
+        // Fill every street frontage and city block across Lagos:
+        // 1. First line both sides of every non-bridge road so streets never look bare.
+        // 2. Then fill the blocks between roads from the central mainland/island outward.
         void BuildHousing()
         {
             var group = new GameObject("Housing").transform; group.SetParent(Root, false);
-            var m = Data.meta;
             int built = 0;
-            for (float z = m.minZ + HouseGrid * 0.5f; z < m.maxZ && built < MaxHouses; z += HouseGrid)
-            for (float x = m.minX + HouseGrid * 0.5f; x < m.maxX && built < MaxHouses; x += HouseGrid)
+            float roadStep = GameBootstrap.Mobile ? 26f : 20f;
+
+            foreach (var r in Data.roads)
             {
-                var region = Data.RegionAtData(x, z);
-                if (region == null || Data.InWaterData(x, z) || NearRoadData(x, z, 8f) || ReservedData(x, z)) continue;
-                var rng = new System.Random(Mathf.RoundToInt(x * 73f + z * 151f));
-                if (rng.NextDouble() < 0.18) continue;   // leave some open ground
-                float jx = ((float)rng.NextDouble() - 0.5f) * 4f, jz = ((float)rng.NextDouble() - 0.5f) * 4f;
-                var pos = WorldData.W(x + jx, 0, z + jz);
-                string id = region.id;
-                bool dense = id.Contains("island") || id == "obalende" || id == "vi" || id.Contains("marina");
-                bool estate = id.Contains("lekki") || id.Contains("ajah") || id.Contains("ikoyi") || id.Contains("oniru") || id.Contains("eleko");
-                if (dense) Tower(pos, 14f, 12f, 12f + (float)rng.NextDouble() * 30f, group, rng);
-                else if (estate) { Compound(pos, 20f, 18f, group); House(pos, 12f, 10f, 8f, Cream, false, group); }
-                else
+                bool h = r.Horizontal;
+                for (float along = r.from + 14f; along < r.to - 14f && built < MaxHouses; along += roadStep)
                 {
-                    double roll = rng.NextDouble();
-                    Compound(pos, 20f, 18f, group);
-                    if (roll < 0.55) House(pos, 11f, 9f, 3.6f, HouseColours[rng.Next(HouseColours.Length)], true, group);
-                    else if (roll < 0.9) House(pos, 12f, 10f, 7f + rng.Next(0, 2) * 3.5f, HouseColours[rng.Next(HouseColours.Length)], false, group);
-                    else House(pos, 13f, 11f, 18f + (float)rng.NextDouble() * 10f, "#c9c2b3", false, group);
+                    if (Data.OnBridge(r.axis, r.k, along)) continue;
+                    for (int s = -1; s <= 1; s += 2)
+                    {
+                        float across = r.k + s * (r.width * 0.5f + 12.2f);
+                        float dx = h ? along : across, dz = h ? across : along;
+                        if (Data.InWaterData(dx, dz) || NearRoadData(dx, dz, 6.2f) || ReservedData(dx, dz) || OverlapsPlot(dx, dz, 15f)) continue;
+                        PlaceRegionalBuilding(dx, dz, group, true);
+                        built++;
+                    }
                 }
+            }
+
+            var m = Data.meta;
+            var candidates = new List<Vector2>();
+            for (float z = m.minZ + HouseGrid * 0.5f; z < m.maxZ; z += HouseGrid)
+                for (float x = m.minX + HouseGrid * 0.5f; x < m.maxX; x += HouseGrid)
+                    candidates.Add(new Vector2(x, z));
+
+            // Prioritize central Lagos (Surulere, Costain, Apapa, Island, Ikoyi, Banana Island, VI, Yaba, Ebute Metta, Lekki) first.
+            candidates.Sort((a, b) =>
+            {
+                float da = (a.x - 160f) * (a.x - 160f) + a.y * a.y;
+                float db = (b.x - 160f) * (b.x - 160f) + b.y * b.y;
+                return da.CompareTo(db);
+            });
+
+            foreach (var pt in candidates)
+            {
+                if (built >= MaxHouses) break;
+                float x = pt.x, z = pt.y;
+                if (Data.InWaterData(x, z) || NearRoadData(x, z, 7.2f) || ReservedData(x, z) || OverlapsPlot(x, z, 15.5f)) continue;
+                var rng = new System.Random(Mathf.RoundToInt(x * 73f + z * 151f));
+                if (rng.NextDouble() < 0.08) continue;
+                PlaceRegionalBuilding(x, z, group, false);
                 built++;
             }
         }
@@ -611,9 +1125,12 @@ namespace Rise.World
 
         bool ReservedData(float x, float z)
         {
+            // Keep clear of the Red Line railway corridor (x = 184, z = -475..-20) and Blue Line viaduct (z = -20, x = 136..364)
+            if (x > 174f && x < 194f && z > -480f && z < -15f) return true;
+            if (z > -30f && z < -10f && x > 132f && x < 368f) return true;
             foreach (var l in Data.landmarks)
             {
-                float r = l.stadium ? 40f : l.kind == "pitch" ? 30f : l.waterfront || l.kind == "settlement" || l.kind == "beach" ? 52f : l.big ? 24f : l.kind == "street" ? 12f : 19f;
+                float r = l.stadium ? 40f : l.kind == "airport" ? 58f : l.kind == "pitch" ? 30f : l.waterfront || l.kind == "settlement" || l.kind == "beach" ? 52f : l.big ? 24f : l.kind == "street" ? 12f : 19f;
                 if ((l.x - x) * (l.x - x) + (l.z - z) * (l.z - z) < r * r) return true;
             }
             foreach (var b in Data.busStops) if ((b.x - x) * (b.x - x) + (b.z - z) * (b.z - z) < 14f * 14f) return true;
@@ -685,12 +1202,133 @@ namespace Rise.World
                 var pos = k.World(0.3f);
                 Box("Kiosk", pos + Vector3.up * 1.3f, new Vector3(2.6f, 2.6f, 2.2f), Mat("kiosk", "#2e7d32"), group);
                 Sign("POS", pos + new Vector3(0, 3.1f, 0), "#ffffff", 0.6f, group);
+                BuildLawmaBin(pos + new Vector3(1.9f, 0f, 0f), group, false);
             }
             foreach (var v in Data.vendors)
             {
                 var pos = v.World(0.3f);
                 Box("Table", pos + Vector3.up * 0.5f, new Vector3(2f, 0.9f, 1.2f), Mat("stall", "#7a5a3a"), group);
                 Box("Umbrella", pos + Vector3.up * 2.4f, new Vector3(2.6f, 0.12f, 2.6f), Mat("umbrella", "#d9534f"), group, false);
+            }
+            if (Data.TryPlace("lawma", out var lawmaDepot))
+            {
+                var dp = lawmaDepot.World(0.15f);
+                BuildLawmaBin(dp + new Vector3(-7f, 0f, 9f), group, true);
+                BuildLawmaBin(dp + new Vector3(7f, 0f, 9f), group, true);
+            }
+        }
+
+        static readonly (string brand, string sub, string bgHex, string fgHex)[] LagosAds =
+        {
+            ("MTN · EVERYWHERE YOU GO",       "5G HUSTLE BUNDLE · DIAL *312#",    "#ffcc00", "#0b1f3a"),
+            ("GLO · GRANDMASTERS OF DATA",    "RULE YOUR WORLD · UNLIMITED DATA", "#009a49", "#ffffff"),
+            ("AIRTEL · SMARTPHONE NETWORK",   "BINGE STREAMING · NO BUFFER",      "#e40000", "#ffffff"),
+            ("INDOMIE · TASTES GREAT!",       "NO BE SMALL THING · BELLE FULL",   "#d62828", "#ffdd00"),
+            ("BET9JA · CATCH THE BOOM!",      "PLAY RESPONSIBLY · 18+ ONLY",      "#0d5c2f", "#f2bd18"),
+            ("OPAY & MONIEPOINT",             "INSTANT TRANSFER · ZERO DOWNTIME", "#00a86b", "#ffffff"),
+            ("CHICKEN REPUBLIC",              "SOULFULLY SPICED · REFUEL MAX",    "#c62828", "#ffd700"),
+            ("PEAK MILK · IT'S IN YOU",       "NOURISHING LAGOS EVERY MORNING",   "#1559b8", "#ffffff"),
+            ("TROPHY & GOLDBERG LAGER",       "HONOURABLE! · ENJOY COLD",         "#9a6b12", "#fff8dc"),
+            ("RISEBANK · DIGITAL BANKING",    "SAVE, BORROW & GROW YOUR HUSTLE",  "#1e1b4b", "#7dd3fc"),
+            ("EKO HOTEL & SUITES · VI",       "LUXURY BY THE ATLANTIC · WELCOME", "#3b1d5e", "#ffd700"),
+            ("LASG · GREATER LAGOS RISING",   "RIDE THE BLUE & RED RAIL LINES",   "#0284c7", "#ffffff"),
+            ("NEW AFRIKA SHRINE · IKEJA",     "AFROBEAT SUNDAY JUMP · LIVE",      "#b45309", "#fde047"),
+            ("DANGOTE REFINERY & CEMENT",     "BUILDING A SELF-RELIANT NIGERIA",  "#1d3557", "#fb923c"),
+        };
+
+        void BuildBillboards()
+        {
+            var group = new GameObject("Billboards").transform;
+            group.SetParent(Root, false);
+            var steel = Mat("steel", Steel, 0.45f);
+            var darkFrame = Mat("bb-frame", "#181a1f", 0.35f);
+            var lasaaBlue = Mat("lasaa", "#0284c7", 0.5f);
+
+            // 1. Giant LASAA Unipole Roadside Billboards across Lagos districts
+            var unipoles = new (float x, float z, float yaw)[]
+            {
+                (14f,    18f,   0f),   // Adeniran Ogunsanya · Surulere spawn view
+                (-14f,  -52f,   0f),   // Itire Road · Surulere
+                (58f,   -54f,  15f),   // Ojuelegba Roundabout
+                (136f,  -14f,   0f),   // Costain Interchange / Eko Bridge approach
+                (352f,  -14f,   0f),   // CMS / Nnamdi Azikiwe Street
+                (374f, -242f,  90f),   // Third Mainland Bridge / Yaba approach
+                (426f,   88f,  90f),   // Falomo Bridge north approach (Ikoyi)
+                (484f,  112f,   0f),   // Banana Island Causeway entrance
+                (426f,  226f,   0f),   // Adeola Odeku · Victoria Island
+                (486f,  226f,   0f),   // Lekki Toll Gate approach
+                (574f,  226f,   0f),   // Admiralty Way · Lekki Phase 1
+                (814f,  226f,   0f),   // Ajah Roundabout
+                (1350f, 224f,   0f),   // Ibeju-Lekki · Refinery corridor
+                (1650f, 224f,   0f),   // Epe Gateway
+                (374f, -316f,   0f),   // Jibowu · Yaba
+                (120f, -308f,   0f),   // Ikorodu Road · Ebute Metta
+                (-160f,-308f,   0f),   // Ikorodu Garage
+                (16f,  -516f,   0f),   // Maryland / Mobolaji Bank Anthony Way
+                (80f,  -744f,   0f),   // Allen Avenue · Ikeja
+                (42f,  -865f,   0f),   // Murtala Muhammed Airport Road
+                (104f, -1104f,  0f),   // Alausa Secretariat
+                (18f,  -1304f,  0f),   // Ojodu Berger Interstate Gateway
+                (-120f, 124f,   0f),   // Apapa–Oworonshoki Expressway (Orile)
+                (-336f, 124f,   0f),   // Apapa Port Road
+                (-236f, 262f,   0f),   // Mile 2 · Badagry Expressway
+                (-624f, 262f,   0f),   // LASU Gate · Ojo
+            };
+
+            for (int i = 0; i < unipoles.Length; i++)
+            {
+                var u = unipoles[i];
+                if (Data.InWaterData(u.x, u.z)) continue;
+                var ad = LagosAds[i % LagosAds.Length];
+                var pos = WorldData.W(u.x, Data.DeckHeightAtData(u.x, u.z), u.z);
+                var rot = Quaternion.Euler(0f, u.yaw, 0f);
+                var adMat = Mat("bb-ad-" + ad.bgHex, ad.bgHex, 0.42f);
+
+                Cylinder("Unipole Plinth", pos, 0.72f, 1.1f, Mat("concrete", Concrete, 0.2f), group);
+                Cylinder("Unipole Column", pos + Vector3.up * 1.0f, 0.36f, 8.2f, steel, group);
+                Box("Billboard Frame", pos + Vector3.up * 10.6f, new Vector3(10.8f, 4.2f, 0.46f), darkFrame, group, false, rot);
+                Box("Billboard Face", pos + Vector3.up * 10.6f, new Vector3(10.2f, 3.7f, 0.52f), adMat, group, false, rot);
+                Box("Billboard Catwalk", pos + Vector3.up * 8.35f, new Vector3(11.0f, 0.14f, 1.15f), steel, group, false, rot);
+                Box("Billboard Floodlight", pos + Vector3.up * 12.85f, new Vector3(9.4f, 0.16f, 0.65f), LampHead, group, false, rot);
+                Box("LASAA Plate", pos + Vector3.up * 8.15f, new Vector3(2.1f, 0.38f, 0.50f), lasaaBlue, group, false, rot);
+
+                Sign(ad.brand, pos + Vector3.up * 11.15f, ad.fgHex, 0.86f, group, 0.32f);
+                Sign(ad.sub, pos + Vector3.up * 9.85f, "#ffffff", 0.56f, group, 0.32f);
+            }
+
+            // 2. Overhead Expressway Gantry Billboards spanning major highways
+            var gantries = new (string axis, float k, float at, int adIdx)[]
+            {
+                ("v", 72f,   -95f,  0),  // Funsho Williams Avenue (Surulere)
+                ("h", 142f,  -40f,  3),  // Apapa–Oworonshoki Expressway
+                ("h", -330f,  80f,  1),  // Ikorodu Road
+                ("h", 240f,  680f, 10),  // Lekki–Epe Expressway (Ajah corridor)
+                ("h", 240f, 1200f, 13),  // Lekki–Epe Expressway (Ibeju-Lekki Refinery corridor)
+                ("h", -500f,  90f,  2),  // Mobolaji Bank Anthony Way (Maryland–Ikeja)
+                ("v", 0f,  -1220f, 11),  // Lagos–Ibadan Expressway (Alausa–Berger)
+                ("h", 280f, -480f,  5),  // Lagos–Badagry Expressway
+            };
+
+            foreach (var g in gantries)
+            {
+                var r = Data.FindRoad(g.axis, g.k);
+                if (r == null) continue;
+                bool h = r.Horizontal;
+                float span = r.width + 6f;
+                var center = r.Point(g.at, r.k, 0f);
+                var ad = LagosAds[g.adIdx % LagosAds.Length];
+                var adMat = Mat("bb-ad-" + ad.bgHex, ad.bgHex, 0.42f);
+
+                for (int s = -1; s <= 1; s += 2)
+                {
+                    float across = r.k + s * (span * 0.5f);
+                    Cylinder("Gantry Leg", r.Point(g.at, across, 0f), 0.34f, 8.6f, steel, group);
+                }
+                Box("Gantry Truss", r.Point(g.at, r.k, 8.2f), h ? new Vector3(0.7f, 0.7f, span + 1f) : new Vector3(span + 1f, 0.7f, 0.7f), steel, group, false);
+                Box("Gantry Ad Board", r.Point(g.at, r.k, 9.4f), h ? new Vector3(0.55f, 2.9f, Mathf.Min(span - 4f, 16f)) : new Vector3(Mathf.Min(span - 4f, 16f), 2.9f, 0.55f), adMat, group, false);
+                Box("Gantry Floodlight", r.Point(g.at, r.k, 11.0f), h ? new Vector3(0.75f, 0.16f, 12f) : new Vector3(12f, 0.16f, 0.75f), LampHead, group, false);
+                Sign(ad.brand, center + Vector3.up * 9.8f, ad.fgHex, 0.85f, group, 0.35f);
+                Sign(ad.sub, center + Vector3.up * 8.75f, "#ffffff", 0.54f, group, 0.35f);
             }
         }
     }

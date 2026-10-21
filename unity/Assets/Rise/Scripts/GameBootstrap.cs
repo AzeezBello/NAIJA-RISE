@@ -14,7 +14,7 @@ namespace Rise
         static readonly System.Type[] KeepPhysics = { typeof(SphereCollider), typeof(CapsuleCollider), typeof(BoxCollider), typeof(MeshCollider) };
 
         public string WorldResource = "world/lagos";
-        public int TrafficCount = 110, PedestrianCount = 70;
+        public int TrafficCount = 210, PedestrianCount = 70;
         public bool ContinueSave = true;
 
         public WorldData Data { get; private set; }
@@ -24,13 +24,13 @@ namespace Rise
         public Session Session { get; private set; }
 
         // Phones and tablets (or ?diag=mobile on a desktop): lighter crowds, no stadium models, 30 fps cap, Low graphics.
-        public static bool Mobile => Application.isMobilePlatform || DiagFlags.Has("mobile");
+        public static bool Mobile => Application.isMobilePlatform || SystemInfo.deviceType == DeviceType.Handheld || DiagFlags.Has("mobile");
 
         void Awake()
         {
             Data = WorldData.LoadFromResources(WorldResource);
             QualitySettings.vSyncCount = 1;
-            if (Mobile) { TrafficCount = Mathf.Min(TrafficCount, 24); PedestrianCount = Mathf.Min(PedestrianCount, 24); Application.targetFrameRate = 30; QualitySettings.vSyncCount = 0; }
+            if (Mobile) { TrafficCount = Mathf.Min(TrafficCount, 54); PedestrianCount = Mathf.Min(PedestrianCount, 32); Application.targetFrameRate = 30; QualitySettings.vSyncCount = 0; }
             gameObject.AddComponent<UI.TouchControls>();
 
             Builder = gameObject.AddComponent<WorldBuilder>();
@@ -80,6 +80,7 @@ namespace Rise
             contacts.Init(Data, Player.transform, Builder.Root);
 
             Session = gameObject.AddComponent<Session>();
+            Session.Pedestrians = peds;
             Session.Init(Data, state, Clock, Player, follow, traffic, contacts, lights);
 
             var law = gameObject.AddComponent<Law>();

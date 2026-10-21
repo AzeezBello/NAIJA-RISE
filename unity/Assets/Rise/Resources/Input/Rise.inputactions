@@ -16,7 +16,10 @@
                 { "name": "Menu", "type": "Button", "id": "a0000000-0000-4000-8000-000000000009", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
                 { "name": "Gas", "type": "Value", "id": "a0000000-0000-4000-8000-00000000000a", "expectedControlType": "Axis", "processors": "", "interactions": "", "initialStateCheck": true },
                 { "name": "Brake", "type": "Value", "id": "a0000000-0000-4000-8000-00000000000b", "expectedControlType": "Axis", "processors": "", "interactions": "", "initialStateCheck": true },
-                { "name": "Handbrake", "type": "Button", "id": "a0000000-0000-4000-8000-00000000000c", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false }
+                { "name": "Handbrake", "type": "Button", "id": "a0000000-0000-4000-8000-00000000000c", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+                { "name": "Attack", "type": "Button", "id": "a0000000-0000-4000-8000-00000000000d", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+                { "name": "Pickup", "type": "Button", "id": "a0000000-0000-4000-8000-00000000000e", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+                { "name": "CycleWeapon", "type": "Button", "id": "a0000000-0000-4000-8000-00000000000f", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false }
             ],
             "bindings": [
                 { "name": "WASD", "id": "b0000000-0000-4000-8000-000000000001", "path": "2DVector", "interactions": "", "processors": "", "groups": "", "action": "Move", "isComposite": true, "isPartOfComposite": false },
@@ -54,7 +57,14 @@
                 { "name": "", "id": "b0000000-0000-4000-8000-000000000021", "path": "<Gamepad>/leftTrigger", "interactions": "", "processors": "", "groups": "Gamepad", "action": "Brake", "isComposite": false, "isPartOfComposite": false },
                 { "name": "", "id": "b0000000-0000-4000-8000-000000000022", "path": "<Keyboard>/s", "interactions": "", "processors": "", "groups": "Keyboard", "action": "Brake", "isComposite": false, "isPartOfComposite": false },
                 { "name": "", "id": "b0000000-0000-4000-8000-000000000023", "path": "<Keyboard>/space", "interactions": "", "processors": "", "groups": "Keyboard", "action": "Handbrake", "isComposite": false, "isPartOfComposite": false },
-                { "name": "", "id": "b0000000-0000-4000-8000-000000000024", "path": "<Gamepad>/buttonEast", "interactions": "", "processors": "", "groups": "Gamepad", "action": "Handbrake", "isComposite": false, "isPartOfComposite": false }
+                { "name": "", "id": "b0000000-0000-4000-8000-000000000024", "path": "<Gamepad>/buttonEast", "interactions": "", "processors": "", "groups": "Gamepad", "action": "Handbrake", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-4000-8000-000000000025", "path": "<Keyboard>/f", "interactions": "", "processors": "", "groups": "Keyboard", "action": "Attack", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-4000-8000-000000000026", "path": "<Mouse>/leftButton", "interactions": "", "processors": "", "groups": "Keyboard", "action": "Attack", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-4000-8000-000000000027", "path": "<Gamepad>/rightShoulder", "interactions": "", "processors": "", "groups": "Gamepad", "action": "Attack", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-4000-8000-000000000028", "path": "<Keyboard>/g", "interactions": "", "processors": "", "groups": "Keyboard", "action": "Pickup", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-4000-8000-000000000029", "path": "<Gamepad>/dpad/down", "interactions": "", "processors": "", "groups": "Gamepad", "action": "Pickup", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-4000-8000-00000000002a", "path": "<Keyboard>/q", "interactions": "", "processors": "", "groups": "Keyboard", "action": "CycleWeapon", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-4000-8000-00000000002b", "path": "<Gamepad>/leftShoulder", "interactions": "", "processors": "", "groups": "Gamepad", "action": "CycleWeapon", "isComposite": false, "isPartOfComposite": false }
             ]
         }
     ],

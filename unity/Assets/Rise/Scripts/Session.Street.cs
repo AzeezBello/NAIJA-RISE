@@ -25,12 +25,231 @@ namespace Rise
             if (a != null && a.cool <= 0f && !guarded) { a.cool = 150f; OpenAgberoMenu(a); }
         }
 
+        public struct FightWeaponSpec
+        {
+            public string Id, Name, Desc;
+            public int Price, Power;
+        }
+
+        public static readonly FightWeaponSpec[] FightWeapons =
+        {
+            new FightWeaponSpec { Id = "plank",    Name = "2x4 Nail Plank",   Price = 4000,  Power = 15, Desc = "Timber board with nails" },
+            new FightWeaponSpec { Id = "pepper",   Name = "Pepper Spray",     Price = 5000,  Power = 18, Desc = "Blinds attackers fast" },
+            new FightWeaponSpec { Id = "koboko",   Name = "Koboko Horsewhip", Price = 6000,  Power = 22, Desc = "Braided leather whip" },
+            new FightWeaponSpec { Id = "knuckles", Name = "Brass Knuckles",   Price = 8000,  Power = 25, Desc = "Close-range metal knuckles" },
+            new FightWeaponSpec { Id = "baton",    Name = "Iron Rod",         Price = 12000, Power = 30, Desc = "Heavy Ladipo steel pipe" },
+            new FightWeaponSpec { Id = "cutlass",  Name = "Cutlass",          Price = 18000, Power = 40, Desc = "Sharp bush machete" },
+        };
+
+        public static FightWeaponSpec? FindWeaponSpec(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            foreach (var w in FightWeapons) if (w.Id == id) return w;
+            return null;
+        }
+
+        public bool HasWeapon()
+        {
+            if (State.Has("weapon")) return true;
+            foreach (var w in FightWeapons) if (State.Has(w.Id)) return true;
+            return false;
+        }
+
+        public string BestWeaponId()
+        {
+            string eq = State.S.equippedWeapon;
+            if (!string.IsNullOrEmpty(eq) && State.Has(eq)) return eq;
+            string best = ""; int bestP = -1;
+            foreach (var w in FightWeapons)
+                if (State.Has(w.Id) && w.Power > bestP) { bestP = w.Power; best = w.Id; }
+            if (!string.IsNullOrEmpty(best)) return best;
+            return State.Has("weapon") ? "weapon" : "";
+        }
+
+        public int WeaponPower()
+        {
+            string id = BestWeaponId();
+            if (string.IsNullOrEmpty(id)) return 0;
+            var spec = FindWeaponSpec(id);
+            return spec.HasValue ? spec.Value.Power : 30;
+        }
+
+        public string EquippedWeaponName
+        {
+            get
+            {
+                string id = BestWeaponId();
+                if (string.IsNullOrEmpty(id)) return "Bare Fists";
+                var spec = FindWeaponSpec(id);
+                return spec.HasValue ? spec.Value.Name : Data.ItemName(id);
+            }
+        }
+
+        public void EquipWeapon(string id)
+        {
+            State.S.equippedWeapon = id ?? "";
+            Player?.SetWeapon(State.S.equippedWeapon);
+        }
+
+        // Cycle through owned fight weapons and bare hands (Q / LB / ITEM button).
+        public string CycleWeapon()
+        {
+            var owned = new System.Collections.Generic.List<string> { "" };
+            foreach (var w in FightWeapons) if (State.Has(w.Id)) owned.Add(w.Id);
+            if (owned.Count == 1 && State.Has("weapon")) owned.Add("weapon");
+            if (owned.Count <= 1)
+            {
+                State.Toast("No fight weapons in inventory — pick one up (G / E) or buy at Ladipo / vendors");
+                return "";
+            }
+            string cur = State.S.equippedWeapon ?? "";
+            int idx = owned.IndexOf(cur);
+            string next = owned[(idx + 1) % owned.Count];
+            EquipWeapon(next);
+            State.Toast(string.IsNullOrEmpty(next) ? "Holstered weapon · Bare Fists" : $"Equipped {EquippedWeaponName} (power {WeaponPower()})");
+            return next;
+        }
+
+        // Pick up a 3D street item (G / E / D-pad Down / ITEM button).
+        public bool PickupGroundItem(StreetLife.GroundItem g)
+        {
+            if (g == null || !g.Active) return false;
+            g.respawn = 180f;
+            if (g.t != null) g.t.gameObject.SetActive(false);
+            if (g.cash > 0)
+            {
+                State.Earn(g.cash);
+                State.Toast($"Picked up {g.label} (+₦{g.cash:N0})");
+                return true;
+            }
+            State.AddItem(g.id);
+            if (FindWeaponSpec(g.id).HasValue)
+            {
+                EquipWeapon(g.id);
+                State.Toast($"Picked up and equipped {g.label} (power {WeaponPower()})");
+            }
+            else
+            {
+                State.Toast($"Picked up {g.label}");
+            }
+            return true;
+        }
+
+        // G / ITEM button: pick up nearest street item if within reach, otherwise cycle equipped weapon.
+        public bool TryPickupOrCycleItem()
+        {
+            if (Street != null && Player != null)
+            {
+                var g = Street.NearestGroundItem(Player.transform.position, 2.8f);
+                if (g != null) return PickupGroundItem(g);
+            }
+            CycleWeapon();
+            return false;
+        }
+
+        float lastSwingToast;
+
+        // Direct on-foot melee attack (F / Left Click / RB / FIGHT button).
+        public bool PerformStreetAttack()
+        {
+            if (Player == null || Vehicle != null) return false;
+            Player.SwingWeapon();
+            State.S.stamina = Mathf.Max(0f, State.S.stamina - 3f);
+            State.GainSkill("strength", 0.08f);
+            var pos = Player.transform.position;
+
+            // 1. Nearby agbero
+            var agbero = Street != null ? Street.NearestAgbero(pos, 2.8f) : null;
+            if (agbero != null)
+            {
+                bool won = FightAgbero(agbero);
+                if (won && Street != null && Street.NearestGroundItem(agbero.pos, 2.5f) == null)
+                    Street.DropItem(agbero.pos + new Vector3(0.8f, 0f, -0.4f), "koboko", "Koboko Horsewhip", 0);
+                return true;
+            }
+
+            // 2. Nearby stopped/slow traffic vehicle
+            var tv = Traffic != null ? Traffic.Nearest(pos, 3.2f) : null;
+            if (tv != null && tv.speed < 3.5f)
+            {
+                return TryHijackTrafficVehicle(tv);
+            }
+
+            // 3. Nearby pedestrian
+            var ped = Pedestrians != null ? Pedestrians.Nearest(pos, 2.4f) : null;
+            if (ped != null)
+            {
+                Pedestrians.Knock(ped);
+                if (Street != null && Street.NearestGroundItem(ped.position, 2.5f) == null)
+                    Street.DropItem(ped.position, "cash", "Dropped Naira", 500);
+                State.AddRep("street", 1);
+                State.AddRep("public", -2);
+                if (Law != null && Law.PoliceWithin(pos, 45f)) State.AddHeat(1, "Street assault near police");
+                State.Toast($"Struck pedestrian with {EquippedWeaponName} — dropped Naira on the pavement");
+                return true;
+            }
+
+            if (Time.time - lastSwingToast > 1.8f)
+            {
+                lastSwingToast = Time.time;
+                State.Toast(!string.IsNullOrEmpty(State.S.equippedWeapon) ? $"Swung {EquippedWeaponName}" : "Threw a punch (press Q to equip a weapon, G to pick up items)");
+            }
+            return true;
+        }
+
+        public bool BuyFightWeapon(string id)
+        {
+            var spec = FindWeaponSpec(id);
+            if (!spec.HasValue) return false;
+            var w = spec.Value;
+            if (State.Has(w.Id))
+            {
+                EquipWeapon(w.Id);
+                State.Toast($"Equipped {w.Name}");
+                return true;
+            }
+            if (!State.Pay(w.Price)) { State.Toast("Not enough money"); return false; }
+            State.AddItem(w.Id);
+            EquipWeapon(w.Id);
+            State.Toast($"{w.Name} bought and equipped");
+            return true;
+        }
+
+        public bool FightAgbero(StreetLife.Agbero a)
+        {
+            Player?.SwingWeapon();
+            int power = WeaponPower();
+            float score = power + State.S.skills.strength * 0.6f;
+            if (a != null) a.cool = 120f;
+            if (HasWeapon() || score >= 18f)
+            {
+                int dmg = Mathf.Max(0, 12 - power / 3);
+                State.S.health = Mathf.Max(20f, State.S.health - dmg);
+                State.S.stamina = Mathf.Max(10f, State.S.stamina - 12f);
+                int loot = 500 + (power >= 25 ? 1000 : 500);
+                State.Earn(loot);
+                State.GainSkill("strength", 1.5f);
+                State.AddRep("street", 3);
+                State.AddXp(6);
+                if (BestWeaponId() == "cutlass" && Law != null && Law.PoliceWithin(Focus.position, 45f))
+                    State.AddHeat(1, "Brandished a cutlass near police");
+                State.Toast($"You scatter the agberos with {EquippedWeaponName}! +₦{loot:N0} · Street +3");
+                return true;
+            }
+            State.S.health = Mathf.Max(15f, State.S.health - 18f);
+            State.S.stamina = Mathf.Max(5f, State.S.stamina - 20f);
+            State.GainSkill("strength", 1f);
+            State.Toast("Rough street scrap with bare fists (-18 health) — get a fight weapon!");
+            return false;
+        }
+
         void OpenAgberoMenu(StreetLife.Agbero a)
         {
             string where = a.stop.name.Replace(" Bus Stop", "").Replace(" Bus Terminal", "");
             var m = new Menu { Title = "Agbero", Subtitle = a.stop.name, Line = $"Oga! Owo da? This na our {where} junction. Drop ₦500 for the boys." };
             m.Options.Add(new MenuOption { Label = "Pay ₦500", Action = () => { if (State.S.cash >= 500) { State.S.cash -= 500; State.Toast("Correct guy. Waka free."); } else State.Toast("No cash — they let it slide this time"); } });
             m.Options.Add(new MenuOption { Label = "I no get.", Action = () => { if (Random.value < 0.5f) State.AddHeat(1, "The boys remember your face"); else State.Toast("They hiss and let you pass"); } });
+            m.Options.Add(new MenuOption { Label = HasWeapon() ? $"Fight them off ({EquippedWeaponName})" : "Fight them off (bare fists)", Action = () => FightAgbero(a) });
             OpenMenu(m);
         }
 

@@ -219,6 +219,8 @@ namespace Rise
             menu.Options.Add(new MenuOption { Label = $"Buy an outfit · ₦{c.outfit:N0}", Action = () => { if (!State.Pay(c.outfit)) { State.Toast("Not enough money"); return; } State.S.outfits++; NextFabric(); State.GainSkill("charisma", 3); State.AddRep("social", 2); State.Toast($"Fresh fit · {FabricName()} · Charisma +3"); } });
             menu.Options.Add(new MenuOption { Label = State.Has("laptop") ? "Laptop · owned" : $"Laptop · ₦{c.laptop:N0}", Enabled = !State.Has("laptop"), Action = () => { if (!State.Pay(c.laptop)) { State.Toast("Not enough money"); return; } State.AddItem("laptop"); State.Toast("Laptop bought — freelance gigs pay double at the cyber café"); } });
             menu.Options.Add(new MenuOption { Label = $"Supermarket run · ₦{c.groceries:N0}", Action = () => { if (!State.Pay(c.groceries)) { State.Toast("Not enough money"); return; } State.AddItem("water"); State.AddItem("suya"); State.S.stamina = Mathf.Min(100f, State.S.stamina + 30f); State.Toast("Pure water and suya in your bag · stamina +30"); } });
+            menu.Options.Add(new MenuOption { Label = State.Has("pepper") ? "Pepper Spray · equip" : "Pepper Spray · ₦5,000", Action = () => BuyFightWeapon("pepper") });
+            menu.Options.Add(new MenuOption { Label = State.Has("knuckles") ? "Brass Knuckles · equip" : "Brass Knuckles · ₦8,000", Action = () => BuyFightWeapon("knuckles") });
             menu.Options.Add(new MenuOption { Label = $"Barber · ₦{c.barber:N0}", Action = () => { if (!State.Pay(c.barber)) { State.Toast("Not enough money"); return; } State.S.lookHair = (State.S.lookHair + 1) % 5; Player.ApplyLook(State.Look); State.GainSkill("charisma", 1); State.Toast("Fresh cut"); } });
             menu.Options.Add(new MenuOption { Label = "Cinema", Action = OpenCinemaMenu });
             if (!InInterior) menu.Options.Add(new MenuOption { Label = "Step inside the mall", Action = () => EnterInterior(p?.name ?? "Adeniran Ogunsanya Mall", "mall", () => OpenMallMenu(p)) });
@@ -295,10 +297,12 @@ namespace Rise
         // ---- roadside vendor ----
         void OpenVendorMenu()
         {
-            var m = new Menu { Title = "Roadside Vendor", Subtitle = "Pure water · Gala · Suya", Line = "Pure water! Gala! Plantain chips! Cold one!" };
+            var m = new Menu { Title = "Roadside Vendor", Subtitle = "Pure water · Gala · Suya · Street gear", Line = "Pure water! Gala! Plantain chips! Cold one!" };
             m.Options.Add(new MenuOption { Label = "Pure Water · ₦100", Action = () => { if (!State.Pay(100)) { State.Toast("No money"); return; } State.AddItem("water"); State.Toast("Pure water added"); } });
             m.Options.Add(new MenuOption { Label = "Gala & Coke · ₦800 (stamina +25)", Action = () => { if (!State.Pay(800)) { State.Toast("No money"); return; } State.S.stamina = Mathf.Min(100f, State.S.stamina + 25f); State.Toast("Energy +25"); } });
             m.Options.Add(new MenuOption { Label = "Suya · ₦1,500", Action = () => { if (!State.Pay(1500)) { State.Toast("No money"); return; } State.AddItem("suya"); State.Toast("Suya added"); } });
+            m.Options.Add(new MenuOption { Label = State.Has("plank") ? "2x4 Nail Plank · equip" : "2x4 Nail Plank · ₦4,000", Action = () => BuyFightWeapon("plank") });
+            m.Options.Add(new MenuOption { Label = State.Has("koboko") ? "Koboko Horsewhip · equip" : "Koboko Horsewhip · ₦6,000", Action = () => BuyFightWeapon("koboko") });
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(m);
         }

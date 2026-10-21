@@ -47,21 +47,25 @@ const SHADOW_GUARD_SCRIPT = `  <script id="rise-webgl-shadow-guard">
         if (!s) {
           s = { active: 0, bound2D: new Array(32).fill(null), prog: null, fallback: null };
           stateMap.set(gl, s);
-          const fallback = gl.createTexture();
-          const prevTex = gl.getParameter(gl.TEXTURE_BINDING_2D);
-          origBindTexture.call(gl, gl.TEXTURE_2D, fallback);
-          origTexImage2D.call(gl, gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT32F, 1, 1, 0, gl.DEPTH_COMPONENT, gl.FLOAT, new Float32Array([1]));
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
-          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
-          origBindTexture.call(gl, gl.TEXTURE_2D, prevTex);
-          depthTex.add(fallback);
-          s.fallback = fallback;
         }
         return s;
+      }
+      function ensureFallback(gl, s) {
+        if (s.fallback) return s.fallback;
+        const fallback = gl.createTexture();
+        const prevTex = s.bound2D[s.active] || null;
+        origBindTexture.call(gl, 0x0de1, fallback);
+        origTexImage2D.call(gl, 0x0de1, 0, gl.DEPTH_COMPONENT24 || 0x81a6, 1, 1, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+        gl.texParameteri(0x0de1, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(0x0de1, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(0x0de1, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(0x0de1, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(0x0de1, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
+        gl.texParameteri(0x0de1, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+        origBindTexture.call(gl, 0x0de1, prevTex);
+        depthTex.add(fallback);
+        s.fallback = fallback;
+        return fallback;
       }
       proto.activeTexture = function(texture) {
         getState(this).active = texture - 0x84c0;
@@ -123,9 +127,10 @@ const SHADOW_GUARD_SCRIPT = `  <script id="rise-webgl-shadow-guard">
           const u = units[i];
           const t = s.bound2D[u];
           if (!t || !depthTex.has(t)) {
+            const fb = ensureFallback(gl, s);
             origActiveTexture.call(gl, 0x84c0 + u);
-            origBindTexture.call(gl, 0x0de1, s.fallback);
-            s.bound2D[u] = s.fallback;
+            origBindTexture.call(gl, 0x0de1, fb);
+            s.bound2D[u] = fb;
             switched = true;
           }
         }
@@ -157,8 +162,33 @@ html = html.replace(
   'fullscreenContainer.style.width = "960px";\n        fullscreenContainer.style.height = "600px";',
   'document.querySelector("#unity-container").className = "unity-mobile";\n        canvas.className = "unity-mobile";'
 );
-html = html.replace(/<style>html,body\{width:100%;height:100%;margin:0;overflow:hidden;background:#07100e;\}[^<]*<\/style>\s*/g, '');
-html = html.replace('</head>', '  <style>html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#07100e;}#unity-logo,#unity-footer,#unity-logo-title-footer{display:none!important;}</style>\n  </head>');
+html = html.replace(/<meta name="viewport"[^>]*>\s*/gi, '');
+html = html.replace(
+  '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">',
+  '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">\n    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes, viewport-fit=cover">'
+);
+html = html.replace(
+  /if \(\/iPhone\|iPad\|iPod\|Android[^]*?\} else \{\s*\/\/ Desktop style:[^\n]*\n\s*document\.querySelector\("#unity-container"\)\.className = "unity-mobile";\s*canvas\.className = "unity-mobile";\s*\}/,
+  `var isMobileDevice = /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent)) ||
+        (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+      document.querySelector("#unity-container").className = "unity-mobile";
+      canvas.className = "unity-mobile";
+      if (isMobileDevice) {
+        config.devicePixelRatio = 1;
+        config.cacheControl = function() { return "no-store"; };
+        try {
+          var u = new URL(window.location.href);
+          var diag = u.searchParams.get("diag") || "";
+          if (!diag.split(",").includes("mobile")) {
+            u.searchParams.set("diag", diag ? diag + ",mobile" : "mobile");
+            window.history.replaceState(null, "", u.toString());
+          }
+        } catch (e) {}
+      }`
+);
+html = html.replace(/<style>html,body\{width:100%;height:100%;[^<]*<\/style>\s*/g, '');
+html = html.replace('</head>', '  <style>html,body{width:100%;height:100%;height:100dvh;margin:0;overflow:hidden;background:#07100e;touch-action:none;-webkit-user-select:none;user-select:none;}#unity-container,#unity-fullscreen-container,#unity-canvas{width:100%!important;height:100%!important;}#unity-logo,#unity-footer,#unity-logo-title-footer{display:none!important;}</style>\n  </head>');
 html = html.replace(/<script id="rise-webgl-shadow-guard">[\s\S]*?<\/script>\s*/g, '');
 html = html.replace('</head>', `${SHADOW_GUARD_SCRIPT}\n  </head>`);
 writeFileSync(indexPath, html);

@@ -14,7 +14,24 @@ Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFa
 | macOS build | `Builds/Rise-Lagos.app`, universal binary with stadium, tree, character, animal, and vehicle models |
 | WebGL build | `Builds/WebGL`, gzip-compressed with touch controls for mobile browsers |
 | Vehicles | 17 classes, all GLB models (15 Kenney + 10 Lagos models: danfo, keke, korope, okada, BRT, army, tanker, pickup, motorcycles) |
-| Mobile | `TouchControls`: floating joystick, drag-to-look, ACT / JUMP / RUN / BRAKE / phone buttons, tappable menus |
+| Mobile | `TouchControls`: floating joystick, drag-to-look, ACT / FIGHT / ITEM / JUMP / RUN / BRAKE / PHONE buttons, tappable menus |
+
+## Controls
+
+| Action | Keyboard + Mouse | Gamepad | Mobile Touch |
+|---|---|---|---|
+| Move / Steer | `WASD` or Arrow keys | Left Stick | Left-half floating joystick |
+| Look / Orbit Camera | Mouse (locked) or `Z` / `C` | Right Stick | Drag on right half |
+| Sprint (foot) / Boost (car) | `Shift` | West (`Square` / `X`) | `RUN` / `BOOST` |
+| Jump (foot) / Handbrake (car) | `Space` | North (`Triangle` / `Y`) / East (`Circle` / `B`) | `JUMP` / `BRAKE` |
+| Interact / Enter Vehicle / Talk | `E` | South (`Cross` / `A`) | `ACT` |
+| Fight / Melee Attack | `F` or `Left Click` (locked) | Right Shoulder (`R1` / `RB`) | `FIGHT` |
+| Pick Up Street Item | `G` (or `E` on ground item) | D-Pad Down | `ITEM` / `ACT` |
+| Switch / Holster Fight Weapon | `Q` | Left Shoulder (`L1` / `LB`) | `ITEM` |
+| Decline / Close Menu | `X` or `Backspace` | East (`Circle` / `B`) | `X` |
+| Open Smartphone | `P` or `Tab` | `Select` / `View` | `PHONE` |
+| District Chat | `T` or `Enter` | D-Pad Up | — |
+| Free Cursor / Pause Menu | `Esc` | `Start` / `Options` | — |
 
 ## Architecture
 

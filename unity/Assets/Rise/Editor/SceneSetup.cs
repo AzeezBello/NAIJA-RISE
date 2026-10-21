@@ -77,7 +77,9 @@ namespace Rise.EditorTools
 
         static void BuildPlayer(BuildTarget target, string output)
         {
-            if (!System.IO.File.Exists(ScenePath)) Build();
+            if (Application.platform != RuntimePlatform.WindowsEditor)
+                System.Environment.SetEnvironmentVariable("USERPROFILE", null);
+            Build();
             ShaderSetup.Prepare();
             CharacterImport.Prepare();
             var options = new BuildPlayerOptions { scenes = new[] { ScenePath }, locationPathName = output, target = target, options = BuildOptions.None };

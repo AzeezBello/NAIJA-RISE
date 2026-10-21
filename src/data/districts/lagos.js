@@ -29,22 +29,22 @@ const ROAD_WIDTHS = mergeAxisMap(surulere.ROAD_WIDTHS, areas.map(area => area.RO
 const ROAD_CLASS = mergeAxisMap(surulere.ROAD_CLASS, areas.map(area => area.ROAD_CLASS));
 const ROAD_SEGMENTS = mergeAxisMap(surulere.ROAD_SEGMENTS, areas.map(area => area.ROAD_SEGMENTS));
 const extraExtent = {
-  h: { 0: [-150, 470], 142: [-520, 150], '-330': [-520, 480], 240: [340, 1120], 300: [340, 1120] },
-  v: { 0: [-940, 150], 440: [-80, 330], 560: [180, 330] },
+  h: { 0: [-150, 470], 142: [-520, 150], '-330': [-520, 480], 240: [340, 1720], 300: [340, 1720] },
+  v: { 0: [-1520, 150], 440: [-80, 330], 560: [180, 330] },
 };
 for (const axis of ['h', 'v']) {
   for (const [k, extent] of Object.entries(extraExtent[axis])) {
     ROAD_EXTENT[axis][k] = extent;
   }
 }
-ROAD_EXTENT.h[300] = [340, 1120];
-ROAD_NAMES.h[300] = 'Ahmadu Bello Way · Coastal Road';
-ROAD_SEGMENTS.h[300] = [[340, 480, 'Ahmadu Bello Way'], [480, 1120, 'Coastal Road']];
-ROAD_SEGMENTS.h[240] = [[340, 480, 'Adeola Odeku Street'], [480, 505, 'Lekki Toll Gate'], [505, 620, 'Lekki–Epe Expressway · Lekki Phase 1'], [620, 840, 'Lekki–Epe Expressway · Ajah'], [840, 1120, 'Lekki–Epe Expressway · Eleko']];
+ROAD_EXTENT.h[300] = [340, 1720];
+ROAD_NAMES.h[300] = 'Ahmadu Bello Way · Lagos–Calabar Coastal Road';
+ROAD_SEGMENTS.h[300] = [[340, 480, 'Ahmadu Bello Way'], [480, 1120, 'Coastal Road'], [1120, 1720, 'Lagos–Calabar Coastal Highway']];
+ROAD_SEGMENTS.h[240] = [[340, 480, 'Adeola Odeku Street'], [480, 505, 'Lekki Toll Gate'], [505, 620, 'Lekki–Epe Expressway · Lekki Phase 1'], [620, 840, 'Lekki–Epe Expressway · Ajah'], [840, 1120, 'Lekki–Epe Expressway · Eleko'], [1120, 1440, 'Lekki–Epe Expressway · Ibeju-Lekki'], [1440, 1720, 'Lekki–Epe Expressway · Epe']];
 ROAD_SEGMENTS.h[-330] = [[-520, -150, 'Ikorodu Road · Ikorodu'], [-150, -100, 'Ikorodu Road · Ikorodu Garage'], [-100, 300, 'Ikorodu Road · Ebute Metta'], [300, 480, 'Ikorodu Road · Jibowu']];
 ROAD_SEGMENTS.h[142] = [[-520, -150, 'Apapa–Oworonshoki Expressway · Apapa Port Road'], [-150, 150, 'Apapa–Oworonshoki Expressway']];
-ROAD_SEGMENTS.v[0] = [[-940, -480, 'Adeniran Ogunsanya Street · Ikeja Link'], [-480, -330, 'Adeniran Ogunsanya Street · Maryland Link'], [-330, 150, 'Adeniran Ogunsanya Street']];
-ROAD_NAMES.v[0] = 'Adeniran Ogunsanya Street · Ikeja Link';
+ROAD_SEGMENTS.v[0] = [[-1520, -1000, 'Lagos–Ibadan Expressway · Ojodu Berger'], [-1000, -480, 'Adeniran Ogunsanya Street · Ikeja Link'], [-480, -330, 'Adeniran Ogunsanya Street · Maryland Link'], [-330, 150, 'Adeniran Ogunsanya Street']];
+ROAD_NAMES.v[0] = 'Adeniran Ogunsanya Street · Lagos–Ibadan Expressway';
 ROAD_CLASS.h[142] = 'expressway';
 ROAD_CLASS.h[-330] = 'highway';
 ROAD_CLASS.h[240] = 'highway';
@@ -59,9 +59,9 @@ ROAD_EXTENT.h[-720] = [-520, -160];
 ROAD_EXTENT.h[-660] = [-520, -160];
 ROAD_EXTENT.v[-450] = [-780, -640];
 ROAD_EXTENT.v[-270] = [-780, -640];
-ROAD_EXTENT.h[280] = [-520, -140];
-ROAD_EXTENT.h[340] = [-520, -140];
-ROAD_EXTENT.h[300] = [-520, 1120];
+ROAD_EXTENT.h[280] = [-1020, -140];
+ROAD_EXTENT.h[340] = [-1020, -140];
+ROAD_EXTENT.h[300] = [-520, 1720];
 ROAD_EXTENT.v[-490] = [-780, -640];
 ROAD_EXTENT.v[-310] = [-780, -640];
 ROAD_EXTENT.v[-490] = [-780, -640];
@@ -99,6 +99,16 @@ const LANDMARKS = [
   { id: 'bet9ja-surulere', name: 'Bet9ja Sports Betting', short: 'BET9JA', x: 12, z: -52, c: '#f2bd18', sign: '#ffffff', h: 4, kind: 'betshop' },
   { id: 'sportybet-yaba', name: 'SportyBet', short: 'SPORTYBET', x: 408, z: -318, c: '#111f3c', sign: '#47b54a', h: 4, kind: 'betshop', region: 'yaba' },
   { id: '1xbet-ikorodu', name: '1xBet Ikorodu', short: '1XBET', x: -270, z: -300, c: '#163f8c', sign: '#ffffff', h: 4, kind: 'betshop', region: 'ikorodu' },
+  { id: 'marina-rail', name: 'Marina Blue Line Rail Station', short: 'MARINA RAIL', x: 356, z: 20, c: '#1559b8', sign: '#ffffff', h: 9, kind: 'rail', big: true, region: 'island' },
+  { id: 'theatre-rail', name: 'National Theatre Blue Line Station', short: 'THEATRE RAIL', x: 152, z: -20, c: '#1559b8', sign: '#ffffff', h: 9, kind: 'rail', region: 'costain' },
+  { id: 'ebute-rail', name: 'Mobolaji Johnson Station · Ebute Metta', short: 'EBUTE RAIL', x: 184, z: -308, c: '#1559b8', sign: '#ffffff', h: 9, kind: 'rail', big: true, region: 'ebute' },
+  { id: 'dodan-barracks', name: 'Dodan Barracks · Obalende', short: 'DODAN BARRACKS', x: 348, z: 62, c: '#3b5323', sign: '#ffffff', h: 7, kind: 'army', big: true, region: 'island' },
+  { id: 'bonny-camp', name: 'Bonny Camp Military Cantonment', short: 'BONNY CAMP', x: 396, z: 268, c: '#3b5323', sign: '#ffffff', h: 7, kind: 'army', big: true, region: 'vi' },
+  { id: 'naval-dockyard', name: 'Naval Dockyard · Victoria Island', short: 'NAVAL DOCKYARD', x: 356, z: 186, c: '#13294b', sign: '#ffffff', h: 6, kind: 'navy', big: true, waterfront: true, region: 'vi' },
+  { id: 'island-fire', name: 'Lagos Island Fire Station', short: 'ISLAND FIRE', x: 420, z: 16, c: '#c62828', sign: '#ffffff', h: 6, kind: 'service', region: 'island' },
+  { id: 'falomo-jetty', name: 'Five Cowrie Creek Fishing Jetty', short: 'FALOMO JETTY', x: 428, z: 96, c: '#5a6e72', sign: '#3dd68c', h: 3, kind: 'waypoint', waterfront: true, region: 'island' },
+  { id: 'bariga-jetty', name: 'Bariga · Oworonshoki Fishing Jetty', short: 'BARIGA JETTY', x: 332, z: -260, c: '#5a6e72', sign: '#3dd68c', h: 3, kind: 'waypoint', waterfront: true, region: 'bariga' },
+  { id: 'ebute-ero-jetty', name: 'Ebute Ero Fishermen Jetty · Marina', short: 'EBUTE ERO JETTY', x: 344, z: -46, c: '#5a6e72', sign: '#3dd68c', h: 3, kind: 'waypoint', waterfront: true, region: 'island' },
 ];
 const BUSSTOPS = [...surulere.BUSSTOPS, ...areas.flatMap(area => area.BUSSTOPS)];
 const REGIONS = [
@@ -111,7 +121,7 @@ const REGIONS = [
   ...ajegunle.REGIONS,
   ...makoko.REGIONS,
   { id: 'falomo', name: 'Falomo Bridge · Five Cowrie Creek', x: [340, 426], z: [100, 180] },
-  { id: 'ikoyi', name: 'Ikoyi', x: [426, 480], z: [100, 180] },
+  ...ikoyi.REGIONS,
   { id: 'vi', name: 'Victoria Island', x: [340, 480], z: [180, 330] },
   ...lekki.REGIONS.filter(r => r.id !== 'lekki'),
   { id: 'bar-beach', name: 'Bar Beach', x: [426, 470], z: [180, 350] },
@@ -126,10 +136,11 @@ const REGIONS = [
 const baseWaters = [
   ...surulere.WATERS
     .filter(w => w.id !== 'creek' && w.id !== 'lagoon-e' && w.id !== 'atlantic')
-    .map(w => w.id === 'lagoon-n' ? { ...w, x: [339, 1120] } : w),
+    .map(w => w.id === 'lagoon-n' ? { ...w, x: [339, 1750] } : w),
   { id: 'creek', name: 'Five Cowrie Creek', x: [339, 426], z: [100, 180] },
-  { id: 'lagoon-e', name: 'Lagos Lagoon', x: [480, 1120], z: [-85, 180] },
-  { id: 'atlantic', name: 'Atlantic Ocean', x: [339, 1120], z: [350, 410] },
+  { id: 'lagoon-banana-n', name: 'Lagos Lagoon', x: [480, 562], z: [-85, 76] },
+  { id: 'lagoon-e', name: 'Lagos Lagoon', x: [562, 1750], z: [-85, 175] },
+  { id: 'atlantic', name: 'Atlantic Ocean', x: [339, 1750], z: [350, 410] },
 ];
 const WATERS = [
   ...baseWaters,
@@ -141,7 +152,7 @@ const WATERS = [
   ),
 ];
 const PROPERTIES = surulere.PROPERTIES;
-const WORLD_BOUNDS = { x: [-520, 1120], z: [-1000, 410] };
+const WORLD_BOUNDS = { x: [-1050, 1750], z: [-1550, 410] };
 const roadFootprintOverlap = (x, z, width, depth) =>
   ROADS.h.some(y => {
     const [start, end] = ROAD_EXTENT.h[y] || [-150, 150];
