@@ -139,7 +139,7 @@ namespace Rise.UI
             builtScale = s;
             if (regular == null) regular = Resources.Load<Font>("Fonts/Inter-Regular");
             if (semibold == null) semibold = Resources.Load<Font>("Fonts/Inter-SemiBold");
-            var fallback = GUI.skin.font;
+            var fallback = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             Font R = regular != null ? regular : fallback, B = semibold != null ? semibold : fallback;
 
             panel = Slice(Rounded(10f * s, Hex(0x060E0C, 0.80f), new Color(1f, 1f, 1f, 0.10f), Mathf.Max(1f, s)), 10f * s);
@@ -153,7 +153,7 @@ namespace Rise.UI
             var fieldTex = Rounded(7f * s, Hex(0x0C1714, 0.95f), new Color(1f, 1f, 1f, 0.16f), Mathf.Max(1f, s));
             var fieldFocus = Rounded(7f * s, Hex(0x0C1714, 0.95f), A(Green, 0.8f), Mathf.Max(1f, s));
             int fb = Mathf.CeilToInt(7f * s) + 1;
-            field = new GUIStyle(GUI.skin.textField)
+            field = new GUIStyle
             {
                 font = R, fontSize = Mathf.RoundToInt(14 * s), alignment = TextAnchor.MiddleLeft, border = new RectOffset(fb, fb, fb, fb),
                 padding = new RectOffset((int)(10 * s), (int)(10 * s), (int)(4 * s), (int)(4 * s)),

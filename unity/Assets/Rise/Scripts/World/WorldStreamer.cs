@@ -87,6 +87,24 @@ namespace Rise.World
             ActiveChunkCount = Chunks.Count;
         }
 
+        public void RefreshActiveChunks()
+        {
+            if (follow == null) return;
+            var pos = follow.position;
+            RefreshActiveChunks(ChunkCoord(pos), true);
+            if (data != null)
+            {
+                string st = data.StateAt(pos);
+                string bm = data.BiomeAt(pos);
+                if (st != CurrentStateId || bm != CurrentBiome)
+                {
+                    CurrentStateId = st;
+                    CurrentBiome = bm;
+                    OnStateChanged?.Invoke(CurrentStateId, CurrentBiome);
+                }
+            }
+        }
+
         public void RefreshActiveChunks(Vector2Int centerChunk, bool force = false)
         {
             if (!force && centerChunk == CurrentChunk) return;
