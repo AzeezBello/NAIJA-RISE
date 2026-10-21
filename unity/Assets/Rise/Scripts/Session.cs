@@ -73,9 +73,11 @@ namespace Rise
             saveT += dt; if (saveT > 15f) { saveT = 0f; AutoSave(); }
 
             State.TickEconomy(dt);
-            if (Clock.Day != lastDay) { lastDay = Clock.Day; State.NewDay(Clock.Day); }
+            if (Clock.Day != lastDay) { lastDay = Clock.Day; State.NewDay(Clock.Day); Events?.OnDayChanged(Clock.Date, Clock.Day); }
             UpdateTolls();
             UpdateTask(dt);
+            UpdateShootout(dt);
+            UpdateFootball(dt);
             UpdateRace(dt);
             UpdateFamily(dt);
             UpdateStreet();
@@ -137,6 +139,24 @@ namespace Rise
         void UpdateOnFoot()
         {
             Player.InputEnabled = true;
+            if (InFootballMatch)
+            {
+                Player.Swimming = false;
+                Player.CanSprint = State.S.stamina > 0f;
+                target = Target.None;
+                Prompt = ActiveFootball.PlayerHasBall
+                    ? "PASS [E]  ·  SHOOT [F / CLICK]  ·  CHIP [G]  ·  MENU [X]"
+                    : "TACKLE / SHOOT [F / CLICK]  ·  CALL PASS [E]  ·  MENU [X]";
+                if (GameInput.AttackPressed)
+                {
+                    if (!FootballShoot()) FootballTackle();
+                    return;
+                }
+                if (GameInput.InteractPressed) { FootballPass(); return; }
+                if (GameInput.PickupPressed || GameInput.CycleWeaponPressed) { FootballChip(); return; }
+                if (GameInput.DeclinePressed) { OpenFootballMenu(); return; }
+                return;
+            }
             if (UpdateInteriorOnFoot()) return;
             var pos = Player.transform.position;
             bool swimming = InWaterOffDeck(pos);
@@ -250,13 +270,16 @@ namespace Rise
             return "DELIVER";
         }
 
-        // Story first, then Dayo's dealership, then plain job dialogue.
+        // Story first, then Dayo's dealership, then politicians, fraudsters, hubs, and plain job dialogue.
         public void TalkTo(ContactSystem.Contact c)
         {
             if (IsMissionContact(c)) { OpenStoryDialogue(c); return; }
             if (IsFamily(c)) { OpenFamilyMenu(c); return; }
             if (c.data.id == "dayo") { OpenDealerMenu(c); return; }
             if (c.data.id == "speedy") { OpenRaceMenu(c); return; }
+            if (c.data.id == "captain" || c.data.id == "ajcaptain") { OpenFootballMenu(); return; }
+            if (IsPolitician(c)) { OpenPoliticianMenu(c); return; }
+            if (IsFraudster(c)) { OpenFraudsterMenu(c); return; }
             if (IsHub(c)) { OpenHubMenu(c); return; }
             OpenDialogue(c);
         }
@@ -282,6 +305,7 @@ namespace Rise
                 var job = j;
                 menu.Options.Add(new MenuOption { Label = ok ? $"Work shift — {j.title} · ₦{State.JobPay(j):N0} · {j.dur}h" : $"{j.title} ({why})", Enabled = ok, Action = () => StartShift(job) });
             }
+            AddActionOpsToMenu(menu, c.data.id);
             AddDogOption(menu, c);
             AddRelationshipOptions(menu, c);
             menu.Options.Add(new MenuOption { Label = "Not now — I go find another hustle", Action = () => State.Toast("The story can wait. Jobs, courses, the gym and business dey.") });
@@ -315,6 +339,7 @@ namespace Rise
         // ---- driving ----
         public void Enter(VehicleController v)
         {
+            Player.TriggerVehicleEnterAnim();
             Vehicle = v; v.SetDriven(true);
             if (State != null && Data != null && Data.fabrics != null && Data.fabrics.Length > 0)
             {
@@ -335,6 +360,7 @@ namespace Rise
             var pos = v.transform.position - v.transform.right * (v.Class.wid * 0.5f + 1.2f) + Vector3.up * 0.5f;
             Player.Teleport(pos, v.transform.eulerAngles.y);
             Player.gameObject.SetActive(true);
+            Player.TriggerVehicleExitAnim();
             Camera.SetDriving(null);
             Traffic.PlayerObstacle = Player.transform;
             if (!v.Owned && !Parked.Contains(v)) Parked.Add(v);   // a taken vehicle can be re-entered where you left it

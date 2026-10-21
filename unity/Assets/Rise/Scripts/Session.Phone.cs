@@ -13,7 +13,9 @@ namespace Rise
         public void OpenPhone()
         {
             PhoneOpen = true;
-            var m = new Menu { Title = "Rise: Hustle or Die Trying", Subtitle = $"{Clock.ClockText} · Day {Clock.Day} · {Data.RegionAt(Focus.position)?.name}", Line = $"₦{State.S.cash:N0} cash · ₦{State.S.bank:N0} bank · Level {State.S.level} {State.Title}" };
+            var ev = Events?.ActiveHistoricEvent;
+            string eraTag = ev != null ? $" · [{ev.Category.ToUpperInvariant()}] {ev.Title}" : "";
+            var m = new Menu { Title = "Rise: Hustle or Die Trying", Subtitle = $"{Clock.ClockText} · {Clock.DateText} (Day {Clock.Day}) · {Data.RegionAt(Focus.position)?.name}{eraTag}", Line = $"₦{State.S.cash:N0} cash · ₦{State.S.bank:N0} bank · Level {State.S.level} {State.Title}" };
             int unread = State.Messages.Count;
             m.Options.Add(new MenuOption { Label = $"Messages ({unread})", Action = AppMessages });
             m.Options.Add(new MenuOption { Label = "Jobs", Action = AppJobs });
@@ -83,9 +85,64 @@ namespace Rise
         void AppMessages()
         {
             var sb = new StringBuilder();
+            if (Events != null && Events.ActiveHistoricEvent != null)
+            {
+                var ev = Events.ActiveHistoricEvent;
+                sb.Append("[").Append(ev.Category.ToUpperInvariant()).Append("] ").Append(ev.Headline).Append('\n');
+                sb.Append("TRENDING: ").Append(Events.DailyTrendingHeadline).Append("\n\n");
+            }
             int from = Mathf.Max(0, State.Messages.Count - 6);
             for (int i = State.Messages.Count - 1; i >= from; i--) sb.Append(Data.ContactName(State.Messages[i].from)).Append(": ").Append(State.Messages[i].text).Append('\n');
-            Page("Messages", $"{State.Messages.Count} messages", sb.Length > 0 ? sb.ToString().TrimEnd() : "No messages yet. Lagos go soon call you.");
+            Page("Messages", $"{State.Messages.Count} messages · {Clock.DateText}", sb.Length > 0 ? sb.ToString().TrimEnd() : "No messages yet. Lagos go soon call you.",
+                new MenuOption { Label = "Lagos Chronicle · Trending News & Historic Events (1999–2026)", Action = AppNews });
+        }
+
+        public void AppNews()
+        {
+            var ev = Events?.ActiveHistoricEvent ?? World.Events.EventForDate(Clock.Date);
+            var sb = new StringBuilder();
+            sb.Append($"DATE: {Clock.FullDateText} (Day {Clock.Day})\n");
+            if (ev != null)
+            {
+                sb.Append($"ERA [{ev.Category.ToUpperInvariant()}]: {ev.Title} ({ev.StartYear}–{ev.EndYear})\n");
+                sb.Append($"HEADLINE: {ev.Headline}\n");
+                sb.Append($"{ev.Summary}\n");
+                sb.Append($"ERA EFFECTS: Civic Pay Bonus +{(ev.PayMultiplier - 1f) * 100f:0}% · {(ev.CurfewActive ? "Curfew / Movement Advisory Active" : "Normal City Movement")}\n");
+            }
+            sb.Append($"DAILY TRENDING: {World.Events.TrendingHeadlineForDay(Clock.Day)}");
+
+            var opts = new System.Collections.Generic.List<MenuOption>();
+            if (ev != null && Events != null)
+            {
+                opts.Add(new MenuOption
+                {
+                    Label = $"Participate in {ev.Title}: {ev.CivicPrompt}",
+                    Action = () =>
+                    {
+                        Events.TriggerHistoricEvent(ev.Id, Player.transform.position + Player.transform.forward * 4f, false);
+                        PhoneOpen = false;
+                        CloseMenu();
+                    }
+                });
+            }
+            string[] featuredEras = { "transition_1999", "election_1999", "democracy_day_1999", "gsm_revolution_2001", "cbn_consolidation_2004", "afcon_2013", "ebola_response_2014", "election_2015", "covid19_lockdown_2020", "election_2023", "lrmt_rail_era_2024" };
+            foreach (var eraId in featuredEras)
+            {
+                var item = World.Events.FindHistoricEvent(eraId);
+                if (item == null) continue;
+                var targetEv = item;
+                opts.Add(new MenuOption
+                {
+                    Label = $"[{targetEv.StartYear} {targetEv.Category.ToUpperInvariant()}] {targetEv.Title} · +₦{targetEv.CivicReward:N0}",
+                    Action = () =>
+                    {
+                        Events?.TriggerHistoricEvent(targetEv.Id, Player.transform.position + Player.transform.forward * 4f, true);
+                        PhoneOpen = false;
+                        CloseMenu();
+                    }
+                });
+            }
+            Page("Lagos Chronicle · Historic Timeline", $"{Clock.DateText} · {(ev != null ? ev.Title : "Lagos News")}", sb.ToString(), opts.ToArray());
         }
 
         void AppJobs()
@@ -98,7 +155,12 @@ namespace Rise
                 if (!ok) sb.Append(!string.IsNullOrEmpty(j.needCourse) && !State.HasCourse(j.needCourse) ? $" (needs {j.needCourse} certificate)" : $" (needs {j.skill} {j.min})");
                 sb.Append('\n');
             }
-            Page("Jobs", "Talk to the contact at the place to work a shift", sb.ToString().TrimEnd());
+            Page("Jobs", "Talk to the contact at the place to work a shift", sb.ToString().TrimEnd(),
+                new MenuOption { Label = $"Tactical Action Ops & Armory ({State.S.ammo} ammo)", Action = AppActionOps },
+                new MenuOption { Label = "Indoor Activities & Indoor Missions (Raid / Vault / Boxing)", Action = OpenIndoorMenu },
+                new MenuOption { Label = "Lagos Clubbing & Social Nightlife (VIP Lounge / DJ / Owambe)", Action = OpenNightlifeHubMenu },
+                new MenuOption { Label = "Live 3D Football & Tournaments (FC 26 / DLS Mode)", Action = () => OpenFootballMenu() },
+                new MenuOption { Label = "NFS Street Racing Underground (Circuit / Drift / Speedtrap)", Action = () => OpenRaceMenu() });
         }
 
         void AppBank()
@@ -170,7 +232,7 @@ namespace Rise
         {
             var st = State.S; var sb = new StringBuilder();
             sb.Append(st.items.Count > 0 ? "Carrying: " + string.Join(", ", st.items.ConvertAll(Data.ItemName)) : "Nothing in your hands.").Append('\n');
-            sb.Append($"Fight weapon: {EquippedWeaponName}{(WeaponPower() > 0 ? $" (power +{WeaponPower()})" : "")}").Append('\n');
+            sb.Append($"Equipped weapon: {EquippedWeaponName}{(WeaponPower() > 0 ? $" (power +{WeaponPower()})" : "")} · Ammo: {st.ammo} rounds").Append('\n');
             sb.Append("Vehicles: ").Append(st.vehicles.Count > 0 ? string.Join(", ", st.vehicles.ConvertAll(v => Data.VehicleClass(v.type)?.name ?? v.type)) : "none").Append('\n');
             sb.Append($"Fuel {st.fuel:0}% · stamina {st.stamina:0}% · health {st.health:0}%");
             var opts = new System.Collections.Generic.List<MenuOption>();
@@ -178,11 +240,56 @@ namespace Rise
             {
                 if (!State.Has(w.Id)) continue;
                 var wSpec = w; bool eq = st.equippedWeapon == w.Id;
-                opts.Add(new MenuOption { Label = eq ? $"{w.Name} · in hand" : $"Equip {w.Name} (power +{w.Power})", Enabled = !eq, Action = () => { EquipWeapon(wSpec.Id); AppInventory(); } });
+                opts.Add(new MenuOption { Label = eq ? $"{w.Name} · in hand{(w.IsGun ? $" ({st.ammo} ammo)" : "")}" : $"Equip {w.Name} (power +{w.Power}{(w.IsGun ? ", firearm" : "")})", Enabled = !eq, Action = () => { EquipWeapon(wSpec.Id); AppInventory(); } });
             }
             if (!string.IsNullOrEmpty(st.equippedWeapon))
                 opts.Add(new MenuOption { Label = "Holster weapon (hide from hand)", Action = () => { EquipWeapon(""); AppInventory(); } });
+            opts.Add(new MenuOption { Label = $"Tactical Action Ops & Armory ({st.ammo} ammo)", Action = AppActionOps });
             Page("Inventory", "What you carry and own", sb.ToString(), opts.ToArray());
+        }
+
+        public void AppActionOps()
+        {
+            var st = State.S;
+            var opts = new System.Collections.Generic.List<MenuOption>();
+            opts.Add(new MenuOption
+            {
+                Label = st.armor >= 100f ? "Kevlar Tactical Vest · 100% Armor Equipped" : $"Buy Kevlar Tactical Vest (+100 Armor) · ₦15,000 (now {st.armor:0}%)",
+                Enabled = st.armor < 100f,
+                Action = () => { BuyTacticalArmor(15000); AppActionOps(); }
+            });
+            foreach (var gId in new[] { "pistol", "smg", "shotgun", "rifle", "sniper", "lmg" })
+            {
+                var spec = FindWeaponSpec(gId);
+                if (!spec.HasValue) continue;
+                var w = spec.Value; string id = w.Id;
+                bool owned = State.Has(id); bool eq = st.equippedWeapon == id;
+                opts.Add(new MenuOption
+                {
+                    Label = owned ? $"Firearm: {w.Name} · {(eq ? $"equipped ({st.ammo} ammo)" : "equip")}" : $"Buy {w.Name} · ₦{w.Price:N0} ({w.Desc})",
+                    Enabled = !eq,
+                    Action = () => { BuyFightWeapon(id); AppActionOps(); }
+                });
+            }
+            opts.Add(new MenuOption
+            {
+                Label = $"Buy Ammo Box (30 rounds) · ₦6,000 (carrying {st.ammo} rounds)",
+                Action = () => { BuyAmmo(30, 6000); AppActionOps(); }
+            });
+            foreach (var op in ActionOps)
+            {
+                var curOp = op;
+                string tag = curOp.Branch == "army" ? $"[81 Div · {curOp.Waves} Waves]" : curOp.Branch == "navy" ? $"[Navy SBS · {curOp.Waves} Waves]" : "[Action Op]";
+                opts.Add(new MenuOption
+                {
+                    Label = $"{tag} {curOp.Title} · ₦{curOp.Reward:N0}{(HasGun() ? "" : " [Need Firearm]")}",
+                    Enabled = !HasTask,
+                    Action = () => { if (StartActionOp(curOp.Id)) PhoneOpen = false; }
+                });
+            }
+            Page("Tactical Ops & Armory", $"{EquippedWeaponName} · {st.ammo} rounds · Armor {st.armor:0}%",
+                "Street Shootouts plus Call of Duty–style Nigerian Army (81 Div) & Nigerian Navy (SBS) multi-wave Spec-Ops with allied fireteams and HVT commanders.",
+                opts.ToArray());
         }
 
         void AppCrew()

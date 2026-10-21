@@ -13,12 +13,50 @@ namespace Rise.World
 
         readonly List<Contact> contacts = new List<Contact>();
         public IReadOnlyList<Contact> Contacts => contacts;
+        public int FemaleContactCount { get; private set; }
+        public int PoliticianContactCount { get; private set; }
+        public int FraudsterContactCount { get; private set; }
         Transform player, arrow;
         string arrowFor;
+
+        static readonly HashSet<string> FemaleIds = new HashSet<string>
+        {
+            "amaka", "nkechi", "mum", "sibling", "shrine_host", "makoko_fisher", "epe_fisher",
+            "lekki_keeper", "oyingbo_trader", "agege_baker", "ojo_trader", "sisi", "seyi", "sopi",
+            "janet", "olosho", "cbn_director", "efcc_commander", "efcc_ikeja_lead", "bisi_fashion",
+            "zainab_banker", "adaeze_tech", "kemi_fitness", "titi_chef", "funke_lawyer",
+            "blessing_nurse", "halima_mall", "ifunanya_vi", "senator_lagos_central"
+        };
+
+        public static readonly HashSet<string> PoliticianIds = new HashSet<string>
+        {
+            "presidential_envoy", "lagos_governor", "senator_lagos_central", "senator_lagos_west",
+            "hon_rep_surulere", "lga_chairman_surulere"
+        };
+
+        public static readonly HashSet<string> FraudsterIds = new HashSet<string>
+        {
+            "fraudster_hk_boss", "fraudster_419_chief"
+        };
+
+        public static bool IsPoliticianContact(string id) => !string.IsNullOrEmpty(id) && PoliticianIds.Contains(id);
+        public static bool IsFraudsterContact(string id) => !string.IsNullOrEmpty(id) && FraudsterIds.Contains(id);
+
+        public static bool IsFemaleContact(string id, string name)
+        {
+            if (!string.IsNullOrEmpty(id) && FemaleIds.Contains(id)) return true;
+            if (string.IsNullOrEmpty(name)) return false;
+            return name.StartsWith("Mama ") || name.StartsWith("Aunty ") || name.StartsWith("Iya ") ||
+                   name.StartsWith("Sisi ") || name.StartsWith("Hajiya ") || name.StartsWith("Lady ") ||
+                   name.StartsWith("Matron ") || name.StartsWith("Chef ") || name.Contains("(Mrs.)");
+        }
 
         public void Init(WorldData world, Transform playerTransform, Transform parent)
         {
             player = playerTransform;
+            FemaleContactCount = 0;
+            PoliticianContactCount = 0;
+            FraudsterContactCount = 0;
             var root = new GameObject("Contacts").transform; root.SetParent(parent, false);
             var rng = new System.Random(11);
             foreach (var c in world.contacts)
@@ -33,11 +71,26 @@ namespace Rise.World
                 Color top = Color.Lerp(accent, new Color(0.9f, 0.85f, 0.75f), 0.35f);
                 Color pants = Mannequin.Hex(world.pants.Length > 0 ? world.pants[rng.Next(world.pants.Length)] : "#26312d");
                 Color skin = Mannequin.Hex(world.skins.Length > 0 ? world.skins[rng.Next(world.skins.Length)] : "#8a5a3c");
-                Color? cap = c.id == "babak" || c.id == "ikorodu_trader" ? (Color?)new Color(0.12f, 0.23f, 0.37f) : null;
-                int fabric = Mathf.Abs(c.id.GetHashCode()) % Mathf.Max(1, world.fabrics.Length);
-                var look = new Look { Fabric = fabric, Pants = pants, Skin = skin, Hair = Mannequin.Hex("#120b08"), Cap = cap, BodyType = 1, Accessory = cap.HasValue ? 1 : 0, FacialHair = c.id == "babak" ? 1 : 0 };
+                bool isFemale = IsFemaleContact(c.id, c.name);
+                bool isPol = IsPoliticianContact(c.id);
+                bool isFraud = IsFraudsterContact(c.id);
+                if (isFemale) FemaleContactCount++;
+                if (isPol) PoliticianContactCount++;
+                if (isFraud) FraudsterContactCount++;
+                bool gele = isFemale && (c.name.StartsWith("Mama ") || c.name.StartsWith("Aunty ") || c.name.StartsWith("Iya ") || c.name.StartsWith("Hajiya ") || c.id == "cbn_director" || c.id == "senator_lagos_central");
+                Color? cap = gele ? (Color?)accent : isPol ? (Color?)new Color(0.85f, 0.68f, 0.18f) : (c.id == "babak" || c.id == "ikorodu_trader" ? (Color?)new Color(0.12f, 0.23f, 0.37f) : null);
+                int fabric = isPol ? 5 : Mathf.Abs(c.id.GetHashCode()) % Mathf.Max(1, world.fabrics.Length);
+                var look = new Look
+                {
+                    Fabric = fabric, Pants = pants, Skin = skin, Hair = Mannequin.Hex("#120b08"), Cap = cap,
+                    Outfit = isFemale ? (Mathf.Abs(c.id.GetHashCode()) % 2 == 0 ? 9 : 10) : isPol ? 3 : isFraud ? 8 : 0,
+                    BodyType = isPol ? 2 : isFemale ? (gele ? 1 : 0) : 1,
+                    HairStyle = isFemale ? 3 : 0,
+                    Accessory = isFraud ? 4 : cap.HasValue ? 1 : 0,
+                    FacialHair = (!isFemale && (c.id == "babak" || isPol)) ? 1 : 0
+                };
                 foreach (var f in world.family) if (f.id == c.id) { look.Outfit = f.outfit; look.Fabric = f.fabric; look.BodyType = f.bodyType; look.HairStyle = f.hair; if (world.skins.Length > 0) look.Skin = Mannequin.Hex(world.skins[Mathf.Clamp(f.skin, 0, world.skins.Length - 1)]); if (world.pants.Length > 0) look.Pants = Mannequin.Hex(world.pants[Mathf.Clamp(f.pants, 0, world.pants.Length - 1)]); }
-                if (CharacterRig.Available) CharacterRig.Build(go.transform, look);
+                if (CharacterRig.Available) CharacterRig.Build(go.transform, look, 0, isFemale ? 1.72f : 1.80f);
                 else Mannequin.Build(go.transform, top, pants, skin, cap);
                 Mannequin.Label(go.transform, c.name, accent);
                 contacts.Add(new Contact { data = c, t = go.transform, pos = pos, rest = go.transform.rotation });

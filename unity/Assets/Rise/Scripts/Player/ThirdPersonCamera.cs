@@ -11,6 +11,7 @@ namespace Rise.Player
         public PlayerController Player;
         public float Distance = 6.8f, Height = 1.9f, Yaw = 180f, Pitch = 14f;
         public float MouseSensitivity = 2.2f, KeyYawSpeed = 110f, BaseFov = 60f, SprintFov = 69f;
+        public bool IndoorMode { get; private set; }
 
         Camera cam;
         Vehicles.VehicleController vehicle;
@@ -27,13 +28,23 @@ namespace Rise.Player
             Cursor.visible = false;
         }
 
+        public void SetIndoor(bool indoor)
+        {
+            IndoorMode = indoor;
+            if (driving == null)
+            {
+                targetDistance = indoor ? 4.4f : 6.8f;
+                targetHeight = indoor ? 1.55f : 1.9f;
+            }
+        }
+
         public void SetDriving(Transform vehicleTransform)
         {
             driving = vehicleTransform;
             vehicle = vehicleTransform != null ? vehicleTransform.GetComponent<Vehicles.VehicleController>() : null;
             Target = driving != null ? driving : Player.transform;
-            targetDistance = driving != null ? 9.5f + (vehicle != null ? vehicle.Class.len * 0.4f : 0f) : 6.8f;
-            targetHeight = driving != null ? 3.0f : 1.9f;
+            targetDistance = driving != null ? 9.5f + (vehicle != null ? vehicle.Class.len * 0.4f : 0f) : (IndoorMode ? 4.4f : 6.8f);
+            targetHeight = driving != null ? 3.0f : (IndoorMode ? 1.55f : 1.9f);
             smoothTime = driving != null ? 0.045f : 0.07f;
             lastLookInput = -10f;   // let the camera swing behind the vehicle
         }

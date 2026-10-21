@@ -40,8 +40,14 @@ namespace Rise
             Player.InputEnabled = false;
             if (m.Fields.Count > 0 && Typing) return;   // a text field has the keyboard
             menuNavT -= Time.deltaTime;
-            float v = GameInput.Move.y;
-            if (menuNavT <= 0f && Mathf.Abs(v) > 0.5f && m.Options.Count > 1)
+            float v = GameInput.MenuNavigate.y;
+            float scroll = GameInput.MenuScrollDelta;
+            if (Mathf.Abs(scroll) > 0.1f && m.Options.Count > 1)
+            {
+                int sDir = scroll > 0f ? -1 : 1;
+                for (int step = 0; step < m.Options.Count; step++) { m.Index = (m.Index + sDir + m.Options.Count) % m.Options.Count; if (m.Options[m.Index].Enabled) break; }
+            }
+            else if (menuNavT <= 0f && Mathf.Abs(v) > 0.5f && m.Options.Count > 1)
             {
                 menuNavT = 0.22f;
                 int dir = v > 0f ? -1 : 1;

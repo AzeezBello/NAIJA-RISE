@@ -14,10 +14,15 @@ const buildDir = join(webglDir, 'Build');
 const templateDir = join(webglDir, 'TemplateData');
 const zipPath = join(rootDir, 'WebGL.zip');
 const buildsWebglZipPath = join(rootDir, 'unity', 'Builds', 'WebGL.zip');
+const coverSrcPath = join(rootDir, 'unity', 'Builds', 'cover-630x500.png');
+const coverDestPath = join(templateDir, 'cover.png');
 
 if (!existsSync(indexPath) || !existsSync(buildDir) || !existsSync(templateDir)) {
   console.error('Missing WebGL build in unity/Builds/WebGL. Run Unity -> RISE -> Build WebGL Player first.');
   process.exit(1);
+}
+if (existsSync(coverSrcPath)) {
+  copyFileSync(coverSrcPath, coverDestPath);
 }
 
 const SHADOW_GUARD_SCRIPT = `  <script id="rise-webgl-shadow-guard">

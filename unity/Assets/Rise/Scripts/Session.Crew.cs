@@ -287,7 +287,7 @@ namespace Rise
             {
                 if (CoopOpFinishTime < 0f)
                 {
-                    bool near = Law != null && Law.PoliceWithin(Focus.position, 60f);
+                    bool near = CoopGetawayClear < 8f && Law != null && Law.PoliceWithin(Focus.position, 60f);
                     CoopGetawayClear = near ? 0f : CoopGetawayClear + dt;
                     if (CoopGetawayClear >= 8f)
                     {

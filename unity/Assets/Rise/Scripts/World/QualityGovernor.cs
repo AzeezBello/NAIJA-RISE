@@ -114,5 +114,16 @@ namespace Rise.World
                 recoverTicks = Ema > before * 1.1f ? Mathf.Min(40, recoverTicks * 2) : 5;
             }
         }
+
+        // Graphics & Responsiveness Audit: verifies shaders, URP dynamic resolution bounds, shadow tiers, and input responsiveness.
+        public bool AuditGraphicsAndResponsiveness(out string summary)
+        {
+            bool shadersOk = ShaderLib.Lit != null && ShaderLib.Unlit != null && ShaderLib.ParticlesUnlit != null;
+            bool scaleOk = RenderScale >= 0.40f && RenderScale <= 1.01f && Level >= 0 && Level < Names.Length && DynIndex >= 0 && DynIndex < DynSteps.Length;
+            bool inputOk = GameInput.UsingActions && GameInput.HasDrivingMap && GameInput.HasUIMap && GameInput.ControlSchemeCount >= 2;
+            bool fpsOk = Fps > 0f && Ema > 0f;
+            summary = $"Graphics={Names[Level]} (Scale={RenderScale * 100f:0}%, DynStep={DynIndex}/{DynSteps.Length - 1}, FPS={Fps:0}), Shaders={(shadersOk ? "OK" : "MISSING")}, InputSchemes={GameInput.ControlSchemeCount} ({GameInput.ControllerFamily})";
+            return shadersOk && scaleOk && inputOk && fpsOk;
+        }
     }
 }

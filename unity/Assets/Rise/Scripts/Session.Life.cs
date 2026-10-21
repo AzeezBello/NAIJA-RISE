@@ -51,7 +51,8 @@ namespace Rise
         {
             var m = new Menu { Title = p.name, Subtitle = p.type, Line = p.perk == "heat0" ? "Gated, quiet. Sleeping here clears all heat and fills your last vehicle." : p.perk == "heat1" ? "Your own place. Sleeping here clears one heat." : "Shared bathroom, landlord upstairs. Home is home." };
             m.Options.Add(new MenuOption { Label = "Sleep till morning", Action = Sleep });
-            m.Options.Add(new MenuOption { Label = "Step inside", Action = () => EnterInterior(p.name, "home") });
+            m.Options.Add(new MenuOption { Label = "Step inside (Kitchen, Workout & Indoor Ops)", Action = () => EnterInterior(p.name, "home") });
+            m.Options.Add(new MenuOption { Label = "Indoor Activities & Missions", Action = OpenIndoorMenu });
             AddUpgradeOptions(m, p);
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(m);
