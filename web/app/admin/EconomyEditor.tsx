@@ -15,6 +15,7 @@ export default function EconomyEditor({ initial }: { initial: EconomyConfig }) {
   const [missions, setMissions] = useState<Record<string, number>>({ ...initial.mission_rewards });
   const [updatedAt, setUpdatedAt] = useState<string | undefined>(initial.updated_at);
   const [tab, setTab] = useState<'constants' | 'jobs' | 'missions'>('constants');
+  const [adminToken, setAdminToken] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string>('');
 
@@ -22,9 +23,11 @@ export default function EconomyEditor({ initial }: { initial: EconomyConfig }) {
     setSaving(true);
     setStatus('Saving to Supabase…');
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (adminToken.trim()) headers['x-admin-token'] = adminToken.trim();
       const res = await fetch('/api/economy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           constants,
           job_payouts: jobs,
@@ -39,7 +42,7 @@ export default function EconomyEditor({ initial }: { initial: EconomyConfig }) {
         setJobs(data.config.job_payouts);
         setMissions(data.config.mission_rewards);
         setUpdatedAt(data.config.updated_at);
-        setStatus('Saved live to Supabase — active for clients on next boot.');
+        setStatus('Saved live to Supabase — propagates to running sessions (~45s poll) and on boot.');
       }
     } catch (err) {
       setStatus(`Error: ${err instanceof Error ? err.message : 'Network error'}`);
@@ -52,9 +55,11 @@ export default function EconomyEditor({ initial }: { initial: EconomyConfig }) {
     setSaving(true);
     setStatus('Resetting to defaults…');
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (adminToken.trim()) headers['x-admin-token'] = adminToken.trim();
       const res = await fetch('/api/economy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ reset: true }),
       });
       const data = await res.json();
@@ -113,7 +118,18 @@ export default function EconomyEditor({ initial }: { initial: EconomyConfig }) {
             {updatedAt ? ` · Last updated ${new Date(updatedAt).toLocaleString()}` : ''}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="password"
+            placeholder="Admin token (if set)"
+            value={adminToken}
+            onChange={(e) => setAdminToken(e.target.value)}
+            style={{
+              ...inputStyle,
+              width: 170,
+              textAlign: 'left',
+            }}
+          />
           <button
             type="button"
             onClick={handleReset}

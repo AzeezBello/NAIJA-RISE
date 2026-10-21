@@ -312,5 +312,59 @@ export const CONTACTS = [
     runs: [
       { text: 'Deliver a dubious contract dossier to a mark at Eko Hotel (watch out for EFCC)', dest: 'ekohotel', item: 'sealed_envelope', minutes: 20, reward: 28000, label: '419 Contract Draft', rep: 'street', heat: 2 },
     ] },
+
+  // ---- Megacorridor Hustle Hubs (Alimosho/Oshodi, Festac/Trade Fair, Kosofe/Mile 12, Ibeju-Lekki/Epe, Badagry/Seme Border) ----
+  { id: 'alimosho_hub', name: 'Chairman Kazeem · Oshodi & Alimosho Hub', role: 'Transport & Auto Spare Parts Coordinator', at: 'oshodi-interchange', offset: { x: 3.5, z: -2.0 }, c: '#f59e0b', line: 'From Oshodi 3-Terminal Interchange to Egbeda, Ikotun, Ogba and Ladipo Spare Parts Market, we control the West Mainland movement!',
+    runs: [
+      { text: 'Deliver imported V6 engine blocks from Oshodi Interchange to Ladipo Auto Spare Parts Market', dest: 'ladipo-auto-hub', item: 'auto_parts', minutes: 15, reward: 24000, label: 'Ladipo Engine Block', rep: 'street' },
+      { text: 'Run emergency medical supplies from Ikotun Market to Alimosho General Hospital in Igando', dest: 'alimosho-hospital', item: 'school_supplies', minutes: 18, reward: 22000, label: 'Igando Hospital Supply', rep: 'public' },
+    ] },
+  { id: 'amuwo_trade_hub', name: 'Chief Obinna · ASPAMDA & Festac Hub', role: 'Trade Fair & Alaba Import Clearing Director', at: 'trade-fair-aspamda', offset: { x: -3.5, z: 2.0 }, c: '#38bdf8', line: 'Trade Fair ASPAMDA, Festac ’77, Mile 2 Tank Farms and Alaba International Market move billions every week!',
+    runs: [
+      { text: 'Clear a container manifest from Trade Fair ASPAMDA to Alaba International Electronics Market', dest: 'ojo-alaba', item: 'documents', minutes: 16, reward: 26000, label: 'Alaba Container Bill', rep: 'business' },
+      { text: 'Deliver luxury retail stock to Festival Mall in Festac ’77 Estate', dest: 'festac-77-mall', item: 'parcel', minutes: 15, reward: 23000, label: 'Festac Retail Stock', rep: 'business' },
+    ] },
+  { id: 'kosofe_mile12_hub', name: 'Alhaji Danjuma · Mile 12 & Kosofe Hub', role: 'Interstate Produce & Magodo Estate Supplier', at: 'mile12-market', offset: { x: 3.5, z: 2.0 }, c: '#22c55e', line: 'Every trailer of tomatoes, onions, and yams entering Lagos stops at Mile 12 before feeding Kosofe, Ojota, and Magodo GRA!',
+    runs: [
+      { text: 'Dispatch fresh farm produce crates from Mile 12 Market to Magodo Phase 2 Executive Clubhouse', dest: 'magodo-phase2-club', item: 'food_cooler', minutes: 16, reward: 24000, label: 'Magodo Produce Crate', rep: 'business' },
+      { text: 'Carry interstate waybills from Mile 12 to Ojota Interstate Motor Park', dest: 'ojota-motor-park', item: 'documents', minutes: 14, reward: 20000, label: 'Ojota Waybills', rep: 'business' },
+    ] },
+  { id: 'ibeju_epe_hub', name: 'Engr. Tayo · Free Trade Zone & Epe Hub', role: 'Refinery, Deep Sea Port & Imota Logistics', at: 'dangote-refinery', offset: { x: -4.0, z: -2.5 }, c: '#f97316', line: 'Ibeju-Lekki Free Zone, Dangote Refinery, Lekki Deep Sea Port, Epe Marina and Imota Rice Mill are the industrial future of West Africa!',
+    runs: [
+      { text: 'Escort petrochemical export clearance papers from the Refinery to Lekki Deep Sea Port', dest: 'lekki-deep-port', item: 'documents', minutes: 15, reward: 32000, label: 'Deep Port Clearance', rep: 'business' },
+      { text: 'Deliver fresh lagoon catch manifest to Epe Marina & Waterfront Resort', dest: 'epe-waterfront-resort', item: 'food_cooler', minutes: 16, reward: 26000, label: 'Epe Lagoon Catch', rep: 'social' },
+    ] },
+  { id: 'badagry_border_hub', name: 'Comptroller Seye · Seme Border & Badagry Hub', role: 'ECOWAS Border & Coastal Heritage Coordinator', at: 'seme-krake-border', offset: { x: 3.5, z: -2.0 }, c: '#a855f7', line: 'Seme–Krake Border is the gateway between Nigeria and the ECOWAS Abidjan–Lagos corridor. Keep your customs papers clean!',
+    runs: [
+      { text: 'Deliver cultural archive records from Seme Border to the First Storey Building in Badagry', dest: 'first-storey-badagry', item: 'documents', minutes: 16, reward: 25000, label: 'Heritage Archive', rep: 'public' },
+      { text: 'Run maritime shipyard parts from Badagry Expressway to Tarkwa Bay & Snake Island Jetty', dest: 'tarkwa-snake-island', item: 'auto_parts', minutes: 22, reward: 30000, label: 'Shipyard Parts', rep: 'business' },
+    ] },
+
+  // ---- Multi-State Geopolitical Zone Hubs (Ogun/Oyo, FCT Abuja, Rivers/Niger Delta, Anambra/East, Kano/North) ----
+  { id: 'southwest_ogun_oyo_hub', name: 'Chief Akinwale · Ogun & Ibadan Hub', role: 'Ota Industrial & Cocoa House Director', at: 'cocoa-house', offset: { x: 3.5, z: -2.0 }, c: '#f59e0b', line: 'From Ota & Agbara factories through Abeokuta Olumo Rock up to Cocoa House and UI in Ibadan, the South-West corridor powers Nigeria!',
+    runs: [
+      { text: 'Haul industrial manufacturing blueprints from Cocoa House Ibadan to Ota & Agbara Industrial Hub', dest: 'ota-industrial', item: 'documents', minutes: 22, reward: 36000, label: 'Ota Factory Blueprints', rep: 'business' },
+      { text: 'Deliver academic research hardware from Cocoa House to University of Ibadan Main Gate', dest: 'ui-gate', item: 'laptop_parts', minutes: 15, reward: 28000, label: 'UI Research Kit', rep: 'public' },
+    ] },
+  { id: 'abuja_federal_hub', name: 'Senator Danladi Musa · FCT Abuja Hub', role: 'Three Arms Zone & Federal Tenders Envoy', at: 'nass-complex', offset: { x: -3.5, z: 2.0 }, c: '#eab308', line: 'Welcome to the Three Arms Zone in FCT Abuja! Aso Rock Villa, National Assembly, CBN HQ and NNPC Towers decide the fate of the Federation.',
+    runs: [
+      { text: 'Escort a sovereign infrastructure appropriation bill from National Assembly to Aso Rock Presidential Villa', dest: 'aso-rock-villa', item: 'sealed_envelope', minutes: 15, reward: 48000, label: 'Sovereign Appropriation', rep: 'public' },
+      { text: 'Deliver federal monetary reserve ledgers to Central Bank of Nigeria Headquarters in Abuja CBD', dest: 'cbn-hq-abuja', item: 'documents', minutes: 16, reward: 44000, label: 'CBN Reserve Ledger', rep: 'business' },
+    ] },
+  { id: 'niger_delta_oil_hub', name: 'Engr. Tamuno Briggs · Port Harcourt & Bonny Hub', role: 'Bonny LNG & Trans-Amadi Offshore Coordinator', at: 'bonny-lng', offset: { x: -3.5, z: -2.0 }, c: '#06b6d4', line: 'Port Harcourt GRA, Trans-Amadi, Warri Refinery, Onne Port and Bonny Island LNG keep Nigeria’s energy flowing!',
+    runs: [
+      { text: 'Transport offshore LNG turbine valves from Bonny Island Terminal to Trans-Amadi Oilfield Base', dest: 'trans-amadi-yard', item: 'auto_parts', minutes: 18, reward: 46000, label: 'LNG Turbine Valves', rep: 'business' },
+      { text: 'Deliver royal bronze heritage manifests from Onne Port to Benin Igun Street Bronze Guild', dest: 'benin-igun-bronze', item: 'documents', minutes: 20, reward: 38000, label: 'Benin Guild Manifest', rep: 'public' },
+    ] },
+  { id: 'eastern_commerce_hub', name: 'Chief Ebuka Nwosu (Odogwu) · Onitsha & Nnewi Hub', role: 'Onitsha Main Market & Igba Boi Venture Patron', at: 'onitsha-main-mkt', offset: { x: 3.5, z: 2.0 }, c: '#22c55e', line: 'Onitsha Main Market, Nnewi auto plants, Enugu Coal City and Aba Ariaria! Through Igba Boi apprenticeship, we raise billionaires!',
+    runs: [
+      { text: 'Deliver indigenous vehicle assembly components from Onitsha Main Market to Nnewi Auto Plant', dest: 'nnewi-auto-plant', item: 'auto_parts', minutes: 16, reward: 42000, label: 'Nnewi Assembly Parts', rep: 'business' },
+      { text: 'Dispatch wholesale leather & garment bales to Ariaria International Market in Aba', dest: 'ariaria-market', item: 'parcel', minutes: 18, reward: 40000, label: 'Ariaria Export Bale', rep: 'business' },
+    ] },
+  { id: 'northern_trade_hub', name: 'Alhaji Aminu Dantata · Kano & Northern Frontier Hub', role: 'Kurmi Market, Wapa BDC & Dawanau Patron', at: 'kurmi-market', offset: { x: -3.5, z: 2.0 }, c: '#a855f7', line: 'Sannu da zuwa! From Kurmi Ancient Market and Dawanau Grains Hub to Kaduna Kakuri and Maiduguri JTF Command, Northern trade stands strong!',
+    runs: [
+      { text: 'Move bulk agricultural export waybills from Kurmi Market to Dawanau International Grains Market', dest: 'dawanau-grains', item: 'documents', minutes: 16, reward: 42000, label: 'Dawanau Grain Waybill', rep: 'business' },
+      { text: 'Escort Northern Frontier supply dispatches to Giwa Barracks & Lake Chad JTF Forward Base', dest: 'jtf-fob-north', item: 'sealed_envelope', minutes: 18, reward: 50000, label: 'JTF Frontier Dispatch', rep: 'public' },
+    ] },
 ];
 export const contactOf = id => CONTACTS.find(c => c.id === id);

@@ -12,8 +12,16 @@ import { DISTRICT as agege } from './agege.js';
 import { DISTRICT as ojoBadagry } from './ojo-badagry.js';
 import { DISTRICT as westMainland } from './west-mainland.js';
 import { DISTRICT as eastMainland } from './east-mainland.js';
+import { DISTRICT as alimoshoOshodi } from './alimosho-oshodi.js';
+import { DISTRICT as kosofeMagodo } from './kosofe-magodo.js';
+import { STATE_AREA as ogun } from '../states/ogun.js';
+import { STATE_AREA as oyo } from '../states/oyo.js';
+import { STATE_AREA as fct } from '../states/fct.js';
+import { STATE_AREA as rivers } from '../states/rivers.js';
+import { STATE_AREA as anambra } from '../states/anambra.js';
+import { STATE_AREA as kano } from '../states/kano.js';
 
-const areas = [ikoyi, lekki, ikorodu, apapa, ikeja, oyingbo, yaba, ajegunle, makoko, agege, ojoBadagry, westMainland, eastMainland];
+const areas = [ikoyi, lekki, ikorodu, apapa, ikeja, oyingbo, yaba, ajegunle, makoko, agege, ojoBadagry, westMainland, eastMainland, alimoshoOshodi, kosofeMagodo, ogun, oyo, fct, rivers, anambra, kano];
 const mergeAxisMap = (base, additions) => ({
   h: Object.assign({}, base.h, ...additions.map(map => map.h)),
   v: Object.assign({}, base.v, ...additions.map(map => map.v)),
@@ -29,21 +37,21 @@ const ROAD_WIDTHS = mergeAxisMap(surulere.ROAD_WIDTHS, areas.map(area => area.RO
 const ROAD_CLASS = mergeAxisMap(surulere.ROAD_CLASS, areas.map(area => area.ROAD_CLASS));
 const ROAD_SEGMENTS = mergeAxisMap(surulere.ROAD_SEGMENTS, areas.map(area => area.ROAD_SEGMENTS));
 const extraExtent = {
-  h: { 0: [-150, 470], 142: [-520, 150], '-330': [-520, 480], 240: [340, 1720], 300: [340, 1720] },
-  v: { 0: [-1520, 150], 440: [-80, 330], 560: [180, 330] },
+  h: { 0: [-150, 470], 142: [-520, 150], '-330': [-520, 480], 240: [340, 2280], 300: [340, 2280] },
+  v: { 0: [-3350, 150], '-300': [-1950, -780], 440: [-80, 330], 560: [180, 330], 1980: [-1680, 320] },
 };
 for (const axis of ['h', 'v']) {
   for (const [k, extent] of Object.entries(extraExtent[axis])) {
     ROAD_EXTENT[axis][k] = extent;
   }
 }
-ROAD_EXTENT.h[300] = [340, 1720];
+ROAD_EXTENT.h[300] = [-520, 2280];
 ROAD_NAMES.h[300] = 'Ahmadu Bello Way · Lagos–Calabar Coastal Road';
-ROAD_SEGMENTS.h[300] = [[340, 480, 'Ahmadu Bello Way'], [480, 1120, 'Coastal Road'], [1120, 1720, 'Lagos–Calabar Coastal Highway']];
-ROAD_SEGMENTS.h[240] = [[340, 480, 'Adeola Odeku Street'], [480, 505, 'Lekki Toll Gate'], [505, 620, 'Lekki–Epe Expressway · Lekki Phase 1'], [620, 840, 'Lekki–Epe Expressway · Ajah'], [840, 1120, 'Lekki–Epe Expressway · Eleko'], [1120, 1440, 'Lekki–Epe Expressway · Ibeju-Lekki'], [1440, 1720, 'Lekki–Epe Expressway · Epe']];
+ROAD_SEGMENTS.h[300] = [[340, 480, 'Ahmadu Bello Way'], [480, 1120, 'Coastal Road'], [1120, 1720, 'Lagos–Calabar Coastal Highway'], [1720, 2280, 'Lagos–Calabar Coastal Highway · Niger Delta & Bonny']];
+ROAD_SEGMENTS.h[240] = [[340, 480, 'Adeola Odeku Street'], [480, 505, 'Lekki Toll Gate'], [505, 620, 'Lekki–Epe Expressway · Lekki Phase 1'], [620, 840, 'Lekki–Epe Expressway · Ajah'], [840, 1120, 'Lekki–Epe Expressway · Eleko'], [1120, 1440, 'Lekki–Epe Expressway · Ibeju-Lekki'], [1440, 1720, 'Lekki–Epe Expressway · Epe'], [1720, 2280, 'East–West Road · Warri & Port Harcourt']];
 ROAD_SEGMENTS.h[-330] = [[-520, -150, 'Ikorodu Road · Ikorodu'], [-150, -100, 'Ikorodu Road · Ikorodu Garage'], [-100, 300, 'Ikorodu Road · Ebute Metta'], [300, 480, 'Ikorodu Road · Jibowu']];
 ROAD_SEGMENTS.h[142] = [[-520, -150, 'Apapa–Oworonshoki Expressway · Apapa Port Road'], [-150, 150, 'Apapa–Oworonshoki Expressway']];
-ROAD_SEGMENTS.v[0] = [[-1520, -1000, 'Lagos–Ibadan Expressway · Ojodu Berger'], [-1000, -480, 'Adeniran Ogunsanya Street · Ikeja Link'], [-480, -330, 'Adeniran Ogunsanya Street · Maryland Link'], [-330, 150, 'Adeniran Ogunsanya Street']];
+ROAD_SEGMENTS.v[0] = [[-3350, -2900, 'Abuja–Kaduna–Kano Expressway (A2)'], [-2900, -2420, 'Abuja Airport & Three Arms Expressway (A2)'], [-2420, -1980, 'Lagos–Ibadan Expressway · Ibadan Sector'], [-1980, -1520, 'Lagos–Ibadan Expressway · Mowe & Sagamu'], [-1520, -1000, 'Lagos–Ibadan Expressway · Ojodu Berger'], [-1000, -480, 'Adeniran Ogunsanya Street · Ikeja Link'], [-480, -330, 'Adeniran Ogunsanya Street · Maryland Link'], [-330, 150, 'Adeniran Ogunsanya Street']];
 ROAD_NAMES.v[0] = 'Adeniran Ogunsanya Street · Lagos–Ibadan Expressway';
 ROAD_CLASS.h[142] = 'expressway';
 ROAD_CLASS.h[-330] = 'highway';
@@ -61,7 +69,7 @@ ROAD_EXTENT.v[-450] = [-780, -640];
 ROAD_EXTENT.v[-270] = [-780, -640];
 ROAD_EXTENT.h[280] = [-1020, -140];
 ROAD_EXTENT.h[340] = [-1020, -140];
-ROAD_EXTENT.h[300] = [-520, 1720];
+ROAD_EXTENT.h[300] = [-520, 2280];
 ROAD_EXTENT.v[-490] = [-780, -640];
 ROAD_EXTENT.v[-310] = [-780, -640];
 ROAD_EXTENT.v[-490] = [-780, -640];
@@ -118,6 +126,8 @@ const REGIONS = [
   { id: 'obalende', name: 'Obalende', x: [260, 340], z: [0, 80] },
   ...westMainland.REGIONS,
   ...eastMainland.REGIONS,
+  ...alimoshoOshodi.REGIONS,
+  ...kosofeMagodo.REGIONS,
   ...surulere.REGIONS.filter(r => !['falomo', 'lekki', 'ikorodu', 'yaba', 'ajegunle', 'vi'].includes(r.id)),
   ...agege.REGIONS,
   ...ojoBadagry.REGIONS,
@@ -135,6 +145,12 @@ const REGIONS = [
   ...ikeja.REGIONS,
   ...oyingbo.REGIONS,
   ...yaba.REGIONS,
+  ...ogun.REGIONS,
+  ...oyo.REGIONS,
+  ...fct.REGIONS,
+  ...rivers.REGIONS,
+  ...anambra.REGIONS,
+  ...kano.REGIONS,
 ];
 const baseWaters = [
   ...surulere.WATERS
@@ -154,8 +170,9 @@ const WATERS = [
     )
   ),
 ];
-const PROPERTIES = surulere.PROPERTIES;
-const WORLD_BOUNDS = { x: [-1050, 1750], z: [-1550, 410] };
+const PROPERTIES = [...surulere.PROPERTIES, ...areas.flatMap(area => area.PROPERTIES || [])];
+const AREA_CELLS = areas.flatMap(area => area.CELLS || []);
+const WORLD_BOUNDS = { x: [-1050, 2340], z: [-3400, 410] };
 const roadFootprintOverlap = (x, z, width, depth) =>
   ROADS.h.some(y => {
     const [start, end] = ROAD_EXTENT.h[y] || [-150, 150];
@@ -287,6 +304,7 @@ export const LEKKI_CELLS = surulere.LEKKI_CELLS;
 export const YABA_CELLS = [...surulere.YABA_CELLS, [360, -384], [456, -384], [360, -336], [456, -336], [384, -312], [456, -312]];
 export const EBUTE_CELLS = surulere.EBUTE_CELLS;
 export const ISLAND_CELLS = surulere.ISLAND_CELLS;
+export { AREA_CELLS };
 export const VENDORS = surulere.VENDORS;
 export const BRIDGES = surulere.BRIDGES;
 export const BRIDGE_RUSH = surulere.BRIDGE_RUSH;

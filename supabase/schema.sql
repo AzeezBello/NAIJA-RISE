@@ -153,8 +153,76 @@ alter table public.economy_config enable row level security;
 
 drop policy if exists "economy_config: public read" on public.economy_config;
 create policy "economy_config: public read" on public.economy_config for select using (true);
+-- Explicitly forbid direct client writes to economy_config; only service_role (/admin) may insert/update/delete.
+revoke insert, update, delete on public.economy_config from public, anon, authenticated;
 
 insert into public.economy_config (id, constants, job_payouts, mission_rewards)
 values ('default', '{}'::jsonb, '{}'::jsonb, '{}'::jsonb)
 on conflict (id) do nothing;
+
+-- ---- Server-Side Save & Balance Validation + Authoritative Reward Claim ----
+-- Enforces non-negative cash/bank balances, valid player level bounds (1..100), and caps single-save balance jumps
+-- to prevent arbitrary client-side balance tampering on public.saves.
+create or replace function public.validate_save_state() returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_cash bigint := coalesce((new.state->>'cash')::bigint, 0);
+  v_bank bigint := coalesce((new.state->>'bank')::bigint, 0);
+  v_level int := coalesce((new.state->>'level')::int, 1);
+  v_old_total bigint := 0;
+  v_max_jump bigint := 50000000; -- ₦50M single-save sanity ceiling
+begin
+  if v_cash < 0 or v_bank < 0 then
+    raise exception 'invalid negative balance in save payload';
+  end if;
+  if v_level < 1 or v_level > 100 then
+    raise exception 'invalid player level in save payload (must be 1..100)';
+  end if;
+  if tg_op = 'UPDATE' and old.state is not null then
+    v_old_total := coalesce((old.state->>'cash')::bigint, 0) + coalesce((old.state->>'bank')::bigint, 0);
+    if (v_cash + v_bank) - v_old_total > v_max_jump then
+      raise exception 'save balance delta exceeds server-side validation ceiling';
+    end if;
+  end if;
+  new.updated_at := now();
+  return new;
+end $$;
+
+drop trigger if exists saves_validate_state on public.saves;
+create trigger saves_validate_state before insert or update on public.saves for each row execute function public.validate_save_state();
+
+-- Server-validated reward claim: looks up the authoritative payout in public.economy_config and credits the caller's save.
+create or replace function public.claim_verified_reward(p_kind text, p_reward_id text, p_slot text default 'main') returns bigint language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := auth.uid();
+  v_cfg public.economy_config;
+  v_amount bigint := 0;
+  v_state jsonb;
+  v_cash bigint;
+begin
+  if v_uid is null then raise exception 'sign in first'; end if;
+  select * into v_cfg from public.economy_config where id = 'default';
+  if p_kind = 'job' then
+    v_amount := coalesce((v_cfg.job_payouts->>p_reward_id)::bigint, 0);
+  elsif p_kind = 'mission' then
+    v_amount := coalesce((v_cfg.mission_rewards->>p_reward_id)::bigint, 0);
+  else
+    raise exception 'unknown reward kind';
+  end if;
+  if v_amount <= 0 or v_amount > 5000000 then
+    raise exception 'reward not found or out of bounds';
+  end if;
+  select state into v_state from public.saves where user_id = v_uid and slot = p_slot for update;
+  if not found then
+    raise exception 'no active save slot found';
+  end if;
+  v_cash := coalesce((v_state->>'cash')::bigint, 0) + v_amount;
+  update public.saves
+    set state = jsonb_set(v_state, '{cash}', to_jsonb(v_cash)), updated_at = now()
+    where user_id = v_uid and slot = p_slot;
+  return v_cash;
+end $$;
+
+revoke all on function public.claim_verified_reward from public, anon;
+grant execute on function public.claim_verified_reward to authenticated;
+
 

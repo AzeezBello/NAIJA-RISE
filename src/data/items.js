@@ -53,6 +53,7 @@ export const ITEMS = {
   cash_envelope: { name: 'Cash Envelope', desc: 'Winnings owed to a friend.' },
   wristbands: { name: 'VIP Wristbands', desc: 'Wristbands for the VIP section.' },
   parts_box: { name: 'Spare Parts', desc: 'A box of car spare parts.' },
+  auto_parts: { name: 'Imported Auto Parts', desc: 'Tokunbo engine and gearbox components for Ladipo and Snake Island.' },
   artwork: { name: 'Framed Artwork', desc: 'A framed painting for an exhibition.' },
   laundry: { name: 'Dry Cleaning', desc: 'Pressed clothes in plastic covers.' },
   prayer_mats: { name: 'Prayer Mats', desc: 'New prayer mats for the mosque.' },

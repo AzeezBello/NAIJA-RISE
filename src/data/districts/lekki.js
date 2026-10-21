@@ -44,6 +44,8 @@ export const DISTRICT = createArea({
     { id: 'lekki-deep-port', name: 'Lekki Deep Sea Port', short: 'LEKKI DEEP PORT', x: 1480, z: 318, c: '#35546a', sign: '#ffffff', h: 14, kind: 'landmark', big: true, waterfront: true, region: 'epe' },
     { id: 'epe-fish-market', name: 'Epe Chief Mojisola Fish Market', short: 'EPE FISH MKT', x: 1680, z: 210, c: '#6b4737', sign: '#ffc52f', h: 6, kind: 'market', big: true, region: 'epe' },
     { id: 'epe-cantonment', name: 'Epe Military Cantonment · Sala', short: 'EPE BARRACKS', x: 1600, z: 268, c: '#3b5323', sign: '#ffffff', h: 7, kind: 'army', big: true, region: 'epe' },
+    { id: 'epe-waterfront-resort', name: 'Epe Marina & Lagoon Waterfront Resort', short: 'EPE RESORT', x: 1710, z: 188, c: '#29527a', sign: '#3dd68c', h: 7, kind: 'venue', waterfront: true, region: 'epe' },
+    { id: 'lekki-epe-airport', name: 'Lekki–Epe International Airport Terminal · Alaro', short: 'LEKKI AIRPORT', x: 1540, z: 206, c: '#4a5568', sign: '#ffffff', h: 11, kind: 'airport', big: true, region: 'epe' },
   ],
   busStops: [
     { id: 'ajah-bus', name: 'Ajah Bus Stop', short: 'AJAH', x: 800, z: 226, agberos: 2 },
@@ -54,6 +56,10 @@ export const DISTRICT = createArea({
     { id: 'ibeju-bus', name: 'Ibeju-Lekki Bus Stop', short: 'IBEJU LEKKI', x: 1260, z: 226, agberos: 2 },
     { id: 'refinery-bus', name: 'Free Trade Zone Bus Stop', short: 'FREE ZONE', x: 1480, z: 226, agberos: 1 },
     { id: 'epe-bus', name: 'Epe Marina Bus Terminal', short: 'EPE', x: 1680, z: 226, agberos: 2 },
+  ],
+  cells: [
+    { style: 'epe', x: 1640, z: 196 },
+    { style: 'epe', x: 1730, z: 218 },
   ],
   water: [{ id: 'lekki-atlantic', name: 'Atlantic Ocean', x: [470, 1750], z: [350, 410] }],
 });

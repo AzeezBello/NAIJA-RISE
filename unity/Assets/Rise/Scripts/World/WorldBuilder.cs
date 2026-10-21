@@ -1030,6 +1030,29 @@ namespace Rise.World
                     case "vi": Tower(pos, 14f, 14f, 18f + (float)rng.NextDouble() * 24f, group, rng); break;
                     case "yaba": House(pos, 12f, 10f, 7f + (float)rng.Next(0, 2) * 3.5f, HouseColours[rng.Next(HouseColours.Length)], false, group); break;
                     case "lekki": Compound(pos, 22f, 20f, group); House(pos, 13f, 11f, 8f, Cream, false, group); break;
+                    case "festac":
+                        // Festac ’77 medium-rise residential apartment block with wrap-around balconies
+                        Compound(pos, 24f, 20f, group);
+                        House(pos, 16f, 12f, 12.5f + (float)rng.Next(0, 2) * 3.5f, "#d8cfb8", false, group);
+                        break;
+                    case "magodo":
+                        // Magodo GRA gated luxury twin-duplex compound with security gatehouse
+                        Compound(pos, 24f, 22f, group);
+                        House(pos + new Vector3(-3.6f, 0f, 0f), 8.2f, 11f, 9.2f, "#f5f3ee", false, group);
+                        House(pos + new Vector3(3.6f, 0f, 0f), 8.2f, 11f, 9.2f, "#e8e0d0", false, group);
+                        Box("Gatehouse", pos + new Vector3(-8.5f, 1.4f, 9.2f), new Vector3(3.2f, 2.8f, 2.6f), Mat("gatehouse", "#c9c2b3"), group);
+                        break;
+                    case "ladipo":
+                        // Ladipo / Alimosho dense auto-parts warehouse & double-decker trade stalls
+                        Box("Trade Warehouse", pos + Vector3.up * 3.8f, new Vector3(16f, 7.6f, 12f), Mat("ladipo-wh", "#6c7a89"), group);
+                        Box("Canopy", pos + new Vector3(0f, 3.2f, 7.2f), new Vector3(16.4f, 0.25f, 3.2f), Mat("zinc", Zinc, 0.5f), group, false);
+                        break;
+                    case "epe":
+                        // Epe waterfront fishing & timber veranda compound
+                        Compound(pos, 20f, 18f, group);
+                        House(pos, 12f, 9.5f, 5.2f, "#d9c8a0", true, group);
+                        Box("Fish Veranda", pos + new Vector3(0f, 1.5f, -6.2f), new Vector3(10f, 2.6f, 3.0f), Mat("wood-stilt", "#5c4028"), group);
+                        break;
                     default: Compound(pos, 22f, 20f, group); House(pos, 11f, 9f, rng.NextDouble() < 0.5 ? 3.6f : 7f, HouseColours[rng.Next(HouseColours.Length)], true, group); break;
                 }
             }
@@ -1074,9 +1097,9 @@ namespace Rise.World
             float jz = roadside ? 0f : ((float)rng.NextDouble() - 0.5f) * 3f;
             var pos = WorldData.W(x + jx, 0f, z + jz);
             bool banana = id.Contains("banana");
-            bool dense = id.Contains("island") || id == "obalende" || id == "vi" || id.Contains("marina");
-            bool estate = id.Contains("lekki") || id.Contains("ajah") || id.Contains("ikoyi") || id.Contains("oniru") || id.Contains("eleko") || id.Contains("magodo");
-            bool industrial = id.Contains("apapa") || id.Contains("costain") || (z > 105f && z < 190f && x < 165f);
+            bool dense = id.Contains("island") || id == "obalende" || id == "vi" || id.Contains("marina") || id == "abuja-cbd" || id == "three-arms" || id == "ibadan-dugbe";
+            bool estate = id.Contains("lekki") || id.Contains("ajah") || id.Contains("ikoyi") || id.Contains("oniru") || id.Contains("eleko") || id.Contains("magodo") || id == "wuse-maitama" || id == "ph-gra" || id == "enugu-coal-city";
+            bool industrial = id.Contains("apapa") || id.Contains("costain") || id == "ota-agbara" || id == "trans-amadi" || id == "bonny-onne" || id == "nnewi-industrial" || (z > 105f && z < 190f && x < 165f);
 
             if (banana)
             {
@@ -1153,9 +1176,11 @@ namespace Rise.World
             }
 
             var m = Data.meta;
+            float fillMinX = Mathf.Max(m.minX, -1050f), fillMaxX = Mathf.Min(m.maxX, 1750f);
+            float fillMinZ = Mathf.Max(m.minZ, -1550f), fillMaxZ = Mathf.Min(m.maxZ, 410f);
             var candidates = new List<Vector2>();
-            for (float z = m.minZ + HouseGrid * 0.5f; z < m.maxZ; z += HouseGrid)
-                for (float x = m.minX + HouseGrid * 0.5f; x < m.maxX; x += HouseGrid)
+            for (float z = fillMinZ + HouseGrid * 0.5f; z < fillMaxZ; z += HouseGrid)
+                for (float x = fillMinX + HouseGrid * 0.5f; x < fillMaxX; x += HouseGrid)
                     candidates.Add(new Vector2(x, z));
 
             // Prioritize central Lagos (Surulere, Costain, Apapa, Island, Ikoyi, Banana Island, VI, Yaba, Ebute Metta, Lekki) first.

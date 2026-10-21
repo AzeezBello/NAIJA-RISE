@@ -10,46 +10,90 @@ using Rise.Story;
 namespace Rise.Net
 {
     // Live Economy & Rewards override (PLAN Phase 6): pulls job payouts, mission rewards, and economy constants from
-    // Supabase (`economy_config` table or `game-config/economy.json` storage bucket) so `/admin` edits take effect
-    // without rebuilding the Unity client.
+    // Supabase (`economy_config` table or `game-config/economy.json` storage bucket) on boot and periodically during
+    // active sessions so `/admin` edits propagate to running game sessions without rebuilding or restarting the client.
     public class CloudEconomy : MonoBehaviour
     {
         public string Status { get; private set; } = "default";
         public int AppliedOverrides { get; private set; }
+        public string LastUpdatedAt { get; private set; } = "";
+        public float PollIntervalSeconds = 45f;
+        public Action<int> OnLiveUpdate;
+
+        CloudConfig activeConfig;
+        WorldData activeData;
+        bool initialSyncDone;
 
         public void Init(CloudConfig config, WorldData data)
         {
+            activeConfig = config;
+            activeData = data;
             if (config == null || !config.Enabled || data == null) return;
-            StartCoroutine(FetchRoutine(config, data));
+            StartCoroutine(LivePollLoop());
+        }
+
+        public void RefreshNow()
+        {
+            if (activeConfig == null || !activeConfig.Enabled || activeData == null) return;
+            StartCoroutine(FetchRoutine(activeConfig, activeData));
+        }
+
+        IEnumerator LivePollLoop()
+        {
+            while (activeConfig != null && activeConfig.Enabled && activeData != null)
+            {
+                yield return FetchRoutine(activeConfig, activeData);
+                yield return new WaitForSecondsRealtime(Mathf.Max(15f, PollIntervalSeconds));
+            }
         }
 
         IEnumerator FetchRoutine(CloudConfig config, WorldData data)
         {
             // 1. Try public.economy_config table via PostgREST
-            using (var req = UnityWebRequest.Get(config.url + "/rest/v1/economy_config?id=eq.default&select=constants,job_payouts,mission_rewards"))
+            using (var req = UnityWebRequest.Get(config.url + "/rest/v1/economy_config?id=eq.default&select=constants,job_payouts,mission_rewards,updated_at"))
             {
                 req.SetRequestHeader("apikey", config.anonKey);
+                req.SetRequestHeader("Cache-Control", "no-cache");
                 yield return req.SendWebRequest();
                 if (req.result == UnityWebRequest.Result.Success && !string.IsNullOrEmpty(req.downloadHandler.text) && req.downloadHandler.text.Contains("constants"))
                 {
-                    if (ApplyJson(data, req.downloadHandler.text) > 0)
-                    {
-                        Status = "synced (table)";
+                    if (ApplyAndTrack(data, req.downloadHandler.text, "synced (table)"))
                         yield break;
-                    }
                 }
             }
 
             // 2. Fallback to public Supabase Storage bucket `game-config/economy.json`
-            using (var req = UnityWebRequest.Get(config.url + "/storage/v1/object/public/game-config/economy.json"))
+            using (var req = UnityWebRequest.Get(config.url + "/storage/v1/object/public/game-config/economy.json?t=" + DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
             {
+                req.SetRequestHeader("Cache-Control", "no-cache");
                 yield return req.SendWebRequest();
                 if (req.result == UnityWebRequest.Result.Success && !string.IsNullOrEmpty(req.downloadHandler.text))
                 {
-                    if (ApplyJson(data, req.downloadHandler.text) > 0)
-                        Status = "synced (storage)";
+                    ApplyAndTrack(data, req.downloadHandler.text, "synced (storage)");
                 }
             }
+        }
+
+        bool ApplyAndTrack(WorldData data, string json, string statusLabel)
+        {
+            string stamp = ExtractString(json, "updated_at");
+            int n = ApplyJson(data, json);
+            if (n <= 0) return false;
+            AppliedOverrides = n;
+            Status = statusLabel;
+            bool changed = !string.IsNullOrEmpty(stamp) && stamp != LastUpdatedAt;
+            if (!string.IsNullOrEmpty(stamp)) LastUpdatedAt = stamp;
+            if (initialSyncDone && changed)
+                OnLiveUpdate?.Invoke(n);
+            initialSyncDone = true;
+            return true;
+        }
+
+        static string ExtractString(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json)) return "";
+            var m = Regex.Match(json, "\"" + Regex.Escape(key) + "\"\\s*:\\s*\"([^\"]+)\"");
+            return m.Success ? m.Groups[1].Value : "";
         }
 
         // Parses a JSON payload containing { constants: {...}, job_payouts: {...}, mission_rewards: {...} }
