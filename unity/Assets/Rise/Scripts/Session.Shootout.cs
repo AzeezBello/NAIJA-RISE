@@ -126,7 +126,7 @@ namespace Rise
                 Id = "cod_jtf_boko_haram",
                 Title = "OP LAFIYA DOLE · Boko Haram Cell Raid",
                 Who = "abalti_quartermaster",
-                Dest = "berger-interstate",
+                Dest = "dodan-barracks",
                 Branch = "army", Callsign = "JTF-1", Overwatch = "JTF Counter-Terror TOC", BossName = "Commander Abubakar (Boko Haram)",
                 Waves = 2, EnemyCount = 4, EnemyHp = 115, Reward = 185000, Xp = 70, Heat = 0, Rep = "public",
                 Briefing = "[OP LAFIYA DOLE] JTF Counter-Terrorism TOC to JTF-1: A heavily armed Boko Haram insurgent sleeper cell has been tracked near the Northern Interstate Corridor. Deploy with 81 Div troopers across 2 waves and neutralize HVT Commander Abubakar."
@@ -136,7 +136,7 @@ namespace Rise
                 Id = "cod_army_bandit_sweep",
                 Title = "OP HADARIN DAJI · Armed Bandit Kingpin Sweep",
                 Who = "abalti_quartermaster",
-                Dest = "ojo-cantonment",
+                Dest = "ikeja-cantonment",
                 Branch = "army", Callsign = "STRIKE-1", Overwatch = "81 Div Anti-Banditry TOC", BossName = "Bandit Kingpin Kachalla Turji",
                 Waves = 2, EnemyCount = 4, EnemyHp = 115, Reward = 175000, Xp = 65, Heat = 0, Rep = "public",
                 Briefing = "[OP HADARIN DAJI] Armed highway bandits led by Kingpin Kachalla Turji have set up an ambush camp along the outer bush corridor. Advance with 81 Div Recce soldiers across 2 waves and eliminate Bandit Kingpin Kachalla Turji."
