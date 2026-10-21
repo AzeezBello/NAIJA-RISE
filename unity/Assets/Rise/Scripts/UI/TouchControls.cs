@@ -22,20 +22,22 @@ namespace Rise.UI
         public Vector2 Move { get; private set; }
         public bool SprintHeld { get; private set; }
         public bool HandbrakeHeld { get; private set; }
-        bool jump, interact, decline, phone; int menuTap = -1; Vector2 look;
+        bool jump, interact, decline, phone, fight, item; int menuTap = -1; Vector2 look;
         bool active, mouseAsFinger; Vector2 mouseLast;
         struct Pt { public int id; public UnityEngine.InputSystem.TouchPhase phase; public Vector2 pos, delta; }
         readonly System.Collections.Generic.List<Pt> pts = new System.Collections.Generic.List<Pt>();
 
         int joyFinger = -1, lookFinger = -1; Vector2 joyOrigin, joyNow; float joyRadius;
         readonly System.Collections.Generic.Dictionary<int, Button> held = new System.Collections.Generic.Dictionary<int, Button>();
-        enum Button { None, Act, Jump, Sprint, Hand, Phone, Close }
+        enum Button { None, Act, Jump, Sprint, Hand, Phone, Close, Fight, Item }
         Texture2D disc;
 
         public static bool TakeJump() { var t = I; if (t == null || !t.jump) return false; t.jump = false; return true; }
         public static bool TakeInteract() { var t = I; if (t == null || !t.interact) return false; t.interact = false; return true; }
         public static bool TakeDecline() { var t = I; if (t == null || !t.decline) return false; t.decline = false; return true; }
         public static bool TakePhone() { var t = I; if (t == null || !t.phone) return false; t.phone = false; return true; }
+        public static bool TakeFight() { var t = I; if (t == null || !t.fight) return false; t.fight = false; return true; }
+        public static bool TakeItem() { var t = I; if (t == null || !t.item) return false; t.item = false; return true; }
         public static int TakeMenuTap() { var t = I; if (t == null || t.menuTap < 0) return -1; int r = t.menuTap; t.menuTap = -1; return r; }
         public static Vector2 TakeLook() { var t = I; if (t == null) return Vector2.zero; var l = t.look; t.look = Vector2.zero; return l; }
 
@@ -64,9 +66,11 @@ namespace Rise.UI
             {
                 case Button.Act: if (menu) return false; c = new Vector2(W - 1.2f * u, 1.2f * u); r = 0.62f * u; return true;
                 case Button.Jump: if (menu || drive) return false; c = new Vector2(W - 2.75f * u, 0.85f * u); r = 0.46f * u; return true;
+                case Button.Fight: if (menu || drive) return false; c = new Vector2(W - 2.35f * u, 2.05f * u); r = 0.46f * u; return true;
+                case Button.Item: if (menu || drive) return false; c = new Vector2(W - 3.90f * u, 0.85f * u); r = 0.44f * u; return true;
                 case Button.Sprint: if (menu) return false; c = new Vector2(W - 0.85f * u, 2.55f * u); r = 0.46f * u; return true;
                 case Button.Hand: if (menu || !drive) return false; c = new Vector2(W - 2.75f * u, 0.85f * u); r = 0.46f * u; return true;
-                case Button.Phone: if (menu) return false; c = new Vector2(W - 0.65f * u, H - 2.1f * u); r = 0.36f * u; return true;
+                case Button.Phone: if (menu) return false; c = new Vector2(W - 0.72f * u, H - 2.15f * u); r = 0.45f * u; return true;
                 case Button.Close: if (!menu) return false; c = new Vector2(W - 1.2f * u, 1.2f * u); r = 0.62f * u; return true;
             }
             return false;
@@ -128,7 +132,7 @@ namespace Rise.UI
 
         readonly System.Collections.Generic.Dictionary<int, (Vector2 pos, float t)> menuStart = new System.Collections.Generic.Dictionary<int, (Vector2, float)>();
 
-        void Press(Button b) { switch (b) { case Button.Act: interact = true; break; case Button.Jump: jump = true; break; case Button.Phone: phone = true; break; case Button.Close: decline = true; break; } }
+        void Press(Button b) { switch (b) { case Button.Act: interact = true; break; case Button.Jump: jump = true; break; case Button.Fight: fight = true; break; case Button.Item: item = true; break; case Button.Phone: phone = true; break; case Button.Close: decline = true; break; } }
 
         void TapMenu(Vector2 screenPos)
         {
@@ -147,14 +151,14 @@ namespace Rise.UI
             Vector2 rest = new Vector2(1.9f * u, 1.7f * u);
             if (joyFinger >= 0) { Circle(joyOrigin, joyRadius, new Color(1f, 1f, 1f, 0.16f)); Circle(joyOrigin + Vector2.ClampMagnitude(joyNow - joyOrigin, joyRadius), 0.42f * u, new Color(0.96f, 0.77f, 0.09f, 0.6f)); }
             else if (!(MenuOpen != null && MenuOpen())) { Circle(rest, joyRadius, new Color(1f, 1f, 1f, 0.07f)); Circle(rest, 0.42f * u, new Color(1f, 1f, 1f, 0.1f)); }
-            var style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, fontSize = Mathf.RoundToInt(0.26f * u), normal = { textColor = Color.white } };
+            var style = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, wordWrap = false, clipping = TextClipping.Overflow, fontSize = Mathf.RoundToInt(0.21f * u), normal = { textColor = Color.white } };
             bool drive = Driving != null && Driving();
             foreach (Button b in System.Enum.GetValues(typeof(Button)))
             {
                 if (b == Button.None || !Rect(b, out var c, out var r)) continue;
                 bool down = false; foreach (var h in held.Values) if (h == b) down = true;
-                Circle(c, r, b == Button.Act ? new Color(0.96f, 0.77f, 0.09f, down ? 0.75f : 0.5f) : new Color(1f, 1f, 1f, down ? 0.45f : 0.22f));
-                string label = b == Button.Act ? "ACT" : b == Button.Jump ? "JUMP" : b == Button.Sprint ? (drive ? "BOOST" : "RUN") : b == Button.Hand ? "BRAKE" : b == Button.Phone ? "PHONE" : "X";
+                Circle(c, r, b == Button.Act ? new Color(0.96f, 0.77f, 0.09f, down ? 0.75f : 0.5f) : b == Button.Fight ? new Color(0.90f, 0.28f, 0.30f, down ? 0.75f : 0.42f) : new Color(1f, 1f, 1f, down ? 0.45f : 0.22f));
+                string label = b == Button.Act ? "ACT" : b == Button.Jump ? "JUMP" : b == Button.Fight ? "FIGHT" : b == Button.Item ? "ITEM" : b == Button.Sprint ? (drive ? "BOOST" : "RUN") : b == Button.Hand ? "BRAKE" : b == Button.Phone ? "PHONE" : "X";
                 GUI.color = Color.white; GUI.Label(new Rect(c.x - r, H - c.y - r, r * 2f, r * 2f), label, style);
             }
             GUI.color = old;

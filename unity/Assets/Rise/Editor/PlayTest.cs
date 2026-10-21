@@ -65,11 +65,23 @@ namespace Rise.EditorTools
                     if (frame < 30) return;
                     var traffic = boot.GetComponent<World.TrafficSystem>(); var peds = boot.GetComponent<World.PedestrianSystem>();
                     Check(traffic != null && traffic.Vehicles.Count > 50, $"traffic running ({traffic?.Vehicles.Count} vehicles)");
+                    int withDrivers = 0, withPax = 0;
+                    if (traffic != null) foreach (var tv in traffic.Vehicles) { if (tv.HasDriver) withDrivers++; if (tv.PassengerCount > 0) withPax++; }
+                    Check(traffic != null && withDrivers == traffic.Vehicles.Count && withPax > 20, $"traffic vehicles occupied ({withDrivers}/{traffic?.Vehicles.Count} drivers, {withPax} with passengers)");
                     Check(s.Contacts.Contacts.Count > 10, $"contacts placed ({s.Contacts.Contacts.Count})");
-                    Check(s.Parked.Count == 1 && s.Parked[0].Owned, $"starter keke parked ({s.Parked.Count})");
+                    Check(s.Parked.Count == 1 && s.Parked[0].Owned && !s.Parked[0].HasDriver, $"starter keke parked and empty ({s.Parked.Count})");
                     Check(boot.Player.transform.position.y > -5f && boot.Player.transform.position.y < 5f, $"player on the ground at {boot.Player.transform.position}");
                     Check(boot.Player.HasRig && boot.Player.GetComponentsInChildren<SkinnedMeshRenderer>().Length > 0 && boot.Player.AnimState == "idle", $"player wears the Ready Player Me rig, state {boot.Player.AnimState}");
                     Check(peds != null && peds.RiggedCount > 50, $"pedestrians rigged ({peds?.RiggedCount})");
+                    Check(s.Street != null && s.Street.Service.Count >= 80, $"uniformed service NPCs patrolling ({s.Street?.Service.Count})");
+                    Check(boot.Data.TryPlace("banana-island", out _) && boot.Data.Property("banana_villa") != null, "Banana Island landmark and villa property present");
+                    Check(boot.Data.TryPlace("marina-rail", out _) && boot.Data.TryPlace("nns-beecroft", out _) && boot.Data.TryPlace("dodan-barracks", out _) && boot.Data.TryPlace("bonny-camp", out _) && boot.Data.TryPlace("navy-town", out _), "Lagos rail stations and military/naval barracks present");
+                    Check(boot.Data.states != null && boot.Data.states.Length >= 36 && boot.Builder.Root.Find("Billboards") != null, $"36 Nigerian states provisioned ({boot.Data.states?.Length}) and Lagos billboards built");
+                    Check(boot.Data.VehicleClass("luxury") != null && boot.Data.VehicleClass("brt") != null, "luxury and BRT vehicle classes registered");
+                    World.ContactSystem.Contact fisher = null, fireChief = null;
+                    foreach (var c in s.Contacts.Contacts) { if (c.data.id == "baale_fisherman") fisher = c; if (c.data.id == "fire_chief") fireChief = c; }
+                    Check(fisher != null && fisher.data.runs != null && fisher.data.runs.Length >= 2, "Fisherman contact placed with lagoon delivery runs");
+                    Check(fireChief != null && fireChief.data.runs != null && fireChief.data.runs.Length >= 2, "Firefighter chief contact placed with fire-safety runs");
                     // The Surulere street people stand on their streets and offer their own runs.
                     int streetPeople = 0; World.ContactSystem.Contact peter = null;
                     foreach (var c in s.Contacts.Contacts) { if (c.data.runs != null && c.data.runs.Length > 0) streetPeople++; if (c.data.id == "peter") peter = c; }
@@ -115,7 +127,7 @@ namespace Rise.EditorTools
                     car.Place(road.Point(road.Along(boot.Data.Spawn) + 40f, road.k + road.width * 0.5f - 2.2f) + Vector3.up * 0.12f, Quaternion.LookRotation(road.Forward(1), Vector3.up));
                     s.Enter(car);
                     Check((car.transform.position - boot.Data.Spawn).magnitude < 60f, $"sedan placed on Adeniran Ogunsanya at {car.transform.position}");
-                    Check(s.Vehicle == car && !boot.Player.gameObject.activeSelf, "entered the sedan");
+                    Check(s.Vehicle == car && !boot.Player.gameObject.activeSelf && car.HasDriver, "entered the sedan (driver seated inside)");
                     carStart = car.transform.position;
                     s.Script(1f, 0f, 0f);
                     stage = 2; stageT = 0f; return;
@@ -132,8 +144,9 @@ namespace Rise.EditorTools
                     s.Script(0f, 1f, 0f);
                     if (Mathf.Abs(s.Vehicle.Speed) > 0.1f && stageT < 6f) return;
                     s.EndScript();
+                    var drivenCar = s.Vehicle;
                     s.Exit();
-                    Check(s.Vehicle == null && boot.Player.gameObject.activeSelf, "exited the vehicle");
+                    Check(s.Vehicle == null && boot.Player.gameObject.activeSelf && drivenCar != null && !drivenCar.HasDriver, "exited the vehicle (parked car empty again)");
                     s.AutoSave();
                     var reloaded = new GameState(boot.Data);
                     Check(reloaded.Load() && reloaded.S.cash == s.State.S.cash && reloaded.S.day == boot.Clock.Day, $"save round-trips (cash ₦{reloaded.S?.cash:N0}, day {reloaded.S?.day})");
@@ -306,8 +319,27 @@ namespace Rise.EditorTools
                         s.State.S.lastSeen = System.DateTime.UtcNow.AddMinutes(-30).ToString("o");
                         int awayEarned = s.State.ApplyAwayEarnings()?.net ?? 0;
                         Check(awayEarned > 0 && s.State.S.awayTotal >= awayEarned, $"'Lagos Never Sleeps' offline earnings credited (+₦{awayEarned:N0})");
-                        s.State.S.cash += 50000;
+                        s.State.S.cash += 80000;
+                        Check(street.GroundItems.Count > 5, $"street item pickups placed ({street.GroundItems.Count})");
+                        var firstPickup = street.GroundItems[0];
+                        Check(s.PickupGroundItem(firstPickup) && s.State.Has(firstPickup.id) && !firstPickup.Active, $"picked up street item '{firstPickup.label}'");
                         Check(s.BuyProtectionWeapon() && s.State.Has("weapon"), "bought protection weapon from Dayo");
+                        Check(s.BuyFightWeapon("cutlass") && s.State.Has("cutlass") && boot.Player.EquippedWeapon == "cutlass", $"bought and equipped {s.EquippedWeaponName} (power {s.WeaponPower()})");
+                        string cycled = s.CycleWeapon();
+                        Check(cycled != "cutlass", $"cycled weapon with Q to '{s.EquippedWeaponName}'");
+                        s.EquipWeapon("cutlass");
+                        kilo.cool = 0f; boot.Player.Teleport(kilo.pos + new Vector3(0.4f, 0f, 1.0f), 180f);
+                        Check(s.PerformStreetAttack() && kilo.cool >= 90f, "direct street attack (F / Click) fought off agberos and dropped loot");
+                        World.TrafficSystem.Vehicle commTv = null;
+                        foreach (var tv in s.Traffic.Vehicles) if (tv.cls != null && tv.cls.commercial && tv.cls.id == "keke") { commTv = tv; break; }
+                        if (commTv != null)
+                        {
+                            Check(s.TryHijackTrafficVehicle(commTv) && s.Vehicle != null && s.Vehicle.HasDriver && s.Traffic.EjectedCount > 0, $"hijacked traffic {commTv.cls.name} with {s.EquippedWeaponName} ({s.Traffic.EjectedCount} occupants ejected)");
+                            var hijacked = s.Vehicle;
+                            s.Exit();
+                            s.Parked.Remove(hijacked);
+                            s.State.S.heat = 0;
+                        }
                         s.EnterInterior("Test Room", "home");
                         Check(s.InInterior, "entered 3D building interior");
                         s.LeaveInterior();

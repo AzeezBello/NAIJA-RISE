@@ -97,12 +97,12 @@ export const LANDMARKS = [
   // Ijero Street: no map position found yet; still a placeholder on Adeniran Ogunsanya's pavement.
   { id: 'ijero', name: 'Ijero Street', short: 'IJERO ST', x: 12.6, z: 110, c: '#1f6b4a', sign: '#ffffff', kind: 'street' },
   // law and public services
-  { id: 'police', name: 'Area C Police Station', short: 'POLICE', x: 96, z: -96, c: '#1f2b45', sign: '#ffffff', h: 6, kind: 'police' },
-  { id: 'fire', name: 'Lagos State Fire Service', short: 'FIRE', x: 96, z: -48, c: '#8a2222', sign: '#ffffff', h: 6, kind: 'service' },
-  { id: 'army', name: 'Army Barracks', short: 'ARMY', x: 120, z: -24, c: '#3b4a2a', sign: '#ffffff', h: 5, kind: 'army' },
-  { id: 'lawma', name: 'LAWMA Depot', short: 'LAWMA', x: -96, z: 96, c: '#b85c1a', sign: '#ffffff', h: 5, kind: 'service' },
-  { id: 'frsc', name: 'FRSC Checkpoint', short: 'FRSC', x: 84, z: 30, kind: 'checkpoint', c: '#e4d14b' },
-  { id: 'lastma', name: 'LASTMA Post', short: 'LASTMA', x: -12, z: -56, kind: 'post', c: '#d9b92e' },
+  { id: 'police', name: 'Area C Police Station', short: 'POLICE', x: 96, z: -96, c: '#162442', sign: '#f5c518', h: 6, kind: 'police' },
+  { id: 'fire', name: 'Lagos State Fire Service', short: 'FIRE SERVICE', x: 96, z: -48, c: '#c62828', sign: '#ffffff', h: 6, kind: 'service' },
+  { id: 'army', name: 'Abalti Barracks · Western Avenue', short: 'ABALTI BARRACKS', x: 120, z: -24, c: '#3b5323', sign: '#ffffff', h: 6, kind: 'army', big: true },
+  { id: 'lawma', name: 'LAWMA Depot', short: 'LAWMA', x: -96, z: 96, c: '#ff6a00', sign: '#ffffff', h: 5, kind: 'service' },
+  { id: 'frsc', name: 'FRSC Checkpoint', short: 'FRSC', x: 84, z: 30, kind: 'checkpoint', c: '#d8c398' },
+  { id: 'lastma', name: 'LASTMA Post', short: 'LASTMA', x: -12, z: -56, kind: 'post', c: '#eab308' },
   // banks
   { id: 'bank1', name: 'RiseBank Shitta', short: 'BANK', x: -120, z: -24, c: '#2d2d4a', sign: '#b7b7ff', h: 9, kind: 'bank' },
   { id: 'bank2', name: 'RiseBank Ojuelegba', short: 'BANK', x: 48, z: 24, c: '#2d2d4a', sign: '#b7b7ff', h: 9, kind: 'bank' },
@@ -183,11 +183,12 @@ export const PROPERTIES = [
   { id: 'selfcon', name: 'Self-contain · Ogunlana Drive', type: 'Self-contained', desc: 'Your own room, kitchen corner and bathroom in a fenced compound. Sleeping here clears one heat.', rent: 150000, buy: 900000, x: -120, z: 72, sign: 'SELF-CON TO LET', c: '#a8b0b8', h: 7, style: 'storey', perk: 'heat1' },
   { id: 'flat', name: '2-Bedroom Flat · Bode Thomas', type: 'Flat', desc: 'Second-floor flat in a three-storey block with a gate man. Sleeping here clears one heat.', rent: 400000, buy: 2400000, x: -24, z: 96, sign: 'FLATS TO LET', c: '#b9a98f', h: 10.5, style: 'storey', perk: 'heat1' },
   { id: 'duplex', name: 'Duplex · Palm Court, Adeniran Ogunsanya', type: 'Duplex', desc: 'Gated duplex with parking. Sleeping here clears all heat and fills your last vehicle.', rent: 1200000, buy: 6000000, x: 96, z: 96, sign: 'PALM COURT', c: '#d9d2c2', h: 8, style: 'storey', perk: 'heat0' },
+  { id: 'banana_villa', name: 'Waterfront Mansion · Banana Island, Ikoyi', type: 'Mansion', desc: 'Ultra-luxury lagoon-front villa on Banana Island with private jetty and 24/7 armed security. Clears all heat and refills your vehicle.', rent: 3500000, buy: 25000000, x: 516, z: 148, sign: 'BANANA VILLA', c: '#f4f1ea', h: 11.5, style: 'storey', perk: 'heat0' },
 ];
 for (const p of PROPERTIES) p.door = { x: p.x, z: p.z - 10.5 };
 
 // Roadside kiosks double as POS agents (cash withdrawal, pure water, suya).
-export const KIOSKS = [[-20, 25], [20, -28], [-56, 20], [88, -22]];
+export const KIOSKS = [[-20, 25], [20, -28], [-56, 20], [88, -22], [140, -14], [372, 12], [440, 200], [520, 228], [240, -312], [-120, -54], [60, -780], [200, -420]];
 
 // Animals: goats around the markets, chickens near compounds, stray dogs roaming.
 export const ANIMALS = [
@@ -196,22 +197,67 @@ export const ANIMALS = [
   { kind: 'dog', x: 30, z: 40 }, { kind: 'dog', x: -30, z: -30 },
 ];
 
-// Uniformed NPCs standing at their posts.
+// Uniformed NPCs standing and patrolling at their posts across Lagos.
 export const UNIFORMS = {
-  police: 0x111318, army: 0x3f5a2a, fire: 0xb52a2a, lawma: 0xf07a1e,
-  lastma: 0xd9b92e, frsc: 0xe4d14b, racer: 0xff5d9e, vio: 0x174a78,
-  kai: 0x8a2638, civildefence: 0x245a74,
+  police: 0x162442, army: 0x3b5323, navy: 0x13294b, fire: 0xc62828, lawma: 0xff6a00,
+  lastma: 0xeab308, frsc: 0xd8c398, racer: 0xff5d9e, vio: 0xf0f4f8,
+  kai: 0x1e6b3a, civildefence: 0x182b49,
 };
 export const SERVICE_NPCS = [
-  { x: 92, z: -84, u: 'police' }, { x: 100, z: -84, u: 'police' },
-  { x: 114, z: -12, u: 'army' }, { x: 124, z: -12, u: 'army' },
-  { x: 90, z: -36, u: 'fire' },
-  { x: -92, z: 84, u: 'lawma' }, { x: -30, z: 13, u: 'lawma' }, { x: 30, z: -13, u: 'lawma' },
-  { x: -12, z: -56, u: 'lastma' },
-  { x: -84, z: 112, u: 'vio' },
-  { x: 40, z: -76, u: 'kai' },
-  { x: 100, z: 80, u: 'civildefence' },
+  // NPF Police officers (stations, banks, major junctions, Banana Island & Airport gates)
+  { x: 92, z: -84, u: 'police' }, { x: 100, z: -84, u: 'police' }, { x: 86, z: -96, u: 'police' },
+  { x: 12, z: 12, u: 'police' }, { x: -12, z: -12, u: 'police' },
+  { x: 48, z: 14, u: 'police' }, { x: -114, z: -16, u: 'police' },
+  { x: 142, z: 12, u: 'police' }, { x: 240, z: -348, u: 'police' }, { x: 232, z: -348, u: 'police' },
+  { x: 376, z: -12, u: 'police' }, { x: 458, z: -14, u: 'police' },
+  { x: 458, z: 200, u: 'police' }, { x: 492, z: 120, u: 'police' }, { x: 492, z: 148, u: 'police' },
+  { x: 506, z: 232, u: 'police' }, { x: 64, z: -880, u: 'police' },
+  { x: 118, z: -780, u: 'police' }, { x: -240, z: 134, u: 'police' },
+  { x: -342, z: 148, u: 'police' }, { x: 400, z: -292, u: 'police' },
+  // Lagos State Fire & Rescue Service firefighters (Surulere HQ, Lagos Island Fire Station, Ikeja Fire HQ, Airport & Markets)
+  { x: 90, z: -36, u: 'fire' }, { x: 102, z: -36, u: 'fire' }, { x: 84, z: -48, u: 'fire' }, { x: 108, z: -48, u: 'fire' },
+  { x: 418, z: 8, u: 'fire' }, { x: 430, z: 8, u: 'fire' },
+  { x: 162, z: -788, u: 'fire' }, { x: 174, z: -788, u: 'fire' },
+  { x: 48, z: -884, u: 'fire' }, { x: -42, z: -88, u: 'fire' }, { x: -340, z: 82, u: 'fire' },
+  // LASTMA traffic controllers at junctions across Surulere, Island, VI, Yaba, Lekki & Ikeja
+  { x: -12, z: -56, u: 'lastma' }, { x: 12, z: -56, u: 'lastma' },
+  { x: 12, z: -12, u: 'lastma' }, { x: -64, z: -12, u: 'lastma' },
+  { x: 64, z: -12, u: 'lastma' }, { x: 64, z: -56, u: 'lastma' },
+  { x: -64, z: -56, u: 'lastma' }, { x: 136, z: -12, u: 'lastma' },
+  { x: 352, z: -12, u: 'lastma' }, { x: 432, z: -12, u: 'lastma' },
+  { x: 432, z: 232, u: 'lastma' }, { x: 552, z: 232, u: 'lastma' },
+  { x: 352, z: -320, u: 'lastma' }, { x: 12, z: -320, u: 'lastma' },
+  { x: 112, z: -752, u: 'lastma' },
+  // FRSC road safety marshals on bridges, expressways & highways
   { x: 80, z: 30, u: 'frsc' }, { x: 64, z: 30, u: 'frsc' },
+  { x: 152, z: 8, u: 'frsc' }, { x: 348, z: 8, u: 'frsc' },
+  { x: 80, z: 134, u: 'frsc' }, { x: -80, z: 134, u: 'frsc' },
+  { x: 352, z: -252, u: 'frsc' }, { x: 432, z: 84, u: 'frsc' },
+  { x: 520, z: 248, u: 'frsc' }, { x: 12, z: -492, u: 'frsc' },
+  // Nigerian Army soldiers at Abalti, Dodan, Bonny Camp, Myoung, Ikeja Cantonment, Arakan & Ojo Cantonment
+  { x: 114, z: -12, u: 'army' }, { x: 126, z: -12, u: 'army' },
+  { x: 344, z: 50, u: 'army' }, { x: 356, z: 50, u: 'army' },
+  { x: 390, z: 256, u: 'army' }, { x: 402, z: 256, u: 'army' },
+  { x: 342, z: -304, u: 'army' }, { x: 354, z: -304, u: 'army' },
+  { x: -66, z: -516, u: 'army' }, { x: -54, z: -516, u: 'army' },
+  { x: -316, z: 82, u: 'army' }, { x: -304, z: 82, u: 'army' },
+  { x: -366, z: 250, u: 'army' }, { x: -354, z: 250, u: 'army' },
+  { x: 148, z: 134, u: 'army' }, { x: 496, z: 248, u: 'army' },
+  // Nigerian Navy ratings & officers at NNS Beecroft Apapa, Navy Town Ojo & Naval Dockyard VI
+  { x: -486, z: 82, u: 'navy' }, { x: -474, z: 82, u: 'navy' },
+  { x: -496, z: 298, u: 'navy' }, { x: -484, z: 298, u: 'navy' },
+  { x: 342, z: 80, u: 'navy' }, { x: 354, z: 80, u: 'navy' },
+  // LAWMA highway & street sweepers in bright orange overalls
+  { x: -92, z: 84, u: 'lawma' }, { x: -30, z: 13, u: 'lawma' }, { x: 30, z: -13, u: 'lawma' },
+  { x: -10, z: 45, u: 'lawma' }, { x: 10, z: 85, u: 'lawma' },
+  { x: -52, z: -12, u: 'lawma' }, { x: 82, z: -56, u: 'lawma' },
+  { x: 14, z: 134, u: 'lawma' }, { x: -80, z: 134, u: 'lawma' },
+  { x: 368, z: 12, u: 'lawma' }, { x: 448, z: 232, u: 'lawma' },
+  { x: 392, z: -320, u: 'lawma' }, { x: 530, z: 232, u: 'lawma' },
+  // VIO, KAI Environmental Corps & NSCDC Civil Defence
+  { x: -84, z: 112, u: 'vio' }, { x: 64, z: -120, u: 'vio' }, { x: 372, z: 232, u: 'vio' },
+  { x: 40, z: -76, u: 'kai' }, { x: -42, z: -56, u: 'kai' }, { x: 396, z: -280, u: 'kai' }, { x: 384, z: 36, u: 'kai' },
+  { x: 100, z: 80, u: 'civildefence' }, { x: 486, z: 104, u: 'civildefence' }, { x: 400, z: 204, u: 'civildefence' },
   { x: -80, z: -58, u: 'racer' },
 ];
 

@@ -3,7 +3,7 @@ import { createArea } from './area.js';
 export const DISTRICT = createArea({
   id: 'ikeja',
   name: 'Ikeja Mainland',
-  bounds: { x: [-160, 360], z: [-1000, -480] },
+  bounds: { x: [-160, 360], z: [-1550, -480] },
   spawn: { x: 80, z: -800 },
   regions: [
     { id: 'ogba', name: 'Ogba', x: [-160, 0], z: [-760, -640] },
@@ -13,7 +13,9 @@ export const DISTRICT = createArea({
     { id: 'maryland', name: 'Maryland', x: [-160, 160], z: [-580, -480] },
     { id: 'ojota', name: 'Ojota', x: [160, 360], z: [-640, -480] },
     { id: 'ketu', name: 'Ketu', x: [-160, 360], z: [-760, -640] },
-    { id: 'ikeja', name: 'Ikeja', x: [-160, 360], z: [-1000, -760] },
+    { id: 'ikeja', name: 'Ikeja', x: [-160, 360], z: [-1020, -760] },
+    { id: 'alausa', name: 'Alausa Secretariat', x: [-160, 360], z: [-1240, -1020] },
+    { id: 'ojodu-berger', name: 'Ojodu Berger · Interstate Gateway', x: [-160, 360], z: [-1550, -1240] },
   ],
   roads: {
     h: [
@@ -24,12 +26,15 @@ export const DISTRICT = createArea({
       { k: -760, from: -150, to: 340, name: 'Allen Avenue', width: 18, class: 'commercial' },
       { k: -840, from: -150, to: 340, name: 'Obafemi Awolowo Way', width: 22, class: 'main' },
       { k: -920, from: -150, to: 340, name: 'Ikeja GRA Road', width: 18, class: 'residential' },
+      { k: -1120, from: -150, to: 340, name: 'Alausa Secretariat Way', width: 20, class: 'main' },
+      { k: -1320, from: -150, to: 340, name: 'Ojodu Berger Interchange', width: 24, class: 'highway' },
+      { k: -1480, from: -150, to: 340, name: 'Lagos–Ibadan Expressway · Kara Gateway', width: 32, class: 'expressway' },
     ],
     v: [
-      { k: -120, from: -940, to: -480, name: 'Agege Motor Road', width: 18, class: 'main' },
-      { k: 0, from: -940, to: 150, name: 'Ikorodu Road · Maryland Link', width: 20, class: 'highway' },
-      { k: 120, from: -940, to: -480, name: 'Alausa–Ketu Road', width: 18, class: 'main' },
-      { k: 240, from: -940, to: -480, name: 'Ojota–Ikeja Link', width: 18, class: 'commercial' },
+      { k: -120, from: -1480, to: -480, name: 'Agege Motor Road · Isheri Link', width: 18, class: 'main' },
+      { k: 0, from: -1520, to: 150, name: 'Ikorodu Road · Lagos–Ibadan Expressway', width: 24, class: 'highway' },
+      { k: 120, from: -1520, to: -480, name: 'Alausa–Berger Expressway', width: 20, class: 'main' },
+      { k: 240, from: -1480, to: -480, name: 'Ojota–Ikeja Link', width: 18, class: 'commercial' },
       { k: 360, from: -940, to: -480, name: 'Ikeja Access Road', width: 16, class: 'residential' },
     ],
   },
@@ -48,6 +53,11 @@ export const DISTRICT = createArea({
     { id: 'ikeja-airport', name: 'Murtala Muhammed Airport', short: 'LAGOS AIRPORT', x: 60, z: -900, c: '#69777d', sign: '#ffffff', h: 10, kind: 'airport', big: true },
     { id: 'new-afrika-shrine', name: 'New Afrika Shrine', short: 'AFRIKA SHRINE', x: 240, z: -960, c: '#8a3e24', sign: '#ffc52f', h: 7, kind: 'venue', big: true },
     { id: 'kalakuta-republic', name: 'Kalakuta Republic Museum', short: 'KALAKUTA REPUBLIC', x: -120, z: -960, c: '#7a6040', sign: '#f5c518', h: 6, kind: 'museum', big: true },
+    { id: 'ikeja-cantonment', name: 'Ikeja Military Cantonment · Maryland', short: 'IKEJA CANTONMENT', x: -60, z: -530, c: '#3b5323', sign: '#ffffff', h: 7, kind: 'army', big: true, region: 'maryland' },
+    { id: 'ikeja-fire', name: 'Lagos State Fire Service · Ikeja', short: 'IKEJA FIRE', x: 168, z: -800, c: '#c62828', sign: '#ffffff', h: 6, kind: 'service', region: 'ikeja' },
+    { id: 'alausa-secretariat', name: 'Lagos State Secretariat · Alausa', short: 'ALAUSA GOVT', x: 120, z: -1090, c: '#4a6a8a', sign: '#ffffff', h: 14, kind: 'landmark', big: true, region: 'alausa' },
+    { id: 'berger-interstate', name: 'Ojodu Berger Interstate Terminal (36 States)', short: 'BERGER INTERSTATE', x: 60, z: -1350, c: '#245e69', sign: '#3dff79', h: 9, kind: 'garage', big: true, region: 'ojodu-berger' },
+    { id: 'kara-market', name: 'Kara Interstate Market & Gateway', short: 'KARA GATEWAY', x: 180, z: -1450, c: '#6b4737', sign: '#ffc52f', h: 6, kind: 'market', big: true, region: 'ojodu-berger' },
   ],
   busStops: [
     { id: 'ogba-bus', name: 'Ogba Bus Stop', short: 'OGBA', x: -60, z: -720, agberos: 2 },
@@ -58,5 +68,7 @@ export const DISTRICT = createArea({
     { id: 'ojota-bus', name: 'Ojota Bus Stop', short: 'OJOTA', x: 240, z: -606, agberos: 2 },
     { id: 'ketu-bus', name: 'Ketu Bus Stop', short: 'KETU', x: 120, z: -666, agberos: 2 },
     { id: 'ikeja-bus', name: 'Ikeja Under Bridge', short: 'IKEJA', x: 120, z: -826, agberos: 2 },
+    { id: 'alausa-bus', name: 'Alausa Secretariat Bus Stop', short: 'ALAUSA', x: 120, z: -1134, agberos: 1 },
+    { id: 'berger-bus', name: 'Ojodu Berger Interstate Bus Stop', short: 'BERGER', x: 0, z: -1334, agberos: 3 },
   ],
 });

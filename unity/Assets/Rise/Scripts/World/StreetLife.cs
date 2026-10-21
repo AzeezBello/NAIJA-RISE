@@ -11,8 +11,14 @@ namespace Rise.World
     public class StreetLife : MonoBehaviour
     {
         public class Agbero { public Transform t; public Vector3 pos; public BusStopData stop; public float cool; }
+        public class GroundItem { public Transform t; public Transform prop; public Vector3 pos; public string id, label; public int cash; public float respawn; public bool Active => respawn <= 0f && t != null && t.gameObject.activeSelf; }
+        public class ServicePatrol { public Transform t; public Vector3 home; public Vector3 axis; public float phase, radius; }
+        public class FishingBoat { public Transform t; public Vector3 a, b; public float speed, phase; }
         [System.NonSerialized] public readonly List<Agbero> Agberos = new List<Agbero>();
+        [System.NonSerialized] public readonly List<GroundItem> GroundItems = new List<GroundItem>();
         public readonly List<Transform> Service = new List<Transform>();
+        readonly List<ServicePatrol> servicePatrols = new List<ServicePatrol>();
+        readonly List<FishingBoat> fishingBoats = new List<FishingBoat>();
         [System.NonSerialized] public readonly List<(Transform t, string name)> Nightlife = new List<(Transform, string)>();
         readonly List<Transform> crowd = new List<Transform>();
         Transform pet; Animation petAnim; int partyDay = -1;
@@ -33,16 +39,30 @@ namespace Rise.World
                     Mannequin.Label(go.transform, "Agbero", new Color(0.78f, 0.83f, 0f), 2.3f, 0.5f);
                     Agberos.Add(new Agbero { t = go.transform, pos = pos, stop = b });
                 }
+            int sIdx = 0;
             foreach (var n in data.serviceNpcs)
             {
                 var pos = n.World(); pos.y = data.DeckHeightAt(pos) + 0.3f;
                 var go = new GameObject("Service " + n.u); go.transform.SetParent(root, false); go.transform.position = pos; go.transform.rotation = Quaternion.Euler(0, 180, 0);
-                var c = Mannequin.Hex(n.color, "#444444");
-                var look = new Look { Fabric = 8, Pants = c * 0.8f, Skin = Mannequin.Hex("#6b4423"), Hair = Color.black, Cap = c, BodyType = 1, Accessory = 2, Outfit = 5 };
-                if (CharacterRig.Available) { var rig = CharacterRig.Build(go.transform, look); foreach (var m in rig.Top) { if (m.HasProperty("baseColorFactor")) m.SetColor("baseColorFactor", c); else m.color = c; if (m.HasProperty("baseColorTexture")) m.SetTexture("baseColorTexture", null); } }
-                else Mannequin.Build(go.transform, c, c * 0.8f, Mannequin.Hex("#6b4423"), c);
-                Mannequin.Label(go.transform, n.u.ToUpper(), Color.white, 2.3f, 0.45f);
+                GetUniformStyle(n.u, n.color, out var topCol, out var pantsCol, out var capCol, out var badgeText, out var badgeCol);
+                var look = new Look { Fabric = 8, Pants = pantsCol, Skin = Mannequin.Hex("#6b4423"), Hair = Color.black, Cap = capCol, BodyType = 1, Accessory = 2, Outfit = 5 };
+                if (CharacterRig.Available)
+                {
+                    var rig = CharacterRig.Build(go.transform, look);
+                    foreach (var m in rig.Top)
+                    {
+                        if (m.HasProperty("baseColorFactor")) m.SetColor("baseColorFactor", topCol);
+                        else m.color = topCol;
+                        if (m.HasProperty("baseColorTexture")) m.SetTexture("baseColorTexture", null);
+                    }
+                }
+                else Mannequin.Build(go.transform, topCol, pantsCol, Mannequin.Hex("#6b4423"), capCol);
+                Mannequin.Label(go.transform, badgeText, badgeCol, 2.3f, 0.45f);
                 Service.Add(go.transform);
+                var road = data.RoadAt(pos, 18f);
+                var patrolDir = road != null ? (road.Horizontal ? Vector3.right : Vector3.forward) : (sIdx % 2 == 0 ? Vector3.right : Vector3.forward);
+                servicePatrols.Add(new ServicePatrol { t = go.transform, home = pos, axis = patrolDir, phase = sIdx * 1.37f, radius = n.u == "lawma" ? 4.5f : 2.8f });
+                sIdx++;
             }
             foreach (var n in data.nightlife)
             {
@@ -54,11 +74,233 @@ namespace Rise.World
                 go.SetActive(false);
                 Nightlife.Add((go.transform, n.name));
             }
+            SpawnFishingBoats();
+            SpawnGroundItems();
+        }
+
+        static void GetUniformStyle(string u, string fallbackHex, out Color top, out Color pants, out Color cap, out string label, out Color labelCol)
+        {
+            switch (u)
+            {
+                case "police":
+                    top = Mannequin.Hex("#162442"); pants = Mannequin.Hex("#0e131f"); cap = Mannequin.Hex("#162442");
+                    label = "NPF POLICE"; labelCol = new Color(0.62f, 0.78f, 1f);
+                    break;
+                case "fire":
+                    top = Mannequin.Hex("#c62828"); pants = Mannequin.Hex("#1e2026"); cap = Mannequin.Hex("#f5c518");
+                    label = "FIREFIGHTER"; labelCol = new Color(1f, 0.55f, 0.25f);
+                    break;
+                case "army":
+                    top = Mannequin.Hex("#3b5323"); pants = Mannequin.Hex("#2a3c18"); cap = Mannequin.Hex("#243614");
+                    label = "NIGERIAN ARMY"; labelCol = new Color(0.68f, 0.88f, 0.45f);
+                    break;
+                case "navy":
+                    top = Mannequin.Hex("#13294b"); pants = Mannequin.Hex("#0d1d36"); cap = Mannequin.Hex("#f2f6fa");
+                    label = "NIGERIAN NAVY"; labelCol = new Color(0.55f, 0.85f, 1f);
+                    break;
+                case "lawma":
+                    top = Mannequin.Hex("#ff6a00"); pants = Mannequin.Hex("#e05500"); cap = Mannequin.Hex("#ff6a00");
+                    label = "LAWMA"; labelCol = new Color(1f, 0.55f, 0.1f);
+                    break;
+                case "lastma":
+                    top = Mannequin.Hex("#eab308"); pants = Mannequin.Hex("#4a1c1c"); cap = Mannequin.Hex("#5c1d24");
+                    label = "LASTMA"; labelCol = new Color(1f, 0.86f, 0.25f);
+                    break;
+                case "frsc":
+                    top = Mannequin.Hex("#d8c398"); pants = Mannequin.Hex("#162442"); cap = Mannequin.Hex("#9e1b1b");
+                    label = "FRSC"; labelCol = new Color(0.95f, 0.85f, 0.65f);
+                    break;
+                case "vio":
+                    top = Mannequin.Hex("#f0f4f8"); pants = Mannequin.Hex("#16181d"); cap = Mannequin.Hex("#1b4d2e");
+                    label = "VIO"; labelCol = Color.white;
+                    break;
+                case "kai":
+                    top = Mannequin.Hex("#1e6b3a"); pants = Mannequin.Hex("#144726"); cap = Mannequin.Hex("#1e6b3a");
+                    label = "KAI BRIGADE"; labelCol = new Color(0.45f, 0.95f, 0.6f);
+                    break;
+                case "civildefence":
+                    top = Mannequin.Hex("#182b49"); pants = Mannequin.Hex("#121e33"); cap = Mannequin.Hex("#b91c1c");
+                    label = "NSCDC"; labelCol = new Color(0.7f, 0.82f, 1f);
+                    break;
+                default:
+                    top = Mannequin.Hex(fallbackHex, "#444444"); pants = top * 0.8f; cap = top;
+                    label = u.ToUpper(); labelCol = Color.white;
+                    break;
+            }
+        }
+
+        void SpawnFishingBoats()
+        {
+            var routes = new (Vector2 a, Vector2 b, float spd)[]
+            {
+                (new Vector2(275f, -150f), new Vector2(325f, -110f), 0.18f), // Makoko canoe channel
+                (new Vector2(240f, -60f),  new Vector2(315f, -20f),  0.15f), // Eko Bridge north lagoon
+                (new Vector2(220f, 45f),   new Vector2(320f, 85f),   0.16f), // Eko Bridge south / Marina Ebute Ero
+                (new Vector2(355f, 120f),  new Vector2(418f, 155f),  0.17f), // Five Cowrie Creek / Falomo
+                (new Vector2(492f, 40f),   new Vector2(548f, -35f),  0.15f), // Banana Island north lagoon
+                (new Vector2(355f, -195f), new Vector2(450f, -135f), 0.14f), // Third Mainland / Bariga lagoon
+                (new Vector2(205f, 180f),  new Vector2(310f, 240f),  0.16f), // Victoria Island west lagoon
+                (new Vector2(585f, 20f),   new Vector2(690f, 95f),   0.14f), // Lekki lagoon
+            };
+            var woodMat = Mannequin.Mat(Mannequin.Hex("#5c4028"));
+            var trimMat = Mannequin.Mat(Mannequin.Hex("#2980b9"));
+            var netMat = Mannequin.Mat(Mannequin.Hex("#d9c79e"));
+            var motorMat = Mannequin.Mat(Mannequin.Hex("#1e293b"));
+
+            for (int i = 0; i < routes.Length; i++)
+            {
+                var r = routes[i];
+                var aW = WorldData.W(r.a.x, -0.25f, r.a.y);
+                var bW = WorldData.W(r.b.x, -0.25f, r.b.y);
+                var boatGo = new GameObject("Lagoon Fishing Boat " + i);
+                boatGo.transform.SetParent(root, false);
+                boatGo.transform.position = aW;
+
+                void HullPart(string n, Vector3 lp, Vector3 ls, Material m)
+                {
+                    var p = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    p.name = n; p.transform.SetParent(boatGo.transform, false);
+                    p.transform.localPosition = lp; p.transform.localScale = ls;
+                    p.GetComponent<MeshRenderer>().sharedMaterial = m;
+                    Destroy(p.GetComponent<Collider>());
+                }
+                HullPart("Hull", new Vector3(0f, 0.18f, 0f), new Vector3(1.65f, 0.45f, 6.4f), woodMat);
+                HullPart("Gunwale", new Vector3(0f, 0.42f, 0f), new Vector3(1.78f, 0.14f, 6.6f), trimMat);
+                HullPart("FishNetPile", new Vector3(0f, 0.48f, 0.6f), new Vector3(1.1f, 0.32f, 1.4f), netMat);
+                HullPart("Outboard", new Vector3(0f, 0.42f, -3.3f), new Vector3(0.38f, 0.65f, 0.48f), motorMat);
+
+                // Captain at the stern and net-caster fisherman at the bow
+                for (int f = 0; f < 2; f++)
+                {
+                    var fGo = new GameObject("Fisherman");
+                    fGo.transform.SetParent(boatGo.transform, false);
+                    fGo.transform.localPosition = new Vector3(0f, 0.42f, f == 0 ? -1.9f : 1.7f);
+                    var topC = Mannequin.Hex(f == 0 ? "#0284c7" : "#eab308");
+                    var pantsC = Mannequin.Hex("#1e293b");
+                    var skinC = Mannequin.Hex("#5a3a28");
+                    var hatC = Mannequin.Hex("#d4a359");
+                    Mannequin.Build(fGo.transform, topC, pantsC, skinC, hatC);
+                    if (f == 1) Mannequin.Label(fGo.transform, "FISHERMAN", new Color(0.35f, 0.9f, 0.95f), 2.25f, 0.44f);
+                }
+
+                fishingBoats.Add(new FishingBoat { t = boatGo.transform, a = aW, b = bW, speed = r.spd, phase = i * 1.1f });
+            }
+        }
+
+        static readonly (string id, string label, int cash)[] StreetPickups =
+        {
+            ("plank",    "2x4 Nail Plank",    0),
+            ("koboko",   "Koboko Horsewhip",  0),
+            ("baton",    "Iron Rod",          0),
+            ("knuckles", "Brass Knuckles",    0),
+            ("pepper",   "Pepper Spray",      0),
+            ("cutlass",  "Cutlass",           0),
+            ("cash",     "Dropped Naira",  1500),
+        };
+
+        void SpawnGroundItems()
+        {
+            // A starter 2x4 Nail Plank on Adeniran Ogunsanya Street near spawn so the player can test picking up and fighting right away.
+            SpawnGroundItem(data.Spawn + new Vector3(3.2f, 0f, -3.5f), "plank", "2x4 Nail Plank", 0);
+            if (data.TryPlace("ladipo", out var ladipo))
+            {
+                SpawnGroundItem(ladipo.World() + new Vector3(-5f, 0f, 8f), "baton", "Iron Rod", 0);
+                SpawnGroundItem(ladipo.World() + new Vector3(6f, 0f, 10f), "cutlass", "Cutlass", 0);
+            }
+            for (int i = 0; i < data.busStops.Length; i++)
+            {
+                var b = data.busStops[i];
+                var pick = StreetPickups[i % StreetPickups.Length];
+                var pos = WorldData.W(b.x + 4.5f, 0f, b.z - 1.8f);
+                SpawnGroundItem(pos, pick.id, pick.label, pick.cash);
+            }
+        }
+
+        public GroundItem DropItem(Vector3 pos, string id, string label, int cash = 0) => SpawnGroundItem(pos, id, label, cash);
+
+        GroundItem SpawnGroundItem(Vector3 pos, string id, string label, int cash)
+        {
+            pos.y = data.DeckHeightAt(pos) + 0.04f;
+            var go = new GameObject("Pickup " + label);
+            go.transform.SetParent(root, false);
+            go.transform.position = pos;
+
+            // Glowing ground ring
+            var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            ring.name = "Ring";
+            ring.transform.SetParent(go.transform, false);
+            ring.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+            ring.transform.localScale = new Vector3(0.72f, 0.015f, 0.72f);
+            ring.GetComponent<MeshRenderer>().sharedMaterial = Mannequin.Mat(cash > 0 ? new Color(0.24f, 1f, 0.47f) : new Color(1f, 0.77f, 0.18f));
+            Destroy(ring.GetComponent<Collider>());
+
+            // Floating 3D prop
+            var prop = new GameObject("Prop").transform;
+            prop.SetParent(go.transform, false);
+            prop.localPosition = new Vector3(0f, 0.42f, 0f);
+            BuildPickupMesh(prop, id);
+
+            Mannequin.Label(go.transform, label, cash > 0 ? new Color(0.24f, 1f, 0.47f) : new Color(1f, 0.85f, 0.3f), 0.95f, 0.36f);
+            var gi = new GroundItem { t = go.transform, prop = prop, pos = pos, id = id, label = label, cash = cash };
+            GroundItems.Add(gi);
+            return gi;
+        }
+
+        static void BuildPickupMesh(Transform parent, string id)
+        {
+            GameObject Part(PrimitiveType type, Vector3 pos, Vector3 scale, Color col, Quaternion? rot = null)
+            {
+                var p = GameObject.CreatePrimitive(type);
+                p.transform.SetParent(parent, false);
+                p.transform.localPosition = pos;
+                p.transform.localScale = scale;
+                if (rot.HasValue) p.transform.localRotation = rot.Value;
+                p.GetComponent<MeshRenderer>().sharedMaterial = Mannequin.Mat(col);
+                Object.Destroy(p.GetComponent<Collider>());
+                return p;
+            }
+            switch (id)
+            {
+                case "plank":
+                    Part(PrimitiveType.Cube, Vector3.zero, new Vector3(0.08f, 0.04f, 0.58f), Mannequin.Hex("#8b5a2b"), Quaternion.Euler(15f, 0f, 20f));
+                    break;
+                case "koboko":
+                    Part(PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.05f, 0.28f, 0.05f), Mannequin.Hex("#3d2314"), Quaternion.Euler(70f, 0f, 15f));
+                    break;
+                case "baton":
+                case "weapon":
+                    Part(PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.05f, 0.30f, 0.05f), Mannequin.Hex("#4a525d"), Quaternion.Euler(75f, 0f, 15f));
+                    break;
+                case "knuckles":
+                    Part(PrimitiveType.Cube, Vector3.zero, new Vector3(0.16f, 0.06f, 0.12f), Mannequin.Hex("#d4af37"), Quaternion.Euler(15f, 0f, 0f));
+                    break;
+                case "pepper":
+                    Part(PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.08f, 0.14f, 0.08f), Mannequin.Hex("#d62828"));
+                    break;
+                case "cutlass":
+                    Part(PrimitiveType.Cube, new Vector3(0f, 0f, -0.18f), new Vector3(0.05f, 0.05f, 0.16f), Mannequin.Hex("#2b1d14"));
+                    Part(PrimitiveType.Cube, new Vector3(0f, 0.02f, 0.10f), new Vector3(0.02f, 0.08f, 0.44f), Mannequin.Hex("#cfd6df"));
+                    break;
+                default:
+                    Part(PrimitiveType.Cube, Vector3.zero, new Vector3(0.24f, 0.09f, 0.14f), Mannequin.Hex("#2bb34a"));
+                    break;
+            }
         }
 
         public bool NightOpen => clock != null && (clock.Clock >= 20f || clock.Clock < 4f);
 
         public Agbero NearestAgbero(Vector3 pos, float r) { Agbero best = null; float bd = r * r; foreach (var a in Agberos) { float d = (a.pos - pos).sqrMagnitude; if (d < bd) { bd = d; best = a; } } return best; }
+        public GroundItem NearestGroundItem(Vector3 pos, float r)
+        {
+            GroundItem best = null; float bd = r * r;
+            foreach (var g in GroundItems)
+            {
+                if (!g.Active) continue;
+                float d = (g.pos - pos).sqrMagnitude;
+                if (d < bd) { bd = d; best = g; }
+            }
+            return best;
+        }
         public (Transform t, string name)? NearestNightlife(Vector3 pos, float r) { (Transform, string)? best = null; float bd = r * r; foreach (var n in Nightlife) { if (!n.t.gameObject.activeSelf) continue; float d = (n.t.position - pos).sqrMagnitude; if (d < bd) { bd = d; best = n; } } return best; }
 
         public void AdoptDog()
@@ -83,6 +325,47 @@ namespace Rise.World
         {
             float dt = Time.deltaTime; bool night = NightOpen;
             foreach (var a in Agberos) { a.cool -= dt; a.t.rotation = Quaternion.Euler(0f, 180f + Mathf.Sin(Time.time * 1.1f + a.pos.x) * 23f, 0f); }
+            for (int i = 0; i < servicePatrols.Count; i++)
+            {
+                var sp = servicePatrols[i];
+                if (sp.t == null) continue;
+                float wave = Mathf.Sin(Time.time * 0.75f + sp.phase);
+                float dir = Mathf.Cos(Time.time * 0.75f + sp.phase) >= 0f ? 1f : -1f;
+                var p = sp.home + sp.axis * (wave * sp.radius);
+                p.y = data.DeckHeightAt(p) + 0.3f;
+                sp.t.position = p;
+                var lookDir = sp.axis * dir;
+                if (lookDir.sqrMagnitude > 0.01f)
+                    sp.t.rotation = Quaternion.Slerp(sp.t.rotation, Quaternion.LookRotation(lookDir, Vector3.up), 1f - Mathf.Exp(-6f * dt));
+            }
+            for (int i = 0; i < fishingBoats.Count; i++)
+            {
+                var fb = fishingBoats[i];
+                if (fb.t == null) continue;
+                float raw = (Time.time * fb.speed * 0.25f + fb.phase) % 2f;
+                float u = raw <= 1f ? raw : 2f - raw;
+                float smoothU = Mathf.SmoothStep(0f, 1f, u);
+                var p = Vector3.Lerp(fb.a, fb.b, smoothU);
+                p.y = -0.24f + Mathf.Sin(Time.time * 2.1f + fb.phase) * 0.05f;
+                fb.t.position = p;
+                var dir = raw <= 1f ? (fb.b - fb.a) : (fb.a - fb.b);
+                dir.y = 0f;
+                if (dir.sqrMagnitude > 0.01f)
+                    fb.t.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up) * Quaternion.Euler(Mathf.Sin(Time.time * 1.8f + fb.phase) * 1.8f, 0f, 0f);
+            }
+            foreach (var g in GroundItems)
+            {
+                if (g.respawn > 0f)
+                {
+                    g.respawn -= dt;
+                    if (g.respawn <= 0f && g.t != null) g.t.gameObject.SetActive(true);
+                }
+                else if (g.prop != null && g.t.gameObject.activeSelf)
+                {
+                    g.prop.localPosition = new Vector3(0f, 0.40f + Mathf.Sin(Time.time * 3f + g.pos.x) * 0.06f, 0f);
+                    g.prop.localRotation = Quaternion.Euler(0f, Time.time * 75f, 0f);
+                }
+            }
             foreach (var n in Nightlife) n.t.gameObject.SetActive(night && mature);
             if (pet != null)
             {

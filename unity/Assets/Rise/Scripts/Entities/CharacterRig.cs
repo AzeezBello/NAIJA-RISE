@@ -19,7 +19,7 @@ namespace Rise.Entities
         public Animation Anim; public GameObject Root; public bool Cesium;
         public readonly List<Material> Top = new List<Material>(), Bottom = new List<Material>(), Skin = new List<Material>(), Hair = new List<Material>(), Cap = new List<Material>();
         public readonly List<Renderer> HairRenderers = new List<Renderer>(), BeardRenderers = new List<Renderer>(), CapRenderers = new List<Renderer>();
-        public Transform Overlay, Glasses, Chain; public Material OverlayMaterial;
+        public Transform Overlay, Glasses, Chain, WeaponRoot; public Material OverlayMaterial;
         public float BaseScale = 1f;
         public string State = "idle";
 
@@ -148,6 +148,102 @@ namespace Rise.Entities
                 c.GetComponent<MeshRenderer>().sharedMaterial = gold;
                 rig.Chain = c.transform; c.SetActive(false);
             }
+            var hand = Find(root, "RightHand") ?? Find(root, "RightForeArm") ?? hips;
+            if (hand != null)
+                rig.WeaponRoot = BuildWeaponProp(hand, root.gameObject.layer);
+        }
+
+        public static Transform BuildWeaponProp(Transform hand, int layer = 0)
+        {
+            var wRoot = new GameObject("WeaponProp") { layer = layer }.transform;
+            wRoot.SetParent(hand, false);
+            var ls = hand.lossyScale;
+            float inv = 1f / Mathf.Max(0.2f, Mathf.Abs(ls.y) > 0.01f ? Mathf.Abs(ls.y) : 1f);
+            wRoot.localScale = Vector3.one * inv;
+            wRoot.localPosition = new Vector3(0.02f * inv, 0.05f * inv, 0.04f * inv);
+            wRoot.localRotation = Quaternion.Euler(75f, 0f, 0f);
+
+            Transform Prim(Transform p, string n, PrimitiveType pt, Vector3 pos, Vector3 sc, Color col, float metal = 0.1f, float smooth = 0.4f, Quaternion? rot = null)
+            {
+                var g = GameObject.CreatePrimitive(pt); g.name = n; g.layer = layer; DestroyObj(g.GetComponent<Collider>());
+                g.transform.SetParent(p, false); g.transform.localPosition = pos; g.transform.localScale = sc;
+                if (rot.HasValue) g.transform.localRotation = rot.Value;
+                var m = new Material(ShaderLib.Lit) { color = col }; m.SetFloat("_Metallic", metal); m.SetFloat("_Smoothness", smooth);
+                g.GetComponent<MeshRenderer>().sharedMaterial = m;
+                return g.transform;
+            }
+            Transform Group(string id)
+            {
+                var g = new GameObject(id) { layer = layer }.transform;
+                g.SetParent(wRoot, false); g.gameObject.SetActive(false);
+                return g;
+            }
+
+            // 1. 2x4 Nail Plank
+            var plank = Group("plank");
+            Prim(plank, "Board", PrimitiveType.Cube, new Vector3(0f, 0.24f, 0f), new Vector3(0.045f, 0.58f, 0.09f), new Color(0.58f, 0.38f, 0.20f), 0f, 0.2f);
+            Prim(plank, "Nail1", PrimitiveType.Cylinder, new Vector3(0f, 0.46f, 0.06f), new Vector3(0.012f, 0.05f, 0.012f), new Color(0.78f, 0.80f, 0.84f), 0.8f, 0.7f, Quaternion.Euler(90f, 0f, 0f));
+            Prim(plank, "Nail2", PrimitiveType.Cylinder, new Vector3(0f, 0.40f, -0.06f), new Vector3(0.012f, 0.05f, 0.012f), new Color(0.78f, 0.80f, 0.84f), 0.8f, 0.7f, Quaternion.Euler(90f, 0f, 0f));
+
+            // 2. Pepper Spray
+            var pepper = Group("pepper");
+            Prim(pepper, "Canister", PrimitiveType.Cylinder, new Vector3(0f, 0.04f, 0f), new Vector3(0.045f, 0.07f, 0.045f), new Color(0.84f, 0.16f, 0.16f), 0.3f, 0.7f);
+            Prim(pepper, "Nozzle", PrimitiveType.Cylinder, new Vector3(0f, 0.12f, 0f), new Vector3(0.032f, 0.02f, 0.032f), new Color(0.10f, 0.10f, 0.12f), 0.1f, 0.5f);
+
+            // 3. Koboko Horsewhip
+            var koboko = Group("koboko");
+            Prim(koboko, "Grip", PrimitiveType.Cylinder, new Vector3(0f, 0.06f, 0f), new Vector3(0.038f, 0.11f, 0.038f), new Color(0.28f, 0.15f, 0.08f), 0f, 0.35f);
+            Prim(koboko, "Lash1", PrimitiveType.Capsule, new Vector3(0f, 0.28f, 0.03f), new Vector3(0.024f, 0.18f, 0.024f), new Color(0.18f, 0.10f, 0.05f), 0f, 0.3f, Quaternion.Euler(14f, 0f, 0f));
+            Prim(koboko, "Lash2", PrimitiveType.Capsule, new Vector3(0f, 0.54f, 0.12f), new Vector3(0.016f, 0.16f, 0.016f), new Color(0.16f, 0.09f, 0.04f), 0f, 0.3f, Quaternion.Euler(28f, 0f, 0f));
+
+            // 4. Brass Knuckles
+            var knuckles = Group("knuckles");
+            Prim(knuckles, "Band", PrimitiveType.Cube, new Vector3(0f, 0.02f, 0.04f), new Vector3(0.035f, 0.11f, 0.045f), new Color(0.85f, 0.68f, 0.20f), 0.85f, 0.75f);
+
+            // 5. Iron Rod / Baton (also used for generic "weapon")
+            var baton = Group("baton");
+            Prim(baton, "Grip", PrimitiveType.Cylinder, new Vector3(0f, 0.05f, 0f), new Vector3(0.038f, 0.09f, 0.038f), new Color(0.12f, 0.12f, 0.14f), 0.1f, 0.3f);
+            Prim(baton, "Rod", PrimitiveType.Cylinder, new Vector3(0f, 0.30f, 0f), new Vector3(0.030f, 0.24f, 0.030f), new Color(0.32f, 0.35f, 0.39f), 0.75f, 0.65f);
+
+            // 6. Cutlass / Machete
+            var cutlass = Group("cutlass");
+            Prim(cutlass, "Handle", PrimitiveType.Cube, new Vector3(0f, 0.04f, 0f), new Vector3(0.032f, 0.12f, 0.042f), new Color(0.32f, 0.18f, 0.09f), 0f, 0.3f);
+            Prim(cutlass, "Guard", PrimitiveType.Cube, new Vector3(0f, 0.11f, 0f), new Vector3(0.042f, 0.018f, 0.085f), new Color(0.78f, 0.62f, 0.18f), 0.7f, 0.6f);
+            Prim(cutlass, "Blade", PrimitiveType.Cube, new Vector3(0f, 0.36f, 0.01f), new Vector3(0.012f, 0.48f, 0.068f), new Color(0.82f, 0.85f, 0.89f), 0.85f, 0.8f);
+
+            wRoot.gameObject.SetActive(false);
+            return wRoot;
+        }
+
+        public static void SetWeapon(RigInstance rig, Transform host, string weaponId, int layer = 0)
+        {
+            Transform wRoot = rig != null ? rig.WeaponRoot : null;
+            if (wRoot == null && host != null)
+            {
+                wRoot = Find(host, "WeaponProp");
+                if (wRoot == null)
+                {
+                    var attach = Find(host, "RightHand") ?? host;
+                    wRoot = BuildWeaponProp(attach, layer);
+                    if (attach == host)
+                    {
+                        wRoot.localPosition = new Vector3(0.34f, 0.95f, 0.26f);
+                        wRoot.localRotation = Quaternion.Euler(45f, 0f, 0f);
+                    }
+                    if (rig != null) rig.WeaponRoot = wRoot;
+                }
+            }
+            if (wRoot == null) return;
+            string key = string.IsNullOrEmpty(weaponId) ? "" : (weaponId == "weapon" ? "baton" : weaponId);
+            bool any = false;
+            for (int i = 0; i < wRoot.childCount; i++)
+            {
+                var ch = wRoot.GetChild(i);
+                bool match = !string.IsNullOrEmpty(key) && ch.name == key;
+                ch.gameObject.SetActive(match);
+                if (match) any = true;
+            }
+            wRoot.gameObject.SetActive(any);
         }
 
         // Attachments are children of scaled bones; use the magnitude of the bone scale so rotated bones (negative lossyScale components) never invert or explode the attachment.

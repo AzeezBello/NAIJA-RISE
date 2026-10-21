@@ -23,6 +23,25 @@ namespace Rise.EditorTools
         [MenuItem("RISE/Prepare Character Assets")]
         public static void Prepare()
         {
+            foreach (var guid in AssetDatabase.FindAssets("", new[] { "Assets/Rise/Resources/Models" }))
+            {
+                string p = AssetDatabase.GUIDToAssetPath(guid);
+                if (!p.EndsWith(".glb", System.StringComparison.OrdinalIgnoreCase)) continue;
+                bool needsReimport = false;
+                foreach (var obj in AssetDatabase.LoadAllAssetsAtPath(p))
+                {
+                    if (obj is Texture2D tex && (tex.width > 256 || tex.height > 256 || tex.format == TextureFormat.RGBA32))
+                    {
+                        needsReimport = true;
+                        break;
+                    }
+                }
+                if (needsReimport)
+                {
+                    AssetDatabase.ImportAsset(p, ImportAssetOptions.ForceUpdate);
+                }
+            }
+
             var avatar = AssetDatabase.LoadAssetAtPath<GameObject>(Avatar);
             if (avatar == null) { Debug.LogWarning("RISE: avatar not imported at " + Avatar + " (is com.unity.cloud.gltfast installed?)"); return; }
             Directory.CreateDirectory(OutDir);

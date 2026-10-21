@@ -170,9 +170,19 @@ namespace Rise
         {
             var st = State.S; var sb = new StringBuilder();
             sb.Append(st.items.Count > 0 ? "Carrying: " + string.Join(", ", st.items.ConvertAll(Data.ItemName)) : "Nothing in your hands.").Append('\n');
+            sb.Append($"Fight weapon: {EquippedWeaponName}{(WeaponPower() > 0 ? $" (power +{WeaponPower()})" : "")}").Append('\n');
             sb.Append("Vehicles: ").Append(st.vehicles.Count > 0 ? string.Join(", ", st.vehicles.ConvertAll(v => Data.VehicleClass(v.type)?.name ?? v.type)) : "none").Append('\n');
             sb.Append($"Fuel {st.fuel:0}% · stamina {st.stamina:0}% · health {st.health:0}%");
-            Page("Inventory", "What you carry and own", sb.ToString());
+            var opts = new System.Collections.Generic.List<MenuOption>();
+            foreach (var w in FightWeapons)
+            {
+                if (!State.Has(w.Id)) continue;
+                var wSpec = w; bool eq = st.equippedWeapon == w.Id;
+                opts.Add(new MenuOption { Label = eq ? $"{w.Name} · in hand" : $"Equip {w.Name} (power +{w.Power})", Enabled = !eq, Action = () => { EquipWeapon(wSpec.Id); AppInventory(); } });
+            }
+            if (!string.IsNullOrEmpty(st.equippedWeapon))
+                opts.Add(new MenuOption { Label = "Holster weapon (hide from hand)", Action = () => { EquipWeapon(""); AppInventory(); } });
+            Page("Inventory", "What you carry and own", sb.ToString(), opts.ToArray());
         }
 
         void AppCrew()
