@@ -5,17 +5,22 @@ using Rise.Vehicles;
 
 namespace Rise.World
 {
-    // Dynamic city events: go-slow jams, road-construction diversions that close a lane
-    // with cones, barriers and a DIVERSION sign, an overturned keke, the storm flood at the Ojuelegba underpass, and
-    // NEPA outages that take the street lights at night. Traffic crawls through the jam zone; so do you when flooded.
+    // Dynamic city events & street encounters: go-slow jams, road-construction diversions that close a lane
+    // with cones, barriers and a DIVERSION sign, an overturned keke, the storm flood at the Ojuelegba underpass,
+    // NEPA outages that take the street lights at night, and interactive roadside encounters (broken-down danfo,
+    // roadside dispute, stranded executive).
     public class Events : MonoBehaviour
     {
         public class Jam { public RoadData road; public float from, to, until; public bool works, wreck, flood; }
+        public class Encounter { public string kind, title, prompt, rep; public Vector3 pos; public int reward, repAmount, xp; public float until; }
+
         public Jam Current { get; private set; }
+        public Encounter ActiveEncounter { get; private set; }
         public float Outage { get; private set; }
         WorldData data; DayNightCycle clock; Weather weather;
         readonly List<GameObject> props = new List<GameObject>();
-        float jamT = 60f, outageT = 120f;
+        readonly List<GameObject> encounterProps = new List<GameObject>();
+        float jamT = 60f, outageT = 120f, encounterT = 75f;
         [System.NonSerialized] public System.Action<string, string> Notify;   // (who, text)
 
         public void Init(WorldData world, DayNightCycle dayNight, Weather w) { data = world; clock = dayNight; weather = w; }
@@ -40,6 +45,114 @@ namespace Rise.World
                 if (weather != null && weather.Storm) { StartFlood(); return; }
                 jamT -= dt; if (jamT <= 0f) { jamT = Random.Range(90f, 200f); if (Random.value < 0.7f) StartJam(); }
             }
+
+            if (ActiveEncounter != null)
+            {
+                ActiveEncounter.until -= dt;
+                if (ActiveEncounter.until <= 0f) ClearEncounter();
+            }
+            else
+            {
+                encounterT -= dt;
+                if (encounterT <= 0f)
+                {
+                    encounterT = Random.Range(85f, 160f);
+                    if (Random.value < 0.75f) StartEncounter();
+                }
+            }
+        }
+
+        public void StartEncounter(int? forceKind = null, Vector3? atPos = null)
+        {
+            ClearEncounter();
+            var road = data.FindRoad("v", 0f) ?? data.roads[Random.Range(0, data.roads.Length)];
+            Vector3 pos = atPos ?? road.Point(Mathf.Clamp(0f, road.from + 25f, road.to - 25f), road.k + road.width * 0.5f - 1.8f, 0.12f);
+            pos.y = data.DeckHeightAt(pos) + 0.12f;
+            int k = forceKind ?? Random.Range(0, 3);
+            if (k == 0)
+            {
+                ActiveEncounter = new Encounter
+                {
+                    kind = "breakdown",
+                    title = "Broken-Down Danfo",
+                    prompt = "HELP PUSH BROKEN DANFO · +₦8,000",
+                    rep = "public",
+                    repAmount = 4,
+                    reward = 8000,
+                    xp = 15,
+                    pos = pos,
+                    until = 180f,
+                };
+                var cls = data.VehicleClass("danfo") ?? data.VehicleClass("car");
+                if (cls != null)
+                {
+                    var v = VehicleBodies.Build(cls, transform, new System.Random(41), out _);
+                    v.transform.position = pos;
+                    encounterProps.Add(v);
+                }
+            }
+            else if (k == 1)
+            {
+                ActiveEncounter = new Encounter
+                {
+                    kind = "dispute",
+                    title = "Roadside Dispute",
+                    prompt = "SETTLE ROADSIDE WAHALA · +₦10,000",
+                    rep = "social",
+                    repAmount = 5,
+                    reward = 10000,
+                    xp = 15,
+                    pos = pos,
+                    until = 180f,
+                };
+                var cls = data.VehicleClass("taxi") ?? data.VehicleClass("car");
+                if (cls != null)
+                {
+                    var v = VehicleBodies.Build(cls, transform, new System.Random(42), out _);
+                    v.transform.position = pos;
+                    encounterProps.Add(v);
+                }
+            }
+            else
+            {
+                ActiveEncounter = new Encounter
+                {
+                    kind = "vip_escort",
+                    title = "Stranded Island Executive",
+                    prompt = "ASSIST STRANDED EXECUTIVE · +₦15,000",
+                    rep = "business",
+                    repAmount = 5,
+                    reward = 15000,
+                    xp = 20,
+                    pos = pos,
+                    until = 180f,
+                };
+                var cls = data.VehicleClass("luxury") ?? data.VehicleClass("suv") ?? data.VehicleClass("car");
+                if (cls != null)
+                {
+                    var v = VehicleBodies.Build(cls, transform, new System.Random(43), out _);
+                    v.transform.position = pos;
+                    encounterProps.Add(v);
+                }
+            }
+
+            var beacon = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            beacon.name = "Encounter beacon";
+            Destroy(beacon.GetComponent<Collider>());
+            beacon.transform.SetParent(transform, false);
+            beacon.transform.position = pos + Vector3.up * 2.8f;
+            beacon.transform.localScale = new Vector3(0.45f, 0.45f, 0.45f);
+            beacon.GetComponent<MeshRenderer>().sharedMaterial = Mat("#ffc52f");
+            Label(beacon.transform, ActiveEncounter.title.ToUpper());
+            encounterProps.Add(beacon);
+            Notify?.Invoke("Street", $"{ActiveEncounter.title} spotted nearby — lend a hand for ₦{ActiveEncounter.reward:N0}.");
+        }
+
+        public void ClearEncounter()
+        {
+            ActiveEncounter = null;
+            foreach (var p in encounterProps) if (p != null) Destroy(p);
+            encounterProps.Clear();
         }
 
         public void StartFlood()

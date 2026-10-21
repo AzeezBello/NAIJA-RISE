@@ -34,6 +34,91 @@ namespace Rise
         };
 
         [System.NonSerialized] public HubRun ActiveRun;   // side task in progress (uses the task fields with taskMission = -1)
+        [System.NonSerialized] public string ActiveChainId = "";
+
+        public class StoryChain
+        {
+            public string Id, Title, Who, District;
+            public HubRun[] Steps;
+        }
+
+        public static readonly StoryChain[] StoryChains =
+        {
+            new StoryChain
+            {
+                Id = "surulere_chain", Title = "Heart of the Mainland", Who = "egbon", District = "Surulere",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Carry generator coils to Ladipo Garage", "ladipo", "phone_parts", 30, 24000, "Generator Coils", "business"),
+                    R("Chapter 2 · Rush storm relief supplies to the Surulere clinic", "clinic", "school_supplies", 25, 34000, "Storm Relief Kit", "public"),
+                    R("Chapter 3 · Deliver Night Watch radios to Area C Police Station", "police", "phone_parts", 30, 50000, "Night Watch Radios", "public"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "yaba_chain", Title = "Silicon Lagoon", Who = "yaba_connector", District = "Yaba · Alagomeji",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Deliver fibre spools to Yaba College of Technology", "yabatech", "laptop_parts", 30, 26000, "Fibre Spools", "business"),
+                    R("Chapter 2 · Run a hardware prototype to Computer Village", "ikeja-tech", "laptop_parts", 35, 38000, "Hardware Prototype", "business"),
+                    R("Chapter 3 · Courier the Series-A pitch deck to Victoria Island", "civic", "documents", 40, 60000, "Series-A Deck", "business"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "island_chain", Title = "Lagoon Gold", Who = "ikoyi_merchant", District = "Ikoyi · Lekki",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Take a diplomatic pouch to Five Cowrie Creek Jetty", "falomo-jetty", "documents", 25, 28000, "Diplomatic Pouch", "social"),
+                    R("Chapter 2 · Deliver a luxury hamper to Banana Island Mansion", "banana-mansion", "market_basket", 30, 42000, "Luxury Hamper", "social"),
+                    R("Chapter 3 · Rush the charter manifest to Dangote Refinery", "dangote-refinery", "dock_manifest", 50, 75000, "Refinery Manifest", "business"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "makoko_chain", Title = "People of the Water", Who = "makoko_fisher", District = "Makoko · Lagoon",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Deliver kiln-smoked fish to Oyingbo Rail Terminal", "oyingbo-rail", "smoked_fish", 25, 22000, "Smoked Catch", "business"),
+                    R("Chapter 2 · Bring spare outboard parts to Makoko Canoe Landing", "makoko-canoe-landing", "outboard_parts", 20, 32000, "Outboard Spares", "public"),
+                    R("Chapter 3 · Deliver the clinic cold box to Yaba Market", "yaba", "coldbox", 30, 48000, "Clinic Cold Box", "public"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "ikeja_chain", Title = "Kalakuta Rhythm", Who = "shrine_host", District = "Ikeja · Alausa",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Carry brass horns to Kalakuta Republic", "kalakuta-republic", "archive_box", 30, 26000, "Brass Horns", "social"),
+                    R("Chapter 2 · Deliver master reels to Ikeja City Centre", "ikeja-city", "event_cables", 30, 38000, "Master Reels", "social"),
+                    R("Chapter 3 · Rush headliner soundcheck gear to Murtala Muhammed Airport", "ikeja-airport", "event_cables", 40, 58000, "Soundcheck Gear", "social"),
+                }
+            },
+        };
+
+        public static StoryChain ChainForContact(string contactId)
+        {
+            foreach (var ch in StoryChains) if (ch.Who == contactId) return ch;
+            return null;
+        }
+
+        public static StoryChain ChainById(string chainId)
+        {
+            foreach (var ch in StoryChains) if (ch.Id == chainId) return ch;
+            return null;
+        }
+
+        public bool StartChainStep(string chainId)
+        {
+            if (HasTask) return false;
+            var chain = ChainById(chainId);
+            if (chain == null) return false;
+            int step = State.ChainStep(chain.Id);
+            if (step >= chain.Steps.Length) return false;
+            ActiveChainId = chain.Id;
+            StartRun(null, chain.Steps[step]);
+            return true;
+        }
 
         // Hard-coded hubs, plus any contact whose data carries runs (the Surulere street people, src/data/characters.js).
         bool IsHub(ContactSystem.Contact c) => Hubs.ContainsKey(c.data.id) || (c.data.runs != null && c.data.runs.Length > 0);
@@ -53,7 +138,29 @@ namespace Rise
             var hub = HubFor(c);
             bool dataHub = !Hubs.ContainsKey(c.data.id);
             var menu = new Menu { Title = c.data.name, Subtitle = dataHub ? $"{hub.name} · {State.RelTier(c.data.id)}" : hub.name, Line = dataHub ? hub.intro : $"{hub.intro ?? $"Welcome to {hub.name}."} Choose a local run. Deliveries pay when you reach the destination before the deadline." };
-            if (!HasTask) foreach (var run in hub.runs) { var r = run; menu.Options.Add(new MenuOption { Label = $"{run.Text} · ₦{run.Reward:N0} · {run.Minutes:0} min{(run.Heat > 0 ? " · risky" : "")}", Enabled = Data.TryPlace(run.Dest, out _), Action = () => StartRun(c, r) }); }
+            if (!HasTask)
+            {
+                var chain = ChainForContact(c.data.id);
+                if (chain != null)
+                {
+                    int step = State.ChainStep(chain.Id);
+                    if (step < chain.Steps.Length)
+                    {
+                        var cr = chain.Steps[step];
+                        menu.Options.Add(new MenuOption
+                        {
+                            Label = $"Story Chain ({chain.Title} {step + 1}/{chain.Steps.Length}) — {cr.Text} · ₦{cr.Reward:N0}",
+                            Enabled = Data.TryPlace(cr.Dest, out _),
+                            Action = () => StartChainStep(chain.Id),
+                        });
+                    }
+                    else
+                    {
+                        menu.Options.Add(new MenuOption { Label = $"Story Chain ({chain.Title}) — Complete ✓", Enabled = false });
+                    }
+                }
+                foreach (var run in hub.runs) { var r = run; menu.Options.Add(new MenuOption { Label = $"{run.Text} · ₦{run.Reward:N0} · {run.Minutes:0} min{(run.Heat > 0 ? " · risky" : "")}", Enabled = Data.TryPlace(run.Dest, out _), Action = () => StartRun(c, r) }); }
+            }
             else menu.Options.Add(new MenuOption { Label = "Finish your current mission first", Enabled = false });
             foreach (var j in Data.JobsAt(c.data.at)) { var job = j; bool ok = State.CanTake(j); menu.Options.Add(new MenuOption { Label = ok ? $"Work shift — {j.title} · ₦{State.JobPay(j):N0} · {j.dur}h" : $"{j.title} (needs {j.skill} {j.min})", Enabled = ok, Action = () => StartShift(job) }); }
             if (c.data.id == "berger_dispatch" && Data.states != null && Data.states.Length > 0)
@@ -91,6 +198,7 @@ namespace Rise
 
         public void StartRun(ContactSystem.Contact c, HubRun run)
         {
+            if (c != null) ActiveChainId = "";
             var st = State.S;
             ActiveRun = run;
             st.taskType = "timed"; st.taskDest = run.Dest; st.taskItem = run.Item; st.taskObj = run.Text; st.taskMission = -1; st.taskDeadline = Clock.Clock + run.Minutes / 60f;
@@ -103,11 +211,32 @@ namespace Rise
         void FinishRun(bool ok)
         {
             var run = ActiveRun; ActiveRun = null;
+            string chainId = ActiveChainId; ActiveChainId = "";
             if (run == null) return;
             if (ok)
             {
                 State.Earn(run.Reward); State.AddRep(run.Rep, 3); State.AddXp(15); State.Toast($"{run.Label} delivered · +₦{run.Reward:N0}");
                 if (run.Heat > 0) State.AddHeat(run.Heat, run.Label);
+                if (!string.IsNullOrEmpty(chainId))
+                {
+                    var chain = ChainById(chainId);
+                    int next = State.AdvanceChain(chainId);
+                    State.AddXp(25);
+                    if (chain != null)
+                    {
+                        if (next >= chain.Steps.Length)
+                        {
+                            State.Earn(25000);
+                            State.AddRep(run.Rep, 8);
+                            State.Toast($"{chain.Title} story chain complete! +₦25,000 bonus");
+                            State.Message(chain.Who, $"You finished the whole {chain.Title} story in {chain.District}! +₦25,000 bonus for standing by us.");
+                        }
+                        else
+                        {
+                            State.Message(chain.Who, $"Chapter {next}/{chain.Steps.Length} of {chain.Title} done. Come see me when you are ready for Chapter {next + 1}.");
+                        }
+                    }
+                }
             }
             else State.Toast($"{run.Label} not delivered in time");
         }

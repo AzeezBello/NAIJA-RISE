@@ -460,14 +460,53 @@ namespace Rise.EditorTools
                         mate.Send("race", JsonUtility.ToJson(new Session.RaceMsg { from = "mate-0001", name = "Dayo", kind = "finish", time = Time.time + 5f }));
                         s.ForceCrewUpdate(0.1f);
                         Check(!s.CoopRace && s.CoopWins == 1 && s.State.S.cash >= cash + boot.Data.raceWager, $"co-op race settled: you led, purse split ₦{boot.Data.raceWager:N0} each (cash ₦{s.State.S.cash:N0})");
+
+                        // Co-op Getaway & Co-op Convoy over the crew channel
+                        mate.Send("coop_op", JsonUtility.ToJson(new Session.CoopOpMsg { from = "mate-0001", name = "Dayo", op = "getaway", kind = "invite" }));
+                        s.ForceCrewUpdate(0.1f);
+                        s.AcceptCoopGetaway();
+                        Check(s.CoopGetaway && s.State.S.heat >= 4, "co-op getaway accepted and Heat-4 escape started");
+                        s.CoopGetawayClear = 8.1f;
+                        mate.Send("coop_op", JsonUtility.ToJson(new Session.CoopOpMsg { from = "mate-0001", name = "Dayo", op = "getaway", kind = "finish", time = Time.time }));
+                        s.ForceCrewUpdate(0.2f);
+                        Check(!s.CoopGetaway && s.CoopGetawayWins == 1 && s.State.S.heat == 0, "co-op getaway settled: Heat cleared and purse + treasury bonus paid");
+
+                        mate.Send("coop_op", JsonUtility.ToJson(new Session.CoopOpMsg { from = "mate-0001", name = "Dayo", op = "convoy", kind = "invite" }));
+                        s.ForceCrewUpdate(0.1f);
+                        s.AcceptCoopConvoy();
+                        Check(s.CoopConvoy && s.ActiveConvoyTarget.HasValue, "co-op convoy accepted and route checkpoints active");
+                        for (int ci = 0; ci < 3; ci++)
+                        {
+                            var ct = s.ActiveConvoyTarget.Value;
+                            s.Vehicle.Place(new Vector3(ct.x, s.Vehicle.transform.position.y, ct.z), s.Vehicle.transform.rotation);
+                            s.ForceCrewUpdate(0.1f);
+                        }
+                        mate.Send("coop_op", JsonUtility.ToJson(new Session.CoopOpMsg { from = "mate-0001", name = "Dayo", op = "convoy", kind = "finish", time = Time.time }));
+                        s.ForceCrewUpdate(0.1f);
+                        Check(!s.CoopConvoy && s.CoopConvoyWins == 1, "co-op convoy settled across all 3 checkpoints");
+
                         s.Exit(); mate.Leave();
+
+                        // Dynamic street encounter
+                        s.Events.StartEncounter(0, s.Player.transform.position + new Vector3(2f, 0f, 2f));
+                        Check(s.Events.ActiveEncounter != null && s.NearEncounter(s.Player.transform.position) && s.ResolveEncounter() && s.Events.ActiveEncounter == null, "dynamic street encounter spawned and resolved");
+
+                        // Neighbourhood story chain
+                        Check(s.StartChainStep("surulere_chain") && s.HasTask && s.ActiveChainId == "surulere_chain", "Surulere neighbourhood story chain chapter 1 started");
+                        s.FinishTask(true);
+                        Check(s.State.ChainStep("surulere_chain") == 1, "Surulere neighbourhood story chain chapter 1 completed and saved");
+
+                        // Live economy overrides (CloudEconomy.ApplyJson)
+                        int applied = Net.CloudEconomy.ApplyJson(boot.Data, "{\"constants\":{\"priceWater\":150,\"raceWager\":25000},\"job_payouts\":{\"rider\":9500},\"mission_rewards\":{\"cold_chain\":45000}}");
+                        Check(applied >= 4 && boot.Data.meta.priceWater == 150 && boot.Data.raceWager == 25000 && Story.Missions.Reward("cold_chain") == 45000, "CloudEconomy applies live Supabase constants, job payouts, and mission rewards without rebuild");
+
                         stage = 21; stageT = 0f; return;
                     }
                 case 21:  // a few more frames with everything running, then save
                     if (stageT < 1f) return;
                     s.AutoSave();
                     var again = new GameState(boot.Data);
-                    Check(again.Load() && again.S.home == s.State.S.home && again.S.biz.Count == 2 && again.S.vehicles.Count == 3 && again.S.mission == 8 && again.S.courses.Count == 1 && again.S.collegeGraduated && again.S.footballWins >= 3 && again.S.familyDone.Contains("school_levy") && again.S.lookOutfit == 3 && again.S.pet && again.S.let.Count == 1 && again.S.biz[0].staff.Count == 1 && again.S.vehicles.Exists(v => v.insured) && again.S.crewTag == "IPB" && again.S.crewTreasury == 6000, "save keeps home, business, vehicles, story, certificates, diploma, football, family, look, pet, tenants, staff and insurance");
+                    Check(again.Load() && again.S.home == s.State.S.home && again.S.biz.Count == 2 && again.S.vehicles.Count == 3 && again.S.mission == 8 && again.S.courses.Count == 1 && again.S.collegeGraduated && again.S.footballWins >= 3 && again.S.familyDone.Contains("school_levy") && again.S.lookOutfit == 3 && again.S.pet && again.S.let.Count == 1 && again.S.biz[0].staff.Count == 1 && again.S.vehicles.Exists(v => v.insured) && again.S.crewTag == "IPB" && again.S.crewTreasury == 41000 && again.ChainStep("surulere_chain") == 1, "save keeps home, business, vehicles, story, certificates, diploma, football, family, look, pet, tenants, staff, insurance, crew treasury and story chains");
                     Finish(); return;
             }
         }

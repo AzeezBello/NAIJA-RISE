@@ -59,7 +59,11 @@ namespace Rise
         public bool rivalTold;
         // Crew (PLAN Phase 5)
         public string crewId = "", crewName = "", crewTag = "", crewCode = "", crewHq = ""; public int crewTreasury;
+        // Neighbourhood story chains (PLAN Alpha 1.1)
+        public List<ChainSave> chains = new List<ChainSave>();
     }
+
+    [Serializable] public class ChainSave { public string id; public int step; }
 
     [Serializable] public class FamilyRel { public string id; public float score = 50f, food = 100f, companionship = 100f, education = 100f; public int lastVisitDay; }
     [Serializable] public class ContactRel { public string id; public float trust = 20f, respect = 15f; public int talkDay = -1; }
@@ -101,7 +105,7 @@ namespace Rise
                 S = JsonUtility.FromJson<SaveData>(File.ReadAllText(path));
                 S.skills ??= new SkillSet(); S.rep ??= new RepSet(); S.items ??= new List<string>(); S.vehicles ??= new List<OwnedVehicle>();
                 S.path ??= ""; S.arc ??= ""; S.taskType ??= ""; S.taskDest ??= ""; S.taskItem ??= ""; S.taskObj ??= ""; S.courses ??= new List<string>();
-                S.familyRel ??= new List<FamilyRel>(); S.familyDone ??= new List<string>(); S.familyRequest ??= ""; S.contactRel ??= new List<ContactRel>(); S.let ??= new List<string>(); S.upgrades ??= new List<PropertyUpgrades>(); S.crewId ??= ""; S.crewName ??= ""; S.crewTag ??= ""; S.crewCode ??= ""; S.crewHq ??= ""; S.waypointId ??= "";
+                S.familyRel ??= new List<FamilyRel>(); S.familyDone ??= new List<string>(); S.familyRequest ??= ""; S.contactRel ??= new List<ContactRel>(); S.let ??= new List<string>(); S.upgrades ??= new List<PropertyUpgrades>(); S.crewId ??= ""; S.crewName ??= ""; S.crewTag ??= ""; S.crewCode ??= ""; S.crewHq ??= ""; S.waypointId ??= ""; S.chains ??= new List<ChainSave>();
                 foreach (var b in S.biz) { b.staff ??= new List<string>(); b.shifts ??= new List<string>(); while (b.shifts.Count < b.staff.Count) b.shifts.Add("all-day"); }
                 return S != null;
             }
@@ -152,6 +156,8 @@ namespace Rise
         public bool Has(string item) => S.items.Contains(item);
         public void AddItem(string item) { if (!string.IsNullOrEmpty(item) && !S.items.Contains(item)) S.items.Add(item); }
         public void RemoveItem(string item) => S.items.Remove(item);
+        public int ChainStep(string id) { if (S.chains != null) foreach (var c in S.chains) if (c.id == id) return c.step; return 0; }
+        public int AdvanceChain(string id) { S.chains ??= new List<ChainSave>(); foreach (var c in S.chains) if (c.id == id) return ++c.step; S.chains.Add(new ChainSave { id = id, step = 1 }); return 1; }
         public int BizPrice(BusinessData b) => S.kioskDeal && b.id == "kiosk" ? Mathf.RoundToInt(b.price * 0.6f) : b.price;
 
         public void AddHeat(int n, string why)

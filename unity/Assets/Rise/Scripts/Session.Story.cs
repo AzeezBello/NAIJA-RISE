@@ -40,8 +40,8 @@ namespace Rise
             RefreshNav();
         }
 
-        public string ObjectiveTitle => HasTask && State.S.taskMission < 0 ? "Side mission" : HasTask ? Missions.All[Mathf.Clamp(State.S.taskMission, 0, Missions.All.Count - 1)].Title : !string.IsNullOrEmpty(State.S.waypointId) && ResolveWaypoint(State.S.waypointId, out _).HasValue ? "GPS Waypoint" : MissionAvailable ? CurrentMission.Title : State.S.done ? "Lagos is yours" : "Free roam";
-        public string ObjectiveText => Racing ? RaceStatus : HasTask ? State.S.taskObj : !string.IsNullOrEmpty(State.S.waypointId) && ResolveWaypoint(State.S.waypointId, out var wpName).HasValue ? $"GPS to {wpName}" : State.S.storyPaused ? "Story paused — talk to " + Data.ContactName(CurrentMission.Who) + " to resume" : MissionAvailable ? CurrentMission.Objective(this) : State.S.done ? "Build your empire: jobs, property, business." : "";
+        public string ObjectiveTitle => CoopGetaway ? "Crew Co-op Getaway" : CoopConvoy ? "Crew Co-op Convoy" : HasTask && !string.IsNullOrEmpty(ActiveChainId) ? (ChainById(ActiveChainId)?.Title ?? "Neighbourhood Story") : HasTask && State.S.taskMission < 0 ? "Side mission" : HasTask ? Missions.All[Mathf.Clamp(State.S.taskMission, 0, Missions.All.Count - 1)].Title : !string.IsNullOrEmpty(State.S.waypointId) && ResolveWaypoint(State.S.waypointId, out _).HasValue ? "GPS Waypoint" : MissionAvailable ? CurrentMission.Title : State.S.done ? "Lagos is yours" : "Free roam";
+        public string ObjectiveText => Racing ? RaceStatus : CoopGetaway ? $"Lose Heat-4 police patrols with {CoopPartnerName} — {Mathf.Max(0f, 8f - CoopGetawayClear):0} s clear needed" : CoopConvoy ? $"Escort convoy checkpoint {Mathf.Min(CoopConvoyIndex + 1, 3)}/3 with {CoopPartnerName}" : HasTask ? State.S.taskObj : !string.IsNullOrEmpty(State.S.waypointId) && ResolveWaypoint(State.S.waypointId, out var wpName).HasValue ? $"GPS to {wpName}" : State.S.storyPaused ? "Story paused — talk to " + Data.ContactName(CurrentMission.Who) + " to resume" : MissionAvailable ? CurrentMission.Objective(this) : State.S.done ? "Build your empire: jobs, property, business." : "";
 
         // Where the GPS points: the task destination, custom waypoint, or the mission contact.
         public Vector3? ObjectivePosition
@@ -50,6 +50,8 @@ namespace Rise
             {
                 var st = State.S;
                 if (Racing) return ActiveRace.Cps[ActiveRace.I];
+                if (CoopConvoy && ActiveConvoyTarget.HasValue) return ActiveConvoyTarget;
+                if (CoopGetaway) return null;
                 if (HasTask)
                 {
                     if (st.taskType == "steal" && !st.taskTaken && markedVehicle != null) return markedVehicle.transform.position;

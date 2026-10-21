@@ -21,7 +21,7 @@ namespace Rise
         [System.NonSerialized] public JobData Working; [System.NonSerialized] public float WorkT, WorkDuration;   // shift in progress (real seconds)
         [System.NonSerialized] public readonly System.Collections.Generic.List<VehicleController> Parked = new System.Collections.Generic.List<VehicleController>();
 
-        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Vendor, Gate, Home, Business, BusStop, Deliver, Place, Hustler, GroundItem }
+        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Vendor, Gate, Home, Business, BusStop, Deliver, Place, Hustler, GroundItem, Encounter }
         Target target; ContactSystem.Contact targetContact; VehicleController targetVehicle; TrafficSystem.Vehicle targetTraffic; Vector3 targetKiosk;
         PropertyData targetProperty; BusinessData targetBusiness; BusStopData targetStop; StreetLife.GroundItem targetItem;
         float saveT, heatT = 45f;
@@ -167,6 +167,7 @@ namespace Rise
             else if (NearKiosk(pos, out targetKiosk)) { target = Target.Kiosk; Prompt = "POS KIOSK · PURE WATER, SUYA"; }
             else if (NearVendor(pos, out targetVendor)) { target = Target.Vendor; Prompt = "ROADSIDE VENDOR · PURE WATER, GALA, SUYA"; }
             else if (Street != null && (targetHustler = Street.NearestNightlife(pos, 3.5f)) != null) { target = Target.Hustler; Prompt = $"TALK TO {targetHustler.Value.name.ToUpper()}"; }
+            else if (NearEncounter(pos)) { target = Target.Encounter; Prompt = Events.ActiveEncounter.prompt; }
 
             if (GameInput.CycleWeaponPressed) { CycleWeapon(); return; }
             if (GameInput.PickupPressed) { if (targetItem != null) PickupGroundItem(targetItem); else TryPickupOrCycleItem(); return; }
@@ -188,7 +189,25 @@ namespace Rise
                 case Target.Kiosk: OpenKioskMenu(); break;
                 case Target.Vendor: OpenVendorMenu(); break;
                 case Target.Hustler: if (targetHustler.HasValue) OpenHustlerMenu(targetHustler.Value); break;
+                case Target.Encounter: ResolveEncounter(); break;
             }
+        }
+
+        public bool NearEncounter(Vector3 pos) => Events != null && Events.ActiveEncounter != null && Vector2.Distance(new Vector2(pos.x, pos.z), new Vector2(Events.ActiveEncounter.pos.x, Events.ActiveEncounter.pos.z)) < 11f;
+
+        public bool ResolveEncounter()
+        {
+            if (Events == null || Events.ActiveEncounter == null) return false;
+            var enc = Events.ActiveEncounter;
+            State.Earn(enc.reward);
+            State.AddRep(enc.rep, enc.repAmount);
+            State.AddXp(enc.xp);
+            if (enc.kind == "breakdown") { State.S.stamina = Mathf.Max(5f, State.S.stamina - 8f); State.GainSkill("fitness", 2f); }
+            else if (enc.kind == "dispute") State.GainSkill("charisma", 2f);
+            else State.GainSkill("business", 2f);
+            State.Toast($"{enc.title} resolved · +₦{enc.reward:N0} · +{enc.repAmount} {enc.rep} rep");
+            Events.ClearEncounter();
+            return true;
         }
 
         // Commercial vehicles (danfo, keke, okada, fuel tanker, etc.) require a fight weapon to hijack,
