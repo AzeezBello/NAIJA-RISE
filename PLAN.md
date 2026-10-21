@@ -59,12 +59,12 @@ Ready Player Me and Khronos CesiumMan rigs with 11 customisation slots and proce
 ### Milestone 5 — Smartphone, Audio, Accounts & Multiplayer
 Smartphone with 12 apps including `Map · GPS` (searchable across all landmarks, bus stops, properties, and contacts with live Dijkstra GPS routing). Procedural synthesised audio (`SoundSystem.cs`) for engine hum, rain, NEPA generator drone, crash horn, and cash chime. Quality governor (`QualityGovernor.cs`) with GPU auto-detect, automatic level step-down, and four-step dynamic resolution. Supabase Auth accounts, cloud save sync, district Realtime multiplayer rooms, crews (shared treasury, HQ, GPS pins), and co-op street racing.
 
+### Milestone 6 — Live Supabase, Co-op Getaway & Convoy, Neighbourhood Story Chains & Admin Economy Editor
+Live production Supabase deployment (`supabase/schema.sql`, `unity/Assets/Rise/Resources/cloud.json`, `web/.env`, `scripts/verify-supabase.mjs`) with Email Auth, Realtime, Crew RPCs, and live `game-config/economy.json` + `economy_config` syncing (`CloudEconomy.cs`). Extended crew co-op with multi-player **Co-op Getaway** (Heat-4 coordinated escape) and **Co-op Convoy** (3-checkpoint armoured logistics run from Iponri → Costain → Apapa Wharf), interactive **Dynamic Street Encounters** (`Events.cs` — broken-down danfo, roadside dispute, stranded executive), 5 multi-chapter **Neighbourhood Story Chains** (Surulere, Yaba, Ikoyi/Lekki, Makoko, Ikeja), and live **Admin Dashboard Editing** at `/admin` (`web/app/admin/`) to update job payouts, mission rewards, and economy constants without a client rebuild.
+
 ---
 
-## 3. Next Steps — Alpha 1.1 & Console Readiness
+## 3. Next Steps — Alpha 1.2 & Console Readiness
 
-1. **Live Supabase Deployment** — provision the production Supabase project, apply `supabase/schema.sql`, enable Realtime and email auth, and configure `unity/Assets/Rise/Resources/cloud.json` and `web/.env`.
-2. **Co-op Getaway & Dynamic Encounters** — extend crew co-op from street racing to multi-player getaway and convoy missions; add neighbourhood story chains.
-3. **Admin Dashboard Editing** — allow `/admin` in `web/` to edit job payouts, mission rewards, and economy constants in Supabase without a client rebuild.
-4. **Recorded Audio & Custom Blender Rig** — layer recorded Lagos street ambience and Owambe music behind the Sound toggle, and expand character animations with dedicated jump, turn, and vehicle enter/exit clips.
-5. **Native Console & Mobile Builds** — expand Input System action maps (`Resources/Input/Rise.inputactions`) and platform build targets (macOS, Windows, WebGL, iOS/Android, PlayStation, Xbox, Nintendo Switch).
+1. **Recorded Audio & Custom Blender Rig** — layer recorded Lagos street ambience and Owambe music behind the Sound toggle, and expand character animations with dedicated jump, turn, and vehicle enter/exit clips.
+2. **Native Console & Mobile Builds** — expand Input System action maps (`Resources/Input/Rise.inputactions`) and platform build targets (macOS, Windows, WebGL, iOS/Android, PlayStation, Xbox, Nintendo Switch).

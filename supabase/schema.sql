@@ -138,3 +138,23 @@ create or replace view public.admin_overview as
 
 -- The admin view is for the service role only.
 revoke all on public.admin_overview from public, anon, authenticated;
+
+-- ---- Live Economy & Mission Rewards Config (PLAN Phase 6: Admin Dashboard Editing) ----
+-- Read by Unity and Web clients on boot via anon/authenticated SELECT; written exclusively by /admin via service_role.
+create table if not exists public.economy_config (
+  id text primary key default 'default',
+  constants jsonb not null default '{}'::jsonb,
+  job_payouts jsonb not null default '{}'::jsonb,
+  mission_rewards jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.economy_config enable row level security;
+
+drop policy if exists "economy_config: public read" on public.economy_config;
+create policy "economy_config: public read" on public.economy_config for select using (true);
+
+insert into public.economy_config (id, constants, job_payouts, mission_rewards)
+values ('default', '{}'::jsonb, '{}'::jsonb, '{}'::jsonb)
+on conflict (id) do nothing;
+

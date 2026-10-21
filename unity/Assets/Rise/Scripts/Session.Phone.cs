@@ -199,13 +199,22 @@ namespace Rise
                 return;
             }
             var hq = string.IsNullOrEmpty(st.crewHq) ? null : Data.Property(st.crewHq);
-            string body = $"Code {st.crewCode} · treasury ₦{st.crewTreasury:N0} · HQ {(hq != null ? hq.name : "none")}\nPins shared: {Pins.Count} · co-op wins {CoopWins}{(CoopInvitePending ? $"\n{CoopPartnerName} invites you to a co-op race" : "")}{(CoopRace ? "\nCo-op race in progress" : "")}";
+            string body = $"Code {st.crewCode} · treasury ₦{st.crewTreasury:N0} · HQ {(hq != null ? hq.name : "none")}\n" +
+                          $"Pins shared: {Pins.Count} · co-op wins {CoopWins} (getaways {CoopGetawayWins}, convoys {CoopConvoyWins})" +
+                          $"{(CoopInvitePending ? $"\n{CoopPartnerName} invites you to a co-op race" : "")}" +
+                          $"{(CoopOpInviteKind == "getaway" ? $"\n{CoopPartnerName} invites you to a Co-op Getaway" : "")}" +
+                          $"{(CoopOpInviteKind == "convoy" ? $"\n{CoopPartnerName} invites you to a Co-op Convoy" : "")}" +
+                          $"{(CoopRace ? "\nCo-op race in progress" : "")}" +
+                          $"{(CoopGetaway ? $"\nCo-op Getaway active · {Mathf.Max(0f, 8f - CoopGetawayClear):0}s clear needed" : "")}" +
+                          $"{(CoopConvoy ? $"\nCo-op Convoy active · checkpoint {CoopConvoyIndex + 1}/3" : "")}";
             Page($"{st.crewName} [{st.crewTag}]", "Your crew", body,
                 new MenuOption { Label = "Deposit ₦10,000 to the treasury", Enabled = st.cash + st.bank >= 10000, Action = () => { CrewDeposit(10000); AppCrew(); } },
                 new MenuOption { Label = "Withdraw ₦10,000", Enabled = st.crewTreasury >= 10000, Action = () => { CrewWithdraw(10000); AppCrew(); } },
                 new MenuOption { Label = hq != null ? $"HQ: {hq.name}" : "Make my home the HQ", Enabled = hq == null && State.Home != null && State.Owns(State.Home), Action = () => { SetCrewHq(State.Home); AppCrew(); } },
                 new MenuOption { Label = "Pin my position for the crew", Action = () => { SharePin(Data.RegionAt(Focus.position)?.name ?? "here"); AppCrew(); } },
                 new MenuOption { Label = CoopInvitePending ? $"Accept {CoopPartnerName}'s co-op race" : "Invite the crew to a co-op race", Action = () => { if (CoopInvitePending) AcceptCoopRace(); else InviteCoopRace(); } },
+                new MenuOption { Label = CoopOpInviteKind == "getaway" ? $"Accept {CoopPartnerName}'s Co-op Getaway" : "Invite the crew to a Co-op Getaway", Action = () => { if (CoopOpInviteKind == "getaway") AcceptCoopGetaway(); else InviteCoopGetaway(); } },
+                new MenuOption { Label = CoopOpInviteKind == "convoy" ? $"Accept {CoopPartnerName}'s Co-op Convoy" : "Invite the crew to a Co-op Convoy", Action = () => { if (CoopOpInviteKind == "convoy") AcceptCoopConvoy(); else InviteCoopConvoy(); } },
                 new MenuOption { Label = "Leave the crew", Action = () => { LeaveCrew(); AppCrew(); } });
         }
 
