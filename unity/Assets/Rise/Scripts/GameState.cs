@@ -32,6 +32,8 @@ namespace Rise
         public int mission; public string path = "", arc = ""; public bool chase, kioskDeal, done, storyPaused;
         public List<string> items = new List<string>();
         public string equippedWeapon = "";
+        public int ammo = 36;
+        public float armor;
         public RepSet rep = new RepSet();
         // Live task (one at a time): type is "" when none.
         public string taskType = "", taskDest = "", taskItem = "", taskObj = ""; public float taskDeadline, taskMaxKmh, taskClear; public int taskMission; public bool taskTaken;

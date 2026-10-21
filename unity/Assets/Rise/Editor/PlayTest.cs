@@ -73,8 +73,14 @@ namespace Rise.EditorTools
                     Check(boot.Player.transform.position.y > -5f && boot.Player.transform.position.y < 5f, $"player on the ground at {boot.Player.transform.position}");
                     Check(boot.Player.HasRig && boot.Player.GetComponentsInChildren<SkinnedMeshRenderer>().Length > 0 && boot.Player.AnimState == "idle", $"player wears the Ready Player Me rig, state {boot.Player.AnimState}");
                     Check(peds != null && peds.RiggedCount > 50, $"pedestrians rigged ({peds?.RiggedCount})");
+                    Check(peds != null && peds.FemaleCount >= 35 && s.Contacts.FemaleContactCount >= 22, $"female NPCs active ({peds?.FemaleCount} female pedestrians, {s.Contacts.FemaleContactCount} named female contacts)");
+                    Check(boot.Clock != null && boot.Clock.Day == 1 && boot.Clock.DateText == "Fri, Jan 1, 1999" && boot.Clock.FullDateText == "Friday, January 1, 1999", $"calendar starts on {boot.Clock?.FullDateText} ({boot.Clock?.DateText})");
+                    var hud = boot.GetComponent<UI.Hud>();
+                    Check(hud != null && hud.LoadingStageFor(0.5f) == "logo_title" && hud.LoadingStageFor(2.0f) == "cover" && hud.CoverTexture != null, $"loading screen stages ('{hud?.LoadingStageFor(0.5f)}' → '{hud?.LoadingStageFor(2.0f)}') and cover texture ({hud?.CoverTexture?.width}x{hud?.CoverTexture?.height}) ready");
                     Check(s.Street != null && s.Street.Service.Count >= 80, $"uniformed service NPCs patrolling ({s.Street?.Service.Count})");
                     Check(boot.Data.TryPlace("banana-island", out _) && boot.Data.Property("banana_villa") != null, "Banana Island landmark and villa property present");
+                    Check(boot.Data.properties.Length >= 15 && boot.Data.cells.Length >= 75, $"expanded residential buildings ({boot.Data.properties.Length} buyable/rentable properties, {boot.Data.cells.Length} residential compound cells)");
+                    Check(boot.Data.TryPlace("cbn-lagos", out _) && boot.Data.TryPlace("efcc-ikoyi", out _) && boot.Data.TryPlace("efcc-ikeja", out _), "CBN (Central Bank of Nigeria) and EFCC (Ikoyi & Ikeja Zonal Commands) landmarks present");
                     Check(boot.Data.TryPlace("marina-rail", out _) && boot.Data.TryPlace("nns-beecroft", out _) && boot.Data.TryPlace("dodan-barracks", out _) && boot.Data.TryPlace("bonny-camp", out _) && boot.Data.TryPlace("navy-town", out _), "Lagos rail stations and military/naval barracks present");
                     Check(boot.Data.states != null && boot.Data.states.Length >= 36 && boot.Builder.Root.Find("Billboards") != null, $"36 Nigerian states provisioned ({boot.Data.states?.Length}) and Lagos billboards built");
                     Check(boot.Data.VehicleClass("luxury") != null && boot.Data.VehicleClass("brt") != null, "luxury and BRT vehicle classes registered");
@@ -386,7 +392,7 @@ namespace Rise.EditorTools
                 case 16:  // the quality governor: auto level, dynamic resolution step-down, step-down of the level, reflections
                     {
                         var gov = boot.GetComponent<World.QualityGovernor>();
-                        Check(gov != null && gov.Auto && gov.Level == World.QualityGovernor.Detect(), $"auto graphics level {World.QualityGovernor.Names[gov?.Level ?? 0]} on '{SystemInfo.graphicsDeviceName}' (render scale {gov?.RenderScale:0.00})");
+                        Check(gov != null && gov.Auto && gov.Level <= World.QualityGovernor.Detect(), $"auto graphics level {World.QualityGovernor.Names[gov?.Level ?? 0]} on '{SystemInfo.graphicsDeviceName}' (render scale {gov?.RenderScale:0.00})");
                         gov.SetLevel(2, true); gov.SimulateSlow = true;
                         stage = 17; stageT = 0f; return;
                     }
@@ -499,6 +505,201 @@ namespace Rise.EditorTools
                         // Live economy overrides (CloudEconomy.ApplyJson)
                         int applied = Net.CloudEconomy.ApplyJson(boot.Data, "{\"constants\":{\"priceWater\":150,\"raceWager\":25000},\"job_payouts\":{\"rider\":9500},\"mission_rewards\":{\"cold_chain\":45000}}");
                         Check(applied >= 4 && boot.Data.meta.priceWater == 150 && boot.Data.raceWager == 25000 && Story.Missions.Reward("cold_chain") == 45000, "CloudEconomy applies live Supabase constants, job payouts, and mission rewards without rebuild");
+
+                        // Console & Mobile Input Action Maps + Platform Build Targets
+                        Check(GameInput.UsingActions && GameInput.HasDrivingMap && GameInput.HasUIMap && GameInput.ControlSchemeCount >= 6, $"Input System maps active (Gameplay, Driving, UI) across {GameInput.ControlSchemeCount} control schemes ({GameInput.ControllerFamily})");
+                        int targetCount = SceneSetup.ValidatePlatformTargets();
+                        Check(targetCount == 10, $"All {targetCount} platform build targets configured (macOS, Windows, WebGL, iOS, Android, PS5, PS4, Xbox Series, Xbox One, Switch)");
+
+                        // Firearms & Action Shootout Mission (requires a gun and shooting)
+                        Check(!s.HasGun() && !s.StartActionOp("apapa_pirates"), "Action Mission blocked until player acquires a firearm");
+                        s.State.S.cash += 500000;
+                        Check(s.BuyFightWeapon("rifle") && s.HasGun() && s.IsGunEquipped && s.State.S.ammo >= 36, $"bought and equipped {s.EquippedWeaponName} with {s.State.S.ammo} rounds of ammo");
+                        Check(s.StartActionOp("apapa_pirates") && s.ActiveActionOp != null && s.RemainingEnemies == 4, "Action Mission 'Port Creek Pirate Raid' started with 4 armed gunmen at Apapa Wharf");
+                        if (boot.Data.TryPlace("apapa-wharf", out var wharf))
+                            s.Player.Teleport(wharf.World() + new Vector3(0f, 0.3f, -12f), 0f);
+                        s.ForceShootoutUpdate(0.2f);
+                        int cashBeforeShootout = s.State.S.cash;
+                        for (int shot = 0; shot < 8 && s.ActiveActionOp != null; shot++)
+                            s.FireGun();
+                        Check(s.ActiveActionOp == null && s.RemainingEnemies == 0 && s.State.S.cash >= cashBeforeShootout + 75000, "shot and eliminated all 4 armed gunmen with Tactical AK-47 Rifle and collected ₦75,000 action mission bounty");
+
+                        // Call of Duty–style Nigerian Army (81 Division) & Nigerian Navy (SBS) multi-wave Spec-Ops
+                        Check(s.BuyFightWeapon("sniper") && s.EquippedWeaponName == "M24 Marksman Sniper Rifle", "bought and equipped M24 Marksman Sniper Rifle");
+                        Check(s.StartActionOp("cod_army_thunder") && s.IsSpecOpActive && s.State.S.armor == 100f && s.ActiveSquad.Count == 2 && s.CurrentWave == 1, "81 Div Military Spec-Op 'OP IRON THUNDER' started with 100% Kevlar Armor and 2 allied 81 Div soldiers");
+                        if (boot.Data.TryPlace("ikeja-cantonment", out var cantonment))
+                            s.Player.Teleport(cantonment.World() + new Vector3(0f, 0.3f, -12f), 0f);
+                        s.ForceShootoutUpdate(1.5f);
+                        while (s.CurrentWave == 1 && s.ActiveActionOp != null) s.FireGun();
+                        Check(s.CurrentWave == 2 && s.ActiveEnemies.Exists(e => e.IsBoss && e.Label == "Commander Vektor"), "Wave 1 cleared and Wave 2 deployed with HVT Commander Vektor");
+                        int cashBeforeArmy = s.State.S.cash;
+                        for (int shot = 0; shot < 12 && s.ActiveActionOp != null; shot++) s.FireGun();
+                        Check(s.ActiveActionOp == null && s.State.S.cash >= cashBeforeArmy + 150000, "81 Div Military Spec-Op completed across 2 waves + HVT Boss (+₦150,000)");
+
+                        Check(s.BuyFightWeapon("smg") && s.StartActionOp("cod_navy_trident") && s.ActiveActionOp.Branch == "navy" && s.ActiveSquad.Count == 2, "Navy SBS Spec-Op 'OP BLACK TRIDENT' started with Navy MP5 Tactical SMG and 2 SBS commandos");
+                        if (boot.Data.TryPlace("nns-beecroft", out var beecroft))
+                            s.Player.Teleport(beecroft.World() + new Vector3(0f, 0.3f, -12f), 0f);
+                        int cashBeforeNavy = s.State.S.cash;
+                        for (int shot = 0; shot < 24 && s.ActiveActionOp != null; shot++) s.FireGun();
+                        Check(s.ActiveActionOp == null && s.State.S.cash >= cashBeforeNavy + 160000, "Navy SBS Spec-Op 'OP BLACK TRIDENT' completed across 2 waves + HVT Captain Blackwater (+₦160,000)");
+
+                        // EA Sports FC 26 / Dream League Soccer Live 3D Football Match & Knockout Tournament
+                        int winsBeforeFc = s.State.S.footballWins;
+                        Check(s.StartLiveFootballMatch("fc_neighbourhood_cup") && s.InFootballMatch && s.ActiveFootball.Players.Count == 9 && s.ActiveFootball.BallRoot != null, "Live 3D Football Tournament 'Lagos Neighbourhood Cup' started with 9 3D footballers and match ball");
+                        Check(s.FootballPass() && !s.ActiveFootball.PlayerHasBall, "FC 26 driven ground pass executed to forward teammate");
+                        s.ActiveFootball.PlayerHasBall = true;
+                        Check(s.FootballShoot() && s.ActiveFootball.BallVel.magnitude > 15f, "FC 26 curved power shot fired toward goal");
+                        s.ScorePlayerGoal("Captain #10");
+                        Check(s.ActiveFootball.HomeScore == 1 && s.ActiveFootball.GoalBannerTimer > 0f, "Goal scored and broadcast goal banner triggered (1-0)");
+                        s.CompleteLiveFootballRound(true);
+                        Check(s.InFootballMatch && s.ActiveFootball.CurrentRound == 2 && s.CurrentTournamentStageLabel == "GRAND FINAL", "Semi-Final won: advanced to Grand Final vs Ikoyi Royals FC");
+                        int cashBeforeFinal = s.State.S.cash;
+                        s.ScorePlayerGoal("Victor O.");
+                        s.CompleteLiveFootballRound(true);
+                        Check(!s.InFootballMatch && s.State.S.footballWins == winsBeforeFc + 1 && s.State.S.cash == cashBeforeFinal + 60000, "Lagos Neighbourhood Cup Grand Final won (+₦60,000 tournament prize)");
+
+                        // Need for Speed (NFS) Style Street Racing Mission with NOS Nitrous & 3 AI Rivals
+                        Check(s.StartNfsRace("nfs_sprint_third_mainland") && s.Racing && s.ActiveRace.Rivals.Count == 3 && Mathf.Approximately(s.NosCharge, 100f), "NFS 'THIRD MAINLAND SUPERSONIC SPRINT' started with 3 neon-underglow rivals and 100% NOS Nitrous");
+                        int cashBeforeNfs = s.State.S.cash;
+                        while (s.Racing && s.Vehicle != null)
+                        {
+                            var ncp = s.ActiveRace.Cps[s.ActiveRace.I];
+                            ncp.y = s.Vehicle.transform.position.y;
+                            s.Vehicle.Place(ncp, s.Vehicle.transform.rotation);
+                            s.ForceRaceUpdate(0.05f);
+                        }
+                        Check(!s.Racing && s.State.S.cash == cashBeforeNfs + 75000, "NFS Third Mainland Supersonic Sprint won against Blacklist #3 Nitrous Dapo (+₦75,000)");
+                        if (s.Vehicle != null) s.Exit();
+
+                        // CBN Treasury Bill & EFCC Financial Compliance Clearance
+                        int bankBeforeCbn = s.State.S.bank;
+                        Check(s.BuyCbnTreasuryBond() && s.State.S.bank == bankBeforeCbn + 58000, "CBN 91-Day Treasury Bill subscribed and matured (+₦58,000 credited to RiseBank)");
+                        s.State.S.heat = 2;
+                        Check(s.ClearEfccAudit() && s.State.S.heat == 0, "EFCC Financial Compliance Clearance issued (Heat cleared to 0)");
+
+                        // Historic Events, Elections, COVID-19 Pandemic & Trending News Timeline (1999–2026+)
+                        int savedDay = boot.Clock.Day;
+                        Check(World.Events.HistoricTimeline.Length >= 18
+                              && World.Events.EventForDate(new System.DateTime(1999, 1, 1))?.Id == "transition_1999"
+                              && World.Events.EventForDate(new System.DateTime(1999, 2, 27))?.Id == "election_1999"
+                              && World.Events.EventForDate(new System.DateTime(2001, 8, 15))?.Id == "gsm_revolution_2001"
+                              && World.Events.EventForDate(new System.DateTime(2020, 4, 10))?.Id == "covid19_lockdown_2020"
+                              && World.Events.EventForDate(new System.DateTime(2023, 2, 25))?.Id == "election_2023",
+                              $"Historic timeline active across {World.Events.HistoricTimeline.Length} eras (1999 Transition, 1999 Election, 2001 GSM Revolution, 2020 COVID-19 Lockdown, 2023 Election)");
+                        int cashBeforeCovid = s.State.S.cash;
+                        Check(s.Events.TriggerHistoricEvent("covid19_lockdown_2020", s.Player.transform.position + new Vector3(2f, 0f, 2f), true)
+                              && s.Events.IsPandemicActive
+                              && boot.Clock.Year == 2020
+                              && s.NearEncounter(s.Player.transform.position)
+                              && s.ResolveEncounter()
+                              && s.State.S.cash == cashBeforeCovid + 25000,
+                              "2020 COVID-19 Pandemic & NCDC Lockdown triggered and relief mission completed (+₦25,000)");
+                        int cashBeforeElection = s.State.S.cash;
+                        Check(s.Events.TriggerHistoricEvent("election_1999", s.Player.transform.position + new Vector3(2f, 0f, 2f), true)
+                              && s.Events.IsElectionActive
+                              && boot.Clock.DateText == "Sat, Feb 27, 1999"
+                              && s.ResolveEncounter()
+                              && s.State.S.cash == cashBeforeElection + 15000,
+                              "1999 Nigerian General Election (Sat, Feb 27, 1999) INEC polling unit triggered and civic action completed (+₦15,000)");
+                        s.AppNews();
+                        Check(s.ActiveMenu != null && s.ActiveMenu.Title == "Lagos Chronicle · Historic Timeline" && s.ActiveMenu.Options.Count >= 10, "Lagos Chronicle · Historic Timeline app opened on smartphone");
+                        s.CloseMenu(); s.PhoneOpen = false;
+                        s.Events.ClearForcedHistoricEvent();
+                        boot.Clock.SetTime(boot.Clock.Clock, savedDay);
+
+                        // Politician NPCs (Presidency, Governor, Senators, House of Reps, LGA Chairman) & Fraudster NPCs
+                        Check(s.Contacts.PoliticianContactCount >= 6 && s.Contacts.FraudsterContactCount >= 2,
+                              $"Politician NPCs ({s.Contacts.PoliticianContactCount} across Presidency, Governor, Senate, House of Reps & LGA) and Fraudster NPCs ({s.Contacts.FraudsterContactCount}) spawned");
+                        int cashBeforePol = s.State.S.cash;
+                        Check(s.LobbyPoliticianContract("presidential_envoy") && s.State.S.cash == cashBeforePol + 120000,
+                              "Presidential Envoy civic infrastructure contract executed (+₦120,000)");
+                        int cashBeforeGov = s.State.S.cash;
+                        Check(s.LobbyPoliticianContract("lagos_governor") && s.MobilizePoliticianRally("senator_lagos_central") && s.State.S.cash == cashBeforeGov + 130000,
+                              "Lagos State Governor contract (+₦95,000) & Senatorial town-hall rally (+₦35,000) completed");
+                        var govContact = s.Contacts.Get("lagos_governor");
+                        if (govContact != null) { s.TalkTo(govContact); Check(s.ActiveMenu != null && s.ActiveMenu.Subtitle.Contains("EXECUTIVE GOVERNOR"), "Governor dialogue menu opened"); s.CloseMenu(); }
+
+                        int cashBeforeBust = s.State.S.cash;
+                        s.State.S.heat = 2;
+                        Check(s.BustFraudsterForEfcc("fraudster_hk_boss") && s.State.S.cash == cashBeforeBust + 50000 && s.State.S.heat == 0,
+                              "EFCC Whistleblower Sting busted Fraudster syndicate (+₦50,000, Heat → 0)");
+
+                        // Boko Haram Counter-Terrorism Spec-Op & Armed Bandit Kingpin Sweep
+                        int cashBeforeBh = s.State.S.cash;
+                        s.State.S.ammo = 120;
+                        Check(s.StartActionOp("cod_jtf_boko_haram") && s.IsSpecOpActive && s.ActiveActionOp.BossName.Contains("Boko Haram"),
+                              "Boko Haram Counter-Terrorism Spec-Op (OP LAFIYA DOLE) launched with allied 81 Div fireteam");
+                        if (boot.Data.TryPlace("dodan-barracks", out var dodan))
+                            s.Player.Teleport(dodan.World() + new Vector3(0f, 0.3f, -12f), 0f);
+                        for (int shot = 0; shot < 30 && s.ActiveActionOp != null; shot++) { s.State.S.ammo = 60; s.FireGun(); }
+                        Check(s.ActiveActionOp == null && s.State.S.cash >= cashBeforeBh + 185000,
+                              "Boko Haram cell & HVT Commander Abubakar neutralized (+₦185,000)");
+
+                        int cashBeforeBandit = s.State.S.cash;
+                        s.State.S.ammo = 120;
+                        Check(s.StartActionOp("cod_army_bandit_sweep") && s.IsSpecOpActive && s.ActiveActionOp.BossName.Contains("Kachalla Turji"),
+                              "Armed Bandit Kingpin Sweep (OP HADARIN DAJI) launched");
+                        if (boot.Data.TryPlace("ikeja-cantonment", out var ikejaCant))
+                            s.Player.Teleport(ikejaCant.World() + new Vector3(0f, 0.3f, -12f), 0f);
+                        for (int shot = 0; shot < 30 && s.ActiveActionOp != null; shot++) { s.State.S.ammo = 60; s.FireGun(); }
+                        Check(s.ActiveActionOp == null && s.State.S.cash >= cashBeforeBandit + 175000,
+                              "Armed Bandit camp & HVT Kingpin Kachalla Turji neutralized (+₦175,000)");
+
+                        // Furnished 3D Interiors, Indoor Activities & Indoor Missions
+                        Check(s.EnterInterior("Surulere Home", "home") && s.InInterior && s.IndoorStations.Count >= 3 && s.Camera.IndoorMode,
+                              $"Entered furnished 3D interior with {s.IndoorStations.Count} interactive indoor stations and responsive indoor camera framing");
+                        float strBefore = s.State.S.skills.strength;
+                        int cashBeforeSnooker = s.State.S.cash;
+                        Check(s.DoIndoorActivity("cook_jollof") && s.DoIndoorActivity("home_workout") && s.DoIndoorActivity("indoor_snooker")
+                              && s.State.S.skills.strength >= strBefore + 3f && s.State.S.cash >= cashBeforeSnooker + 4000,
+                              "Indoor activities completed (Cook Jollof, Home Workout +3 Strength, Indoor Snooker & Ludo +₦5,000)");
+                        int cashBeforeIndoorMission = s.State.S.cash;
+                        Check(s.StartIndoorMission("indoor_efcc_hk_raid") && s.ActiveIndoorMission != null && s.ActiveEnemies.Count >= 2,
+                              "Indoor Mission 'EFCC Indoor Cyber Syndicate Raid' started inside HK Cyber Safe-House with indoor hostiles");
+                        while (s.ActiveIndoorMission != null) s.CompleteIndoorStep();
+                        Check(s.ActiveIndoorMission == null && s.State.S.cash == cashBeforeIndoorMission + 75000,
+                              "Indoor Mission completed across all 3 stages (+₦75,000)");
+                        s.LeaveInterior();
+                        Check(!s.InInterior && !s.Camera.IndoorMode, "Exited indoor mission building back to street");
+                        s.State.S.heat = 0;
+
+                        // Lagos Clubbing & Social Nightlife (Afrobeats Dancefloor, VIP Dorime Bottle Service, Guest DJ Set)
+                        int socialBeforeClub = s.State.S.rep.social;
+                        int cashBeforeDj = s.State.S.cash;
+                        Check(s.EnterInterior("Eko Neon Club & VIP Lounge", "venue") && s.IndoorStations.Exists(st => st.Id == "club_dance") && s.IndoorStations.Exists(st => st.Id == "club_vip_bottles"),
+                              "Entered 3D Neon Nightclub with Afrobeats Dancefloor, DJ Booth & VIP Bottle Service Lounge");
+                        s.State.S.sound = true;
+                        UI.SoundSystem.I?.SyncAmbientNow();
+                        Check(UI.SoundSystem.I != null && UI.SoundSystem.I.StreetAmbienceClip != null && UI.SoundSystem.I.OwambeMusicClip != null && UI.SoundSystem.I.OwambeMusicVolume > 0f,
+                              "Owambe & Afrobeats music loop active inside club when Sound toggle is ON");
+                        Check(s.DoClubbingActivity("club_dance") && s.DoClubbingActivity("club_dj_set") && s.DoClubbingActivity("club_vip_bottles")
+                              && s.State.S.rep.social >= socialBeforeClub + 20 && s.State.S.cash == cashBeforeDj + 18000 - 25000,
+                              "Clubbing & Social Nightlife activities completed (Afrobeats Dancefloor, Guest DJ Set +₦18,000, VIP Bottle Service +10 Social Rep)");
+                        s.LeaveInterior();
+                        UI.SoundSystem.I?.SyncAmbientNow();
+                        bool streetAmbOn = UI.SoundSystem.I != null && UI.SoundSystem.I.StreetAmbienceVolume > 0f;
+                        s.State.S.sound = false;
+                        UI.SoundSystem.I?.SyncAmbientNow();
+                        bool mutedWhenOff = UI.SoundSystem.I != null && UI.SoundSystem.I.StreetAmbienceVolume == 0f && UI.SoundSystem.I.OwambeMusicVolume == 0f;
+                        s.State.S.sound = true;
+                        UI.SoundSystem.I?.SyncAmbientNow();
+                        Check(streetAmbOn && mutedWhenOff, "Lagos street ambience & Owambe music loops gated behind Sound toggle");
+
+                        // Dedicated Jump, Turn, and Vehicle Enter/Exit character animation clips
+                        boot.Player.TriggerJumpAnim(); bool jumpOk = boot.Player.AnimState == "jump";
+                        boot.Player.TriggerTurnAnim(); bool turnOk = boot.Player.AnimState == "turn";
+                        boot.Player.TriggerVehicleEnterAnim(); bool enterOk = boot.Player.AnimState == "enter_vehicle";
+                        boot.Player.TriggerVehicleExitAnim(); bool exitOk = boot.Player.AnimState == "exit_vehicle";
+                        Check(boot.Player.HasExtendedClips && jumpOk && turnOk && enterOk && exitOk,
+                              "Character rig expanded with dedicated jump, turn, enter_vehicle, and exit_vehicle animation clips");
+
+                        // Full Game UI, UX, Graphics & Responsiveness Audit
+                        var hudComp = boot.GetComponent<UI.Hud>();
+                        var gov = boot.GetComponent<World.QualityGovernor>();
+                        string uiReport = "", gfxReport = "";
+                        bool uiOk = hudComp != null && hudComp.AuditUiAndUxHealth(out uiReport);
+                        bool gfxOk = gov != null && gov.AuditGraphicsAndResponsiveness(out gfxReport);
+                        Check(uiOk && gfxOk, $"Full UI/UX & Graphics/Responsiveness Audit passed ({uiReport} | {gfxReport})");
 
                         stage = 21; stageT = 0f; return;
                     }

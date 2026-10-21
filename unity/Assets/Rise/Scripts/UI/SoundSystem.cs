@@ -9,9 +9,13 @@ namespace Rise.UI
         public static SoundSystem I { get; private set; }
 
         Session session;
-        AudioSource engineSrc, rainSrc, genSrc, sfxSrc;
-        AudioClip chimeClip, hornClip;
+        AudioSource engineSrc, rainSrc, genSrc, streetAmbienceSrc, owambeMusicSrc, sfxSrc;
+        AudioClip chimeClip, hornClip, gunshotClip, whistleClip, kickClip, crowdClip, streetAmbienceClip, owambeMusicClip;
         public bool Initialized { get; private set; }
+        public AudioClip StreetAmbienceClip => streetAmbienceClip;
+        public AudioClip OwambeMusicClip => owambeMusicClip;
+        public float StreetAmbienceVolume => streetAmbienceSrc != null ? streetAmbienceSrc.volume : 0f;
+        public float OwambeMusicVolume => owambeMusicSrc != null ? owambeMusicSrc.volume : 0f;
 
         const int SampleRate = 22050;
 
@@ -25,12 +29,20 @@ namespace Rise.UI
             engineSrc = MakeLoopSource("Engine Audio", MakeEngineClip());
             rainSrc = MakeLoopSource("Rain Audio", MakeRainClip());
             genSrc = MakeLoopSource("Generator Audio", MakeGeneratorClip());
+            streetAmbienceClip = MakeStreetAmbienceClip();
+            owambeMusicClip = MakeOwambeMusicClip();
+            streetAmbienceSrc = MakeLoopSource("Lagos Street Ambience", streetAmbienceClip);
+            owambeMusicSrc = MakeLoopSource("Owambe & Afrobeats Music", owambeMusicClip);
             sfxSrc = gameObject.AddComponent<AudioSource>();
             sfxSrc.playOnAwake = false;
             sfxSrc.spatialBlend = 0f;
 
             chimeClip = MakeChimeClip();
             hornClip = MakeHornClip();
+            gunshotClip = MakeGunshotClip();
+            whistleClip = MakeWhistleClip();
+            kickClip = MakeKickClip();
+            crowdClip = MakeCrowdClip();
             Initialized = true;
         }
 
@@ -100,6 +112,68 @@ namespace Rise.UI
             return clip;
         }
 
+        // 4-second looping Lagos street ambience: warm market murmur, traffic rumble, and distant danfo horn calls.
+        static AudioClip MakeStreetAmbienceClip()
+        {
+            int n = SampleRate * 4;
+            var data = new float[n];
+            var rng = new System.Random(1999);
+            float lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = (float)i / SampleRate;
+                float noise = (float)(rng.NextDouble() * 2.0 - 1.0);
+                lp += 0.045f * (noise - lp);
+                float rumble = Mathf.Sin(t * 48f * Mathf.PI * 2f) * 0.18f + Mathf.Sin(t * 96f * Mathf.PI * 2f) * 0.08f;
+                // Distant danfo two-tap horn around t=1.1s and t=1.3s, plus keke beep at t=2.8s
+                float horn = 0f;
+                if ((t > 1.05f && t < 1.20f) || (t > 1.24f && t < 1.42f))
+                    horn = (Mathf.Sin(t * 392f * Mathf.PI * 2f) + 0.6f * Mathf.Sin(t * 493.88f * Mathf.PI * 2f)) * 0.14f;
+                else if (t > 2.75f && t < 2.92f)
+                    horn = Mathf.Sin(t * 587.33f * Mathf.PI * 2f) * 0.11f;
+                data[i] = Mathf.Clamp((lp * 0.48f + rumble + horn) * 0.55f, -1f, 1f);
+            }
+            var clip = AudioClip.Create("LagosStreetAmbience", n, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        // 4-second looping Owambe Jùjú / Afrobeats groove (120 BPM): talking drum pitch bends, shaker clave, and highlife chord groove.
+        static AudioClip MakeOwambeMusicClip()
+        {
+            int n = SampleRate * 4;
+            var data = new float[n];
+            var rng = new System.Random(2026);
+            float[] notes = { 261.63f, 329.63f, 392.00f, 440.00f, 392.00f, 329.63f, 293.66f, 392.00f };
+            for (int i = 0; i < n; i++)
+            {
+                float t = (float)i / SampleRate;
+                float beat = (t * 2f) % 1f;          // 120 BPM quarter-note phase
+                float sixteenth = (t * 8f) % 1f;     // 16th-note shaker/clave phase
+                int step = Mathf.FloorToInt(t * 2f) % notes.Length;
+
+                // Talking drum (Gangan) pitch-bent bass hit
+                float drumFreq = Mathf.Lerp(145f, 82f, beat) + 22f * Mathf.Sin(t * 6f * Mathf.PI);
+                float drumEnv = Mathf.Exp(-beat * 6.5f);
+                float talkingDrum = Mathf.Sin(t * drumFreq * Mathf.PI * 2f) * drumEnv * 0.42f;
+
+                // Shekere / Afrobeats shaker
+                float shakerNoise = (float)(rng.NextDouble() * 2.0 - 1.0);
+                float shakerEnv = (sixteenth < 0.25f) ? Mathf.Exp(-sixteenth * 18f) * 0.18f : 0.02f;
+                float shaker = shakerNoise * shakerEnv;
+
+                // Highlife guitar / keyboard pluck
+                float f = notes[step];
+                float pluckEnv = Mathf.Exp(-((t * 4f) % 1f) * 4.5f);
+                float highlife = (Mathf.Sin(t * f * Mathf.PI * 2f) + 0.5f * Mathf.Sin(t * f * 2f * Mathf.PI * 2f)) * pluckEnv * 0.26f;
+
+                data[i] = Mathf.Clamp((talkingDrum + shaker + highlife) * 0.65f, -1f, 1f);
+            }
+            var clip = AudioClip.Create("OwambeAfrobeatsLoop", n, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
         static AudioClip MakeChimeClip()
         {
             int n = Mathf.RoundToInt(SampleRate * 0.4f);
@@ -132,6 +206,23 @@ namespace Rise.UI
             return clip;
         }
 
+        static AudioClip MakeGunshotClip()
+        {
+            int n = Mathf.RoundToInt(SampleRate * 0.28f);
+            var data = new float[n];
+            var rng = new System.Random(707);
+            for (int i = 0; i < n; i++)
+            {
+                float t = (float)i / SampleRate;
+                float noise = (float)(rng.NextDouble() * 2.0 - 1.0) * Mathf.Exp(-t * 32f);
+                float thump = Mathf.Sin(t * 115f * Mathf.PI * 2f) * Mathf.Exp(-t * 20f);
+                data[i] = Mathf.Clamp((noise * 0.65f + thump * 0.55f) * 0.55f, -1f, 1f);
+            }
+            var clip = AudioClip.Create("GunshotCrack", n, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
         public void PlayCash()
         {
             if (!Initialized || session?.State?.S == null || !session.State.S.sound || sfxSrc == null || chimeClip == null) return;
@@ -142,6 +233,82 @@ namespace Rise.UI
         {
             if (!Initialized || session?.State?.S == null || !session.State.S.sound || sfxSrc == null || hornClip == null) return;
             sfxSrc.PlayOneShot(hornClip, 0.5f);
+        }
+
+        public void PlayGunshot(float volume = 0.6f)
+        {
+            if (!Initialized || session?.State?.S == null || !session.State.S.sound || sfxSrc == null || gunshotClip == null) return;
+            sfxSrc.PlayOneShot(gunshotClip, volume);
+        }
+
+        static AudioClip MakeWhistleClip()
+        {
+            int n = Mathf.RoundToInt(SampleRate * 0.45f);
+            var data = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = (float)i / SampleRate;
+                float trill = 2850f + Mathf.Sin(t * 48f * Mathf.PI * 2f) * 140f;
+                float env = Mathf.Clamp01(t / 0.03f) * Mathf.Exp(-Mathf.Max(0f, t - 0.25f) * 10f);
+                data[i] = Mathf.Sin(t * trill * Mathf.PI * 2f) * env * 0.25f;
+            }
+            var clip = AudioClip.Create("RefWhistle", n, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        static AudioClip MakeKickClip()
+        {
+            int n = Mathf.RoundToInt(SampleRate * 0.16f);
+            var data = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = (float)i / SampleRate;
+                float freq = Mathf.Lerp(155f, 52f, t / 0.16f);
+                float env = Mathf.Exp(-t * 28f);
+                data[i] = Mathf.Sin(t * freq * Mathf.PI * 2f) * env * 0.55f;
+            }
+            var clip = AudioClip.Create("BallKick", n, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        static AudioClip MakeCrowdClip()
+        {
+            int n = Mathf.RoundToInt(SampleRate * 1.1f);
+            var data = new float[n];
+            var rng = new System.Random(303);
+            float prev = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = (float)i / SampleRate;
+                float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+                prev = prev + 0.18f * (white - prev);
+                float horn = Mathf.Sin(t * 440f * Mathf.PI * 2f) * 0.25f + Mathf.Sin(t * 554.37f * Mathf.PI * 2f) * 0.2f;
+                float env = Mathf.Clamp01(t / 0.08f) * Mathf.Exp(-t * 2.2f);
+                data[i] = Mathf.Clamp((prev * 0.7f + horn) * env * 0.45f, -1f, 1f);
+            }
+            var clip = AudioClip.Create("CrowdCheer", n, 1, SampleRate, false);
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public void PlayWhistle()
+        {
+            if (!Initialized || session?.State?.S == null || !session.State.S.sound || sfxSrc == null || whistleClip == null) return;
+            sfxSrc.PlayOneShot(whistleClip, 0.45f);
+        }
+
+        public void PlayKick(float volume = 0.55f)
+        {
+            if (!Initialized || session?.State?.S == null || !session.State.S.sound || sfxSrc == null || kickClip == null) return;
+            sfxSrc.PlayOneShot(kickClip, volume);
+        }
+
+        public void PlayCrowdCheer()
+        {
+            if (!Initialized || session?.State?.S == null || !session.State.S.sound || sfxSrc == null || crowdClip == null) return;
+            sfxSrc.PlayOneShot(crowdClip, 0.55f);
         }
 
         void Update()
@@ -163,6 +330,37 @@ namespace Rise.UI
 
             bool outage = on && session.Events != null && session.Events.Outage > 0f;
             genSrc.volume = Mathf.Lerp(genSrc.volume, outage ? 0.07f * master : 0f, 1f - Mathf.Exp(-2f * dt));
+
+            // Lagos street ambience & Owambe / Afrobeats music behind the Sound toggle
+            bool nearParty = false;
+            if (on && session.Data != null && session.Focus != null)
+            {
+                var pos = session.Focus.position;
+                bool insideParty = session.InInterior && session.IndoorStations.Exists(st => st.Id == "club_dance");
+                var nearOwambe = session.Data.NearestLandmark("owambe", pos, 32f);
+                var nearVenue = session.Data.NearestLandmark("venue", pos, 32f);
+                nearParty = insideParty || nearOwambe != null || nearVenue != null;
+            }
+            float targetStreetVol = on && !session.InInterior ? 0.09f * master : 0f;
+            float targetOwambeVol = on && nearParty ? 0.16f * master : (on && session.OwambeOpen ? 0.05f * master : 0f);
+            streetAmbienceSrc.volume = Mathf.Lerp(streetAmbienceSrc.volume, targetStreetVol, 1f - Mathf.Exp(-4f * dt));
+            owambeMusicSrc.volume = Mathf.Lerp(owambeMusicSrc.volume, targetOwambeVol, 1f - Mathf.Exp(-4f * dt));
+        }
+
+        public void SyncAmbientNow()
+        {
+            if (!Initialized || session == null || session.State?.S == null) return;
+            bool on = session.State.S.sound;
+            float master = on ? 0.5f : 0f;
+            bool nearParty = false;
+            if (on && session.Data != null && session.Focus != null)
+            {
+                var pos = session.Focus.position;
+                bool insideParty = session.InInterior && session.IndoorStations.Exists(st => st.Id == "club_dance");
+                nearParty = insideParty || session.Data.NearestLandmark("owambe", pos, 32f) != null || session.Data.NearestLandmark("venue", pos, 32f) != null;
+            }
+            streetAmbienceSrc.volume = on && !session.InInterior ? 0.09f * master : 0f;
+            owambeMusicSrc.volume = on && (nearParty || session.OwambeOpen) ? (nearParty ? 0.16f * master : 0.05f * master) : 0f;
         }
     }
 }

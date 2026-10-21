@@ -40,6 +40,17 @@ namespace Rise.Story
             ["rival_operation"] = 100000,
             ["coop_getaway"] = 60000,
             ["coop_convoy"] = 90000,
+            ["apapa_pirates"] = 75000,
+            ["ladipo_syndicate"] = 85000,
+            ["abalti_armory"] = 95000,
+            ["iponri_convoy_defense"] = 70000,
+            ["banana_vip_extraction"] = 120000,
+            ["cod_army_thunder"] = 150000,
+            ["cod_army_shield"] = 165000,
+            ["cod_army_citadel"] = 195000,
+            ["cod_navy_trident"] = 160000,
+            ["cod_navy_riptide"] = 175000,
+            ["cod_navy_hurricane"] = 210000,
         };
         static readonly Dictionary<string, int> LiveRewards = new Dictionary<string, int>();
 

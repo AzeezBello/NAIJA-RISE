@@ -16,10 +16,12 @@ namespace Rise
 
         LandmarkData NearPlace(Vector3 pos) =>
             Data.NearestLandmark("gym", pos, 12f) ?? Data.NearestLandmark("restaurant", pos, 12f) ?? Data.NearestLandmark("mall", pos, 18f) ??
-            Data.NearestLandmark("cafe", pos, 12f) ?? Data.NearestLandmark("pitch", pos, 20f) ?? Data.NearestLandmark("school", pos, 12f) ??
+            Data.NearestLandmark("cafe", pos, 12f) ?? Data.NearestLandmark("pitch", pos, 28f) ?? Data.NearestLandmark("school", pos, 12f) ??
             Data.NearestLandmark("bank", pos, 11f) ?? Data.NearestLandmark("venue", pos, 11f) ?? Data.NearestLandmark("owambe", pos, 16f) ??
             Data.NearestLandmark("worship", pos, 12f) ?? Data.NearestLandmark("hotel", pos, 13f) ??
-            (State.S.heat > 0 ? Data.NearestLandmark("police", pos, 13f) : null) ?? Data.NearestLandmark("nepa", pos, 12f);
+            (State.S.heat > 0 ? Data.NearestLandmark("police", pos, 13f) : null) ?? Data.NearestLandmark("nepa", pos, 12f) ??
+            Data.NearestLandmark("army", pos, 18f) ?? Data.NearestLandmark("navy", pos, 18f) ??
+            Data.NearestLandmark("cbn", pos, 18f) ?? Data.NearestLandmark("efcc", pos, 18f);
 
         bool NearVendor(Vector3 pos, out Vector3 vendor)
         {
@@ -44,6 +46,10 @@ namespace Rise
             "hotel" => $"CHECK IN · {p.name.ToUpper()} · ₦{(p.cost > 0 ? p.cost : 15000):N0}",
             "police" => $"SETTLE FINE · ₦{State.S.heat * Data.meta.fineRate:N0}",
             "nepa" => Events != null && Events.Outage > 0f ? "PAY FOR DIESEL · ₦5,000" : "ENTER PHCN OFFICE",
+            "army" => $"ENTER {p.shortName} · MILITARY OPS",
+            "navy" => $"ENTER {p.shortName} · NAVAL OPS",
+            "cbn" => $"ENTER {p.shortName} · CENTRAL BANK TREASURY",
+            "efcc" => $"ENTER {p.shortName} · ANTI-GRAFT COMMAND",
             _ => $"ENTER {p.shortName}"
         };
 
@@ -55,7 +61,7 @@ namespace Rise
                 case "restaurant": OpenFoodMenu(p); break;
                 case "mall": OpenMallMenu(p); break;
                 case "cafe": OpenCafeMenu(p); break;
-                case "pitch": OpenFootballMenu(); break;
+                case "pitch": OpenFootballMenu(p); break;
                 case "school": OpenSchoolMenu(p); break;
                 case "bank": AppBank(); break;
                 case "venue": OpenVenueMenu(p); break;
@@ -64,12 +70,16 @@ namespace Rise
                 case "hotel": OpenHotelMenu(p); break;
                 case "police": OpenPoliceMenu(p); break;
                 case "nepa": OpenNepaMenu(p); break;
+                case "army":
+                case "navy": OpenBarracksMenu(p); break;
+                case "cbn": OpenCbnMenu(p); break;
+                case "efcc": OpenEfccMenu(p); break;
             }
         }
 
         void Hours(float h) => Clock.Advance(h);
 
-        // ---- enterable building interiors ----
+        // ---- enterable building interiors, indoor activities & indoor missions ----
         static readonly Vector3 RoomCenter = new Vector3(0f, 160f, 0f);
         GameObject interiorRoot;
         Vector3 interiorOutdoorPos;
@@ -78,14 +88,81 @@ namespace Rise
         System.Action interiorService;
         public bool InInterior => interiorRoot != null;
 
+        public class IndoorStation
+        {
+            public string Id, Label, Prompt;
+            public Vector3 LocalPos;
+            public System.Action OnInteract;
+        }
+        public readonly System.Collections.Generic.List<IndoorStation> IndoorStations = new System.Collections.Generic.List<IndoorStation>();
+
+        public class IndoorMission
+        {
+            public string Id, Title, BuildingName, BuildingKind, Objective, RepKind, HostileKind;
+            public int Reward, Xp, RepGain, HostileCount, Step, TotalSteps;
+        }
+
+        public IndoorMission ActiveIndoorMission { get; private set; }
+        GameObject indoorMissionProp;
+
+        public static readonly IndoorMission[] IndoorMissions =
+        {
+            new IndoorMission
+            {
+                Id = "indoor_efcc_hk_raid",
+                Title = "EFCC Indoor Cyber Syndicate Raid",
+                BuildingName = "HK Cyber Safe-House",
+                BuildingKind = "cafe",
+                Objective = "Eliminate indoor syndicate guards and seize 3 encrypted 419 server terminals",
+                Reward = 75000, Xp = 45, RepKind = "public", RepGain = 10, HostileCount = 2, HostileKind = "bandit", TotalSteps = 3
+            },
+            new IndoorMission
+            {
+                Id = "indoor_cbn_vault_defense",
+                Title = "CBN Indoor Bullion Vault Lockdown",
+                BuildingName = "CBN Sub-Treasury Vault",
+                BuildingKind = "bank",
+                Objective = "Repel indoor Boko Haram infiltrators and lock down 3 bullion vault consoles",
+                Reward = 95000, Xp = 55, RepKind = "business", RepGain = 12, HostileCount = 3, HostileKind = "boko_haram", TotalSteps = 3
+            },
+            new IndoorMission
+            {
+                Id = "indoor_boxing_title",
+                Title = "Surulere Indoor Boxing Championship",
+                BuildingName = "Surulere Championship Ring",
+                BuildingKind = "gym",
+                Objective = "Defeat indoor contenders and ring the championship bell across 3 rounds",
+                Reward = 60000, Xp = 40, RepKind = "street", RepGain = 10, HostileCount = 2, HostileKind = "bandit", TotalSteps = 3
+            },
+            new IndoorMission
+            {
+                Id = "indoor_politician_summit",
+                Title = "State House Indoor VIP Security Sweep",
+                BuildingName = "State House Situation Room",
+                BuildingKind = "hotel",
+                Objective = "Clear hostile infiltrators and verify 3 diplomatic security checkpoints indoors",
+                Reward = 85000, Xp = 50, RepKind = "public", RepGain = 12, HostileCount = 2, HostileKind = "boko_haram", TotalSteps = 3
+            }
+        };
+
         public bool EnterInterior(string name, string kind, System.Action onUseService = null)
         {
-            if (InInterior || Vehicle != null || Player == null) return false;
-            interiorOutdoorPos = Player.transform.position;
-            interiorOutdoorYaw = Player.transform.eulerAngles.y;
+            if (Vehicle != null) Exit();
+            if (Player == null) return false;
+            if (!InInterior)
+            {
+                interiorOutdoorPos = Player.transform.position;
+                interiorOutdoorYaw = Player.transform.eulerAngles.y;
+            }
+            else
+            {
+                Destroy(interiorRoot);
+                interiorRoot = null;
+            }
             interiorName = name;
             interiorKind = kind;
             interiorService = onUseService;
+            IndoorStations.Clear();
 
             interiorRoot = new GameObject("Interior " + name);
             var lit = ShaderLib.Lit;
@@ -98,6 +175,17 @@ namespace Rise
                 go.GetComponent<MeshRenderer>().sharedMaterial = Mat(c);
                 if (!col) Destroy(go.GetComponent<Collider>());
             }
+            void RoomLabel(string text, Vector3 localPos, Color col)
+            {
+                var lgo = new GameObject("Label " + text);
+                lgo.transform.SetParent(interiorRoot.transform, false);
+                lgo.transform.position = RoomCenter + localPos;
+                var tm = lgo.AddComponent<TextMesh>();
+                tm.text = text; tm.characterSize = 0.11f; tm.fontSize = 36;
+                tm.anchor = TextAnchor.MiddleCenter; tm.alignment = TextAlignment.Center;
+                tm.color = col;
+            }
+
             bool home = kind == "home";
             RoomBox("Floor", new Vector3(0f, -0.1f, 0f), new Vector3(home ? 14f : 18f, 0.2f, home ? 12f : 16f), home ? new Color(0.42f, 0.31f, 0.22f) : new Color(0.55f, 0.53f, 0.49f));
             RoomBox("Ceiling", new Vector3(0f, 4.2f, 0f), new Vector3(home ? 14f : 18f, 0.2f, home ? 12f : 16f), new Color(0.88f, 0.86f, 0.82f));
@@ -107,15 +195,72 @@ namespace Rise
             RoomBox("WestWall", new Vector3(-hw, 2f, 0f), new Vector3(0.3f, 4.2f, hd * 2f), new Color(0.82f, 0.78f, 0.70f));
             RoomBox("EastWall", new Vector3(hw, 2f, 0f), new Vector3(0.3f, 4.2f, hd * 2f), new Color(0.82f, 0.78f, 0.70f));
             RoomBox("Door", new Vector3(0f, 1.1f, hd - 0.2f), new Vector3(1.4f, 2.2f, 0.18f), new Color(0.29f, 0.19f, 0.12f), false);
-            RoomBox(home ? "Bed" : "Counter", new Vector3(0f, 0.55f, -2f), home ? new Vector3(3.2f, 0.8f, 2.2f) : new Vector3(5.6f, 1.1f, 1.4f), home ? new Color(0.75f, 0.28f, 0.24f) : new Color(0.46f, 0.33f, 0.24f));
+            RoomBox(home ? "Bed" : "Counter", new Vector3(0f, 0.55f, -2.4f), home ? new Vector3(3.2f, 0.8f, 2.2f) : new Vector3(5.6f, 1.1f, 1.4f), home ? new Color(0.75f, 0.28f, 0.24f) : new Color(0.46f, 0.33f, 0.24f));
+            RoomLabel(home ? "BED · SLEEP" : name.ToUpperInvariant(), new Vector3(0f, 1.65f, -2.4f), new Color(1f, 0.86f, 0.35f));
+
+            // Left Wing: Context-Sensitive Indoor Activity Station
+            Vector3 leftPos = new Vector3(-hw + 2.2f, 0f, 0.2f);
+            if (home)
+            {
+                RoomBox("KitchenCounter", leftPos + new Vector3(0f, 0.5f, 0f), new Vector3(1.6f, 1.0f, 2.4f), new Color(0.72f, 0.34f, 0.18f));
+                RoomLabel("KITCHEN · COOK JOLLOF", leftPos + new Vector3(0f, 1.55f, 0f), new Color(0.35f, 1f, 0.55f));
+                IndoorStations.Add(new IndoorStation { Id = "cook_jollof", Label = "Kitchen Cooker", Prompt = "COOK JOLLOF & DODO (+45 STAMINA, +15 HEALTH)", LocalPos = leftPos, OnInteract = () => DoIndoorActivity("cook_jollof") });
+            }
+            else if (kind == "gym")
+            {
+                RoomBox("BoxingRing", leftPos + new Vector3(0f, 0.25f, 0f), new Vector3(2.8f, 0.5f, 2.8f), new Color(0.78f, 0.18f, 0.18f));
+                RoomLabel("SPARRING RING", leftPos + new Vector3(0f, 1.55f, 0f), new Color(1f, 0.45f, 0.45f));
+                IndoorStations.Add(new IndoorStation { Id = "indoor_boxing", Label = "Boxing Ring", Prompt = "SPAR IN BOXING RING (+4 STRENGTH, +₦4,000)", LocalPos = leftPos, OnInteract = () => DoIndoorActivity("indoor_boxing") });
+            }
+            else if (kind == "cafe")
+            {
+                RoomBox("ServerRack", leftPos + new Vector3(0f, 0.9f, 0f), new Vector3(1.4f, 1.8f, 1.8f), new Color(0.16f, 0.26f, 0.38f));
+                RoomLabel("SERVER RACK · GIG", leftPos + new Vector3(0f, 2.1f, 0f), new Color(0.45f, 0.85f, 1f));
+                IndoorStations.Add(new IndoorStation { Id = "cafe_server_fix", Label = "Server Terminal", Prompt = "DEBUG SERVER RACK (+₦8,000, +3 BUSINESS)", LocalPos = leftPos, OnInteract = () => DoIndoorActivity("cafe_server_fix") });
+            }
+            else if (kind == "bank" || kind == "police")
+            {
+                RoomBox("AuditTerminal", leftPos + new Vector3(0f, 0.65f, 0f), new Vector3(1.6f, 1.3f, 1.6f), new Color(0.18f, 0.36f, 0.24f));
+                RoomLabel("FORENSIC AUDIT DESK", leftPos + new Vector3(0f, 1.7f, 0f), new Color(0.35f, 1f, 0.55f));
+                IndoorStations.Add(new IndoorStation { Id = "vault_audit", Label = "Audit Desk", Prompt = "AUDIT LEDGER TERMINAL (+₦12,000, +3 PUBLIC REP)", LocalPos = leftPos, OnInteract = () => DoIndoorActivity("vault_audit") });
+            }
+            else if (kind == "venue" || kind == "owambe")
+            {
+                RoomBox("DanceFloor", leftPos + new Vector3(0f, 0.08f, -1.2f), new Vector3(3.0f, 0.16f, 3.0f), new Color(0.65f, 0.12f, 0.55f));
+                RoomBox("DjBooth", leftPos + new Vector3(0f, 0.65f, -2.5f), new Vector3(2.2f, 1.3f, 0.9f), new Color(0.14f, 0.14f, 0.22f));
+                RoomLabel("AFROBEATS DANCEFLOOR & DJ BOOTH", leftPos + new Vector3(0f, 1.85f, -1.2f), new Color(1f, 0.45f, 0.92f));
+                IndoorStations.Add(new IndoorStation { Id = "club_dance", Label = "Afrobeats Dancefloor", Prompt = "DANCE & HYPE DJ SET (+100% STAMINA, +4 SOCIAL REP)", LocalPos = leftPos + new Vector3(0f, 0f, -1.2f), OnInteract = () => DoClubbingActivity("club_dance") });
+
+                RoomBox("VipLounge", leftPos + new Vector3(0f, 0.45f, 2.0f), new Vector3(2.2f, 0.9f, 2.0f), new Color(0.75f, 0.58f, 0.14f));
+                RoomLabel("VIP BOTTLE SERVICE LOUNGE", leftPos + new Vector3(0f, 1.6f, 2.0f), new Color(1f, 0.86f, 0.28f));
+                IndoorStations.Add(new IndoorStation { Id = "club_vip_bottles", Label = "VIP Lounge Table", Prompt = "POP VIP BOTTLES (₦25,000 → +10 SOCIAL, +6 BUSINESS REP)", LocalPos = leftPos + new Vector3(0f, 0f, 2.0f), OnInteract = () => DoClubbingActivity("club_vip_bottles") });
+            }
+            else
+            {
+                RoomBox("SnookerTable", leftPos + new Vector3(0f, 0.45f, 0f), new Vector3(1.8f, 0.9f, 2.6f), new Color(0.12f, 0.48f, 0.24f));
+                RoomLabel("SNOOKER & LUDO TABLE", leftPos + new Vector3(0f, 1.45f, 0f), new Color(0.35f, 1f, 0.55f));
+                IndoorStations.Add(new IndoorStation { Id = "indoor_snooker", Label = "Snooker & Ludo Table", Prompt = "PLAY SNOOKER & LUDO (+₦5,000, +3 SOCIAL REP)", LocalPos = leftPos, OnInteract = () => DoIndoorActivity("indoor_snooker") });
+            }
+
+            // Right Wing: Home Workout + Indoor Missions Board
+            Vector3 rightPos = new Vector3(hw - 2.2f, 0f, 0.2f);
+            if (home)
+            {
+                RoomBox("WorkoutMat", rightPos + new Vector3(0f, 0.15f, -1.2f), new Vector3(1.8f, 0.3f, 1.8f), new Color(0.22f, 0.38f, 0.62f));
+                RoomLabel("HOME WORKOUT", rightPos + new Vector3(0f, 1.25f, -1.2f), new Color(0.45f, 0.85f, 1f));
+                IndoorStations.Add(new IndoorStation { Id = "home_workout", Label = "Workout Bench", Prompt = "HOME WORKOUT (+3 STRENGTH, +2 FITNESS)", LocalPos = rightPos + new Vector3(0f, 0f, -1.2f), OnInteract = () => DoIndoorActivity("home_workout") });
+            }
+            RoomBox("OpsBoard", rightPos + new Vector3(0f, 0.75f, 1.4f), new Vector3(1.5f, 1.5f, 0.9f), new Color(0.25f, 0.22f, 0.16f));
+            RoomLabel("INDOOR MISSIONS & ACTIVITIES", rightPos + new Vector3(0f, 1.8f, 1.4f), new Color(1f, 0.78f, 0.22f));
+            IndoorStations.Add(new IndoorStation { Id = "indoor_ops_board", Label = "Indoor Operations Board", Prompt = "INDOOR ACTIVITIES & MISSIONS MENU", LocalPos = rightPos + new Vector3(0f, 0f, 1.4f), OnInteract = OpenIndoorMenu });
 
             var lightGo = new GameObject("RoomLight"); lightGo.transform.SetParent(interiorRoot.transform, false);
             lightGo.transform.position = RoomCenter + new Vector3(0f, 3.6f, 0f);
-            var l = lightGo.AddComponent<Light>(); l.type = LightType.Point; l.range = 22f; l.intensity = 1.6f; l.color = new Color(1f, 0.94f, 0.82f);
+            var l = lightGo.AddComponent<Light>(); l.type = LightType.Point; l.range = 24f; l.intensity = 1.7f; l.color = new Color(1f, 0.94f, 0.82f);
 
             ActiveMenu = null;
             Player.Teleport(RoomCenter + new Vector3(0f, 0.5f, hd - 2f), 180f);
-            Camera.Yaw = 180f;
+            if (Camera != null) { Camera.SetIndoor(true); Camera.Yaw = 180f; }
             State.Toast($"Inside {name}");
             return true;
         }
@@ -123,27 +268,227 @@ namespace Rise
         public void LeaveInterior()
         {
             if (!InInterior) return;
+            if (ActiveIndoorMission != null)
+            {
+                ActiveIndoorMission = null;
+                ClearShootoutEnemies();
+            }
+            IndoorStations.Clear();
             Destroy(interiorRoot);
             interiorRoot = null;
             Player.Teleport(interiorOutdoorPos, interiorOutdoorYaw);
-            Camera.Yaw = interiorOutdoorYaw;
+            if (Camera != null) { Camera.SetIndoor(false); Camera.Yaw = interiorOutdoorYaw; }
             State.Toast("Back on the street");
+        }
+
+        public bool DoIndoorActivity(string id)
+        {
+            var st = State.S;
+            switch (id)
+            {
+                case "cook_jollof":
+                    if (st.cash + st.bank >= 1000) State.Pay(1000);
+                    st.stamina = Mathf.Min(100f, st.stamina + 45f);
+                    st.health = Mathf.Min(100f, st.health + 15f);
+                    Hours(0.5f);
+                    State.AddXp(8);
+                    State.Toast("Smoky Party Jollof & Dodo cooked · Stamina +45 · Health +15");
+                    return true;
+                case "home_workout":
+                    if (st.stamina < 15f) { State.Toast("Too tired — eat or rest first"); return false; }
+                    st.stamina = Mathf.Max(0f, st.stamina - 15f);
+                    State.GainSkill("strength", 3f);
+                    State.GainSkill("fitness", 2f);
+                    Hours(0.5f);
+                    State.AddXp(8);
+                    State.Toast("Home push-ups & dumbbells done · Strength +3 · Fitness +2");
+                    return true;
+                case "watch_tv":
+                    st.stamina = Mathf.Min(100f, st.stamina + 25f);
+                    State.GainSkill("charisma", 2f);
+                    Hours(0.5f);
+                    State.AddXp(6);
+                    State.Toast("Watched Channels TV & SuperStory · Stamina +25 · Charisma +2");
+                    return true;
+                case "indoor_boxing":
+                    st.stamina = Mathf.Max(10f, st.stamina - 15f);
+                    State.GainSkill("strength", 4f);
+                    State.GainSkill("fitness", 4f);
+                    State.Earn(4000);
+                    State.AddRep("street", 3);
+                    State.AddXp(12);
+                    State.Toast("Won indoor sparring bout · +₦4,000 · Strength +4 · Fitness +4");
+                    return true;
+                case "indoor_snooker":
+                    State.Earn(5000);
+                    State.AddRep("social", 3);
+                    State.GainSkill("charisma", 2f);
+                    Hours(0.5f);
+                    State.AddXp(10);
+                    State.Toast("Cleared the Snooker & Ludo table · +₦5,000 · Social Rep +3");
+                    return true;
+                case "cafe_server_fix":
+                    State.Earn(8000);
+                    State.GainSkill("business", 3f);
+                    State.AddRep("business", 3);
+                    Hours(0.5f);
+                    State.AddXp(14);
+                    State.Toast("Patched Cyber Café server rack · +₦8,000 · Business +3");
+                    return true;
+                case "vault_audit":
+                    State.Earn(12000);
+                    State.AddRep("public", 3);
+                    State.GainSkill("business", 2f);
+                    Hours(0.5f);
+                    State.AddXp(15);
+                    State.Toast("Completed indoor forensic ledger audit · +₦12,000 · Public Rep +3");
+                    return true;
+            }
+            return false;
+        }
+
+        public bool StartIndoorMission(string id)
+        {
+            IndoorMission found = null;
+            foreach (var m in IndoorMissions) if (m.Id == id) { found = m; break; }
+            if (found == null) return false;
+
+            EnterInterior(found.BuildingName, found.BuildingKind, OpenIndoorMenu);
+            ActiveIndoorMission = new IndoorMission
+            {
+                Id = found.Id,
+                Title = found.Title,
+                BuildingName = found.BuildingName,
+                BuildingKind = found.BuildingKind,
+                Objective = found.Objective,
+                Reward = found.Reward,
+                Xp = found.Xp,
+                RepKind = found.RepKind,
+                RepGain = found.RepGain,
+                HostileCount = found.HostileCount,
+                HostileKind = found.HostileKind,
+                Step = 0,
+                TotalSteps = found.TotalSteps
+            };
+
+            if (indoorMissionProp != null) Destroy(indoorMissionProp);
+            indoorMissionProp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            indoorMissionProp.name = "IndoorMissionTerminal";
+            indoorMissionProp.transform.SetParent(interiorRoot.transform, false);
+            indoorMissionProp.transform.position = RoomCenter + new Vector3(0f, 0.7f, 0.4f);
+            indoorMissionProp.transform.localScale = new Vector3(1.1f, 1.4f, 1.1f);
+            var mat = new Material(ShaderLib.Lit) { color = new Color(0.15f, 0.65f, 0.35f) };
+            indoorMissionProp.GetComponent<MeshRenderer>().sharedMaterial = mat;
+
+            ClearShootoutEnemies();
+            for (int i = 0; i < found.HostileCount; i++)
+            {
+                Vector3 hPos = RoomCenter + new Vector3((i % 2 == 0 ? -3.2f : 3.2f), 0.1f, -1.0f - i * 0.8f);
+                string label = found.HostileKind == "boko_haram" ? "Boko Haram Infiltrator" : "Syndicate Enforcer";
+                SpawnIndoorHostile(hPos, found.HostileKind, label, 0f, i == 0, interiorRoot.transform);
+            }
+
+            State.Toast($"INDOOR MISSION: {found.Title} · {found.Objective}");
+            return true;
+        }
+
+        public bool CompleteIndoorStep()
+        {
+            if (ActiveIndoorMission == null) return false;
+            ActiveIndoorMission.Step++;
+            if (ActiveIndoorMission.Step < ActiveIndoorMission.TotalSteps)
+            {
+                State.Toast($"{ActiveIndoorMission.Title}: Step {ActiveIndoorMission.Step}/{ActiveIndoorMission.TotalSteps} secured!");
+                return true;
+            }
+            var done = ActiveIndoorMission;
+            ActiveIndoorMission = null;
+            ClearShootoutEnemies();
+            if (indoorMissionProp != null) Destroy(indoorMissionProp);
+            State.Earn(done.Reward);
+            State.AddXp(done.Xp);
+            if (!string.IsNullOrEmpty(done.RepKind)) State.AddRep(done.RepKind, done.RepGain);
+            State.Toast($"{done.Title} COMPLETE! +₦{done.Reward:N0} · +{done.RepGain} {done.RepKind} rep");
+            return true;
+        }
+
+        public void CheckIndoorMissionProgress()
+        {
+            if (ActiveIndoorMission == null) return;
+            CompleteIndoorStep();
+        }
+
+        public void OpenIndoorMenu()
+        {
+            var m = new Menu
+            {
+                Title = InInterior ? $"{interiorName} · Indoor Operations" : "Indoor Activities & Missions",
+                Subtitle = ActiveIndoorMission != null ? $"Active: {ActiveIndoorMission.Title} ({ActiveIndoorMission.Step}/{ActiveIndoorMission.TotalSteps})" : "Step inside any building to train, cook, play snooker, or launch indoor tactical missions",
+                Line = "Choose an indoor activity for instant skill/vital boosts or deploy into a multi-stage 3D indoor mission."
+            };
+            m.Options.Add(new MenuOption { Label = "Activity: Cook Party Jollof & Dodo (+45 Stamina, +15 Health)", Action = () => DoIndoorActivity("cook_jollof") });
+            m.Options.Add(new MenuOption { Label = "Activity: Home Push-Ups & Dumbbells (+3 Strength, +2 Fitness)", Action = () => DoIndoorActivity("home_workout") });
+            m.Options.Add(new MenuOption { Label = "Activity: Watch Lagos TV Lounge (+25 Stamina, +2 Charisma)", Action = () => DoIndoorActivity("watch_tv") });
+            m.Options.Add(new MenuOption { Label = "Activity: Spar in Indoor Boxing Ring (+₦4,000, +4 Strength)", Action = () => DoIndoorActivity("indoor_boxing") });
+            m.Options.Add(new MenuOption { Label = "Activity: Play Indoor Snooker & Ludo (+₦5,000, +3 Social Rep)", Action = () => DoIndoorActivity("indoor_snooker") });
+            m.Options.Add(new MenuOption { Label = "Activity: Debug Cyber Café Server Rack (+₦8,000, +3 Business)", Action = () => DoIndoorActivity("cafe_server_fix") });
+            m.Options.Add(new MenuOption { Label = "Activity: Forensic Vault Ledger Audit (+₦12,000, +3 Public Rep)", Action = () => DoIndoorActivity("vault_audit") });
+            foreach (var im in IndoorMissions)
+            {
+                var mission = im;
+                m.Options.Add(new MenuOption
+                {
+                    Label = $"[Indoor Mission] {mission.Title} · +₦{mission.Reward:N0}",
+                    Action = () => { PhoneOpen = false; StartIndoorMission(mission.Id); }
+                });
+            }
+            if (InInterior) m.Options.Add(new MenuOption { Label = "Step outside to the street", Action = LeaveInterior });
+            m.Options.Add(new MenuOption { Label = "Close", Action = null });
+            OpenMenu(m);
         }
 
         bool UpdateInteriorOnFoot()
         {
             if (!InInterior) return false;
+            if (GameInput.CycleWeaponPressed) { CycleWeapon(); return true; }
+            if (GameInput.AttackPressed) { PerformStreetAttack(); return true; }
+
             var pos = Player.transform.position;
             float hd = interiorKind == "home" ? 6f : 8f;
             float dDoor = Vector2.Distance(new Vector2(pos.x, pos.z), new Vector2(RoomCenter.x, RoomCenter.z + hd - 0.4f));
-            float dDesk = Vector2.Distance(new Vector2(pos.x, pos.z), new Vector2(RoomCenter.x, RoomCenter.z - 2f));
+            float dDesk = Vector2.Distance(new Vector2(pos.x, pos.z), new Vector2(RoomCenter.x, RoomCenter.z - 2.4f));
             Prompt = null;
-            if (dDoor < 2.8f)
+
+            if (ActiveIndoorMission != null)
+            {
+                float dTerm = Vector2.Distance(new Vector2(pos.x, pos.z), new Vector2(RoomCenter.x, RoomCenter.z + 0.4f));
+                if (dTerm < 3.0f)
+                {
+                    Prompt = $"SECURE OBJECTIVE ({ActiveIndoorMission.Step + 1}/{ActiveIndoorMission.TotalSteps})";
+                    if (Interact()) CompleteIndoorStep();
+                    return true;
+                }
+            }
+
+            IndoorStation nearestSt = null;
+            float bestSt = 2.6f;
+            foreach (var st in IndoorStations)
+            {
+                float d = Vector2.Distance(new Vector2(pos.x, pos.z), new Vector2(RoomCenter.x + st.LocalPos.x, RoomCenter.z + st.LocalPos.z));
+                if (d < bestSt) { bestSt = d; nearestSt = st; }
+            }
+
+            if (dDoor < 2.6f)
             {
                 Prompt = "LEAVE BUILDING";
                 if (Interact()) LeaveInterior();
             }
-            else if (dDesk < 3.4f)
+            else if (nearestSt != null)
+            {
+                Prompt = nearestSt.Prompt;
+                if (Interact()) nearestSt.OnInteract?.Invoke();
+            }
+            else if (dDesk < 3.2f)
             {
                 Prompt = interiorKind == "home" ? "SLEEP TILL MORNING" : $"USE {interiorName.ToUpper()}";
                 if (Interact())
@@ -152,8 +497,154 @@ namespace Rise
                     else interiorService?.Invoke();
                 }
             }
-            else Prompt = interiorName.ToUpper();
+            else Prompt = ActiveIndoorMission != null ? $"{ActiveIndoorMission.Title.ToUpperInvariant()} ({ActiveIndoorMission.Step}/{ActiveIndoorMission.TotalSteps})" : interiorName.ToUpper();
             return true;
+        }
+
+        // ---- Politician NPCs (Presidency, Governor, Senators, House of Reps, LGA Chairman) & Fraudster NPCs ----
+        public bool IsPolitician(World.ContactSystem.Contact c) => c != null && World.ContactSystem.IsPoliticianContact(c.data?.id);
+        public bool IsFraudster(World.ContactSystem.Contact c) => c != null && World.ContactSystem.IsFraudsterContact(c.data?.id);
+
+        public static string PoliticianTierLabel(string id) => id switch
+        {
+            "presidential_envoy" => "FEDERAL PRESIDENCY · DODAN BARRACKS",
+            "lagos_governor" => "EXECUTIVE GOVERNOR · ALAUSA STATE HOUSE",
+            "senator_lagos_central" => "NIGERIAN SENATE · LAGOS CENTRAL",
+            "senator_lagos_west" => "NIGERIAN SENATE · LAGOS WEST",
+            "hon_rep_surulere" => "HOUSE OF REPRESENTATIVES · SURULERE",
+            "lga_chairman_surulere" => "LOCAL GOVERNMENT CHAIRMAN · SURULERE LGA",
+            _ => "GOVERNMENT OFFICIAL"
+        };
+
+        public static int PoliticianGrantAmount(string id) => id switch
+        {
+            "presidential_envoy" => 120000,
+            "lagos_governor" => 95000,
+            "senator_lagos_central" => 75000,
+            "senator_lagos_west" => 75000,
+            "hon_rep_surulere" => 60000,
+            "lga_chairman_surulere" => 45000,
+            _ => 50000
+        };
+
+        public bool LobbyPoliticianContract(string id)
+        {
+            int grant = PoliticianGrantAmount(id);
+            State.Earn(grant);
+            State.AddRep("public", 8);
+            State.AddRep("business", 6);
+            State.GainSkill("charisma", 3f);
+            State.GainSkill("business", 2f);
+            if (State.S.heat > 0) State.S.heat = Mathf.Max(0, State.S.heat - 1);
+            State.AddXp(25);
+            State.Toast($"{PoliticianTierLabel(id)}: Civic Infrastructure Contract executed · +₦{grant:N0} · Public Rep +8");
+            return true;
+        }
+
+        public bool MobilizePoliticianRally(string id)
+        {
+            State.Earn(35000);
+            State.AddRep("public", 6);
+            State.AddRep("social", 5);
+            State.GainSkill("charisma", 4f);
+            State.AddXp(18);
+            State.Toast($"Grassroots Town-Hall & Campaign Rally mobilized · +₦35,000 · Charisma +4");
+            return true;
+        }
+
+        public void OpenPoliticianMenu(World.ContactSystem.Contact c)
+        {
+            string id = c.data.id;
+            int grant = PoliticianGrantAmount(id);
+            var m = new Menu
+            {
+                Title = $"{c.data.name}",
+                Subtitle = $"{PoliticianTierLabel(id)} · {c.data.role}",
+                Line = GreetLine(c)
+            };
+            m.Options.Add(new MenuOption
+            {
+                Label = $"Execute Constituency & Infrastructure Contract · +₦{grant:N0} (+8 Public Rep, −1 Heat)",
+                Action = () => LobbyPoliticianContract(id)
+            });
+            m.Options.Add(new MenuOption
+            {
+                Label = "Mobilize Grassroots Town-Hall & Campaign Rally · +₦35,000 (+6 Public Rep, +4 Charisma)",
+                Action = () => MobilizePoliticianRally(id)
+            });
+            m.Options.Add(new MenuOption
+            {
+                Label = "[Indoor Mission] State House VIP Security Sweep · +₦85,000",
+                Action = () => StartIndoorMission("indoor_politician_summit")
+            });
+            var polHub = HubFor(c);
+            if (polHub.runs != null)
+            {
+                foreach (var r in polHub.runs)
+                {
+                    var run = r;
+                    string destName = Data.TryPlace(run.Dest, out var dp) ? dp.name : run.Dest;
+                    m.Options.Add(new MenuOption
+                    {
+                        Label = $"Official Dispatch: {run.Label} → {destName} · ₦{run.Reward:N0}",
+                        Enabled = !HasTask,
+                        Action = () => StartRun(c, run)
+                    });
+                }
+            }
+            AddRelationshipOptions(m, c);
+            m.Options.Add(new MenuOption { Label = "Take your leave, Excellency", Action = null });
+            OpenMenu(m);
+        }
+
+        public bool BustFraudsterForEfcc(string id)
+        {
+            State.Earn(50000);
+            State.S.heat = 0;
+            State.AddRep("public", 8);
+            State.AddRep("business", 4);
+            State.AddXp(25);
+            State.Toast("EFCC Whistleblower Sting: Fraudster ledger handed to EFCC · +₦50,000 · Heat cleared to 0");
+            return true;
+        }
+
+        public void OpenFraudsterMenu(World.ContactSystem.Contact c)
+        {
+            string id = c.data.id;
+            var m = new Menu
+            {
+                Title = c.data.name,
+                Subtitle = $"UNDERWORLD SYNDICATE · {c.data.role}",
+                Line = GreetLine(c)
+            };
+            m.Options.Add(new MenuOption
+            {
+                Label = "EFCC Sting: Turn Over Syndicate Ledger to EFCC · +₦50,000 Bounty (Heat → 0, +8 Public Rep)",
+                Action = () => BustFraudsterForEfcc(id)
+            });
+            m.Options.Add(new MenuOption
+            {
+                Label = "[Indoor Mission] Raid HK Cyber Safe-House Indoors · +₦75,000",
+                Action = () => StartIndoorMission("indoor_efcc_hk_raid")
+            });
+            var fraudHub = HubFor(c);
+            if (fraudHub.runs != null)
+            {
+                foreach (var r in fraudHub.runs)
+                {
+                    var run = r;
+                    string destName = Data.TryPlace(run.Dest, out var dp) ? dp.name : run.Dest;
+                    m.Options.Add(new MenuOption
+                    {
+                        Label = $"Intercept Courier Run: {run.Label} → {destName} · ₦{run.Reward:N0}",
+                        Enabled = !HasTask,
+                        Action = () => StartRun(c, run)
+                    });
+                }
+            }
+            AddRelationshipOptions(m, c);
+            m.Options.Add(new MenuOption { Label = "Walk away clean — I no dey do 419", Action = () => State.Toast("You kept your hands clean.") });
+            OpenMenu(m);
         }
 
         // ---- gym ----
@@ -282,18 +773,6 @@ namespace Rise
             return State.CompleteCourse(c);
         }
 
-        // ---- street football (Captain Tunde): quick match, neighbourhood tournament, Lagos championship ----
-        void OpenFootballMenu()
-        {
-            var c = Data.football; var st = State.S; int tier = Mathf.Clamp(st.footballTier, 0, Mathf.Max(0, c.tiers.Length - 1));
-            int prize = c.prizes != null && tier < c.prizes.Length ? c.prizes[tier] : 0;
-            var menu = new Menu { Title = "Captain Tunde", Subtitle = "Street football · Teslim Balogun", Line = st.footballWins > 0 ? $"{st.footballWins} win{(st.footballWins > 1 ? "s" : "")}. Next: {c.tiers[tier]}{(prize > 0 ? $" — ₦{prize:N0} prize" : "")}." : $"Five-a-side. ₦{c.wager:N0} wager or just play. You sabi ball?" };
-            menu.Options.Add(new MenuOption { Label = $"{c.tiers[tier]}{(prize > 0 ? "" : $" · ₦{c.wager:N0} wager")}", Action = () => PlayMatch(tier, true) });
-            menu.Options.Add(new MenuOption { Label = "Friendly kickabout (no money)", Action = () => PlayMatch(0, false) });
-            menu.Options.Add(new MenuOption { Label = "Leave", Action = null });
-            OpenMenu(menu);
-        }
-
         // ---- roadside vendor ----
         void OpenVendorMenu()
         {
@@ -307,13 +786,99 @@ namespace Rise
             OpenMenu(m);
         }
 
-        // ---- night venues, owambe, worship, hotel, police, NEPA ----
+        // ---- night venues, clubbing, social nightlife, owambe, worship, hotel, police, NEPA ----
+        public bool DoClubbingActivity(string id)
+        {
+            var st = State.S;
+            switch (id)
+            {
+                case "club_dance":
+                    st.stamina = 100f;
+                    st.health = Mathf.Min(100f, st.health + 10f);
+                    State.AddRep("social", 4);
+                    State.GainSkill("charisma", 2f);
+                    State.GainSkill("fitness", 2f);
+                    Hours(1f);
+                    State.AddXp(12);
+                    State.Toast("Afrobeats dancefloor session! Stamina 100% · Social Rep +4 · Charisma +2");
+                    return true;
+                case "club_vip_bottles":
+                    if (!State.Pay(25000)) { State.Toast("Need ₦25,000 for VIP Dorime Bottle Service"); return false; }
+                    st.stamina = 100f;
+                    st.health = 100f;
+                    State.AddRep("social", 10);
+                    State.AddRep("business", 6);
+                    State.GainSkill("charisma", 4f);
+                    Hours(1.5f);
+                    State.AddXp(25);
+                    State.Message("amaka", "Dorime at the VIP section! The whole Victoria Island and Surulere table saw you tonight.");
+                    State.Toast("VIP Champagne & Dorime Bottle Service! +10 Social Rep · +6 Business Rep · Charisma +4");
+                    return true;
+                case "club_dj_set":
+                    State.Earn(18000);
+                    State.AddRep("social", 6);
+                    State.GainSkill("charisma", 3f);
+                    Hours(1f);
+                    State.AddXp(20);
+                    State.Toast("Hyped the club & spun an Afrobeats guest DJ set · +₦18,000 · Social Rep +6");
+                    return true;
+                case "club_spray_naira":
+                    if (!State.Pay(10000)) { State.Toast("Need ₦10,000 to spray Naira bundles"); return false; }
+                    st.stamina = 100f;
+                    State.AddRep("social", 8);
+                    State.AddRep("public", 4);
+                    State.GainSkill("charisma", 3f);
+                    Hours(1f);
+                    State.AddXp(18);
+                    State.Toast("Sprayed crisp Naira bundles on the dancefloor · +8 Social Rep · +4 Public Rep");
+                    return true;
+                case "social_suya_hangout":
+                    if (!State.Pay(3500)) { State.Toast("Need ₦3,500 for Late-Night Suya & Chapman"); return false; }
+                    st.stamina = Mathf.Min(100f, st.stamina + 50f);
+                    st.health = Mathf.Min(100f, st.health + 20f);
+                    State.AddRep("social", 4);
+                    Hours(0.5f);
+                    State.AddXp(10);
+                    State.Toast("Late-night Suya & Chapman hangout with the crew · +50 Stamina · +4 Social Rep");
+                    return true;
+            }
+            return false;
+        }
+
+        public void OpenNightlifeHubMenu()
+        {
+            var m = new Menu
+            {
+                Title = "Lagos Clubbing & Social Nightlife",
+                Subtitle = $"Social Rep {State.S.rep.social} · Charisma {State.S.skills.charisma:0} · {(VenueOpen ? "Clubs & Lounges OPEN" : "Daytime Socials & VIP Lounges Available")}",
+                Line = "From Surulere night lounges to Victoria Island VIP tables and Saturday Owambe halls — dance, pop bottles, spin an Afrobeats DJ set, or network."
+            };
+            m.Options.Add(new MenuOption { Label = "Hit the Afrobeats Dancefloor (Stamina 100%, +4 Social Rep, +2 Charisma)", Action = () => DoClubbingActivity("club_dance") });
+            m.Options.Add(new MenuOption { Label = "VIP Dorime Bottle Service & Networking · ₦25,000 (+10 Social, +6 Business Rep)", Action = () => DoClubbingActivity("club_vip_bottles") });
+            m.Options.Add(new MenuOption { Label = "Perform Guest DJ & Hypeman Set · +₦18,000 (+6 Social Rep, +3 Charisma)", Action = () => DoClubbingActivity("club_dj_set") });
+            m.Options.Add(new MenuOption { Label = "Spray Crisp Naira at the Party · ₦10,000 (+8 Social, +4 Public Rep)", Action = () => DoClubbingActivity("club_spray_naira") });
+            m.Options.Add(new MenuOption { Label = "Late-Night Suya & Chapman Crew Hangout · ₦3,500 (+50 Stamina, +4 Social Rep)", Action = () => DoClubbingActivity("social_suya_hangout") });
+            if (!InInterior)
+                m.Options.Add(new MenuOption { Label = "Step inside 3D Neon Nightclub & VIP Lounge", Action = () => EnterInterior("Eko Neon Club & VIP Lounge", "venue", OpenNightlifeHubMenu) });
+            m.Options.Add(new MenuOption { Label = "Close", Action = null });
+            OpenMenu(m);
+        }
+
         void OpenVenueMenu(LandmarkData p)
         {
             int cost = p.cost > 0 ? p.cost : 5000;
-            var m = new Menu { Title = p.name, Subtitle = "Nightlife venue", Line = VenueOpen ? "Music dey play, cold drinks dey. Come unwind." : $"{p.name} opens at {Data.meta.venueOpen:0}:00." };
-            m.Options.Add(new MenuOption { Label = $"Night out · ₦{cost:N0} (stamina 100%, +10 health)", Enabled = VenueOpen, Action = () => { if (!State.Pay(cost)) { State.Toast("Not enough money"); return; } State.S.stamina = 100f; State.S.health = Mathf.Min(100f, State.S.health + 10f); State.AddXp(5); State.AddRep("social", 2); State.Toast($"Good vibes at {p.name} · stamina restored"); } });
-            if (!InInterior) m.Options.Add(new MenuOption { Label = $"Step inside {p.name}", Action = () => EnterInterior(p.name, "venue", () => OpenVenueMenu(p)) });
+            var m = new Menu
+            {
+                Title = p.name,
+                Subtitle = $"Nightclub & Social Lounge · Social Rep {State.S.rep.social}",
+                Line = VenueOpen ? "Afrobeats dey bump, cold drinks and VIP bottle service dey! Come unwind and network." : $"{p.name} peak hours start at {Data.meta.venueOpen:0}:00 — VIP lounge and indoor club floor open."
+            };
+            m.Options.Add(new MenuOption { Label = $"Club Entry & Night Out · ₦{cost:N0} (stamina 100%, +10 health, +2 Social Rep)", Enabled = VenueOpen, Action = () => { if (!State.Pay(cost)) { State.Toast("Not enough money"); return; } State.S.stamina = 100f; State.S.health = Mathf.Min(100f, State.S.health + 10f); State.AddXp(5); State.AddRep("social", 2); State.Toast($"Good vibes at {p.name} · stamina restored"); } });
+            m.Options.Add(new MenuOption { Label = "Dance on the Afrobeats Floor (+100% Stamina, +4 Social Rep, +2 Charisma)", Action = () => DoClubbingActivity("club_dance") });
+            m.Options.Add(new MenuOption { Label = "VIP Dorime Bottle Service · ₦25,000 (+10 Social Rep, +6 Business Rep)", Action = () => DoClubbingActivity("club_vip_bottles") });
+            m.Options.Add(new MenuOption { Label = "Host Guest DJ & Hypeman Set · +₦18,000 (+6 Social Rep)", Action = () => DoClubbingActivity("club_dj_set") });
+            m.Options.Add(new MenuOption { Label = "Late-Night Suya & Chapman Hangout · ₦3,500 (+50 Stamina, +4 Social Rep)", Action = () => DoClubbingActivity("social_suya_hangout") });
+            if (!InInterior) m.Options.Add(new MenuOption { Label = $"Step inside {p.name} (3D Dancefloor & VIP Lounge)", Action = () => EnterInterior(p.name, "venue", () => OpenVenueMenu(p)) });
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(m);
         }
@@ -322,8 +887,11 @@ namespace Rise
         {
             int cost = p.cost > 0 ? p.cost : 3000;
             bool ok = OwambeOpen && State.S.partyDay != Clock.Day;
-            var m = new Menu { Title = p.name, Subtitle = "Saturday Owambe", Line = !OwambeOpen ? "Owambe starts at 19:00." : State.S.partyDay == Clock.Day ? "You don spray enough for tonight." : "Live jùjú band, aso-ebi, small chops — spray some naira and network!" };
+            var m = new Menu { Title = p.name, Subtitle = "Saturday Owambe & High-Society Party", Line = !OwambeOpen ? "Main Owambe band starts at 19:00, or step inside the hall for social events." : State.S.partyDay == Clock.Day ? "You don spray enough for tonight." : "Live jùjú band, aso-ebi, small chops — spray some naira and network!" };
             m.Options.Add(new MenuOption { Label = $"Join the owambe & spray · ₦{cost:N0}", Enabled = ok, Action = () => { if (!State.Pay(cost)) { State.Toast("Not enough money to spray"); return; } State.S.partyDay = Clock.Day; State.S.stamina = 100f; State.AddXp(15); State.AddRep("social", 8); State.GainSkill("charisma", 3f); State.Toast("You spray, you dance, you network · +15 XP"); State.Message("amaka", "Saw you at the owambe. You sabi dance! Call me when you need work."); } });
+            m.Options.Add(new MenuOption { Label = "Spray Crisp Naira Bundles · ₦10,000 (+8 Social Rep, +4 Public Rep)", Action = () => DoClubbingActivity("club_spray_naira") });
+            m.Options.Add(new MenuOption { Label = "VIP High-Table Bottle Service · ₦25,000 (+10 Social, +6 Business Rep)", Action = () => DoClubbingActivity("club_vip_bottles") });
+            if (!InInterior) m.Options.Add(new MenuOption { Label = $"Step inside {p.name}", Action = () => EnterInterior(p.name, "owambe", () => OpenOwambeMenu(p)) });
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(m);
         }
@@ -372,6 +940,108 @@ namespace Rise
             bool outage = Events != null && Events.Outage > 0f;
             var m = new Menu { Title = p.name, Subtitle = "PHCN Undertaking", Line = outage ? "Transformer dey on generator backup. Drop ₦5,000 for diesel make light return now." : "PHCN: No outage for now. Pay your bill." };
             if (outage) m.Options.Add(new MenuOption { Label = "Pay for diesel · ₦5,000 (restore light)", Action = () => { if (!State.Pay(5000)) { State.Toast("Not enough money"); return; } Events.RestorePower(); State.Toast("Up NEPA! Light don come back."); } });
+            m.Options.Add(new MenuOption { Label = "Leave", Action = null });
+            OpenMenu(m);
+        }
+
+        // ---- Central Bank of Nigeria (CBN) & Economic and Financial Crimes Commission (EFCC) ----
+        int cbnBondDay = -1;
+        int efccWhistleDay = -1;
+
+        public bool BuyCbnTreasuryBond()
+        {
+            if (cbnBondDay == Clock.Day) { State.Toast("CBN Treasury Bill already subscribed today"); return false; }
+            if (!State.Pay(50000)) { State.Toast("Need ₦50,000 to subscribe to a CBN Treasury Bill"); return false; }
+            cbnBondDay = Clock.Day;
+            State.S.bank += 58000;
+            State.GainSkill("business", 3f);
+            State.AddRep("business", 5);
+            State.AddRep("public", 2);
+            State.AddXp(15);
+            State.Toast("CBN 91-Day Treasury Bill matured · +₦58,000 credited to RiseBank · Business +3");
+            return true;
+        }
+
+        public void OpenCbnMenu(LandmarkData p = null)
+        {
+            var m = new Menu
+            {
+                Title = p != null ? p.name : "Central Bank of Nigeria · Tinubu Square",
+                Subtitle = "Dr. Ngozi Okafor · CBN Treasury & Bullion Operations",
+                Line = $"Cash ₦{State.S.cash:N0} · Bank ₦{State.S.bank:N0}. Subscribe to CBN Treasury Bills, manage interbank reserves, or escort armored bullion."
+            };
+            m.Options.Add(new MenuOption
+            {
+                Label = cbnBondDay == Clock.Day ? "CBN Treasury Bill · Subscribed Today" : "Subscribe CBN Treasury Bill · ₦50,000 → ₦58,000 in Bank (+5 Business Rep)",
+                Enabled = cbnBondDay != Clock.Day,
+                Action = () => BuyCbnTreasuryBond()
+            });
+            m.Options.Add(new MenuOption
+            {
+                Label = "Open Interbank Treasury Window (RiseBank)",
+                Action = AppBank
+            });
+            m.Options.Add(new MenuOption
+            {
+                Label = $"[CBN Action Op] CBN Bullion Convoy Defense · ₦110,000{(HasGun() ? "" : " [Need Firearm]")}",
+                Enabled = !HasTask,
+                Action = () => StartActionOp("cbn_bullion_defense")
+            });
+            if (!InInterior)
+                m.Options.Add(new MenuOption { Label = "Step inside CBN Banking Hall", Action = () => EnterInterior(p?.name ?? "Central Bank of Nigeria", "bank", () => OpenCbnMenu(p)) });
+            m.Options.Add(new MenuOption { Label = "Leave", Action = null });
+            OpenMenu(m);
+        }
+
+        public bool ClearEfccAudit()
+        {
+            int fee = Mathf.Max(8000, State.S.heat * 8000);
+            if (!State.Pay(fee)) { State.Toast($"Need ₦{fee:N0} for EFCC Tax & Compliance Clearance"); return false; }
+            State.S.heat = 0;
+            State.AddRep("public", 4);
+            State.AddRep("business", 3);
+            State.AddXp(10);
+            State.Toast("EFCC Financial Clearance Certificate issued · Heat 0 · Public Rep +4");
+            return true;
+        }
+
+        public void OpenEfccMenu(LandmarkData p = null)
+        {
+            int clearanceFee = Mathf.Max(8000, State.S.heat * 8000);
+            var m = new Menu
+            {
+                Title = p != null ? p.name : "EFCC Zonal Command · Ikoyi",
+                Subtitle = "Commander Halima Bello · Economic and Financial Crimes Commission",
+                Line = State.S.heat > 0
+                    ? $"EFCC financial watch active (Heat {State.S.heat}). File compliance clearance (₦{clearanceFee:N0}) or join an anti-graft operation."
+                    : "Record clean with the Eagle! File tax compliance, report 419 syndicates, or join an EFCC tactical raid."
+            };
+            m.Options.Add(new MenuOption
+            {
+                Label = $"EFCC Tax & Financial Compliance Clearance · ₦{clearanceFee:N0} (Heat → 0, +4 Public Rep)",
+                Action = () => ClearEfccAudit()
+            });
+            m.Options.Add(new MenuOption
+            {
+                Label = efccWhistleDay == Clock.Day ? "Anti-Fraud Whistleblower Dossier · Filed Today" : "File Anti-Fraud Whistleblower Intel · +₦15,000 Bounty (+3 Public Rep)",
+                Enabled = efccWhistleDay != Clock.Day,
+                Action = () =>
+                {
+                    efccWhistleDay = Clock.Day;
+                    State.Earn(15000);
+                    State.AddRep("public", 3);
+                    State.AddXp(12);
+                    State.Toast("EFCC Whistleblower Bounty paid · +₦15,000");
+                }
+            });
+            m.Options.Add(new MenuOption
+            {
+                Label = $"[EFCC Action Op] EFCC Syndicate Asset Raid · ₦115,000{(HasGun() ? "" : " [Need Firearm]")}",
+                Enabled = !HasTask,
+                Action = () => StartActionOp("efcc_cyber_raid")
+            });
+            if (!InInterior)
+                m.Options.Add(new MenuOption { Label = "Step inside EFCC Zonal Command", Action = () => EnterInterior(p?.name ?? "EFCC Zonal Command", "police", () => OpenEfccMenu(p)) });
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(m);
         }

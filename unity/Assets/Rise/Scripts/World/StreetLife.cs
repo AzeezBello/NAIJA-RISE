@@ -45,11 +45,18 @@ namespace Rise.World
                 var pos = n.World(); pos.y = data.DeckHeightAt(pos) + 0.3f;
                 var go = new GameObject("Service " + n.u); go.transform.SetParent(root, false); go.transform.position = pos; go.transform.rotation = Quaternion.Euler(0, 180, 0);
                 GetUniformStyle(n.u, n.color, out var topCol, out var pantsCol, out var capCol, out var badgeText, out var badgeCol);
-                var look = new Look { Fabric = 8, Pants = pantsCol, Skin = Mannequin.Hex("#6b4423"), Hair = Color.black, Cap = capCol, BodyType = 1, Accessory = 2, Outfit = 5 };
+                var look = new Look
+                {
+                    Fabric = 8, Pants = pantsCol, Skin = Mannequin.Hex("#6b4423"), Hair = Color.black, Cap = capCol,
+                    BodyType = n.u == "politician" ? 2 : 1,
+                    Accessory = n.u == "politician" ? 1 : n.u == "fraudster" ? 4 : 2,
+                    Outfit = n.u == "politician" ? 3 : n.u == "fraudster" ? 8 : 5
+                };
+                RigInstance sRig = null;
                 if (CharacterRig.Available)
                 {
-                    var rig = CharacterRig.Build(go.transform, look);
-                    foreach (var m in rig.Top)
+                    sRig = CharacterRig.Build(go.transform, look);
+                    foreach (var m in sRig.Top)
                     {
                         if (m.HasProperty("baseColorFactor")) m.SetColor("baseColorFactor", topCol);
                         else m.color = topCol;
@@ -57,6 +64,8 @@ namespace Rise.World
                     }
                 }
                 else Mannequin.Build(go.transform, topCol, pantsCol, Mannequin.Hex("#6b4423"), capCol);
+                if (n.u == "boko_haram" || n.u == "bandit")
+                    CharacterRig.SetWeapon(sRig, go.transform, "rifle", 0);
                 Mannequin.Label(go.transform, badgeText, badgeCol, 2.3f, 0.45f);
                 Service.Add(go.transform);
                 var road = data.RoadAt(pos, 18f);
@@ -121,6 +130,30 @@ namespace Rise.World
                 case "civildefence":
                     top = Mannequin.Hex("#182b49"); pants = Mannequin.Hex("#121e33"); cap = Mannequin.Hex("#b91c1c");
                     label = "NSCDC"; labelCol = new Color(0.7f, 0.82f, 1f);
+                    break;
+                case "cbn":
+                    top = Mannequin.Hex("#0f5132"); pants = Mannequin.Hex("#0a2e1d"); cap = Mannequin.Hex("#d4af37");
+                    label = "CBN SECURITY"; labelCol = new Color(1f, 0.84f, 0.22f);
+                    break;
+                case "efcc":
+                    top = Mannequin.Hex("#8b1e1e"); pants = Mannequin.Hex("#16181d"); cap = Mannequin.Hex("#8b1e1e");
+                    label = "EFCC OPERATIVE"; labelCol = new Color(1f, 0.42f, 0.42f);
+                    break;
+                case "politician":
+                    top = Mannequin.Hex("#f5f2eb"); pants = Mannequin.Hex("#e2dccb"); cap = Mannequin.Hex("#d4af37");
+                    label = "POLITICIAN · VIP"; labelCol = new Color(1f, 0.85f, 0.25f);
+                    break;
+                case "fraudster":
+                    top = Mannequin.Hex("#dc2626"); pants = Mannequin.Hex("#111827"); cap = Mannequin.Hex("#f59e0b");
+                    label = "FRAUDSTER · 419"; labelCol = new Color(1f, 0.35f, 0.35f);
+                    break;
+                case "boko_haram":
+                    top = Mannequin.Hex("#292524"); pants = Mannequin.Hex("#1c1917"); cap = Mannequin.Hex("#0c0a09");
+                    label = "BOKO HARAM INSURGENT"; labelCol = new Color(1f, 0.22f, 0.22f);
+                    break;
+                case "bandit":
+                    top = Mannequin.Hex("#7c2d12"); pants = Mannequin.Hex("#431407"); cap = Mannequin.Hex("#b91c1c");
+                    label = "ARMED BANDIT"; labelCol = new Color(1f, 0.48f, 0.18f);
                     break;
                 default:
                     top = Mannequin.Hex(fallbackHex, "#444444"); pants = top * 0.8f; cap = top;

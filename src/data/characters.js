@@ -221,5 +221,96 @@ export const CONTACTS = [
     runs: [{ text: 'Take a spare tyre to Ladipo Garage for a stranded danfo', dest: 'ladipo', item: 'spare_tyre', minutes: 20, reward: 9000, label: 'Spare Tyre', rep: 'business' }] },
   { id: 'sammy', name: 'Sammy', role: 'Olaitan Street', at: 'olaitan', offset: { x: -2.5, z: 3.4 }, c: '#2f5fd0', line: 'Evening ball dey. You go come?',
     runs: [{ text: 'Take a new football to the boys at Teslim Balogun Stadium', dest: 'pitch', item: 'football', minutes: 20, reward: 8000, label: 'Football', rep: 'street' }] },
+
+  // ---- CBN, EFCC & Additional Female Contacts across Lagos ----
+  { id: 'cbn_director', name: 'Dr. Ngozi Okafor · CBN', role: 'Deputy Director · Central Bank of Nigeria', at: 'cbn-lagos', c: '#ffd700', line: 'Central Bank of Nigeria keeps the Naira stable and the bullion vaults secure. Ready for a treasury dispatch?',
+    runs: [
+      { text: 'Deliver a sealed CBN Bullion Manifest to RiseBank Marina', dest: 'marinabank', item: 'cbn_bullion', minutes: 15, reward: 22000, label: 'CBN Bullion Manifest', rep: 'business' },
+      { text: 'Rush interbank forex clearance papers to RiseBank Victoria Island', dest: 'vibank', item: 'cbn_bullion', minutes: 20, reward: 26000, label: 'Forex Clearance', rep: 'business' },
+    ] },
+  { id: 'efcc_commander', name: 'Commander Halima Bello · EFCC', role: 'Zonal Head · EFCC Ikoyi Command', at: 'efcc-ikoyi', c: '#ff4d4d', line: 'The Eagle go catch every financial fraudster! Help us move this anti-graft case file.',
+    runs: [
+      { text: 'Deliver an EFCC asset-freeze warrant to Central Bank of Nigeria at Tinubu Square', dest: 'cbn-lagos', item: 'efcc_dossier', minutes: 20, reward: 24000, label: 'EFCC Warrant', rep: 'public' },
+      { text: 'Carry a financial intelligence dossier to Area C Police Station', dest: 'police', item: 'efcc_dossier', minutes: 25, reward: 22000, label: 'EFCC Dossier', rep: 'public' },
+    ] },
+  { id: 'efcc_ikeja_lead', name: 'Chief Operative Zainab · EFCC', role: 'Cybercrime Unit · EFCC Ikeja', at: 'efcc-ikeja', c: '#ff6b6b', line: 'Ikeja Zonal Command tracks cyber-fraud and illicit assets across the mainland. Ready to assist?',
+    runs: [
+      { text: 'Deliver a cybercrime compliance notice to Computer Village association', dest: 'ikeja-tech', item: 'efcc_dossier', minutes: 15, reward: 18000, label: 'Compliance Notice', rep: 'public' },
+      { text: 'Transfer seized asset records to Lagos State Secretariat at Alausa', dest: 'alausa-secretariat', item: 'efcc_dossier', minutes: 20, reward: 20000, label: 'Asset Records', rep: 'public' },
+    ] },
+  { id: 'bisi_fashion', name: 'Sisi Folake', role: 'Creative Director · Surulere Couture', at: 'surulere-tailor', offset: { x: 2.5, z: 2.0 }, c: '#f472b6', line: 'Aso-ebi and lace orders full my table! Help me deliver to my VIP clients.',
+    runs: [
+      { text: 'Deliver bespoke aso-ebi gowns to Surulere Event Centre', dest: 'owambe', item: 'fabric_order', minutes: 20, reward: 15000, label: 'Aso-Ebi Gowns', rep: 'social' },
+    ] },
+  { id: 'zainab_banker', name: 'Hajiya Zainab', role: 'Private Wealth Manager · Marina', at: 'marinabank', offset: { x: -3.0, z: 2.0 }, c: '#a78bfa', line: 'Marina corporate clients expect fast, discreet banking dispatch.',
+    runs: [
+      { text: 'Carry corporate treasury bonds to First Lagos Tower on Broad Street', dest: 'broadbank', item: 'sealed_envelope', minutes: 15, reward: 16000, label: 'Treasury Bonds', rep: 'business' },
+    ] },
+  { id: 'adaeze_tech', name: 'Adaeze', role: 'Software Engineer · Women in Tech Yaba', at: 'yabatech', offset: { x: 3.0, z: 2.0 }, c: '#38bdf8', line: 'Yaba tech ecosystem is building the future of Africa. Help us move hardware to our coding cohort!',
+    runs: [
+      { text: 'Deliver developer laptops to UNILAG Main Gate innovation lab', dest: 'unilag', item: 'laptop_parts', minutes: 15, reward: 16000, label: 'Dev Laptops', rep: 'business' },
+    ] },
+  { id: 'kemi_fitness', name: 'Coach Kemi', role: 'Aerobics & Conditioning · Surulere Gym', at: 'gym', offset: { x: 3.2, z: -2.0 }, c: '#fb7185', line: 'Keep moving, keep hustling! Stamina na everything for Lagos.',
+    runs: [
+      { text: 'Deliver electrolyte packs to athletes at Teslim Balogun Stadium', dest: 'pitch', item: 'supplements', minutes: 15, reward: 12000, label: 'Electrolytes', rep: 'social' },
+    ] },
+  { id: 'titi_chef', name: 'Chef Titilayo', role: 'Executive Chef · The Yellow Chilli VI', at: 'yellowchilli', offset: { x: 2.5, z: 2.0 }, c: '#fbbf24', line: 'My kitchen serves the finest seafood jollof and pepper soup on the Island!',
+    runs: [
+      { text: 'Deliver VIP catering platters to Civic Centre in Victoria Island', dest: 'civic', item: 'food_cooler', minutes: 15, reward: 18000, label: 'VIP Catering', rep: 'social' },
+    ] },
+  { id: 'funke_lawyer', name: 'Barrister Funke', role: 'Senior Advocate · Tafawa Balewa Square', at: 'tbs', offset: { x: -3.0, z: 2.5 }, c: '#e2e8f0', line: 'Know your rights and keep your contracts watertight in Lagos.',
+    runs: [
+      { text: 'File urgent corporate registration deeds at Central Bank of Nigeria', dest: 'cbn-lagos', item: 'documents', minutes: 15, reward: 17000, label: 'Legal Deeds', rep: 'public' },
+    ] },
+  { id: 'blessing_nurse', name: 'Matron Blessing', role: 'Community Health Matron · Surulere', at: 'egbon-desk', offset: { x: -3.2, z: 2.0 }, c: '#4ade80', line: 'Health is wealth! Help us get medical outreach kits to the community.',
+    runs: [
+      { text: 'Deliver community first-aid supplies to Community Grammar School', dest: 'school', item: 'school_supplies', minutes: 15, reward: 13000, label: 'First-Aid Kit', rep: 'public' },
+    ] },
+  { id: 'halima_mall', name: 'Sisi Halima', role: 'Boutique Founder · Maryland Mall', at: 'maryland-mall', offset: { x: 3.0, z: 2.0 }, c: '#f43f5e', line: 'Maryland Mall shoppers love fresh ankara and luxury scents.',
+    runs: [
+      { text: 'Deliver a boutique fashion parcel to Ikeja City Centre', dest: 'ikeja-city', item: 'parcel', minutes: 20, reward: 16000, label: 'Boutique Parcel', rep: 'business' },
+    ] },
+  { id: 'ifunanya_vi', name: 'Lady Ifunanya', role: 'Art & Gala Curator · Civic Centre VI', at: 'civic', offset: { x: 3.0, z: -2.0 }, c: '#c084fc', line: 'Lagoon front galas bring together the biggest names in Lagos.',
+    runs: [
+      { text: 'Deliver exhibition canvases to Eko Hotel & Suites', dest: 'ekohotel', item: 'artwork', minutes: 15, reward: 19000, label: 'Exhibition Art', rep: 'social' },
+    ] },
+
+  // ---- Politician NPCs (Presidency, Governor, Senators, House of Reps, LGA Chairman) ----
+  { id: 'presidential_envoy', name: 'President GCFR Envoy · Chief Segun', role: 'Federal Presidency · State House Annex Dodan', at: 'dodan-barracks', offset: { x: 3.5, z: -2.5 }, c: '#ffd700', line: 'From Aso Rock Villa to Dodan State House Annex, Federal Executive Council dispatches must move with Presidential protocol!',
+    runs: [
+      { text: 'Escort a sealed Presidential Council Gazette to Central Bank of Nigeria', dest: 'cbn-lagos', item: 'documents', minutes: 15, reward: 32000, label: 'Presidential Gazette', rep: 'public' },
+      { text: 'Deliver Federal Diplomatic Credentials to Murtala Muhammed Airport VIP Wing', dest: 'ikeja-airport', item: 'sealed_envelope', minutes: 25, reward: 35000, label: 'Diplomatic Pouch', rep: 'public' },
+    ] },
+  { id: 'lagos_governor', name: 'Executive Governor · H.E. Gov. Babajide', role: 'Governor of Lagos State · Alausa Secretariat', at: 'alausa-secretariat', offset: { x: -3.5, z: 2.5 }, c: '#22c55e', line: 'Eko o ni baje! As Executive Governor of Lagos State, our THEMES+ rail, roads, and security projects never stop.',
+    runs: [
+      { text: 'Deliver the Governor State Infrastructure Executive Order to Marina Blue Line Station', dest: 'marina-rail', item: 'documents', minutes: 25, reward: 30000, label: 'Executive Order', rep: 'public' },
+      { text: 'Carry State Security Council briefing papers to Civic Centre Victoria Island', dest: 'civic', item: 'sealed_envelope', minutes: 25, reward: 28000, label: 'State Security Brief', rep: 'public' },
+    ] },
+  { id: 'senator_lagos_central', name: 'Senator Chief (Mrs.) Oluremi · Lagos Central', role: 'Senator of the Federal Republic · Lagos Central', at: 'tbs', offset: { x: 3.5, z: 2.5 }, c: '#f59e0b', line: 'As Senator representing Lagos Central in the Red Chamber, constituency empowerment and women-in-business grants are my priority.',
+    runs: [
+      { text: 'Deliver Senatorial Constituency Empowerment Grants to Balogun Market Women Association', dest: 'balogun-market', item: 'sealed_envelope', minutes: 15, reward: 26000, label: 'Senatorial Grant', rep: 'public' },
+    ] },
+  { id: 'senator_lagos_west', name: 'Senator Alhaji Musiliu · Lagos West', role: 'Senator of the Federal Republic · Lagos West', at: 'ikeja-city', offset: { x: -3.5, z: -2.0 }, c: '#eab308', line: 'Lagos West is the largest senatorial district in Nigeria! Help us move this National Assembly committee report.',
+    runs: [
+      { text: 'Carry Senate Aviation Committee oversight files to Murtala Muhammed Airport', dest: 'ikeja-airport', item: 'documents', minutes: 15, reward: 25000, label: 'Senate Committee File', rep: 'public' },
+    ] },
+  { id: 'hon_rep_surulere', name: 'Hon. Femi · House of Representatives', role: 'Federal Lawmaker · Surulere Constituency', at: 'stadium', offset: { x: -3.5, z: 2.5 }, c: '#38bdf8', line: 'Surulere Federal Constituency represent! Youth sports, tech hubs, and scholarships na wetin we dey push for the Green Chamber.',
+    runs: [
+      { text: 'Deliver Federal Constituency Youth Tech kits to Surulere Cyber Café', dest: 'cafe', item: 'laptop_parts', minutes: 15, reward: 22000, label: 'Constituency Tech Kit', rep: 'public' },
+    ] },
+  { id: 'lga_chairman_surulere', name: 'Hon. Bamidele · LGA Executive Chairman', role: 'Local Government Chairman · Surulere LGA', at: 'owambe', offset: { x: -3.5, z: -2.5 }, c: '#4ade80', line: 'Grassroots governance starts at the Local Government! Street drainage, market stalls, and primary schools dey under our watch.',
+    runs: [
+      { text: 'Deliver LGA Primary Education Support Books to Community Grammar School', dest: 'school', item: 'school_supplies', minutes: 15, reward: 18000, label: 'LGA School Books', rep: 'public' },
+    ] },
+
+  // ---- Fraudster NPCs (419 Syndicate & Cyber "HK" Scammers) ----
+  { id: 'fraudster_hk_boss', name: 'Chairman Dapo · HK Cyber Fraudster', role: 'Cyber Fraud Syndicate · VIP Lounge', at: 'crib', offset: { x: 3.5, z: -2.5 }, c: '#ef4444', line: 'Shhh, keep your voice down! Client wire dey drop tonight for my HK penthouse. You wan run high-risk cash-out or you be EFCC snitch?',
+    runs: [
+      { text: 'Move an unverified cash-out parcel to Mushin — high pay, high EFCC heat', dest: 'mushin', item: 'sealed_package', minutes: 15, reward: 30000, label: 'Illicit Cash Parcel', rep: 'street', heat: 2 },
+    ] },
+  { id: 'fraudster_419_chief', name: 'Chief "Dr." Fred · 419 Kingpin', role: 'Advance-Fee Fraudster · Oluwole / Surulere', at: 'ritalori', offset: { x: -3.5, z: 2.5 }, c: '#f97316', line: 'I get NNPC crude oil allocation letter and Central Bank contract draft! Only smart people sabi this game.',
+    runs: [
+      { text: 'Deliver a dubious contract dossier to a mark at Eko Hotel (watch out for EFCC)', dest: 'ekohotel', item: 'sealed_envelope', minutes: 20, reward: 28000, label: '419 Contract Draft', rep: 'street', heat: 2 },
+    ] },
 ];
 export const contactOf = id => CONTACTS.find(c => c.id === id);

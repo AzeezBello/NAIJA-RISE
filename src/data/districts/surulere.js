@@ -151,10 +151,10 @@ export const LANDMARKS = [
 ];
 export const ARTISAN_NPCS = LANDMARKS.filter(l => l.kind === 'artisan');
 // Compound cells for the corridor districts. style: 'island' (towers) | 'vi' (towers and hotels) | 'yaba' (storey) | 'lekki' (duplexes) | 'ebute' (bungalow / storey)
-export const VI_CELLS = [[408, 210], [408, 270], [440, 270], [464, 270], [364, 318], [464, 318]];
-export const LEKKI_CELLS = [[520, 210], [520, 270], [600, 270], [520, 318], [600, 318]];
-export const YABA_CELLS = [[372, -270], [432, -270], [384, -360], [408, -360], [432, -360]];
-export const EBUTE_CELLS = [-130, -94, 160, 200, 280, 310].flatMap(x => [[x, -300], [x, -360]]).concat([[110, -300], [36, -300], [0, -360], [36, -360], [-40, -300]]);
+export const VI_CELLS = [[408, 210], [408, 270], [440, 270], [464, 270], [364, 318], [464, 318], [388, 210], [440, 210], [388, 294], [440, 294]];
+export const LEKKI_CELLS = [[520, 210], [520, 270], [600, 270], [520, 318], [600, 318], [544, 210], [580, 210], [544, 270], [580, 270], [640, 210], [640, 270], [680, 210], [680, 270]];
+export const YABA_CELLS = [[372, -270], [432, -270], [384, -360], [408, -360], [432, -360], [372, -296], [432, -296], [396, -270], [420, -384]];
+export const EBUTE_CELLS = [-130, -94, 160, 200, 280, 310].flatMap(x => [[x, -300], [x, -360]]).concat([[110, -300], [36, -300], [0, -360], [36, -360], [-40, -300], [-76, -34], [-116, 44], [34, 68], [82, -28], [-34, -84], [116, -74]]);
 export const TOLLS = [{ id: 'lekkitoll', name: 'Lekki Toll Gate', axis: 'h', k: 240, at: 500, fee: 1200 }];
 export const FOOTBRIDGES = [{ axis: 'h', k: 142, at: -60 }, { axis: 'h', k: 142, at: 60 }, { axis: 'h', k: -330, at: 200 }, { axis: 'h', k: 240, at: 400 }];
 // Compound cells for Lagos Island blocks (dense: towers and storey buildings).
@@ -184,6 +184,16 @@ export const PROPERTIES = [
   { id: 'flat', name: '2-Bedroom Flat · Bode Thomas', type: 'Flat', desc: 'Second-floor flat in a three-storey block with a gate man. Sleeping here clears one heat.', rent: 400000, buy: 2400000, x: -24, z: 96, sign: 'FLATS TO LET', c: '#b9a98f', h: 10.5, style: 'storey', perk: 'heat1' },
   { id: 'duplex', name: 'Duplex · Palm Court, Adeniran Ogunsanya', type: 'Duplex', desc: 'Gated duplex with parking. Sleeping here clears all heat and fills your last vehicle.', rent: 1200000, buy: 6000000, x: 96, z: 96, sign: 'PALM COURT', c: '#d9d2c2', h: 8, style: 'storey', perk: 'heat0' },
   { id: 'banana_villa', name: 'Waterfront Mansion · Banana Island, Ikoyi', type: 'Mansion', desc: 'Ultra-luxury lagoon-front villa on Banana Island with private jetty and 24/7 armed security. Clears all heat and refills your vehicle.', rent: 3500000, buy: 25000000, x: 516, z: 148, sign: 'BANANA VILLA', c: '#f4f1ea', h: 11.5, style: 'storey', perk: 'heat0' },
+  { id: 'yaba_studio', name: 'Studio Flat · Herbert Macaulay, Yaba', type: 'Studio', desc: 'Modern student & tech-founder studio apartment near UNILAG and YabaTech. Sleeping here clears one heat.', rent: 120000, buy: 750000, x: 372, z: -288, sign: 'YABA STUDIO', c: '#c4b7a6', h: 7.5, style: 'storey', perk: 'heat1' },
+  { id: 'masha_bungalow', name: '3-Bedroom Bungalow · Masha Road, Surulere', type: 'Bungalow', desc: 'Quiet family compound off Kilo and Masha Road with borehole water and shaded courtyard. Clears one heat.', rent: 280000, buy: 1650000, x: -156, z: -18, sign: 'MASHA COURT', c: '#d6c29f', h: 4.2, style: 'bungalow', perk: 'heat1' },
+  { id: 'ebute_colonial', name: 'Brazilian Storey House · Ebute Metta', type: 'Storey', desc: 'Classic Afro-Brazilian two-storey residence with carved balconies and gated yard. Clears one heat.', rent: 180000, buy: 1100000, x: 136, z: -348, sign: 'EBUTE COURT', c: '#cfa97e', h: 8.2, style: 'storey', perk: 'heat1' },
+  { id: 'maryland_terrace', name: 'Terrace Duplex · Doyin Estate, Maryland', type: 'Terrace', desc: 'Gated mainland terrace duplex with standby generator and interlocking compound. Clears one heat.', rent: 650000, buy: 3800000, x: 84, z: -592, sign: 'DOYIN TERRACE', c: '#dfd7c8', h: 8.8, style: 'storey', perk: 'heat1' },
+  { id: 'magodo_duplex', name: 'Detached Duplex · Magodo Phase 2, Shangisha', type: 'Duplex', desc: 'Spacious hilltop duplex in Magodo GRA with uniformed estate security. Clears all heat and refills your vehicle.', rent: 950000, buy: 5400000, x: 256, z: -552, sign: 'MAGODO COURT', c: '#e8e0d0', h: 9.2, style: 'storey', perk: 'heat0' },
+  { id: 'ikeja_gra_villa', name: 'Executive Residence · Ikeja GRA', type: 'Villa', desc: 'Tree-lined detached villa in Ikeja GRA near the golf club and airport. Clears all heat and refills your vehicle.', rent: 1500000, buy: 8500000, x: 164, z: -900, sign: 'IKEJA GRA VILLA', c: '#eee8dc', h: 10.0, style: 'storey', perk: 'heat0' },
+  { id: 'ikorodu_bungalow', name: 'Family Bungalow · Ikorodu GRA', type: 'Bungalow', desc: 'Peaceful walled bungalow in Ikorodu town with a wide compound and fruit trees. Clears one heat.', rent: 140000, buy: 820000, x: -310, z: -368, sign: 'IKORODU HOME', c: '#d8b98c', h: 4.0, style: 'bungalow', perk: 'heat1' },
+  { id: 'vi_penthouse', name: 'Oceanview Apartment · Adeola Odeku, VI', type: 'Penthouse', desc: 'High-rise luxury residential apartment in Victoria Island with Atlantic breeze and concierge. Clears all heat.', rent: 1800000, buy: 11000000, x: 416, z: 256, sign: 'VI TOWERS', c: '#cfd8df', h: 14.0, style: 'storey', perk: 'heat0' },
+  { id: 'lekki_terrace', name: 'Contemporary Terrace · Admiralty Way, Lekki', type: 'Terrace', desc: 'Smart home terrace duplex in Lekki Phase 1 with carport and solar inverter. Clears all heat.', rent: 1400000, buy: 7800000, x: 568, z: 268, sign: 'LEKKI TERRACE', c: '#f0ece1', h: 9.5, style: 'storey', perk: 'heat0' },
+  { id: 'bourdillon_mansion', name: 'Ambassadorial Mansion · Bourdillon Road, Ikoyi', type: 'Mansion', desc: 'Prestigious Ikoyi mansion on Bourdillon Road with manicured gardens and diplomatic security. Clears all heat.', rent: 2800000, buy: 18500000, x: 464, z: 228, sign: 'BOURDILLON COURT', c: '#f5f2eb', h: 11.0, style: 'storey', perk: 'heat0' },
 ];
 for (const p of PROPERTIES) p.door = { x: p.x, z: p.z - 10.5 };
 
@@ -201,7 +211,8 @@ export const ANIMALS = [
 export const UNIFORMS = {
   police: 0x162442, army: 0x3b5323, navy: 0x13294b, fire: 0xc62828, lawma: 0xff6a00,
   lastma: 0xeab308, frsc: 0xd8c398, racer: 0xff5d9e, vio: 0xf0f4f8,
-  kai: 0x1e6b3a, civildefence: 0x182b49,
+  kai: 0x1e6b3a, civildefence: 0x182b49, cbn: 0x0f5132, efcc: 0x8b1e1e,
+  politician: 0xd4af37, fraudster: 0xdc2626, boko_haram: 0x292524, bandit: 0x7c2d12,
 };
 export const SERVICE_NPCS = [
   // NPF Police officers (stations, banks, major junctions, Banana Island & Airport gates)
@@ -258,6 +269,16 @@ export const SERVICE_NPCS = [
   { x: -84, z: 112, u: 'vio' }, { x: 64, z: -120, u: 'vio' }, { x: 372, z: 232, u: 'vio' },
   { x: 40, z: -76, u: 'kai' }, { x: -42, z: -56, u: 'kai' }, { x: 396, z: -280, u: 'kai' }, { x: 384, z: 36, u: 'kai' },
   { x: 100, z: 80, u: 'civildefence' }, { x: 486, z: 104, u: 'civildefence' }, { x: 400, z: 204, u: 'civildefence' },
+  // CBN Armored Bullion Security & EFCC Red-Vest Operatives
+  { x: 392, z: -18, u: 'cbn' }, { x: 404, z: -18, u: 'cbn' }, { x: 458, z: -20, u: 'cbn' },
+  { x: 458, z: 152, u: 'efcc' }, { x: 470, z: 152, u: 'efcc' }, { x: 32, z: -892, u: 'efcc' }, { x: 42, z: -892, u: 'efcc' }, { x: -112, z: -792, u: 'efcc' },
+  // Politician VIP Entourages (Alausa Secretariat, TBS, Dodan State House Annex, Ikoyi Bourdillon)
+  { x: -24, z: -808, u: 'politician' }, { x: 404, z: 32, u: 'politician' }, { x: 344, z: 68, u: 'politician' }, { x: 468, z: 220, u: 'politician' },
+  // Street & Cyber Fraudsters (Computer Village, VI Clubs, Surulere Cyber Café)
+  { x: 44, z: -784, u: 'fraudster' }, { x: 118, z: -80, u: 'fraudster' }, { x: 446, z: 212, u: 'fraudster' },
+  // Boko Haram Insurgent Scouts & Highway Bandit Outriders (Outer Interstate & Creek Perimeters)
+  { x: 18, z: -988, u: 'boko_haram' }, { x: 28, z: -988, u: 'boko_haram' },
+  { x: -378, z: 262, u: 'bandit' }, { x: -368, z: 262, u: 'bandit' },
   { x: -80, z: -58, u: 'racer' },
 ];
 

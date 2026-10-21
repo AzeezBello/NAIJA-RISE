@@ -26,6 +26,8 @@ export const JOBS = [
   { id: 'fish_smoker', title: 'Smoked Fish & Jetty Run', where: 'Bariga Fishing Jetty', at: 'bariga-jetty', pay: 10500, xp: 17, dur: 4, by: 'tolu_fisherman', skill: 'business' },
   { id: 'boat_charter', title: 'Lagoon Boat Skipper', where: 'Five Cowrie Creek Jetty', at: 'falomo-jetty', pay: 16000, xp: 24, dur: 5, by: 'musa_fisherman', skill: 'driving', min: 8 },
   { id: 'firefighter_shift', title: 'Fire & Rescue Auxiliary', where: 'Lagos State Fire Service', at: 'fire', pay: 14500, xp: 22, dur: 5, by: 'fire_chief', skill: 'fitness', min: 8 },
+  { id: 'cbn_escort', title: 'CBN Bullion Vault Escort', where: 'Central Bank · Tinubu Square', at: 'cbn-lagos', pay: 26000, xp: 30, dur: 5, by: 'cbn_director', skill: 'driving', min: 10 },
+  { id: 'efcc_analyst', title: 'EFCC Financial Compliance Aide', where: 'EFCC Command · Ikoyi', at: 'efcc-ikoyi', pay: 28000, xp: 32, dur: 5, by: 'efcc_commander', skill: 'business', min: 10 },
 ];
 export const jobOf = id => JOBS.find(j => j.id === id) || null;
 export const jobPay = (j, skills) => Math.round(j.pay * (1 + (skills?.[j.skill] || 0) * 0.01));   // +1% per skill point

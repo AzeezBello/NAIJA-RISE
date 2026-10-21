@@ -36,6 +36,39 @@ namespace Rise.Player
         }
         public void SwingWeapon() { swingT = 0.38f; }
         public string AnimState { get; private set; } = "idle";
+        float jumpAnimT, vehicleAnimT, lastYaw;
+        string vehicleAnimState = "";
+
+        public bool HasExtendedClips => rig != null && rig.HasClip("jump") && rig.HasClip("turn") && rig.HasClip("enter_vehicle") && rig.HasClip("exit_vehicle");
+
+        public void TriggerJumpAnim()
+        {
+            jumpAnimT = 0.48f;
+            AnimState = "jump";
+            rig?.SetState("jump", 1f);
+        }
+
+        public void TriggerTurnAnim()
+        {
+            AnimState = "turn";
+            rig?.SetState("turn", 1.15f);
+        }
+
+        public void TriggerVehicleEnterAnim()
+        {
+            vehicleAnimState = "enter_vehicle";
+            vehicleAnimT = 0.50f;
+            AnimState = "enter_vehicle";
+            rig?.SetState("enter_vehicle", 1f);
+        }
+
+        public void TriggerVehicleExitAnim()
+        {
+            vehicleAnimState = "exit_vehicle";
+            vehicleAnimT = 0.50f;
+            AnimState = "exit_vehicle";
+            rig?.SetState("exit_vehicle", 1f);
+        }
 
         public static PlayerController Create(Vector3 position, float yaw) => Create(position, yaw, Look.Default);
         public static PlayerController Create(Vector3 position, float yaw, Look look)
@@ -84,18 +117,38 @@ namespace Rise.Player
                 var look = Quaternion.LookRotation(dir.normalized, Vector3.up);
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, look, TurnSpeed * Time.deltaTime);
             }
+            float yawDelta = Mathf.Abs(Mathf.DeltaAngle(lastYaw, transform.eulerAngles.y));
+            lastYaw = transform.eulerAngles.y;
+            float turnRate = Time.deltaTime > 0.0001f ? yawDelta / Time.deltaTime : 0f;
             var horizontal = (dir.sqrMagnitude > 0.001f ? dir.normalized : transform.forward) * speed;
 
             if (cc.isGrounded)
             {
                 if (velocity.y < 0f) velocity.y = -2f;
-                if (InputEnabled && !Swimming && GameInput.JumpPressed) velocity.y = JumpSpeed;
+                if (InputEnabled && !Swimming && GameInput.JumpPressed) { velocity.y = JumpSpeed; jumpAnimT = 0.48f; }
             }
             velocity.y += Gravity * Time.deltaTime;
             cc.Move((horizontal + Vector3.up * velocity.y) * Time.deltaTime);
 
-            // Locomotion state → clip (idle, walk, run cross-fades, clip speed matched to movement).
-            AnimState = speed < 0.3f ? "idle" : IsRunning && speed > 5.5f ? "run" : "walk";
+            // Locomotion & action state → clip (idle, walk, run, jump, turn, enter_vehicle, exit_vehicle cross-fades).
+            if (vehicleAnimT > 0f)
+            {
+                vehicleAnimT = Mathf.Max(0f, vehicleAnimT - Time.deltaTime);
+                AnimState = vehicleAnimState;
+            }
+            else if (!Swimming && (!cc.isGrounded || jumpAnimT > 0f))
+            {
+                jumpAnimT = Mathf.Max(0f, jumpAnimT - Time.deltaTime);
+                AnimState = "jump";
+            }
+            else if (!Swimming && turnRate > 120f && speed < 5.0f)
+            {
+                AnimState = "turn";
+            }
+            else
+            {
+                AnimState = speed < 0.3f ? "idle" : IsRunning && speed > 5.5f ? "run" : "walk";
+            }
             // Swimming: the body sits in the water and the walk plays slowly as a stroke.
             if (rig != null) { var rt = rig.Root.transform; var lp = rt.localPosition; lp.y = Mathf.Lerp(lp.y, Swimming ? -0.95f : 0f, 1f - Mathf.Exp(-6f * Time.deltaTime)); rt.localPosition = lp; }
             if (Swimming) AnimState = speed < 0.3f ? "idle" : "walk";

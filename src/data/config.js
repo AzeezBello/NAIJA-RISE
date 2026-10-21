@@ -1,7 +1,7 @@
 export const GAME = { title: 'Rise: Hustle or Die Trying', subtitle: 'HUSTLE OR DIE TRYING', version: 'Alpha 1.0', saveKey: 'rise.alpha10', saveVersion: 10 };
 export const PRICES = { pet: 25000, water: 100, suya: 1500, posFee: 200, posAmount: 20000, hookup: 20000 };
 export const ECON = { payCycle: 60, refuel: 3000, startCash: 50000, startBank: 120000, fineRate: 10000, bustRate: 15000, speedTicket: 2000 };
-export const TIME = { daySpeed: 1 / 45, startClock: 8.5, venueOpen: 20, venueClose: 4 };   // 1 game hour per 45 real seconds
+export const TIME = { daySpeed: 1 / 45, startClock: 8.5, venueOpen: 20, venueClose: 4, startDate: '1999-01-01', startYear: 1999, startMonth: 1, startDay: 1 };   // 1 game hour per 45 real seconds; calendar starts Jan 1, 1999
 export const WORLD = { bounds: { x: [-520, 1120], z: [-1000, 410] }, spawn: { x: 0, z: 34 } };
 // Low-end profile (touch devices or small screens): fewer NPCs and vehicles, lower pixel ratio, shadows off by default.
 // Low-end profile = touch-first devices or very little RAM. Window width is deliberately not used: a narrow desktop window
@@ -101,3 +101,23 @@ export const DEALER = [['okada', 250000], ['keke', 350000], ['korope', 1200000],
 export const BIZ = { staffCost: 50000, staffBonus: 0.3, maxStaff: 3, priceEffect: { low: 0.8, normal: 1, high: 1.2 } };
 export const AWAY = { minMinutes: 2, capMinutes: 480 };
 export const WEATHER = { rainChance: 0.15, rainMinutes: [2, 5] };
+export const HISTORIC_EVENTS = [
+  { id: 'transition_1999', category: 'civic', year: 1999, month: 1, day: 1, title: '1999 Fourth Republic Transition', headline: 'INEC Releases Transition Timetable as Nigeria Prepares for Return to Civilian Rule' },
+  { id: 'election_1999', category: 'election', year: 1999, month: 2, day: 27, title: '1999 Nigerian General Elections', headline: 'Millions Vote Across Lagos as Obasanjo & Tinubu Win Historic Fourth Republic Mandate' },
+  { id: 'democracy_day_1999', category: 'civic', year: 1999, month: 5, day: 29, title: 'Fourth Republic Inauguration (Democracy Day)', headline: 'Fourth Republic Born! Celebrations Fill Tafawa Balewa Square & National Stadium' },
+  { id: 'millennium_2000', category: 'culture', year: 2000, month: 1, day: 1, title: 'Y2K Millennium Dawn in Lagos', headline: 'Lagos Welcomes the New Millennium — Cybercafés & Nollywood Boom Across Surulere' },
+  { id: 'gsm_revolution_2001', category: 'telecom', year: 2001, month: 1, day: 1, title: '2001 GSM Mobile Telecom Revolution', headline: 'MTN & Econet Launch GSM Networks — SIM Cards & Nokia 3310s Transform Computer Village Ikeja' },
+  { id: 'election_2003', category: 'election', year: 2003, month: 1, day: 1, title: '2003 Nigerian General Elections', headline: 'Lagosians Head to the Polls for Historic Civilian-to-Civilian Transition' },
+  { id: 'cbn_consolidation_2004', category: 'economy', year: 2004, month: 1, day: 1, title: 'CBN ₦25B Banking Consolidation & EFCC Sweep', headline: 'CBN Orders ₦25 Billion Bank Recapitalisation; EFCC Launches Anti-Graft Sweep on Broad Street' },
+  { id: 'election_2007', category: 'election', year: 2007, month: 1, day: 1, title: '2007 General Elections & Lagos BRT Launch', headline: 'Babatunde Fashola Elected Governor; Mile 12–CMS BRT Lanes Open' },
+  { id: 'election_2011', category: 'election', year: 2011, month: 1, day: 1, title: '2011 Nigerian General Elections', headline: 'Youth Social Media Wave & Record Turnout Across Lagos Polling Units' },
+  { id: 'occupy_nigeria_2012', category: 'civic', year: 2012, month: 1, day: 1, title: '2012 Fuel Subsidy Protests & Lekki-Ikoyi Link Bridge', headline: 'Crowds Gather at Ojota Over Fuel Price Hike; Iconic Lekki-Ikoyi Cable Bridge Nears Completion' },
+  { id: 'afcon_2013', category: 'sports', year: 2013, month: 1, day: 1, title: 'Super Eagles Win AFCON 2013 Trophy', headline: 'Super Eagles Crowned African Champions! Victory Parties Rock Teslim Balogun Stadium & Afrika Shrine' },
+  { id: 'ebola_response_2014', category: 'pandemic', year: 2014, month: 1, day: 1, title: '2014 Lagos Defeats Ebola Outbreak', headline: 'Heroic Lagos Medics & Contact Tracers Contain Ebola; WHO Declares Nigeria Ebola-Free' },
+  { id: 'election_2015', category: 'election', year: 2015, month: 1, day: 1, title: '2015 Historic General Elections (PVC Card Readers)', headline: 'Permanent Voter Cards (PVCs) Debut in Historic Democratic Alternation' },
+  { id: 'fintech_wave_2016', category: 'economy', year: 2016, month: 1, day: 1, title: 'Yaba Silicon Lagoon & Fintech Startup Boom', headline: 'Yaba Silicon Lagoon Startups (Paystack, Flutterwave) Attract Global Billions' },
+  { id: 'election_2019', category: 'election', year: 2019, month: 1, day: 1, title: '2019 Nigerian General Elections', headline: 'Babajide Sanwo-Olu Elected Governor of Lagos Under THEMES Agenda' },
+  { id: 'covid19_lockdown_2020', category: 'pandemic', year: 2020, month: 1, day: 1, title: 'COVID-19 Pandemic, NCDC Lockdown & Relief Effort', headline: 'NCDC Declares Lagos Lockdown & Curfew — Nose Masks Mandatory, Essential Logistics Boom' },
+  { id: 'election_2023', category: 'election', year: 2023, month: 1, day: 1, title: '2023 General Elections & CBN Naira Redesign', headline: 'BVAS Accreditation, CBN New Naira Notes & Historic Presidential / Lagos Polls' },
+  { id: 'lrmt_rail_era_2024', category: 'infrastructure', year: 2024, month: 1, day: 1, title: 'LRMT Blue & Red Line Rail Era & Detty December Boom', headline: 'Lagos Blue & Red Line Electric Trains Carry Millions; Afrobeats & Detty December Top Global Charts' },
+];

@@ -22,6 +22,33 @@ namespace Rise.World
         public bool IsNight => SunElevation01 < 0.05f;
         public string ClockText => $"{Mathf.FloorToInt(Clock):00}:{Mathf.FloorToInt((Clock % 1f) * 60f):00}";
 
+        // Calendar starting Friday, January 1, 1999 (Day 1 = Fri, Jan 1, 1999).
+        public static readonly System.DateTime EpochDate = new System.DateTime(1999, 1, 1);
+        static readonly string[] DayNamesShort = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+        static readonly string[] DayNamesFull = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+        static readonly string[] MonthNamesShort = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+        static readonly string[] MonthNamesFull = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
+
+        public System.DateTime Date => EpochDate.AddDays(Mathf.Max(0, Day - 1));
+        public string DayOfWeekShort => DayNamesShort[(int)Date.DayOfWeek];
+        public string DayOfWeekFull => DayNamesFull[(int)Date.DayOfWeek];
+        public string MonthShort => MonthNamesShort[Date.Month - 1];
+        public string MonthFull => MonthNamesFull[Date.Month - 1];
+        public int DayOfMonth => Date.Day;
+        public int Year => Date.Year;
+        public string DateText => $"{DayOfWeekShort}, {MonthShort} {DayOfMonth}, {Year}";
+        public string FullDateText => $"{DayOfWeekFull}, {MonthFull} {DayOfMonth}, {Year}";
+
+        public static int DayForDate(int year, int month, int day)
+        {
+            int y = Mathf.Clamp(year, 1999, 2100);
+            int m = Mathf.Clamp(month, 1, 12);
+            int d = Mathf.Clamp(day, 1, System.DateTime.DaysInMonth(y, m));
+            return Mathf.Max(1, (int)(new System.DateTime(y, m, d) - EpochDate).TotalDays + 1);
+        }
+
+        public void SetDate(int year, int month, int day, float? clockHour = null) => SetTime(clockHour ?? Clock, DayForDate(year, month, day));
+
         public void Init(Light sunLight, float startClock, float hoursPerSecond, Material lamp)
         {
             sun = sunLight; Clock = startClock; HoursPerSecond = hoursPerSecond; lampHead = lamp;
