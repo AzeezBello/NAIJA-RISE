@@ -40,10 +40,11 @@ namespace Rise
             bool restored = ContinueSave && state.Load();
             if (!restored) state.NewGame();
 
-            // Accounts and cloud save (Supabase; offline without Resources/cloud.json).
+            // Accounts, cloud save, and live economy overrides (Supabase; offline without Resources/cloud.json).
             var cloudConfig = DiagFlags.Has("offline") ? new Net.CloudConfig() : Net.CloudConfig.Load();
             var account = gameObject.AddComponent<Net.Account>(); account.Init(cloudConfig);
             var cloud = gameObject.AddComponent<Net.CloudSave>(); cloud.Init(account);
+            var economy = gameObject.AddComponent<Net.CloudEconomy>(); economy.Init(cloudConfig, Data);
 
             var sun = FindSun();
             Clock = gameObject.AddComponent<DayNightCycle>();

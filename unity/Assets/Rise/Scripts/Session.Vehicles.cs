@@ -29,6 +29,7 @@ namespace Rise
                 bool owned = State.Has(id); bool eq = State.S.equippedWeapon == id;
                 m.Options.Add(new MenuOption { Label = owned ? $"{w.Name} · {(eq ? "equipped" : "equip")}" : $"{w.Name} · ₦{w.Price:N0} ({w.Desc})", Enabled = !eq, Action = () => BuyFightWeapon(id) });
             }
+            AddActionOpsToMenu(m, dayo.data.id);
             foreach (var v in Parked)
             {
                 if (!v.Owned || string.IsNullOrEmpty(v.OwnedId) || (v.transform.position - dayo.pos).magnitude > 30f) continue;

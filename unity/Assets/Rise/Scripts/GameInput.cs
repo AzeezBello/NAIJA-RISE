@@ -20,10 +20,33 @@ namespace Rise
         static Keyboard K => Keyboard.current;
         static Mouse M => Mouse.current;
         static Gamepad G => Gamepad.current;
-        static InputActionAsset asset; static InputActionMap map; static bool loaded;
-        static InputAction move, look, sprint, jump, interact, decline, phone, chat, menu, gas, brake, handbrake, attack, pickup, cycleWeapon;
+        static InputActionAsset asset; static InputActionMap map, drivingMap, uiMap; static bool loaded;
+        static InputAction move, look, sprint, jump, interact, decline, phone, chat, menu, gas, brake, handbrake, attack, pickup, cycleWeapon, horn;
+        static InputAction driveSteer, driveThrottle, driveBrake, driveHandbrake, driveBoost, driveHorn;
+        static InputAction uiNavigate, uiSubmit, uiCancel, uiTabLeft, uiTabRight;
 
         public static bool UsingActions { get { Load(); return map != null; } }
+        public static bool HasDrivingMap { get { Load(); return drivingMap != null; } }
+        public static bool HasUIMap { get { Load(); return uiMap != null; } }
+        public static int ControlSchemeCount { get { Load(); return asset != null ? asset.controlSchemes.Count : 0; } }
+
+        public static string ControllerFamily
+        {
+            get
+            {
+                if (UI.TouchControls.Active) return "Touch";
+                var g = G;
+                if (g != null)
+                {
+                    var desc = (g.description.interfaceName + " " + g.description.product + " " + g.name).ToLowerInvariant();
+                    if (desc.Contains("dualshock") || desc.Contains("dualsense") || desc.Contains("playstation") || desc.Contains("ps4") || desc.Contains("ps5")) return "PlayStation";
+                    if (desc.Contains("switch") || desc.Contains("nintendo") || desc.Contains("joycon")) return "Switch";
+                    if (desc.Contains("xinput") || desc.Contains("xbox")) return "Xbox";
+                    return "Gamepad";
+                }
+                return "Keyboard";
+            }
+        }
 
         static void Load()
         {
@@ -31,11 +54,27 @@ namespace Rise
             asset = Resources.Load<InputActionAsset>("Input/Rise");
             if (asset == null) return;
             map = asset.FindActionMap("Gameplay");
-            if (map == null) return;
-            move = map.FindAction("Move"); look = map.FindAction("Look"); sprint = map.FindAction("Sprint"); jump = map.FindAction("Jump"); interact = map.FindAction("Interact"); decline = map.FindAction("Decline");
-            phone = map.FindAction("Phone"); chat = map.FindAction("Chat"); menu = map.FindAction("Menu"); gas = map.FindAction("Gas"); brake = map.FindAction("Brake"); handbrake = map.FindAction("Handbrake");
-            attack = map.FindAction("Attack"); pickup = map.FindAction("Pickup"); cycleWeapon = map.FindAction("CycleWeapon");
-            map.Enable();
+            if (map != null)
+            {
+                move = map.FindAction("Move"); look = map.FindAction("Look"); sprint = map.FindAction("Sprint"); jump = map.FindAction("Jump"); interact = map.FindAction("Interact"); decline = map.FindAction("Decline");
+                phone = map.FindAction("Phone"); chat = map.FindAction("Chat"); menu = map.FindAction("Menu"); gas = map.FindAction("Gas"); brake = map.FindAction("Brake"); handbrake = map.FindAction("Handbrake");
+                attack = map.FindAction("Attack"); pickup = map.FindAction("Pickup"); cycleWeapon = map.FindAction("CycleWeapon"); horn = map.FindAction("Horn");
+                map.Enable();
+            }
+            drivingMap = asset.FindActionMap("Driving");
+            if (drivingMap != null)
+            {
+                driveSteer = drivingMap.FindAction("Steer"); driveThrottle = drivingMap.FindAction("Throttle"); driveBrake = drivingMap.FindAction("Brake");
+                driveHandbrake = drivingMap.FindAction("Handbrake"); driveBoost = drivingMap.FindAction("Boost"); driveHorn = drivingMap.FindAction("Horn");
+                drivingMap.Enable();
+            }
+            uiMap = asset.FindActionMap("UI");
+            if (uiMap != null)
+            {
+                uiNavigate = uiMap.FindAction("Navigate"); uiSubmit = uiMap.FindAction("Submit"); uiCancel = uiMap.FindAction("Cancel");
+                uiTabLeft = uiMap.FindAction("TabLeft"); uiTabRight = uiMap.FindAction("TabRight");
+                uiMap.Enable();
+            }
         }
 
         public static Vector2 Move
@@ -85,14 +124,42 @@ namespace Rise
 
         public static bool LookLeftKey => K != null && K.zKey.isPressed;
         public static bool LookRightKey => K != null && K.cKey.isPressed;
-        public static bool Sprint => (UI.TouchControls.Active && UI.TouchControls.I.SprintHeld) || Held(sprint, (K != null && (K.leftShiftKey.isPressed || K.rightShiftKey.isPressed)) || (G != null && G.buttonWest.isPressed));
+        public static bool Sprint => (UI.TouchControls.Active && UI.TouchControls.I.SprintHeld) || Held(sprint, (K != null && (K.leftShiftKey.isPressed || K.rightShiftKey.isPressed)) || (G != null && G.buttonWest.isPressed)) || Held(driveBoost, false);
         public static bool JumpPressed => UI.TouchControls.TakeJump() || Pressed(jump, (K != null && K.spaceKey.wasPressedThisFrame) || (G != null && G.buttonNorth.wasPressedThisFrame));
-        public static bool InteractPressed => UI.TouchControls.TakeInteract() || Pressed(interact, (K != null && K.eKey.wasPressedThisFrame) || (G != null && G.buttonSouth.wasPressedThisFrame));
-        public static bool DeclinePressed => UI.TouchControls.TakeDecline() || Pressed(decline, (K != null && (K.xKey.wasPressedThisFrame || K.backspaceKey.wasPressedThisFrame)) || (G != null && G.buttonEast.wasPressedThisFrame));
-        public static bool Handbrake => (UI.TouchControls.Active && UI.TouchControls.I.HandbrakeHeld) || Held(handbrake, (K != null && K.spaceKey.isPressed) || (G != null && G.buttonEast.isPressed));
-        public static float Gas => Mathf.Max(Axis(gas, G != null ? G.rightTrigger.ReadValue() : 0f), Mathf.Max(0f, Move.y));
-        public static float Brake => Mathf.Max(Axis(brake, G != null ? G.leftTrigger.ReadValue() : 0f), Mathf.Max(0f, -Move.y));
-        public static float Steer => Move.x;
+        public static bool InteractPressed => UI.TouchControls.TakeInteract() || Pressed(interact, (K != null && K.eKey.wasPressedThisFrame) || (G != null && G.buttonSouth.wasPressedThisFrame)) || Pressed(uiSubmit, false);
+        public static bool DeclinePressed => UI.TouchControls.TakeDecline() || Pressed(decline, (K != null && (K.xKey.wasPressedThisFrame || K.backspaceKey.wasPressedThisFrame)) || (G != null && G.buttonEast.wasPressedThisFrame)) || Pressed(uiCancel, false);
+        public static bool Handbrake => (UI.TouchControls.Active && UI.TouchControls.I.HandbrakeHeld) || Held(handbrake, (K != null && K.spaceKey.isPressed) || (G != null && G.buttonEast.isPressed)) || Held(driveHandbrake, false);
+        public static float Gas => Mathf.Max(Mathf.Max(Axis(gas, G != null ? G.rightTrigger.ReadValue() : 0f), Axis(driveThrottle, 0f)), Mathf.Max(0f, Move.y));
+        public static float Brake => Mathf.Max(Mathf.Max(Axis(brake, G != null ? G.leftTrigger.ReadValue() : 0f), Axis(driveBrake, 0f)), Mathf.Max(0f, -Move.y));
+        public static float Steer
+        {
+            get
+            {
+                Load();
+                float s = Move.x;
+                if (driveSteer != null) { float ds = driveSteer.ReadValue<float>(); if (Mathf.Abs(ds) > Mathf.Abs(s)) s = ds; }
+                return Mathf.Clamp(s, -1f, 1f);
+            }
+        }
+        public static Vector2 MenuNavigate
+        {
+            get
+            {
+                Load();
+                if (uiNavigate != null)
+                {
+                    var nav = uiNavigate.ReadValue<Vector2>();
+                    if (nav.sqrMagnitude > 0.04f) return Vector2.ClampMagnitude(nav, 1f);
+                }
+                if (G != null)
+                {
+                    var dpad = G.dpad.ReadValue();
+                    if (dpad.sqrMagnitude > 0.04f) return Vector2.ClampMagnitude(dpad, 1f);
+                }
+                return Move;
+            }
+        }
+        public static bool HornPressed => Pressed(horn, (K != null && K.hKey.wasPressedThisFrame) || (G != null && G.leftStickButton.wasPressedThisFrame)) || Pressed(driveHorn, false);
         public static bool EscapePressed => Pressed(menu, (K != null && K.escapeKey.wasPressedThisFrame) || (G != null && G.startButton.wasPressedThisFrame));
         public static bool ClickPressed => M != null && M.leftButton.wasPressedThisFrame;
         public static bool ChatPressed => Pressed(chat, K != null && (K.tKey.wasPressedThisFrame || K.enterKey.wasPressedThisFrame));
@@ -120,14 +187,18 @@ namespace Rise
         // A tapped menu row (touch), or -1.
         public static int MenuTap => UI.TouchControls.TakeMenuTap();
 
-        // 1–5 on the keyboard for menu options, 0 when none was pressed this frame.
+        // Mouse wheel vertical scroll for long menus.
+        public static float MenuScrollDelta => M != null ? M.scroll.ReadValue().y : 0f;
+
+        // 1–9 on the keyboard for menu options, 0 when none was pressed this frame.
         public static int DigitPressed
         {
             get
             {
                 if (K == null) return 0;
                 if (K.digit1Key.wasPressedThisFrame) return 1; if (K.digit2Key.wasPressedThisFrame) return 2; if (K.digit3Key.wasPressedThisFrame) return 3;
-                if (K.digit4Key.wasPressedThisFrame) return 4; if (K.digit5Key.wasPressedThisFrame) return 5;
+                if (K.digit4Key.wasPressedThisFrame) return 4; if (K.digit5Key.wasPressedThisFrame) return 5; if (K.digit6Key.wasPressedThisFrame) return 6;
+                if (K.digit7Key.wasPressedThisFrame) return 7; if (K.digit8Key.wasPressedThisFrame) return 8; if (K.digit9Key.wasPressedThisFrame) return 9;
                 return 0;
             }
         }

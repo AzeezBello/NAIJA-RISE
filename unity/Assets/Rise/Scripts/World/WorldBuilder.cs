@@ -9,8 +9,8 @@ namespace Rise.World
     // procedural housing, toll plazas and footbridges. Everything is static geometry and is batched at the end.
     public class WorldBuilder : MonoBehaviour
     {
-        public int MaxHouses = 6800;
-        public float HouseGrid = 22f;
+        public int MaxHouses = 7800;
+        public float HouseGrid = 20f;
 
         public WorldData Data { get; private set; }
         public Transform Root { get; private set; }
@@ -447,6 +447,16 @@ namespace Rise.World
                         BuildBarracks(l, pos, group, l.kind == "navy");
                         continue;
                     }
+                    case "cbn":
+                    {
+                        BuildCbnTower(l, pos, group);
+                        continue;
+                    }
+                    case "efcc":
+                    {
+                        BuildEfccCommand(l, pos, group);
+                        continue;
+                    }
                     case "settlement": case "waterfront":
                     {
                         Box(l.name, pos + Vector3.up * 0.2f, new Vector3(50f, 0.4f, 40f), body, group);
@@ -692,6 +702,55 @@ namespace Rise.World
             }
 
             Sign(l.shortName, pos + new Vector3(0f, 5.8f, 10.25f), l.sign, 0.92f, group, 0.18f);
+        }
+
+        void BuildCbnTower(LandmarkData l, Vector3 pos, Transform group)
+        {
+            var cbnGreen = Mat("cbn-green", "#0f5132", 0.55f);
+            var granite = Mat("cbn-granite", "#e2dfd7", 0.45f);
+            var glassMat = Mat("cbn-glass", "#5ca0c8", 0.90f);
+            var goldMat = Mat("cbn-gold", "#ffd700", 0.78f);
+            var steelMat = Mat("cbn-steel", "#374151", 0.7f);
+
+            // High-security perimeter compound & granite podium
+            Compound(pos, 26f, 20f, group);
+            Box(l.name + " podium", pos + new Vector3(0f, 2.2f, -1f), new Vector3(22f, 4.4f, 15f), granite, group);
+            Box(l.name + " tower", pos + new Vector3(0f, 12f, -1.5f), new Vector3(14f, 24f, 10f), cbnGreen, group);
+            Box(l.name + " glass curtain", pos + new Vector3(0f, 12.5f, 3.6f), new Vector3(11.6f, 18f, 0.25f), glassMat, group, false);
+            Box(l.name + " crown", pos + new Vector3(0f, 24.4f, -1.5f), new Vector3(15.2f, 0.9f, 11.2f), goldMat, group, false);
+
+            // Reinforced Bullion Vault Bay & Armored CBN Bullion Van in courtyard
+            Box("CBN Vault Bay", pos + new Vector3(-7.5f, 2.0f, 5.2f), new Vector3(5.6f, 4.0f, 4.8f), steelMat, group);
+            var vanPos = pos + new Vector3(5.5f, 0.95f, 6.2f);
+            Box("CBN Bullion Van Body", vanPos, new Vector3(2.4f, 1.9f, 5.2f), steelMat, group);
+            Box("CBN Bullion Stripe", vanPos + new Vector3(0f, 0.15f, 0f), new Vector3(2.46f, 0.32f, 5.24f), goldMat, group, false);
+
+            Sign("CENTRAL BANK OF NIGERIA · CBN", pos + new Vector3(0f, 25.8f, 4.2f), "#ffd700", 0.95f, group, 0.2f);
+            Sign(l.shortName, pos + new Vector3(0f, 5.2f, 9.8f), "#ffd700", 0.95f, group, 0.2f);
+        }
+
+        void BuildEfccCommand(LandmarkData l, Vector3 pos, Transform group)
+        {
+            var efccRed = Mat("efcc-red", "#7f1d1d", 0.45f);
+            var stone = Mat("efcc-stone", "#e5e7eb", 0.35f);
+            var darkGlass = Mat("efcc-glass", "#1e293b", 0.88f);
+            var gateRed = Mat("barracks-gate-red", "#dc2626", 0.55f);
+
+            Compound(pos, 26f, 20f, group);
+            float h = Mathf.Max(10f, l.h);
+            Box(l.name + " HQ", pos + new Vector3(0f, h * 0.5f, -1.5f), new Vector3(18f, h, 11f), stone, group);
+            Box(l.name + " eagle fascia", pos + new Vector3(0f, h - 0.8f, -1.5f), new Vector3(18.6f, 1.6f, 11.6f), efccRed, group, false);
+            Box(l.name + " glass", pos + new Vector3(0f, h * 0.5f, 4.1f), new Vector3(14f, h * 0.65f, 0.22f), darkGlass, group, false);
+            Box(l.name + " gate arch", pos + new Vector3(0f, 4.4f, 9.8f), new Vector3(8.5f, 0.9f, 1.1f), efccRed, group, false);
+            Box(l.name + " boom gate", pos + new Vector3(0f, 1.1f, 9.8f), new Vector3(6.2f, 0.15f, 0.15f), gateRed, group, false);
+
+            // EFCC Tactical Raid Van in forecourt
+            var raidVan = pos + new Vector3(5.8f, 0.9f, 5.8f);
+            Box("EFCC Raid Van", raidVan, new Vector3(2.3f, 1.8f, 4.8f), darkGlass, group);
+            Box("EFCC Red Stripe", raidVan + new Vector3(0f, 0.1f, 0f), new Vector3(2.36f, 0.35f, 4.84f), efccRed, group, false);
+
+            Sign("EFCC · ANTI-GRAFT COMMAND", pos + new Vector3(0f, h + 1.4f, 4.4f), "#ffffff", 0.92f, group, 0.2f);
+            Sign(l.shortName, pos + new Vector3(0f, 5.3f, 10.2f), "#ffffff", 0.92f, group, 0.2f);
         }
 
         void BuildFishingJetty(LandmarkData l, Vector3 pos, Transform group)
@@ -1053,8 +1112,15 @@ namespace Rise.World
             {
                 double roll = rng.NextDouble();
                 if (!roadside) Compound(pos, 19f, 17f, group);
-                if (roll < 0.35) House(pos, 11f, 9f, 4.2f, HouseColours[rng.Next(HouseColours.Length)], true, group);
-                else if (roll < 0.85) House(pos, 12f, 10f, 7.5f + rng.Next(0, 3) * 3.5f, HouseColours[rng.Next(HouseColours.Length)], false, group);
+                if (roll < 0.28) House(pos, 11f, 9f, 4.2f, HouseColours[rng.Next(HouseColours.Length)], true, group);
+                else if (roll < 0.72) House(pos, 12f, 10f, 7.5f + rng.Next(0, 3) * 3.5f, HouseColours[rng.Next(HouseColours.Length)], false, group);
+                else if (roll < 0.90)
+                {
+                    // Multi-family Lagos residential apartment court with twin residential wings
+                    string colA = HouseColours[rng.Next(HouseColours.Length)];
+                    House(pos + new Vector3(-2.6f, 0f, 0f), 7.5f, 10.5f, 10.5f, colA, false, group);
+                    House(pos + new Vector3(3.2f, 0f, 0f), 6.8f, 9.5f, 7.2f, HouseColours[rng.Next(HouseColours.Length)], false, group);
+                }
                 else House(pos, 13f, 11f, 16f + (float)rng.NextDouble() * 10f, "#c9c2b3", false, group);
             }
             placedPlots.Add(new Vector2(x, z));

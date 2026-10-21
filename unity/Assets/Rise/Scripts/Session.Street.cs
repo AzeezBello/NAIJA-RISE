@@ -29,16 +29,24 @@ namespace Rise
         {
             public string Id, Name, Desc;
             public int Price, Power;
+            public bool IsGun;
+            public float Range;
         }
 
         public static readonly FightWeaponSpec[] FightWeapons =
         {
-            new FightWeaponSpec { Id = "plank",    Name = "2x4 Nail Plank",   Price = 4000,  Power = 15, Desc = "Timber board with nails" },
-            new FightWeaponSpec { Id = "pepper",   Name = "Pepper Spray",     Price = 5000,  Power = 18, Desc = "Blinds attackers fast" },
-            new FightWeaponSpec { Id = "koboko",   Name = "Koboko Horsewhip", Price = 6000,  Power = 22, Desc = "Braided leather whip" },
-            new FightWeaponSpec { Id = "knuckles", Name = "Brass Knuckles",   Price = 8000,  Power = 25, Desc = "Close-range metal knuckles" },
-            new FightWeaponSpec { Id = "baton",    Name = "Iron Rod",         Price = 12000, Power = 30, Desc = "Heavy Ladipo steel pipe" },
-            new FightWeaponSpec { Id = "cutlass",  Name = "Cutlass",          Price = 18000, Power = 40, Desc = "Sharp bush machete" },
+            new FightWeaponSpec { Id = "plank",    Name = "2x4 Nail Plank",     Price = 4000,   Power = 15, IsGun = false, Range = 2.8f, Desc = "Timber board with nails" },
+            new FightWeaponSpec { Id = "pepper",   Name = "Pepper Spray",       Price = 5000,   Power = 18, IsGun = false, Range = 3.2f, Desc = "Blinds attackers fast" },
+            new FightWeaponSpec { Id = "koboko",   Name = "Koboko Horsewhip",   Price = 6000,   Power = 22, IsGun = false, Range = 3.0f, Desc = "Braided leather whip" },
+            new FightWeaponSpec { Id = "knuckles", Name = "Brass Knuckles",     Price = 8000,   Power = 25, IsGun = false, Range = 2.4f, Desc = "Close-range metal knuckles" },
+            new FightWeaponSpec { Id = "baton",    Name = "Iron Rod",           Price = 12000,  Power = 30, IsGun = false, Range = 2.8f, Desc = "Heavy Ladipo steel pipe" },
+            new FightWeaponSpec { Id = "cutlass",  Name = "Cutlass",            Price = 18000,  Power = 40, IsGun = false, Range = 3.0f, Desc = "Sharp bush machete" },
+            new FightWeaponSpec { Id = "pistol",   Name = "9mm Beretta Pistol",      Price = 45000,  Power = 55,  IsGun = true,  Range = 42f,  Desc = "Semi-auto 9mm sidearm" },
+            new FightWeaponSpec { Id = "shotgun",  Name = "Pump-Action Shotgun",     Price = 85000,  Power = 80,  IsGun = true,  Range = 28f,  Desc = "12-gauge close-range blast" },
+            new FightWeaponSpec { Id = "smg",      Name = "Navy MP5 Tactical SMG",   Price = 95000,  Power = 70,  IsGun = true,  Range = 48f,  Desc = "Suppressed Navy SBS submachine gun" },
+            new FightWeaponSpec { Id = "rifle",    Name = "Tactical AK-47 Rifle",    Price = 140000, Power = 100, IsGun = true,  Range = 65f,  Desc = "Automatic 7.62mm assault rifle" },
+            new FightWeaponSpec { Id = "sniper",   Name = "M24 Marksman Sniper Rifle",Price = 180000,Power = 140, IsGun = true,  Range = 95f,  Desc = "Long-range bolt-action precision rifle" },
+            new FightWeaponSpec { Id = "lmg",      Name = "PKM Heavy Machine Gun",   Price = 210000, Power = 115, IsGun = true,  Range = 75f,  Desc = "Belt-fed squad support machine gun" },
         };
 
         public static FightWeaponSpec? FindWeaponSpec(string id)
@@ -53,6 +61,55 @@ namespace Rise
             if (State.Has("weapon")) return true;
             foreach (var w in FightWeapons) if (State.Has(w.Id)) return true;
             return false;
+        }
+
+        public bool HasGun()
+        {
+            foreach (var w in FightWeapons) if (w.IsGun && State.Has(w.Id)) return true;
+            return false;
+        }
+
+        public string BestGunId()
+        {
+            string eq = State.S.equippedWeapon;
+            var eqSpec = FindWeaponSpec(eq);
+            if (eqSpec.HasValue && eqSpec.Value.IsGun && State.Has(eq)) return eq;
+            string best = ""; int bestP = -1;
+            foreach (var w in FightWeapons)
+                if (w.IsGun && State.Has(w.Id) && w.Power > bestP) { bestP = w.Power; best = w.Id; }
+            return best;
+        }
+
+        public bool IsGunEquipped
+        {
+            get
+            {
+                var spec = FindWeaponSpec(BestWeaponId());
+                return spec.HasValue && spec.Value.IsGun;
+            }
+        }
+
+        public float WeaponRange()
+        {
+            var spec = FindWeaponSpec(BestWeaponId());
+            return spec.HasValue ? spec.Value.Range : 2.8f;
+        }
+
+        public bool BuyAmmo(int rounds = 30, int price = 6000)
+        {
+            if (!State.Pay(price)) { State.Toast("Not enough money for ammunition"); return false; }
+            State.S.ammo += rounds;
+            State.Toast($"+{rounds} rounds of ammunition ({State.S.ammo} total)");
+            return true;
+        }
+
+        public bool BuyTacticalArmor(int price = 15000)
+        {
+            if (State.S.armor >= 100f) { State.Toast("Kevlar Tactical Vest is already at 100% armor"); return false; }
+            if (!State.Pay(price)) { State.Toast("Not enough money for Kevlar Tactical Vest"); return false; }
+            State.S.armor = 100f;
+            State.Toast("Kevlar Tactical Vest equipped (100% Body Armor)");
+            return true;
         }
 
         public string BestWeaponId()
@@ -122,9 +179,17 @@ namespace Rise
                 State.Toast($"Picked up {g.label} (+₦{g.cash:N0})");
                 return true;
             }
-            State.AddItem(g.id);
-            if (FindWeaponSpec(g.id).HasValue)
+            if (g.id == "ammo_box")
             {
+                State.S.ammo += 24;
+                State.Toast($"Picked up {g.label} (+24 rounds · {State.S.ammo} ammo)");
+                return true;
+            }
+            State.AddItem(g.id);
+            var spec = FindWeaponSpec(g.id);
+            if (spec.HasValue)
+            {
+                if (spec.Value.IsGun) State.S.ammo += 18;
                 EquipWeapon(g.id);
                 State.Toast($"Picked up and equipped {g.label} (power {WeaponPower()})");
             }
@@ -149,10 +214,21 @@ namespace Rise
 
         float lastSwingToast;
 
-        // Direct on-foot melee attack (F / Left Click / RB / FIGHT button).
+        // Direct on-foot attack or gunshot (F / Left Click / RB / FIGHT button).
         public bool PerformStreetAttack()
         {
             if (Player == null || Vehicle != null) return false;
+            if (IsGunEquipped) return FireGun();
+            if (ActiveEnemies.Count > 0 &&NearestEnemy(Player.transform.position, 45f) != null)
+            {
+                if (HasGun())
+                {
+                    EquipWeapon(BestGunId());
+                    return FireGun();
+                }
+                State.Toast("They have firearms! You need a gun (Pistol, Shotgun, or AK-47) to shoot back!");
+                return false;
+            }
             Player.SwingWeapon();
             State.S.stamina = Mathf.Max(0f, State.S.stamina - 3f);
             State.GainSkill("strength", 0.08f);
@@ -210,8 +286,9 @@ namespace Rise
             }
             if (!State.Pay(w.Price)) { State.Toast("Not enough money"); return false; }
             State.AddItem(w.Id);
+            if (w.IsGun) State.S.ammo += 36;
             EquipWeapon(w.Id);
-            State.Toast($"{w.Name} bought and equipped");
+            State.Toast(w.IsGun ? $"{w.Name} bought and equipped (+36 ammo)" : $"{w.Name} bought and equipped");
             return true;
         }
 

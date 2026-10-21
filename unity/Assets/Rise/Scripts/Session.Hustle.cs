@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Rise.Data;
+using Rise.Entities;
 using Rise.World;
 
 namespace Rise
@@ -34,6 +35,91 @@ namespace Rise
         };
 
         [System.NonSerialized] public HubRun ActiveRun;   // side task in progress (uses the task fields with taskMission = -1)
+        [System.NonSerialized] public string ActiveChainId = "";
+
+        public class StoryChain
+        {
+            public string Id, Title, Who, District;
+            public HubRun[] Steps;
+        }
+
+        public static readonly StoryChain[] StoryChains =
+        {
+            new StoryChain
+            {
+                Id = "surulere_chain", Title = "Heart of the Mainland", Who = "egbon", District = "Surulere",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Carry generator coils to Ladipo Garage", "ladipo", "phone_parts", 30, 24000, "Generator Coils", "business"),
+                    R("Chapter 2 · Rush storm relief supplies to the Surulere clinic", "clinic", "school_supplies", 25, 34000, "Storm Relief Kit", "public"),
+                    R("Chapter 3 · Deliver Night Watch radios to Area C Police Station", "police", "phone_parts", 30, 50000, "Night Watch Radios", "public"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "yaba_chain", Title = "Silicon Lagoon", Who = "yaba_connector", District = "Yaba · Alagomeji",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Deliver fibre spools to Yaba College of Technology", "yabatech", "laptop_parts", 30, 26000, "Fibre Spools", "business"),
+                    R("Chapter 2 · Run a hardware prototype to Computer Village", "ikeja-tech", "laptop_parts", 35, 38000, "Hardware Prototype", "business"),
+                    R("Chapter 3 · Courier the Series-A pitch deck to Victoria Island", "civic", "documents", 40, 60000, "Series-A Deck", "business"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "island_chain", Title = "Lagoon Gold", Who = "ikoyi_merchant", District = "Ikoyi · Lekki",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Take a diplomatic pouch to Five Cowrie Creek Jetty", "falomo-jetty", "documents", 25, 28000, "Diplomatic Pouch", "social"),
+                    R("Chapter 2 · Deliver a luxury hamper to Banana Island Mansion", "banana-mansion", "market_basket", 30, 42000, "Luxury Hamper", "social"),
+                    R("Chapter 3 · Rush the charter manifest to Dangote Refinery", "dangote-refinery", "dock_manifest", 50, 75000, "Refinery Manifest", "business"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "makoko_chain", Title = "People of the Water", Who = "makoko_fisher", District = "Makoko · Lagoon",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Deliver kiln-smoked fish to Oyingbo Rail Terminal", "oyingbo-rail", "smoked_fish", 25, 22000, "Smoked Catch", "business"),
+                    R("Chapter 2 · Bring spare outboard parts to Makoko Canoe Landing", "makoko-canoe-landing", "outboard_parts", 20, 32000, "Outboard Spares", "public"),
+                    R("Chapter 3 · Deliver the clinic cold box to Yaba Market", "yaba", "coldbox", 30, 48000, "Clinic Cold Box", "public"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "ikeja_chain", Title = "Kalakuta Rhythm", Who = "shrine_host", District = "Ikeja · Alausa",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Carry brass horns to Kalakuta Republic", "kalakuta-republic", "archive_box", 30, 26000, "Brass Horns", "social"),
+                    R("Chapter 2 · Deliver master reels to Ikeja City Centre", "ikeja-city", "event_cables", 30, 38000, "Master Reels", "social"),
+                    R("Chapter 3 · Rush headliner soundcheck gear to Murtala Muhammed Airport", "ikeja-airport", "event_cables", 40, 58000, "Soundcheck Gear", "social"),
+                }
+            },
+        };
+
+        public static StoryChain ChainForContact(string contactId)
+        {
+            foreach (var ch in StoryChains) if (ch.Who == contactId) return ch;
+            return null;
+        }
+
+        public static StoryChain ChainById(string chainId)
+        {
+            foreach (var ch in StoryChains) if (ch.Id == chainId) return ch;
+            return null;
+        }
+
+        public bool StartChainStep(string chainId)
+        {
+            if (HasTask) return false;
+            var chain = ChainById(chainId);
+            if (chain == null) return false;
+            int step = State.ChainStep(chain.Id);
+            if (step >= chain.Steps.Length) return false;
+            ActiveChainId = chain.Id;
+            StartRun(null, chain.Steps[step]);
+            return true;
+        }
 
         // Hard-coded hubs, plus any contact whose data carries runs (the Surulere street people, src/data/characters.js).
         bool IsHub(ContactSystem.Contact c) => Hubs.ContainsKey(c.data.id) || (c.data.runs != null && c.data.runs.Length > 0);
@@ -53,9 +139,32 @@ namespace Rise
             var hub = HubFor(c);
             bool dataHub = !Hubs.ContainsKey(c.data.id);
             var menu = new Menu { Title = c.data.name, Subtitle = dataHub ? $"{hub.name} · {State.RelTier(c.data.id)}" : hub.name, Line = dataHub ? hub.intro : $"{hub.intro ?? $"Welcome to {hub.name}."} Choose a local run. Deliveries pay when you reach the destination before the deadline." };
-            if (!HasTask) foreach (var run in hub.runs) { var r = run; menu.Options.Add(new MenuOption { Label = $"{run.Text} · ₦{run.Reward:N0} · {run.Minutes:0} min{(run.Heat > 0 ? " · risky" : "")}", Enabled = Data.TryPlace(run.Dest, out _), Action = () => StartRun(c, r) }); }
+            if (!HasTask)
+            {
+                var chain = ChainForContact(c.data.id);
+                if (chain != null)
+                {
+                    int step = State.ChainStep(chain.Id);
+                    if (step < chain.Steps.Length)
+                    {
+                        var cr = chain.Steps[step];
+                        menu.Options.Add(new MenuOption
+                        {
+                            Label = $"Story Chain ({chain.Title} {step + 1}/{chain.Steps.Length}) — {cr.Text} · ₦{cr.Reward:N0}",
+                            Enabled = Data.TryPlace(cr.Dest, out _),
+                            Action = () => StartChainStep(chain.Id),
+                        });
+                    }
+                    else
+                    {
+                        menu.Options.Add(new MenuOption { Label = $"Story Chain ({chain.Title}) — Complete ✓", Enabled = false });
+                    }
+                }
+                foreach (var run in hub.runs) { var r = run; menu.Options.Add(new MenuOption { Label = $"{run.Text} · ₦{run.Reward:N0} · {run.Minutes:0} min{(run.Heat > 0 ? " · risky" : "")}", Enabled = Data.TryPlace(run.Dest, out _), Action = () => StartRun(c, r) }); }
+            }
             else menu.Options.Add(new MenuOption { Label = "Finish your current mission first", Enabled = false });
             foreach (var j in Data.JobsAt(c.data.at)) { var job = j; bool ok = State.CanTake(j); menu.Options.Add(new MenuOption { Label = ok ? $"Work shift — {j.title} · ₦{State.JobPay(j):N0} · {j.dur}h" : $"{j.title} (needs {j.skill} {j.min})", Enabled = ok, Action = () => StartShift(job) }); }
+            AddActionOpsToMenu(menu, c.data.id);
             if (c.data.id == "berger_dispatch" && Data.states != null && Data.states.Length > 0)
                 menu.Options.Add(new MenuOption { Label = $"Nigeria Interstate Directory · {Data.states.Length} States & Capitals", Action = () => OpenStatesDirectory() });
             AddRelationshipOptions(menu, c);
@@ -91,6 +200,7 @@ namespace Rise
 
         public void StartRun(ContactSystem.Contact c, HubRun run)
         {
+            if (c != null) ActiveChainId = "";
             var st = State.S;
             ActiveRun = run;
             st.taskType = "timed"; st.taskDest = run.Dest; st.taskItem = run.Item; st.taskObj = run.Text; st.taskMission = -1; st.taskDeadline = Clock.Clock + run.Minutes / 60f;
@@ -103,11 +213,32 @@ namespace Rise
         void FinishRun(bool ok)
         {
             var run = ActiveRun; ActiveRun = null;
+            string chainId = ActiveChainId; ActiveChainId = "";
             if (run == null) return;
             if (ok)
             {
                 State.Earn(run.Reward); State.AddRep(run.Rep, 3); State.AddXp(15); State.Toast($"{run.Label} delivered · +₦{run.Reward:N0}");
                 if (run.Heat > 0) State.AddHeat(run.Heat, run.Label);
+                if (!string.IsNullOrEmpty(chainId))
+                {
+                    var chain = ChainById(chainId);
+                    int next = State.AdvanceChain(chainId);
+                    State.AddXp(25);
+                    if (chain != null)
+                    {
+                        if (next >= chain.Steps.Length)
+                        {
+                            State.Earn(25000);
+                            State.AddRep(run.Rep, 8);
+                            State.Toast($"{chain.Title} story chain complete! +₦25,000 bonus");
+                            State.Message(chain.Who, $"You finished the whole {chain.Title} story in {chain.District}! +₦25,000 bonus for standing by us.");
+                        }
+                        else
+                        {
+                            State.Message(chain.Who, $"Chapter {next}/{chain.Steps.Length} of {chain.Title} done. Come see me when you are ready for Chapter {next + 1}.");
+                        }
+                    }
+                }
             }
             else State.Toast($"{run.Label} not delivered in time");
         }
@@ -180,6 +311,983 @@ namespace Rise
             }
             else State.Toast(stakes ? "Lost the match" : "Lost the kickabout");
             return won;
+        }
+
+        // ---- EA Sports FC 26 / Dream League Soccer (DLS) Live 3D Football Match & Tournament Engine ----
+        public class FootballEvent
+        {
+            public string Id, Title, Subtitle, HomeTag, AwayTag, PitchId;
+            public string[] OpponentClubs;
+            public string[] AwayColors;
+            public int Rounds = 1;
+            public int Wager, Prize, Xp;
+            public int TierIndex;
+        }
+
+        public static readonly FootballEvent[] FootballEvents =
+        {
+            new FootballEvent
+            {
+                Id = "fc_kickabout",
+                Title = "Surulere 5v5 Live Kickabout",
+                Subtitle = "Friendly Live Match · Teslim Balogun Pitch",
+                HomeTag = "SUR", AwayTag = "OJU", PitchId = "pitch",
+                OpponentClubs = new[] { "Ojuelegba Stars" },
+                AwayColors = new[] { "#e11d48" },
+                Rounds = 1, Wager = 0, Prize = 10000, Xp = 20, TierIndex = 0
+            },
+            new FootballEvent
+            {
+                Id = "fc_street_wager",
+                Title = "Teslim Turf Money Match",
+                Subtitle = "High-Stakes 5v5 Clash · ₦5,000 Wager",
+                HomeTag = "SUR", AwayTag = "ISL", PitchId = "pitch",
+                OpponentClubs = new[] { "Lagos Island Raiders" },
+                AwayColors = new[] { "#f59e0b" },
+                Rounds = 1, Wager = 5000, Prize = 20000, Xp = 25, TierIndex = 0
+            },
+            new FootballEvent
+            {
+                Id = "fc_scout_trial",
+                Title = "Super Eagles Scout Showcase Trial",
+                Subtitle = "AJ City Pitch · Pro Talent Trial",
+                HomeTag = "AJC", AwayTag = "APA", PitchId = "ajpitch",
+                OpponentClubs = new[] { "Apapa Dockers FC" },
+                AwayColors = new[] { "#2563eb" },
+                Rounds = 1, Wager = 0, Prize = 35000, Xp = 35, TierIndex = 1
+            },
+            new FootballEvent
+            {
+                Id = "fc_neighbourhood_cup",
+                Title = "Lagos Neighbourhood Cup (Tournament)",
+                Subtitle = "Semi-Final & Final Knockout · ₦60,000 Prize",
+                HomeTag = "SUR", AwayTag = "YAB", PitchId = "pitch",
+                OpponentClubs = new[] { "Yaba Tech Blazers", "Ikoyi Royals FC" },
+                AwayColors = new[] { "#9333ea", "#dc2626" },
+                Rounds = 2, Wager = 5000, Prize = 60000, Xp = 50, TierIndex = 1
+            },
+            new FootballEvent
+            {
+                Id = "fc_champions_league",
+                Title = "Eko Premier Champions Cup",
+                Subtitle = "Quarter-Final, Semi-Final & Grand Final · ₦150,000 Prize",
+                HomeTag = "EKO", AwayTag = "VIG", PitchId = "pitch",
+                OpponentClubs = new[] { "VI Galacticos", "Lekki United FC", "Eko Atlantic Titans" },
+                AwayColors = new[] { "#0284c7", "#d97706", "#e11d48" },
+                Rounds = 3, Wager = 10000, Prize = 150000, Xp = 75, TierIndex = 2
+            },
+            new FootballEvent
+            {
+                Id = "fc_super_eagles",
+                Title = "Super Eagles All-Star Invitational",
+                Subtitle = "International Exhibition Cup · ₦220,000 Prize",
+                HomeTag = "NGA", AwayTag = "WAF", PitchId = "pitch",
+                OpponentClubs = new[] { "West Africa XI", "Continental All-Stars" },
+                AwayColors = new[] { "#eab308", "#ef4444" },
+                Rounds = 2, Wager = 15000, Prize = 220000, Xp = 90, TierIndex = 2
+            },
+        };
+
+        public class Footballer
+        {
+            public Transform Root;
+            public RigInstance Rig;
+            public string Name, Role;
+            public int Number;
+            public bool IsHome, IsKeeper;
+            public Vector3 FormationOffset;
+            public Vector3 Velocity;
+            public float ActionCooldown;
+            public TextMesh MarkerText;
+        }
+
+        public class LiveFootballMatch
+        {
+            public FootballEvent Event;
+            public int CurrentRound = 1;
+            public int HomeScore, AwayScore;
+            public float MatchClock;            // 0..90 match minutes
+            public float MatchSpeed = 2.0f;     // match minutes per real second (45s full match)
+            public Vector3 PitchCenter;
+            public float PitchSurfaceY;
+            public Transform MatchPropsRoot;
+            public Transform BallRoot, BallMesh, BallRing;
+            public Vector3 BallPos, BallVel;
+            public float BallSpinYaw;
+            public Footballer BallCarrier;      // null if loose or carried by player
+            public bool PlayerHasBall;
+            public float PlayerControlLock;
+            public float GoalBannerTimer;
+            public string GoalBannerText = "";
+            public string Commentary = "Kick-off at the stadium! Pass with [E], Shoot with [F / Click], Chip with [G]!";
+            public float CommentaryTimer = 6f;
+            public float ShotPowerCharge;
+            public string SavedWeapon = "";
+            public readonly List<Footballer> Players = new List<Footballer>();
+        }
+
+        [System.NonSerialized] public LiveFootballMatch ActiveFootball;
+        public bool InFootballMatch => ActiveFootball != null;
+
+        public string CurrentOpponentClub
+        {
+            get
+            {
+                if (ActiveFootball == null || ActiveFootball.Event.OpponentClubs == null || ActiveFootball.Event.OpponentClubs.Length == 0) return "Rivals FC";
+                int idx = Mathf.Clamp(ActiveFootball.CurrentRound - 1, 0, ActiveFootball.Event.OpponentClubs.Length - 1);
+                return ActiveFootball.Event.OpponentClubs[idx];
+            }
+        }
+
+        public string CurrentTournamentStageLabel
+        {
+            get
+            {
+                if (ActiveFootball == null) return "";
+                int total = ActiveFootball.Event.Rounds;
+                int cur = ActiveFootball.CurrentRound;
+                if (total <= 1) return "LIVE MATCH";
+                if (cur == total) return "GRAND FINAL";
+                if (cur == total - 1) return "SEMI-FINAL";
+                return $"QUARTER-FINAL ({cur}/{total})";
+            }
+        }
+
+        public static FootballEvent FindFootballEvent(string id)
+        {
+            foreach (var e in FootballEvents) if (e.Id == id) return e;
+            return FootballEvents[0];
+        }
+
+        public void OpenFootballMenu(LandmarkData place = null)
+        {
+            var c = Data.football;
+            var st = State.S;
+            int tier = Mathf.Clamp(st.footballTier, 0, Mathf.Max(0, c.tiers.Length - 1));
+            int prize = c.prizes != null && tier < c.prizes.Length ? c.prizes[tier] : 0;
+            string venue = place != null ? place.name : "Teslim Balogun & AJ City Stadiums";
+            var menu = new Menu
+            {
+                Title = "Lagos Live Football · FC 26 / DLS Mode",
+                Subtitle = $"Captain Tunde & Coach Baba Goal · {venue}",
+                Line = st.footballWins > 0
+                    ? $"Career Record: {st.footballWins} win{(st.footballWins > 1 ? "s" : "")} · Tier {st.footballTier + 1}. Step onto the 3D pitch for live 5v5 matches and knockout tournaments!"
+                    : "Live 5v5 3D pitch gameplay! Dribble, thread through-balls [E], curl power shots [F / Click], rainbow-flick [G], and lift the Eko Champions Cup!"
+            };
+
+            if (InFootballMatch)
+            {
+                menu.Options.Add(new MenuOption
+                {
+                    Label = $"Resume Live Match ({ActiveFootball.Event.HomeTag} {ActiveFootball.HomeScore} - {ActiveFootball.AwayScore} {ActiveFootball.Event.AwayTag})",
+                    Action = () => ActiveMenu = null
+                });
+                menu.Options.Add(new MenuOption
+                {
+                    Label = "Forfeit & Leave Current Match",
+                    Action = () => EndLiveFootballMatch(false, true)
+                });
+            }
+            else
+            {
+                foreach (var ev in FootballEvents)
+                {
+                    var captured = ev;
+                    string roundTag = ev.Rounds > 1 ? $"{ev.Rounds}-Round Tournament" : "Live 5v5 Match";
+                    string costTag = ev.Wager > 0 ? $" · Wager ₦{ev.Wager:N0}" : " · Free Entry";
+                    menu.Options.Add(new MenuOption
+                    {
+                        Label = $"[LIVE 3D] {ev.Title} ({roundTag}{costTag} → ₦{ev.Prize:N0})",
+                        Action = () => StartLiveFootballMatch(captured.Id)
+                    });
+                }
+                menu.Options.Add(new MenuOption
+                {
+                    Label = $"Quick Sim: {c.tiers[tier]}{(prize > 0 ? $" (₦{prize:N0} prize)" : $" · ₦{c.wager:N0} wager")}",
+                    Action = () => PlayMatch(tier, true)
+                });
+                menu.Options.Add(new MenuOption
+                {
+                    Label = "Quick Sim: Friendly kickabout (no money)",
+                    Action = () => PlayMatch(0, false)
+                });
+            }
+
+            menu.Options.Add(new MenuOption { Label = "Leave", Action = null });
+            OpenMenu(menu);
+        }
+
+        public bool StartLiveFootballMatch(string eventId)
+        {
+            var ev = FindFootballEvent(eventId);
+            if (ev == null) return false;
+            if (InFootballMatch) EndLiveFootballMatch(false, true);
+            if (Vehicle != null) Exit();
+            if (InInterior) LeaveInterior();
+
+            if (ev.Wager > 0 && !State.Pay(ev.Wager))
+            {
+                State.Toast($"Need ₦{ev.Wager:N0} entry fee for {ev.Title}");
+                return false;
+            }
+
+            LandmarkData pitchLm = null;
+            if (!string.IsNullOrEmpty(ev.PitchId) && Data.landmarks != null)
+                foreach (var lm in Data.landmarks) if (lm.id == ev.PitchId) { pitchLm = lm; break; }
+            if (pitchLm == null) pitchLm = Data.NearestLandmark("pitch", Player.transform.position, 5000f);
+            Vector3 center = pitchLm != null ? pitchLm.World() : new Vector3(-170f, 0f, -100f);
+            float surfaceY = center.y + 0.25f;
+
+            string prevWeapon = State.S.equippedWeapon;
+            Player.SetWeapon("");
+
+            ActiveFootball = new LiveFootballMatch
+            {
+                Event = ev,
+                CurrentRound = 1,
+                HomeScore = 0,
+                AwayScore = 0,
+                MatchClock = 0f,
+                PitchCenter = center,
+                PitchSurfaceY = surfaceY,
+                SavedWeapon = prevWeapon
+            };
+
+            BuildLivePitchArena(ActiveFootball);
+            SpawnFootballSquads(ActiveFootball);
+            ResetKickoffPositions(ActiveFootball, true);
+
+            ActiveMenu = null;
+            PhoneOpen = false;
+            UI.SoundSystem.I?.PlayWhistle();
+            State.Toast($"KICK-OFF! {ev.Title} · {CurrentTournamentStageLabel} vs {CurrentOpponentClub}");
+            RefreshNav();
+            return true;
+        }
+
+        void BuildLivePitchArena(LiveFootballMatch m)
+        {
+            var root = new GameObject("LiveFootballArena").transform;
+            root.SetParent(transform, false);
+            m.MatchPropsRoot = root;
+
+            var whiteMat = new Material(ShaderLib.Unlit) { color = new Color(0.96f, 0.98f, 0.96f, 0.9f) };
+            var netMat = new Material(ShaderLib.Unlit) { color = new Color(0.92f, 0.95f, 0.98f, 0.38f) };
+            var boardMat = new Material(ShaderLib.Lit) { color = new Color(0.06f, 0.18f, 0.12f) };
+            var goldMat = new Material(ShaderLib.Unlit) { color = new Color(0.98f, 0.78f, 0.18f) };
+            var c = m.PitchCenter;
+            float y = m.PitchSurfaceY + 0.01f;
+
+            void LineBox(string label, Vector3 pos, Vector3 scale, Material mat)
+            {
+                var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                go.name = label;
+                go.transform.SetParent(root, false);
+                go.transform.position = pos;
+                go.transform.localScale = scale;
+                go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                Destroy(go.GetComponent<Collider>());
+            }
+
+            LineBox("Touchline N", new Vector3(c.x, y, c.z + 14f), new Vector3(41.2f, 0.02f, 0.22f), whiteMat);
+            LineBox("Touchline S", new Vector3(c.x, y, c.z - 14f), new Vector3(41.2f, 0.02f, 0.22f), whiteMat);
+            LineBox("Goalline W", new Vector3(c.x - 20.5f, y, c.z), new Vector3(0.22f, 0.02f, 28.2f), whiteMat);
+            LineBox("Goalline E", new Vector3(c.x + 20.5f, y, c.z), new Vector3(0.22f, 0.02f, 28.2f), whiteMat);
+
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float gx = c.x + side * 20.5f;
+                float boxFrontX = c.x + side * 14.0f;
+                float boxMidX = (gx + boxFrontX) * 0.5f;
+                LineBox("Penalty Front", new Vector3(boxFrontX, y, c.z), new Vector3(0.2f, 0.02f, 13.6f), whiteMat);
+                LineBox("Penalty Side N", new Vector3(boxMidX, y, c.z + 6.8f), new Vector3(6.5f, 0.02f, 0.2f), whiteMat);
+                LineBox("Penalty Side S", new Vector3(boxMidX, y, c.z - 6.8f), new Vector3(6.5f, 0.02f, 0.2f), whiteMat);
+
+                LineBox("Goal Net Back", new Vector3(gx + side * 1.35f, y + 1.25f, c.z), new Vector3(0.08f, 2.5f, 5.7f), netMat);
+                LineBox("Goal Net Top", new Vector3(gx + side * 0.68f, y + 2.5f, c.z), new Vector3(1.35f, 0.08f, 5.7f), netMat);
+                LineBox("Goal Net L", new Vector3(gx + side * 0.68f, y + 1.25f, c.z - 2.85f), new Vector3(1.35f, 2.5f, 0.08f), netMat);
+                LineBox("Goal Net R", new Vector3(gx + side * 0.68f, y + 1.25f, c.z + 2.85f), new Vector3(1.35f, 2.5f, 0.08f), netMat);
+            }
+
+            LineBox("Center Spot", new Vector3(c.x, y + 0.01f, c.z), new Vector3(0.6f, 0.02f, 0.6f), goldMat);
+            LineBox("LED Hoarding N", new Vector3(c.x, y + 0.45f, c.z + 15.2f), new Vector3(36f, 0.9f, 0.25f), boardMat);
+            LineBox("LED Hoarding Trim", new Vector3(c.x, y + 0.92f, c.z + 15.2f), new Vector3(36f, 0.08f, 0.28f), goldMat);
+
+            var ballRoot = new GameObject("MatchBall").transform;
+            ballRoot.SetParent(root, false);
+            m.BallRoot = ballRoot;
+
+            var ballSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            ballSphere.name = "BallMesh";
+            ballSphere.transform.SetParent(ballRoot, false);
+            ballSphere.transform.localScale = Vector3.one * 0.46f;
+            var ballMat = new Material(ShaderLib.Lit) { color = new Color(0.97f, 0.97f, 0.95f) };
+            ballMat.SetFloat("_Smoothness", 0.7f);
+            ballSphere.GetComponent<MeshRenderer>().sharedMaterial = ballMat;
+            Destroy(ballSphere.GetComponent<Collider>());
+            m.BallMesh = ballSphere.transform;
+
+            var bandMat = new Material(ShaderLib.Lit) { color = new Color(0.12f, 0.14f, 0.18f) };
+            for (int b = 0; b < 2; b++)
+            {
+                var stripe = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                stripe.transform.SetParent(ballSphere.transform, false);
+                stripe.transform.localScale = new Vector3(1.03f, 0.08f, 1.03f);
+                stripe.transform.localRotation = Quaternion.Euler(b * 90f, b * 45f, 0f);
+                stripe.GetComponent<MeshRenderer>().sharedMaterial = bandMat;
+                Destroy(stripe.GetComponent<Collider>());
+            }
+
+            var ringGo = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            ringGo.name = "BallPossessionRing";
+            ringGo.transform.SetParent(root, false);
+            ringGo.transform.localScale = new Vector3(1.35f, 0.02f, 1.35f);
+            ringGo.GetComponent<MeshRenderer>().sharedMaterial = new Material(ShaderLib.Unlit) { color = new Color(0.16f, 0.92f, 0.52f, 0.85f) };
+            Destroy(ringGo.GetComponent<Collider>());
+            m.BallRing = ringGo.transform;
+        }
+
+        void SpawnFootballSquads(LiveFootballMatch m)
+        {
+            ClearFootballPlayers(m);
+
+            Color homeTop = Mannequin.Hex("#16a34a");
+            Color homeShorts = Mannequin.Hex("#f8fafc");
+            Color homeGkTop = Mannequin.Hex("#eab308");
+
+            string awayHex = m.Event.AwayColors != null && m.Event.AwayColors.Length > 0
+                ? m.Event.AwayColors[Mathf.Clamp(m.CurrentRound - 1, 0, m.Event.AwayColors.Length - 1)]
+                : "#e11d48";
+            Color awayTop = Mannequin.Hex(awayHex);
+            Color awayShorts = Mannequin.Hex("#1e293b");
+            Color awayGkTop = Mannequin.Hex("#06b6d4");
+
+            (string name, string role, int num, bool gk, Vector3 offset)[] homeRoster =
+            {
+                ("Nwabali", "GK", 1, true,  new Vector3(-19.2f, 0f, 0f)),
+                ("Ekong",   "CB", 5, false, new Vector3(-10.5f, 0f, -4.5f)),
+                ("Ndidi",   "CM", 4, false, new Vector3(-4.5f,  0f,  5.0f)),
+                ("Victor O.", "ST", 9, false, new Vector3(4.5f, 0f, -3.2f)),
+            };
+
+            foreach (var h in homeRoster)
+                m.Players.Add(CreateFootballer(m, h.name, h.role, h.num, true, h.gk, h.offset, h.gk ? homeGkTop : homeTop, homeShorts));
+
+            (string name, string role, int num, bool gk, Vector3 offset)[] awayRoster =
+            {
+                ("Keeper",    "GK", 1,  true,  new Vector3(19.2f, 0f, 0f)),
+                ("Koulibaly", "CB", 4,  false, new Vector3(11.0f, 0f, -4.2f)),
+                ("Partey",    "CB", 6,  false, new Vector3(10.5f, 0f,  4.2f)),
+                ("Kudus",     "CM", 8,  false, new Vector3(3.5f,  0f,  4.8f)),
+                ("Mane",      "ST", 11, false, new Vector3(-3.0f, 0f, -2.5f)),
+            };
+
+            foreach (var a in awayRoster)
+                m.Players.Add(CreateFootballer(m, a.name, a.role, a.num, false, a.gk, a.offset, a.gk ? awayGkTop : awayTop, awayShorts));
+        }
+
+        Footballer CreateFootballer(LiveFootballMatch m, string pName, string role, int number, bool isHome, bool isKeeper, Vector3 offset, Color jersey, Color shorts)
+        {
+            var go = new GameObject($"Footballer_{(isHome ? "HOME" : "AWAY")}_{number}_{pName}");
+            go.transform.SetParent(m.MatchPropsRoot, false);
+            var pos = m.PitchCenter + new Vector3(offset.x, 0f, offset.z);
+            pos.y = m.PitchSurfaceY;
+            go.transform.position = pos;
+            go.transform.rotation = Quaternion.Euler(0f, isHome ? 90f : -90f, 0f);
+
+            var look = Look.Default;
+            look.Outfit = 0;
+            look.Fabric = isHome ? 2 : 4;
+            look.Pants = shorts;
+            look.Skin = Mannequin.Hex("#6b4228");
+            look.Cap = jersey;
+            look.HairStyle = (number % 3) + 1;
+            look.Accessory = 0;
+
+            RigInstance rig = null;
+            if (CharacterRig.Available) rig = CharacterRig.Build(go.transform, look);
+            else Mannequin.Build(go.transform, jersey, shorts, look.Skin, null);
+
+            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var labelGo = new GameObject("FC26Indicator");
+            labelGo.transform.SetParent(go.transform, false);
+            labelGo.transform.localPosition = new Vector3(0f, 2.25f, 0f);
+            var tm = labelGo.AddComponent<TextMesh>();
+            tm.font = font;
+            tm.fontSize = 36;
+            tm.characterSize = 0.048f;
+            tm.fontStyle = FontStyle.Bold;
+            tm.anchor = TextAnchor.LowerCenter;
+            tm.alignment = TextAlignment.Center;
+            tm.color = isHome ? new Color(0.22f, 0.96f, 0.56f) : new Color(1.0f, 0.34f, 0.38f);
+            tm.text = $"▼ #{number} {pName}";
+            if (font != null) labelGo.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+
+            return new Footballer
+            {
+                Root = go.transform,
+                Rig = rig,
+                Name = pName,
+                Role = role,
+                Number = number,
+                IsHome = isHome,
+                IsKeeper = isKeeper,
+                FormationOffset = offset,
+                MarkerText = tm
+            };
+        }
+
+        void ClearFootballPlayers(LiveFootballMatch m)
+        {
+            if (m == null) return;
+            foreach (var p in m.Players)
+                if (p.Root != null) Destroy(p.Root.gameObject);
+            m.Players.Clear();
+        }
+
+        void ResetKickoffPositions(LiveFootballMatch m, bool homeKickoff)
+        {
+            var c = m.PitchCenter;
+            float y = m.PitchSurfaceY;
+            m.BallPos = new Vector3(c.x, y + 0.23f, c.z);
+            m.BallVel = Vector3.zero;
+            m.BallCarrier = null;
+            m.PlayerHasBall = false;
+            m.PlayerControlLock = 0.15f;
+
+            foreach (var p in m.Players)
+            {
+                if (p.Root == null) continue;
+                var pos = c + new Vector3(p.FormationOffset.x, 0f, p.FormationOffset.z);
+                pos.y = y;
+                p.Root.position = pos;
+                p.Root.rotation = Quaternion.Euler(0f, p.IsHome ? 90f : -90f, 0f);
+                p.Velocity = Vector3.zero;
+                p.ActionCooldown = 0.6f;
+                p.Rig?.SetState("idle");
+            }
+
+            if (Player != null)
+            {
+                Vector3 playerStart = c + new Vector3(homeKickoff ? -0.6f : -4.2f, 0.05f, 0f);
+                Player.Teleport(playerStart, 90f);
+                if (homeKickoff)
+                {
+                    m.PlayerHasBall = true;
+                    m.BallPos = playerStart + Vector3.right * 0.75f + Vector3.up * 0.23f;
+                }
+            }
+
+            SyncBallTransform(m);
+        }
+
+        void SyncBallTransform(LiveFootballMatch m)
+        {
+            if (m.BallRoot != null) m.BallRoot.position = m.BallPos;
+            if (m.BallRing != null)
+            {
+                m.BallRing.position = new Vector3(m.BallPos.x, m.PitchSurfaceY + 0.02f, m.BallPos.z);
+                var mr = m.BallRing.GetComponent<MeshRenderer>();
+                if (mr != null && mr.sharedMaterial != null)
+                {
+                    mr.sharedMaterial.color = m.PlayerHasBall || (m.BallCarrier != null && m.BallCarrier.IsHome)
+                        ? new Color(0.16f, 0.94f, 0.52f, 0.88f)
+                        : m.BallCarrier != null
+                            ? new Color(0.98f, 0.24f, 0.28f, 0.88f)
+                            : new Color(0.98f, 0.82f, 0.20f, 0.85f);
+                }
+            }
+        }
+
+        public bool FootballShoot(float powerBoost = 1f)
+        {
+            var m = ActiveFootball;
+            if (m == null || Player == null) return false;
+
+            float distToBall = Vector3.Distance(Flat(Player.transform.position), Flat(m.BallPos));
+            if (!m.PlayerHasBall && distToBall > 3.2f) return false;
+
+            m.PlayerHasBall = false;
+            m.BallCarrier = null;
+            m.PlayerControlLock = 0.35f;
+
+            Vector3 goalTarget = new Vector3(m.PitchCenter.x + 20.6f, m.PitchSurfaceY + 1.15f, m.PitchCenter.z + Random.Range(-2.1f, 2.1f));
+            Vector3 toGoal = (goalTarget - m.BallPos).normalized;
+            float skillFactor = 1f + Mathf.Clamp01(State.S.skills.fitness / 180f) * 0.35f;
+            float shotSpeed = 23.5f * powerBoost * skillFactor;
+
+            m.BallVel = toGoal * shotSpeed + Vector3.up * Random.Range(2.4f, 4.2f);
+            m.BallSpinYaw = Random.Range(-360f, 360f);
+            Player.SwingWeapon();
+            UI.SoundSystem.I?.PlayKick();
+            SetFootballCommentary("Power strike unleashed towards the corner!");
+            return true;
+        }
+
+        public bool FootballPass()
+        {
+            var m = ActiveFootball;
+            if (m == null || Player == null) return false;
+
+            if (!m.PlayerHasBall && m.BallCarrier != null && m.BallCarrier.IsHome)
+            {
+                var passer = m.BallCarrier;
+                m.BallCarrier = null;
+                passer.ActionCooldown = 0.65f;
+                Vector3 toPlayer = (Player.transform.position + Player.transform.forward * 1.4f - m.BallPos);
+                toPlayer.y = 0f;
+                m.BallVel = toPlayer.normalized * 17.5f + Vector3.up * 1.1f;
+                UI.SoundSystem.I?.PlayKick(0.45f);
+                SetFootballCommentary($"{passer.Name} threads a crisp through-ball to you!");
+                return true;
+            }
+
+            float distToBall = Vector3.Distance(Flat(Player.transform.position), Flat(m.BallPos));
+            if (!m.PlayerHasBall && distToBall > 2.8f) return false;
+
+            Footballer bestMate = null;
+            float bestScore = float.MinValue;
+            foreach (var p in m.Players)
+            {
+                if (!p.IsHome || p.IsKeeper || p.Root == null) continue;
+                float d = Vector3.Distance(Flat(Player.transform.position), Flat(p.Root.position));
+                if (d < 2f) continue;
+                float forwardAdvantage = (p.Root.position.x - Player.transform.position.x) * 1.6f - d * 0.35f;
+                if (forwardAdvantage > bestScore) { bestScore = forwardAdvantage; bestMate = p; }
+            }
+
+            m.PlayerHasBall = false;
+            m.BallCarrier = null;
+            m.PlayerControlLock = 0.32f;
+
+            Vector3 targetPos = bestMate != null
+                ? bestMate.Root.position + Vector3.right * 1.5f
+                : Player.transform.position + Player.transform.forward * 10f;
+            Vector3 dir = (targetPos - m.BallPos);
+            dir.y = 0f;
+            float passDist = dir.magnitude;
+            m.BallVel = dir.normalized * Mathf.Clamp(12f + passDist * 0.45f, 13f, 20f) + Vector3.up * 0.9f;
+            UI.SoundSystem.I?.PlayKick(0.45f);
+            SetFootballCommentary(bestMate != null ? $"Driven pass to #{bestMate.Number} {bestMate.Name}!" : "Through-ball played into space!");
+            return true;
+        }
+
+        public bool FootballChip()
+        {
+            var m = ActiveFootball;
+            if (m == null || Player == null) return false;
+            float distToBall = Vector3.Distance(Flat(Player.transform.position), Flat(m.BallPos));
+            if (!m.PlayerHasBall && distToBall > 2.8f) return false;
+
+            m.PlayerHasBall = false;
+            m.BallCarrier = null;
+            m.PlayerControlLock = 0.35f;
+
+            Vector3 aim = new Vector3(m.PitchCenter.x + 20.5f, m.PitchSurfaceY, m.PitchCenter.z) - m.BallPos;
+            aim.y = 0f;
+            m.BallVel = aim.normalized * 14.5f + Vector3.up * 7.4f;
+            Player.SwingWeapon();
+            UI.SoundSystem.I?.PlayKick(0.55f);
+            SetFootballCommentary("Okocha rainbow flick / lofted chip over the defense!");
+            return true;
+        }
+
+        public bool FootballTackle()
+        {
+            var m = ActiveFootball;
+            if (m == null || Player == null) return false;
+
+            Player.Teleport(Player.transform.position + Player.transform.forward * 1.15f, Player.transform.eulerAngles.y);
+            Player.SwingWeapon();
+
+            float distToBall = Vector3.Distance(Flat(Player.transform.position), Flat(m.BallPos));
+            if (distToBall <= 3.3f)
+            {
+                if (m.BallCarrier != null) m.BallCarrier.ActionCooldown = 1.15f;
+                m.BallCarrier = null;
+                m.PlayerHasBall = true;
+                m.BallVel = Vector3.zero;
+                UI.SoundSystem.I?.PlayKick(0.5f);
+                SetFootballCommentary("Clean sliding tackle! You won possession back!");
+                return true;
+            }
+            return false;
+        }
+
+        public void ScorePlayerGoal(string scorer = "Captain #10")
+        {
+            var m = ActiveFootball;
+            if (m == null) return;
+            OnFootballGoalScored(m, true, scorer);
+        }
+
+        void OnFootballGoalScored(LiveFootballMatch m, bool homeScored, string scorerName)
+        {
+            if (homeScored) m.HomeScore++;
+            else m.AwayScore++;
+
+            m.GoalBannerTimer = 2.4f;
+            m.GoalBannerText = homeScored
+                ? $"GOAL! {scorerName.ToUpperInvariant()} SCORES! ({m.Event.HomeTag} {m.HomeScore} - {m.AwayScore} {m.Event.AwayTag})"
+                : $"GOAL CONCEDED · {CurrentOpponentClub.ToUpperInvariant()} ({m.Event.HomeTag} {m.HomeScore} - {m.AwayScore} {m.Event.AwayTag})";
+            SetFootballCommentary(homeScored
+                ? $"GOOOAAALLL! {scorerName} smashes it into the net! Crowd goes wild!"
+                : $"{CurrentOpponentClub} equalizes on the counter-attack!");
+
+            UI.SoundSystem.I?.PlayWhistle();
+            if (homeScored) UI.SoundSystem.I?.PlayCrowdCheer();
+            State.Toast(m.GoalBannerText);
+
+            ResetKickoffPositions(m, !homeScored);
+        }
+
+        void SetFootballCommentary(string line)
+        {
+            if (ActiveFootball == null) return;
+            ActiveFootball.Commentary = line;
+            ActiveFootball.CommentaryTimer = 4.5f;
+        }
+
+        void UpdateFootball(float dt)
+        {
+            var m = ActiveFootball;
+            if (m == null) return;
+
+            if (m.GoalBannerTimer > 0f) m.GoalBannerTimer = Mathf.Max(0f, m.GoalBannerTimer - dt);
+            if (m.PlayerControlLock > 0f) m.PlayerControlLock = Mathf.Max(0f, m.PlayerControlLock - dt);
+            if (m.CommentaryTimer > 0f) m.CommentaryTimer = Mathf.Max(0f, m.CommentaryTimer - dt);
+
+            if (Player != null)
+            {
+                var pPos = Player.transform.position;
+                float clampedX = Mathf.Clamp(pPos.x, m.PitchCenter.x - 21.6f, m.PitchCenter.x + 21.6f);
+                float clampedZ = Mathf.Clamp(pPos.z, m.PitchCenter.z - 15.2f, m.PitchCenter.z + 15.2f);
+                if (Mathf.Abs(clampedX - pPos.x) > 0.01f || Mathf.Abs(clampedZ - pPos.z) > 0.01f)
+                    Player.Teleport(new Vector3(clampedX, m.PitchSurfaceY + 0.05f, clampedZ), Player.transform.eulerAngles.y);
+            }
+
+            float prevClock = m.MatchClock;
+            m.MatchClock += dt * m.MatchSpeed;
+            if (prevClock < 45f && m.MatchClock >= 45f)
+            {
+                UI.SoundSystem.I?.PlayWhistle();
+                SetFootballCommentary("HALF-TIME WHISTLE! Second half underway!");
+            }
+
+            if (m.MatchClock >= 90f)
+            {
+                if (m.HomeScore == m.AwayScore && m.MatchClock < 105f)
+                {
+                    if (prevClock < 90f) SetFootballCommentary("90' TIED! Extra-Time Golden Goal — next goal wins!");
+                }
+                else
+                {
+                    bool won = m.HomeScore >= m.AwayScore;
+                    CompleteLiveFootballRound(won);
+                    return;
+                }
+            }
+
+            if (m.PlayerHasBall && Player != null)
+            {
+                m.BallCarrier = null;
+                float lead = Player.IsRunning ? 0.95f : 0.72f;
+                Vector3 desired = Player.transform.position + Player.transform.forward * lead;
+                desired.y = m.PitchSurfaceY + 0.23f;
+                m.BallPos = Vector3.Lerp(m.BallPos, desired, 1f - Mathf.Exp(-18f * dt));
+                m.BallVel = Player.transform.forward * (Player.IsRunning ? 8.2f : 4.5f);
+                if (m.BallMesh != null && Player.Speed01 > 0.05f)
+                    m.BallMesh.Rotate(Vector3.right, Player.Speed01 * 520f * dt, Space.Self);
+            }
+            else if (m.BallCarrier != null && m.BallCarrier.Root != null)
+            {
+                var carrier = m.BallCarrier;
+                Vector3 desired = carrier.Root.position + carrier.Root.forward * 0.75f;
+                desired.y = m.PitchSurfaceY + 0.23f;
+                m.BallPos = Vector3.Lerp(m.BallPos, desired, 1f - Mathf.Exp(-16f * dt));
+                m.BallVel = carrier.Root.forward * 5.5f;
+                if (m.BallMesh != null) m.BallMesh.Rotate(Vector3.right, 380f * dt, Space.Self);
+            }
+            else
+            {
+                m.BallPos += m.BallVel * dt;
+                if (m.BallPos.y > m.PitchSurfaceY + 0.23f)
+                {
+                    m.BallVel.y -= 18.5f * dt;
+                    Vector3 side = Vector3.Cross(Vector3.up, m.BallVel.normalized);
+                    m.BallVel += side * (m.BallSpinYaw * 0.008f * dt);
+                }
+                if (m.BallPos.y <= m.PitchSurfaceY + 0.23f)
+                {
+                    m.BallPos.y = m.PitchSurfaceY + 0.23f;
+                    if (m.BallVel.y < -1.8f) m.BallVel.y = -m.BallVel.y * 0.48f;
+                    else m.BallVel.y = 0f;
+                    m.BallVel.x = Mathf.MoveTowards(m.BallVel.x, 0f, 5.2f * dt);
+                    m.BallVel.z = Mathf.MoveTowards(m.BallVel.z, 0f, 5.2f * dt);
+                }
+                if (m.BallMesh != null && m.BallVel.sqrMagnitude > 0.2f)
+                    m.BallMesh.Rotate(Vector3.right, m.BallVel.magnitude * 65f * dt, Space.Self);
+
+                float relX = m.BallPos.x - m.PitchCenter.x;
+                float relZ = m.BallPos.z - m.PitchCenter.z;
+                float relY = m.BallPos.y - m.PitchSurfaceY;
+
+                if (relX >= 20.1f && Mathf.Abs(relZ) <= 2.95f && relY <= 2.75f)
+                {
+                    OnFootballGoalScored(m, true, "Captain #10");
+                    return;
+                }
+                if (relX <= -20.1f && Mathf.Abs(relZ) <= 2.95f && relY <= 2.75f)
+                {
+                    OnFootballGoalScored(m, false, CurrentOpponentClub);
+                    return;
+                }
+
+                if (Mathf.Abs(relZ) > 14.0f)
+                {
+                    m.BallPos.z = m.PitchCenter.z + Mathf.Sign(relZ) * 13.9f;
+                    m.BallVel.z = -m.BallVel.z * 0.6f;
+                }
+                if (Mathf.Abs(relX) > 20.5f)
+                {
+                    m.BallPos.x = m.PitchCenter.x + Mathf.Sign(relX) * 20.3f;
+                    m.BallVel.x = -m.BallVel.x * 0.55f;
+                }
+
+                if (Player != null && m.PlayerControlLock <= 0f)
+                {
+                    float dPlayer = Vector3.Distance(Flat(Player.transform.position), Flat(m.BallPos));
+                    if (dPlayer < 1.55f && m.BallPos.y - m.PitchSurfaceY < 1.5f)
+                    {
+                        m.PlayerHasBall = true;
+                        m.BallCarrier = null;
+                        SetFootballCommentary("You control the ball! [E] Pass · [F / Click] Shoot · [G] Chip!");
+                    }
+                }
+            }
+
+            UpdateFootballAi(m, dt);
+            SyncBallTransform(m);
+        }
+
+        void UpdateFootballAi(LiveFootballMatch m, float dt)
+        {
+            var c = m.PitchCenter;
+            float y = m.PitchSurfaceY;
+            var cam = Camera != null ? Camera.transform : null;
+
+            foreach (var p in m.Players)
+            {
+                if (p.Root == null) continue;
+                if (p.ActionCooldown > 0f) p.ActionCooldown = Mathf.Max(0f, p.ActionCooldown - dt);
+
+                if (p.MarkerText != null && cam != null)
+                {
+                    p.MarkerText.transform.rotation = Quaternion.LookRotation(p.MarkerText.transform.position - cam.position, Vector3.up);
+                    bool hasBall = m.BallCarrier == p;
+                    p.MarkerText.text = hasBall ? $"▼ ★ #{p.Number} {p.Name}" : $"▼ #{p.Number} {p.Name}";
+                }
+
+                var pos = p.Root.position;
+
+                if (p.IsKeeper)
+                {
+                    float gkX = c.x + (p.IsHome ? -19.5f : 19.5f);
+                    float targetZ = Mathf.Clamp(m.BallPos.z, c.z - 2.35f, c.z + 2.35f);
+                    Vector3 gkTarget = new Vector3(gkX, y, targetZ);
+                    p.Root.position = Vector3.MoveTowards(pos, gkTarget, 6.2f * dt);
+                    Vector3 lookBall = Flat(m.BallPos) - Flat(p.Root.position);
+                    if (lookBall.sqrMagnitude > 0.01f) p.Root.rotation = Quaternion.LookRotation(lookBall.normalized, Vector3.up);
+                    p.Rig?.SetState((gkTarget - pos).sqrMagnitude > 0.01f ? "walk" : "idle");
+
+                    if (!m.PlayerHasBall && m.BallCarrier == null && p.ActionCooldown <= 0f)
+                    {
+                        float dBall = Vector3.Distance(Flat(p.Root.position), Flat(m.BallPos));
+                        float ballSpeed = m.BallVel.magnitude;
+                        float saveRadius = p.IsHome ? 1.85f : (ballSpeed > 21f ? 0.92f : 1.45f);
+                        if (dBall < saveRadius && m.BallPos.y - y < 2.2f)
+                        {
+                            p.ActionCooldown = 1.0f;
+                            float clearDirX = p.IsHome ? 1f : -1f;
+                            m.BallVel = new Vector3(clearDirX * 15f, 3.8f, Random.Range(-5f, 5f));
+                            UI.SoundSystem.I?.PlayKick(0.5f);
+                            SetFootballCommentary($"{p.Name} makes a diving parry!");
+                        }
+                    }
+                    continue;
+                }
+
+                if (m.BallCarrier == p)
+                {
+                    float goalDirX = p.IsHome ? 1f : -1f;
+                    Vector3 attackGoal = new Vector3(c.x + goalDirX * 20.5f, y, c.z);
+                    Vector3 toGoal = (attackGoal - pos);
+                    toGoal.y = 0f;
+                    float distGoal = toGoal.magnitude;
+
+                    p.Root.position = Vector3.MoveTowards(pos, attackGoal, (p.IsHome ? 6.4f : 5.6f) * dt);
+                    if (toGoal.sqrMagnitude > 0.01f)
+                        p.Root.rotation = Quaternion.Slerp(p.Root.rotation, Quaternion.LookRotation(toGoal.normalized, Vector3.up), 10f * dt);
+                    p.Rig?.SetState("run", 1.0f);
+
+                    if (p.IsHome && p.ActionCooldown <= 0f)
+                    {
+                        if (distGoal < 11.5f)
+                        {
+                            m.BallCarrier = null;
+                            p.ActionCooldown = 1.2f;
+                            Vector3 shotAim = new Vector3(c.x + 20.6f, y + 1.0f, c.z + Random.Range(-1.8f, 1.8f)) - m.BallPos;
+                            m.BallVel = shotAim.normalized * 22f + Vector3.up * 2.5f;
+                            UI.SoundSystem.I?.PlayKick();
+                            SetFootballCommentary($"{p.Name} fires a strike at goal!");
+                        }
+                        else if (Player != null && Player.transform.position.x > pos.x + 1.5f && Random.value < 1.8f * dt)
+                        {
+                            m.BallCarrier = null;
+                            p.ActionCooldown = 1.0f;
+                            Vector3 toP = (Player.transform.position + Player.transform.forward * 1.2f - m.BallPos);
+                            toP.y = 0f;
+                            m.BallVel = toP.normalized * 16.5f + Vector3.up * 0.9f;
+                            UI.SoundSystem.I?.PlayKick(0.45f);
+                            SetFootballCommentary($"{p.Name} passes the ball to your feet!");
+                        }
+                    }
+                    else if (!p.IsHome && p.ActionCooldown <= 0f)
+                    {
+                        if (distGoal < 11.0f)
+                        {
+                            m.BallCarrier = null;
+                            p.ActionCooldown = 1.4f;
+                            Vector3 shotAim = new Vector3(c.x - 20.6f, y + 0.9f, c.z + Random.Range(-2.2f, 2.2f)) - m.BallPos;
+                            m.BallVel = shotAim.normalized * 17.5f + Vector3.up * 2.2f;
+                            UI.SoundSystem.I?.PlayKick();
+                            SetFootballCommentary($"{p.Name} shoots towards your goal!");
+                        }
+                    }
+                    continue;
+                }
+
+                float dToBall = Vector3.Distance(Flat(pos), Flat(m.BallPos));
+                bool teamHasBall = p.IsHome
+                    ? (m.PlayerHasBall || (m.BallCarrier != null && m.BallCarrier.IsHome))
+                    : (m.BallCarrier != null && !m.BallCarrier.IsHome);
+
+                Vector3 desiredPos;
+                if (!teamHasBall && dToBall < 9.5f)
+                {
+                    desiredPos = new Vector3(m.BallPos.x, y, m.BallPos.z);
+                }
+                else
+                {
+                    float ballShiftX = Mathf.Clamp((m.BallPos.x - c.x) * 0.45f, -7f, 7f);
+                    desiredPos = new Vector3(
+                        Mathf.Clamp(c.x + p.FormationOffset.x + ballShiftX, c.x - 18.5f, c.x + 18.5f),
+                        y,
+                        Mathf.Clamp(c.z + p.FormationOffset.z, c.z - 12.5f, c.z + 12.5f));
+                }
+
+                Vector3 moveVec = desiredPos - pos;
+                moveVec.y = 0f;
+                float moveSpeed = !teamHasBall && dToBall < 9.5f ? (p.IsHome ? 6.0f : 5.2f) : 4.6f;
+                if (moveVec.sqrMagnitude > 0.15f)
+                {
+                    p.Root.position = Vector3.MoveTowards(pos, desiredPos, moveSpeed * dt);
+                    p.Root.rotation = Quaternion.Slerp(p.Root.rotation, Quaternion.LookRotation(moveVec.normalized, Vector3.up), 8f * dt);
+                    p.Rig?.SetState(moveSpeed > 5.0f ? "run" : "walk", 0.95f);
+                }
+                else p.Rig?.SetState("idle");
+
+                if (p.ActionCooldown <= 0f && dToBall < 1.25f && m.BallPos.y - y < 1.4f)
+                {
+                    if (m.BallCarrier == null && !m.PlayerHasBall)
+                    {
+                        m.BallCarrier = p;
+                        p.ActionCooldown = 0.5f;
+                    }
+                    else if (!p.IsHome && m.PlayerHasBall && m.PlayerControlLock <= 0f && dToBall < 1.05f && Random.value < 1.1f * dt)
+                    {
+                        m.PlayerHasBall = false;
+                        m.BallCarrier = p;
+                        p.ActionCooldown = 0.8f;
+                        SetFootballCommentary($"{p.Name} dispossessed you! Press [F / Click] to tackle back!");
+                    }
+                }
+            }
+        }
+
+        public void CompleteLiveFootballRound(bool won)
+        {
+            var m = ActiveFootball;
+            if (m == null) return;
+            UI.SoundSystem.I?.PlayWhistle();
+
+            if (won && m.CurrentRound < m.Event.Rounds)
+            {
+                m.CurrentRound++;
+                m.HomeScore = 0;
+                m.AwayScore = 0;
+                m.MatchClock = 0f;
+                SpawnFootballSquads(m);
+                ResetKickoffPositions(m, true);
+                UI.SoundSystem.I?.PlayCrowdCheer();
+                State.Toast($"ROUND WON! Advancing to {CurrentTournamentStageLabel} vs {CurrentOpponentClub}!");
+                SetFootballCommentary($"{CurrentTournamentStageLabel} underway vs {CurrentOpponentClub}!");
+                return;
+            }
+
+            EndLiveFootballMatch(won, false);
+        }
+
+        public void EndLiveFootballMatch(bool won, bool forfeited)
+        {
+            var m = ActiveFootball;
+            if (m == null) return;
+
+            var ev = m.Event;
+            int finalHome = m.HomeScore;
+            int finalAway = m.AwayScore;
+            string savedWeapon = m.SavedWeapon;
+
+            if (m.MatchPropsRoot != null) Destroy(m.MatchPropsRoot.gameObject);
+            ActiveFootball = null;
+
+            if (Player != null) Player.SetWeapon(savedWeapon);
+
+            if (forfeited)
+            {
+                State.Toast("Left the football pitch");
+                RefreshNav();
+                return;
+            }
+
+            var st = State.S;
+            st.stamina = Mathf.Max(10f, st.stamina - 25f);
+            Hours(1.5f);
+            State.GainSkill("fitness", won ? 6f : 3f);
+            State.AddRep("social", 3);
+
+            if (won)
+            {
+                st.footballWins++;
+                st.footballTier = Mathf.Max(st.footballTier, Mathf.Min(ev.TierIndex + 1, 2));
+                State.Earn(ev.Prize);
+                State.AddXp(ev.Xp);
+                State.AddRep("street", 6);
+                State.AddRep("public", 5);
+                UI.SoundSystem.I?.PlayCrowdCheer();
+                State.Toast($"FULL TIME {finalHome}-{finalAway}! WON {ev.Title.ToUpperInvariant()} · +₦{ev.Prize:N0} · +{ev.Xp} XP");
+
+                if (st.footballWins == 3)
+                    State.Message("captain", "Omo, you sabi ball! Neighbourhood tournament dey open for you now.");
+                if (st.footballWins >= 6 || ev.Id == "fc_champions_league")
+                    State.Message("amaka", "Saw you lift the trophy under the Teslim Balogun floodlights! Iponri crews want a sponsor deal.");
+            }
+            else
+            {
+                State.Toast($"FULL TIME {finalHome}-{finalAway} · Lost to {ev.OpponentClubs[0]}. Train fitness and run it back!");
+            }
+
+            RefreshNav();
         }
     }
 }

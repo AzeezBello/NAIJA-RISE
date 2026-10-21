@@ -26,28 +26,148 @@ namespace Rise.EditorTools
             Debug.Log("RISE: Lagos scene saved to " + ScenePath);
         }
 
+        public static readonly (string Name, BuildTarget Target, string Output)[] PlatformTargets = new[]
+        {
+            ("macOS", BuildTarget.StandaloneOSX, "Builds/Rise-Lagos.app"),
+            ("Windows", BuildTarget.StandaloneWindows64, "Builds/Windows/Rise-Lagos.exe"),
+            ("WebGL", BuildTarget.WebGL, "Builds/WebGL"),
+            ("iOS", BuildTarget.iOS, "Builds/iOS"),
+            ("Android", BuildTarget.Android, "Builds/Android/Rise-Lagos.apk"),
+            ("PS5", BuildTarget.PS5, "Builds/PS5"),
+            ("PS4", BuildTarget.PS4, "Builds/PS4"),
+            ("XboxSeries", BuildTarget.GameCoreXboxSeries, "Builds/XboxSeries"),
+            ("XboxOne", BuildTarget.GameCoreXboxOne, "Builds/XboxOne"),
+            ("Switch", BuildTarget.Switch, "Builds/Switch/Rise-Lagos.nsp"),
+        };
+
+        public static void ConfigurePlatformSettings(BuildTarget target)
+        {
+            PlayerSettings.companyName = "Rise Studios Lagos";
+            PlayerSettings.productName = "Rise: Hustle or Die Trying";
+            PlayerSettings.bundleVersion = "1.2.0";
+            var group = BuildPipeline.GetBuildTargetGroup(target);
+            if (group != BuildTargetGroup.Unknown)
+                PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.FromBuildTargetGroup(group), "com.riselagos.game");
+
+            switch (target)
+            {
+                case BuildTarget.StandaloneOSX:
+                    EditorUserBuildSettings.SetPlatformSettings("Standalone", "OSXUniversal", "Architecture", "x64ARM64");
+                    break;
+                case BuildTarget.WebGL:
+                    PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
+                    PlayerSettings.WebGL.decompressionFallback = true;
+                    break;
+                case BuildTarget.iOS:
+                    PlayerSettings.iOS.targetOSVersionString = "15.0";
+                    PlayerSettings.iOS.requiresFullScreen = true;
+                    PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+                    PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+                    PlayerSettings.allowedAutorotateToLandscapeRight = true;
+                    PlayerSettings.allowedAutorotateToPortrait = false;
+                    PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+                    break;
+                case BuildTarget.Android:
+                    PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
+                    PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+                    PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+                    PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+                    PlayerSettings.allowedAutorotateToLandscapeRight = true;
+                    PlayerSettings.allowedAutorotateToPortrait = false;
+                    PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+                    break;
+            }
+        }
+
+        [MenuItem("RISE/Validate All Platform Targets")]
+        public static int ValidatePlatformTargets()
+        {
+            int count = 0;
+            foreach (var p in PlatformTargets)
+            {
+                ConfigurePlatformSettings(p.Target);
+                var group = BuildPipeline.GetBuildTargetGroup(p.Target);
+                bool moduleInstalled = BuildPipeline.IsBuildTargetSupported(group, p.Target);
+                Debug.Log($"RISE platform target [{p.Name}] ({p.Target}) → {p.Output} (module installed: {moduleInstalled})");
+                count++;
+            }
+            return count;
+        }
+
         [MenuItem("RISE/Build macOS Player")]
         public static void BuildMac()
         {
             // Universal (Intel + Apple Silicon): the default is Apple Silicon only, which cannot launch on Intel Macs.
-            EditorUserBuildSettings.SetPlatformSettings("Standalone", "OSXUniversal", "Architecture", "x64ARM64");
+            ConfigurePlatformSettings(BuildTarget.StandaloneOSX);
             BuildPlayer(BuildTarget.StandaloneOSX, "Builds/Rise-Lagos.app");
         }
 
         [MenuItem("RISE/Build Windows Player")]
-        public static void BuildWindows() => BuildPlayer(BuildTarget.StandaloneWindows64, "Builds/Windows/Rise-Lagos.exe");
+        public static void BuildWindows()
+        {
+            ConfigurePlatformSettings(BuildTarget.StandaloneWindows64);
+            BuildPlayer(BuildTarget.StandaloneWindows64, "Builds/Windows/Rise-Lagos.exe");
+        }
 
         [MenuItem("RISE/Build WebGL Player")]
         public static void BuildWebGL()
         {
             // Gzip + decompression fallback keeps the .data archive under itch.io's 200 MB per-file cap
             // while allowing static hosts (itch.io, CDNs) to unpack without custom Content-Encoding headers.
-            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
-            PlayerSettings.WebGL.decompressionFallback = true;
+            ConfigurePlatformSettings(BuildTarget.WebGL);
             if (System.IO.Directory.Exists("Builds/WebGL/Build"))
                 System.IO.Directory.Delete("Builds/WebGL/Build", true);
             BuildPlayer(BuildTarget.WebGL, "Builds/WebGL");
             PatchWebGLIndex("Builds/WebGL/index.html");
+        }
+
+        [MenuItem("RISE/Build iOS Player")]
+        public static void BuildiOS()
+        {
+            ConfigurePlatformSettings(BuildTarget.iOS);
+            BuildPlayer(BuildTarget.iOS, "Builds/iOS");
+        }
+
+        [MenuItem("RISE/Build Android Player")]
+        public static void BuildAndroid()
+        {
+            ConfigurePlatformSettings(BuildTarget.Android);
+            BuildPlayer(BuildTarget.Android, "Builds/Android/Rise-Lagos.apk");
+        }
+
+        [MenuItem("RISE/Build PlayStation 5 Player")]
+        public static void BuildPS5()
+        {
+            ConfigurePlatformSettings(BuildTarget.PS5);
+            BuildPlayer(BuildTarget.PS5, "Builds/PS5");
+        }
+
+        [MenuItem("RISE/Build PlayStation 4 Player")]
+        public static void BuildPS4()
+        {
+            ConfigurePlatformSettings(BuildTarget.PS4);
+            BuildPlayer(BuildTarget.PS4, "Builds/PS4");
+        }
+
+        [MenuItem("RISE/Build Xbox Series X|S Player")]
+        public static void BuildXboxSeries()
+        {
+            ConfigurePlatformSettings(BuildTarget.GameCoreXboxSeries);
+            BuildPlayer(BuildTarget.GameCoreXboxSeries, "Builds/XboxSeries");
+        }
+
+        [MenuItem("RISE/Build Xbox One Player")]
+        public static void BuildXboxOne()
+        {
+            ConfigurePlatformSettings(BuildTarget.GameCoreXboxOne);
+            BuildPlayer(BuildTarget.GameCoreXboxOne, "Builds/XboxOne");
+        }
+
+        [MenuItem("RISE/Build Nintendo Switch Player")]
+        public static void BuildSwitch()
+        {
+            ConfigurePlatformSettings(BuildTarget.Switch);
+            BuildPlayer(BuildTarget.Switch, "Builds/Switch/Rise-Lagos.nsp");
         }
 
         static void PatchWebGLIndex(string indexPath)
@@ -82,6 +202,12 @@ namespace Rise.EditorTools
             Build();
             ShaderSetup.Prepare();
             CharacterImport.Prepare();
+            var group = BuildPipeline.GetBuildTargetGroup(target);
+            if (!BuildPipeline.IsBuildTargetSupported(group, target))
+            {
+                Debug.LogWarning($"RISE: {target} settings configured for '{output}', but the {target} playback engine module is not installed in this Unity Editor installation.");
+                return;
+            }
             var options = new BuildPlayerOptions { scenes = new[] { ScenePath }, locationPathName = output, target = target, options = BuildOptions.None };
             var report = BuildPipeline.BuildPlayer(options);
             var summary = report.summary;

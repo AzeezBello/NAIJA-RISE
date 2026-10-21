@@ -21,7 +21,7 @@ namespace Rise
         [System.NonSerialized] public JobData Working; [System.NonSerialized] public float WorkT, WorkDuration;   // shift in progress (real seconds)
         [System.NonSerialized] public readonly System.Collections.Generic.List<VehicleController> Parked = new System.Collections.Generic.List<VehicleController>();
 
-        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Vendor, Gate, Home, Business, BusStop, Deliver, Place, Hustler, GroundItem }
+        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Vendor, Gate, Home, Business, BusStop, Deliver, Place, Hustler, GroundItem, Encounter }
         Target target; ContactSystem.Contact targetContact; VehicleController targetVehicle; TrafficSystem.Vehicle targetTraffic; Vector3 targetKiosk;
         PropertyData targetProperty; BusinessData targetBusiness; BusStopData targetStop; StreetLife.GroundItem targetItem;
         float saveT, heatT = 45f;
@@ -73,9 +73,11 @@ namespace Rise
             saveT += dt; if (saveT > 15f) { saveT = 0f; AutoSave(); }
 
             State.TickEconomy(dt);
-            if (Clock.Day != lastDay) { lastDay = Clock.Day; State.NewDay(Clock.Day); }
+            if (Clock.Day != lastDay) { lastDay = Clock.Day; State.NewDay(Clock.Day); Events?.OnDayChanged(Clock.Date, Clock.Day); }
             UpdateTolls();
             UpdateTask(dt);
+            UpdateShootout(dt);
+            UpdateFootball(dt);
             UpdateRace(dt);
             UpdateFamily(dt);
             UpdateStreet();
@@ -137,6 +139,24 @@ namespace Rise
         void UpdateOnFoot()
         {
             Player.InputEnabled = true;
+            if (InFootballMatch)
+            {
+                Player.Swimming = false;
+                Player.CanSprint = State.S.stamina > 0f;
+                target = Target.None;
+                Prompt = ActiveFootball.PlayerHasBall
+                    ? "PASS [E]  ·  SHOOT [F / CLICK]  ·  CHIP [G]  ·  MENU [X]"
+                    : "TACKLE / SHOOT [F / CLICK]  ·  CALL PASS [E]  ·  MENU [X]";
+                if (GameInput.AttackPressed)
+                {
+                    if (!FootballShoot()) FootballTackle();
+                    return;
+                }
+                if (GameInput.InteractPressed) { FootballPass(); return; }
+                if (GameInput.PickupPressed || GameInput.CycleWeaponPressed) { FootballChip(); return; }
+                if (GameInput.DeclinePressed) { OpenFootballMenu(); return; }
+                return;
+            }
             if (UpdateInteriorOnFoot()) return;
             var pos = Player.transform.position;
             bool swimming = InWaterOffDeck(pos);
@@ -167,6 +187,7 @@ namespace Rise
             else if (NearKiosk(pos, out targetKiosk)) { target = Target.Kiosk; Prompt = "POS KIOSK · PURE WATER, SUYA"; }
             else if (NearVendor(pos, out targetVendor)) { target = Target.Vendor; Prompt = "ROADSIDE VENDOR · PURE WATER, GALA, SUYA"; }
             else if (Street != null && (targetHustler = Street.NearestNightlife(pos, 3.5f)) != null) { target = Target.Hustler; Prompt = $"TALK TO {targetHustler.Value.name.ToUpper()}"; }
+            else if (NearEncounter(pos)) { target = Target.Encounter; Prompt = Events.ActiveEncounter.prompt; }
 
             if (GameInput.CycleWeaponPressed) { CycleWeapon(); return; }
             if (GameInput.PickupPressed) { if (targetItem != null) PickupGroundItem(targetItem); else TryPickupOrCycleItem(); return; }
@@ -188,7 +209,25 @@ namespace Rise
                 case Target.Kiosk: OpenKioskMenu(); break;
                 case Target.Vendor: OpenVendorMenu(); break;
                 case Target.Hustler: if (targetHustler.HasValue) OpenHustlerMenu(targetHustler.Value); break;
+                case Target.Encounter: ResolveEncounter(); break;
             }
+        }
+
+        public bool NearEncounter(Vector3 pos) => Events != null && Events.ActiveEncounter != null && Vector2.Distance(new Vector2(pos.x, pos.z), new Vector2(Events.ActiveEncounter.pos.x, Events.ActiveEncounter.pos.z)) < 11f;
+
+        public bool ResolveEncounter()
+        {
+            if (Events == null || Events.ActiveEncounter == null) return false;
+            var enc = Events.ActiveEncounter;
+            State.Earn(enc.reward);
+            State.AddRep(enc.rep, enc.repAmount);
+            State.AddXp(enc.xp);
+            if (enc.kind == "breakdown") { State.S.stamina = Mathf.Max(5f, State.S.stamina - 8f); State.GainSkill("fitness", 2f); }
+            else if (enc.kind == "dispute") State.GainSkill("charisma", 2f);
+            else State.GainSkill("business", 2f);
+            State.Toast($"{enc.title} resolved · +₦{enc.reward:N0} · +{enc.repAmount} {enc.rep} rep");
+            Events.ClearEncounter();
+            return true;
         }
 
         // Commercial vehicles (danfo, keke, okada, fuel tanker, etc.) require a fight weapon to hijack,
@@ -231,13 +270,16 @@ namespace Rise
             return "DELIVER";
         }
 
-        // Story first, then Dayo's dealership, then plain job dialogue.
+        // Story first, then Dayo's dealership, then politicians, fraudsters, hubs, and plain job dialogue.
         public void TalkTo(ContactSystem.Contact c)
         {
             if (IsMissionContact(c)) { OpenStoryDialogue(c); return; }
             if (IsFamily(c)) { OpenFamilyMenu(c); return; }
             if (c.data.id == "dayo") { OpenDealerMenu(c); return; }
             if (c.data.id == "speedy") { OpenRaceMenu(c); return; }
+            if (c.data.id == "captain" || c.data.id == "ajcaptain") { OpenFootballMenu(); return; }
+            if (IsPolitician(c)) { OpenPoliticianMenu(c); return; }
+            if (IsFraudster(c)) { OpenFraudsterMenu(c); return; }
             if (IsHub(c)) { OpenHubMenu(c); return; }
             OpenDialogue(c);
         }
@@ -263,6 +305,7 @@ namespace Rise
                 var job = j;
                 menu.Options.Add(new MenuOption { Label = ok ? $"Work shift — {j.title} · ₦{State.JobPay(j):N0} · {j.dur}h" : $"{j.title} ({why})", Enabled = ok, Action = () => StartShift(job) });
             }
+            AddActionOpsToMenu(menu, c.data.id);
             AddDogOption(menu, c);
             AddRelationshipOptions(menu, c);
             menu.Options.Add(new MenuOption { Label = "Not now — I go find another hustle", Action = () => State.Toast("The story can wait. Jobs, courses, the gym and business dey.") });
@@ -296,6 +339,7 @@ namespace Rise
         // ---- driving ----
         public void Enter(VehicleController v)
         {
+            Player.TriggerVehicleEnterAnim();
             Vehicle = v; v.SetDriven(true);
             if (State != null && Data != null && Data.fabrics != null && Data.fabrics.Length > 0)
             {
@@ -316,6 +360,7 @@ namespace Rise
             var pos = v.transform.position - v.transform.right * (v.Class.wid * 0.5f + 1.2f) + Vector3.up * 0.5f;
             Player.Teleport(pos, v.transform.eulerAngles.y);
             Player.gameObject.SetActive(true);
+            Player.TriggerVehicleExitAnim();
             Camera.SetDriving(null);
             Traffic.PlayerObstacle = Player.transform;
             if (!v.Owned && !Parked.Contains(v)) Parked.Add(v);   // a taken vehicle can be re-entered where you left it

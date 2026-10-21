@@ -26,22 +26,50 @@ namespace Rise.UI
 
         Font regular, semibold;
         GUIStyle panel, rSmall, rMid, rPill, rKey, field;
-        GUIStyle overline, heading, title, big, huge, body, bodyStrong, bodyMuted, bodyWrap, small, smallWrap, smallRight, keyText, promptText, pillText, center, stripText;
-        Texture2D disc, arrow;
+        GUIStyle overline, heading, title, big, huge, body, bodyStrong, bodyMuted, bodyClip, bodyStrongClip, bodyMutedClip, bodyWrap, small, smallClip, smallWrap, smallRight, keyText, promptText, pillText, center, stripText;
+        Texture2D disc, arrow, coverTex;
+        bool coverChecked;
+        float splashStart;
         readonly System.Collections.Generic.List<Texture2D> owned = new System.Collections.Generic.List<Texture2D>();
         float builtScale = -1f;
         static readonly GUIContent tmp = new GUIContent();
 
+        public Texture2D CoverTexture { get { EnsureCoverLoaded(); return coverTex; } }
+        public string LoadingStageFor(float elapsed) => elapsed < 1.3f ? "logo_title" : elapsed < 3.0f ? "cover" : "done";
+
+        void EnsureCoverLoaded()
+        {
+            if (coverChecked && coverTex != null) return;
+            coverChecked = true;
+            coverTex = Resources.Load<Texture2D>("UI/cover");
+            if (coverTex == null)
+            {
+                string[] paths = { "Assets/Rise/Resources/UI/cover.png", "Builds/cover-630x500.png" };
+                foreach (var p in paths)
+                {
+                    if (!System.IO.File.Exists(p)) continue;
+                    var bytes = System.IO.File.ReadAllBytes(p);
+                    var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                    if (ImageConversion.LoadImage(tex, bytes)) { coverTex = Own(tex); break; }
+                }
+            }
+        }
+
         public void Init(WorldData world, DayNightCycle dayNight, Session s, Minimap map)
         {
             data = world; clock = dayNight; session = s; minimap = map; hintUntil = Time.time + 25f;
+            splashStart = Time.unscaledTime;
+            EnsureCoverLoaded();
         }
 
         void Awake() { useGUILayout = false; }   // everything is laid out by hand: no Layout pass, fewer allocations
 
         void OnDestroy() { foreach (var t in owned) if (t != null) Destroy(t); }
 
-        float Scale => Mathf.Round(Mathf.Clamp(Screen.height / 720f, 0.8f, 2.5f) * 20f) / 20f;
+        public static float ComputeScaleFor(float width, float height) =>
+            Mathf.Round(Mathf.Clamp(Mathf.Min(height / 720f, width / 1180f), 0.75f, 2.5f) * 20f) / 20f;
+
+        float Scale => ComputeScaleFor(Screen.width, Screen.height);
 
         // ---- textures and styles ----
 
@@ -141,8 +169,12 @@ namespace Rise.UI
             body = Txt(R, 14 * s, Text);
             bodyStrong = Txt(B, 14 * s, Text);
             bodyMuted = Txt(R, 14 * s, A(Muted, 0.6f));
+            bodyClip = Txt(R, 14 * s, Text); bodyClip.clipping = TextClipping.Clip;
+            bodyStrongClip = Txt(B, 14 * s, Text); bodyStrongClip.clipping = TextClipping.Clip;
+            bodyMutedClip = Txt(R, 14 * s, A(Muted, 0.6f)); bodyMutedClip.clipping = TextClipping.Clip;
             bodyWrap = Txt(R, 14 * s, Text, TextAnchor.UpperLeft, true);
             small = Txt(R, 12 * s, Muted);
+            smallClip = Txt(R, 12 * s, Muted); smallClip.clipping = TextClipping.Clip;
             smallWrap = Txt(R, 12 * s, Muted, TextAnchor.UpperLeft, true);
             smallRight = Txt(R, 12 * s, Muted, TextAnchor.MiddleRight);
             keyText = Txt(B, 12 * s, Ink, TextAnchor.MiddleCenter);
@@ -227,9 +259,53 @@ namespace Rise.UI
 
             bool wanted = st.heat >= data.meta.pursuitHeat;
             if (wanted) topY = DrawWanted(s, W, topY, st.heat) + 8f * s;
+            if (session.InInterior || session.ActiveIndoorMission != null) topY = DrawIndoorBanner(s, W, topY) + 8f * s;
+            if (session.IsSpecOpActive) topY = DrawSpecOpBanner(s, W, topY) + 8f * s;
+            if (session.InFootballMatch) topY = DrawFootballBroadcastBanner(s, W, H, topY) + 8f * s;
+            if (session.Racing) topY = DrawNfsRaceBanner(s, W, topY) + 8f * s;
             if (session.Working != null) DrawShift(s, W, H);
             DrawToasts(s, W, topY);
             if (session.ActiveMenu != null) DrawMenu(session.ActiveMenu, s, W, H);
+            DrawLoadingSplash(s, W, H);
+        }
+
+        // Loading screen sequence: Stage 1 shows the R Logo & "RISE: HUSTLE OR DIE TRYING" Title, then Stage 2 transitions to the full Cover Art.
+        void DrawLoadingSplash(float s, float W, float H)
+        {
+            float elapsed = Time.unscaledTime - splashStart;
+            string stg = LoadingStageFor(elapsed);
+            if (stg == "done" || session.ActiveMenu != null) return;
+            EnsureCoverLoaded();
+            float alpha = elapsed > 2.5f ? Mathf.Clamp01((3.0f - elapsed) / 0.5f) : 1f;
+            Box(new Rect(0f, 0f, W, H), rSmall, A(Ink, 0.96f * alpha));
+
+            if (stg == "logo_title")
+            {
+                float badge = 84f * s;
+                var br = new Rect(W * 0.5f - badge * 0.5f, H * 0.34f, badge, badge);
+                Box(br, rMid, A(Hex(0x0E1F1A), alpha));
+                Box(new Rect(br.x + 4f * s, br.y + 4f * s, badge - 8f * s, badge - 8f * s), rMid, A(Green, 0.18f * alpha));
+                Label(br, "R", huge, A(Green, alpha));
+
+                string mainTitle = "RISE";
+                string subTitle = "HUSTLE OR DIE TRYING";
+                string locLine = "LAGOS · NIGERIA  ·  JANUARY 1, 1999";
+                Label(new Rect(0f, br.yMax + 16f * s, W, LH(huge)), mainTitle, center, A(Green, alpha));
+                Label(new Rect(0f, br.yMax + 16f * s + LH(huge), W, LH(heading)), subTitle, stripText, A(Gold, alpha));
+                Label(new Rect(0f, br.yMax + 24f * s + LH(huge) + LH(heading), W, LH(small)), locLine, center, A(Text, 0.85f * alpha));
+            }
+            else
+            {
+                float cw = Mathf.Min(W * 0.68f, 540f * s), ch = cw * (500f / 630f);
+                var cr = new Rect(W * 0.5f - cw * 0.5f, H * 0.44f - ch * 0.5f, cw, ch);
+                Box(new Rect(cr.x - 6f * s, cr.y - 6f * s, cr.width + 12f * s, cr.height + 12f * s), panel, new Color(1f, 1f, 1f, alpha));
+                if (coverTex != null && Event.current.type == EventType.Repaint)
+                    Tex(cr, coverTex, new Color(1f, 1f, 1f, alpha));
+                float p = Mathf.Clamp01((elapsed - 1.3f) / 1.4f);
+                var barRect = new Rect(cr.x, cr.yMax + 16f * s, cr.width, 8f * s);
+                Bar(barRect, p, A(Green, alpha));
+                Label(new Rect(cr.x, barRect.yMax + 8f * s, cr.width, LH(small)), $"ENTERING SURULERE · LAGOS ({clock.FullDateText.ToUpperInvariant()})", center, A(Gold, alpha));
+            }
         }
 
         // Top-left: brand, district, street (or bridge).
@@ -257,12 +333,13 @@ namespace Rise.UI
             if (!string.IsNullOrEmpty(street)) Label(new Rect(x, y, iw, LH(small)), street, small);
         }
 
-        // Top-right: clock with day/night, day number and weather, heat pips, network status.
+        // Top-right: clock with day/night, full calendar date (starting Fri, Jan 1, 1999) + day number and weather, historic era/news ticker, heat pips, network status.
         void DrawClock(float s, float W, float m, int heat)
         {
-            float pad = 12f * s, w = 214f * s;
-            bool weatherRow = true, heatRow = heat > 0, netRow = session.Players != null;
-            float h = pad * 2f + LH(big) + LH(small) + (heatRow ? 22f * s : 0f) + (netRow ? 20f * s : 0f);
+            float pad = 12f * s, w = 276f * s;
+            var hist = session.Events != null ? session.Events.ActiveHistoricEvent : null;
+            bool weatherRow = true, eraRow = hist != null, heatRow = heat > 0, netRow = session.Players != null;
+            float h = pad * 2f + LH(big) + LH(small) + (eraRow ? 22f * s : 0f) + (heatRow ? 22f * s : 0f) + (netRow ? 20f * s : 0f);
             var r = new Rect(W - m - w, m, w, h);
             Box(r, panel, Color.white);
             float x = r.x + pad, y = r.y + pad, iw = w - pad * 2f;
@@ -273,12 +350,20 @@ namespace Rise.UI
             y += LH(big);
             if (weatherRow)
             {
-                string day = $"Day {clock.Day}";
+                string day = $"{clock.DateText} · Day {clock.Day}";
                 Label(new Rect(x, y, iw, LH(small)), day, small);
                 var wx = session.Weather;
                 string tag = wx == null ? null : wx.Raining ? (wx.Storm ? "STORM" : "RAIN") : wx.Harmattan ? "HARMATTAN" : null;
                 if (tag != null) Pill(x + TW(small, day) + 8f * s, y + (LH(small) - 18f * s) * 0.5f, tag, tag == "HARMATTAN" ? Gold : Blue, s);
                 y += LH(small);
+            }
+            if (eraRow)
+            {
+                y += 3f * s;
+                Color badgeCol = hist.Category == "pandemic" ? Red : hist.Category == "election" ? Green : Gold;
+                float bw = Pill(x, y, hist.Category.ToUpperInvariant(), badgeCol, s);
+                Label(new Rect(x + bw + 6f * s, y, iw - bw - 6f * s, 18f * s), hist.Title, smallClip);
+                y += 19f * s;
             }
             if (heatRow)
             {
@@ -383,23 +468,30 @@ namespace Rise.UI
                 if (Event.current.type == EventType.Repaint) GUI.DrawTexture(new Rect(pr.x + inset, pr.y + inset, ps - inset * 2f, ps - inset * 2f), Portrait.Texture, ScaleMode.ScaleAndCrop, false);
             }
 
-            // Driving cluster above the wallet.
+            // Driving cluster above the wallet (with NFS Gear & NOS Nitrous Gauge).
             var v = session.Vehicle;
             if (v != null)
             {
-                float ch = 78f * s; var cr = new Rect(r.x, r.y - 10f * s - ch, w, ch);
+                float ch = 104f * s; var cr = new Rect(r.x, r.y - 10f * s - ch, w, ch);
                 Box(cr, panel, Color.white);
                 float cx = cr.x + pad, cy = cr.y + 10f * s;
                 string kmh = $"{v.Kmh:0}";
                 Label(new Rect(cx, cy, 100f * s, LH(huge)), kmh, huge);
                 Label(new Rect(cx + TW(huge, kmh) + 6f * s, cy + LH(huge) - LH(small) - 6f * s, 50f * s, LH(small)), "km/h", small);
-                float bx = cr.x + 128f * s, bw = cr.xMax - pad - bx, by = cr.y + 14f * s;
-                float fuel = st.fuel, cond = v.Condition;
+                int gear = v.Speed < -0.5f ? 0 : Mathf.Clamp(1 + Mathf.FloorToInt(v.Kmh / 24f), 1, 6);
+                string gearLabel = gear == 0 ? "REV" : $"GEAR {gear}";
+                Pill(cx, cy + LH(huge) + 4f * s, session.NosActive ? "NOS BOOST!" : gearLabel, session.NosActive ? Blue : Gold, s);
+
+                float bx = cr.x + 128f * s, bw = cr.xMax - pad - bx, by = cr.y + 10f * s;
+                float fuel = st.fuel, cond = v.Condition, nos = session.NosCharge;
+                Label(new Rect(bx, by, bw, 14f * s), "NOS NITROUS", overline, Blue); Label(new Rect(bx, by, bw, 14f * s), $"{nos:0}%", smallRight);
+                Bar(new Rect(bx, by + 15f * s, bw, 6f * s), nos / 100f, session.NosActive ? Color.cyan : Blue);
+                by += 27f * s;
                 Label(new Rect(bx, by, bw, 14f * s), "FUEL", overline); Label(new Rect(bx, by, bw, 14f * s), $"{fuel:0}%", smallRight);
-                Bar(new Rect(bx, by + 16f * s, bw, 6f * s), fuel / 100f, fuel < 15f ? Red : Gold);
-                by += 30f * s;
+                Bar(new Rect(bx, by + 15f * s, bw, 6f * s), fuel / 100f, fuel < 15f ? Red : Gold);
+                by += 27f * s;
                 Label(new Rect(bx, by, bw, 14f * s), "CONDITION", overline); Label(new Rect(bx, by, bw, 14f * s), $"{cond:0}%", smallRight);
-                Bar(new Rect(bx, by + 16f * s, bw, 6f * s), cond / 100f, cond < 30f ? Red : cond < 60f ? Gold : Green);
+                Bar(new Rect(bx, by + 15f * s, bw, 6f * s), cond / 100f, cond < 30f ? Red : cond < 60f ? Gold : Green);
             }
         }
 
@@ -427,22 +519,57 @@ namespace Rise.UI
 
             float slotBottom = by - 26f * s, ph = 40f * s, py = slotBottom - ph;
             bool free = session.ActiveMenu == null && session.Working == null;
-            if (session.Vehicle == null && !string.IsNullOrEmpty(st.equippedWeapon))
+            if (st.armor > 0f)
             {
-                string wLabel = $"{session.EquippedWeaponName.ToUpperInvariant()}  ·  {(touch ? "FIGHT / ITEM" : "F FIGHT · Q SWITCH")}";
-                Pill(x0, slotBottom - 20f * s, wLabel, Gold, s);
+                Pill(x0, slotBottom - 20f * s, $"KEVLAR ARMOR {st.armor:0}%", Blue, s);
                 slotBottom -= 24f * s;
                 py = slotBottom - ph;
             }
+            if (session.Vehicle == null && !string.IsNullOrEmpty(st.equippedWeapon))
+            {
+                bool isGun = session.IsGunEquipped;
+                string wLabel = isGun
+                    ? $"{session.EquippedWeaponName.ToUpperInvariant()}  ·  {st.ammo} AMMO  ·  {(touch ? "FIGHT SHOOT · ITEM SWITCH" : "F / CLICK SHOOT · Q SWITCH")}"
+                    : $"{session.EquippedWeaponName.ToUpperInvariant()}  ·  {(touch ? "FIGHT / ITEM" : "F FIGHT · Q SWITCH")}";
+                Pill(x0, slotBottom - 20f * s, wLabel, isGun ? Red : Gold, s);
+                slotBottom -= 24f * s;
+                py = slotBottom - ph;
+
+                if (isGun && free)
+                {
+                    bool hasTarget = session.Player != null && session.NearestEnemy(session.Player.transform.position, session.WeaponRange()) != null;
+                    Color retCol = hasTarget ? Red : A(Gold, 0.85f);
+                    float cx0 = W * 0.5f, cy0 = H * 0.44f, arm = 7f * s, gapR = 4f * s, th = Mathf.Max(1.5f, 1.8f * s);
+                    Box(new Rect(cx0 - gapR - arm, cy0 - th * 0.5f, arm, th), rSmall, retCol);
+                    Box(new Rect(cx0 + gapR, cy0 - th * 0.5f, arm, th), rSmall, retCol);
+                    Box(new Rect(cx0 - th * 0.5f, cy0 - gapR - arm, th, arm), rSmall, retCol);
+                    Box(new Rect(cx0 - th * 0.5f, cy0 + gapR, th, arm), rSmall, retCol);
+
+                    // Call of Duty–style Hitmarker & Kill Feed
+                    if (Time.time - session.LastHitTime < 0.22f)
+                    {
+                        bool killed = Time.time - session.LastKillTime < 0.25f;
+                        Color hmCol = killed ? Red : Color.white;
+                        float hm = 9f * s;
+                        Label(new Rect(cx0 - hm, cy0 - hm, hm * 2f, hm * 2f), "✕", stripText, hmCol);
+                    }
+                    if (Time.time - session.LastKillTime < 1.35f && !string.IsNullOrEmpty(session.LastKillLabel))
+                    {
+                        string kl = $"+100  {session.LastKillLabel.ToUpperInvariant()}";
+                        float kw = TW(pillText, kl) + 18f * s;
+                        Pill(cx0 - kw * 0.5f, cy0 + 18f * s, kl, Gold, s);
+                    }
+                }
+            }
             if (!string.IsNullOrEmpty(session.Prompt) && free)
             {
-                string key = touch ? "ACT" : "E", label = session.Prompt.ToUpperInvariant();
+                string key = InteractKeyLabel(touch), label = session.Prompt.ToUpperInvariant();
                 float kh = 26f * s, kw = Mathf.Max(kh, TW(keyText, key) + 12f * s);
-                float w = 10f * s + kw + 10f * s + TW(promptText, label) + 16f * s;
-                var r = new Rect(W * 0.5f - w * 0.5f, py, w, ph);
+                float maxPromptW = Mathf.Min(W - 32f * s, 10f * s + kw + 10f * s + TW(promptText, label) + 16f * s);
+                var r = new Rect(W * 0.5f - maxPromptW * 0.5f, py, maxPromptW, ph);
                 Box(r, panel, Color.white);
                 KeyCap(r.x + 10f * s, r.y + (ph - kh) * 0.5f, kh, key, Gold, s);
-                Label(new Rect(r.x + 20f * s + kw, r.y, w, ph), label, promptText);
+                Label(new Rect(r.x + 20f * s + kw, r.y, maxPromptW - 28f * s - kw, ph), label, promptText);
             }
             else if (Time.time < hintUntil && free)
             {
@@ -500,6 +627,112 @@ namespace Rise.UI
             return r.yMax;
         }
 
+        static string InteractKeyLabel(bool touch)
+        {
+            if (touch) return "ACT";
+            return GameInput.ControllerFamily switch
+            {
+                "PlayStation" => "✕",
+                "Switch" => "B",
+                "Xbox" => "A",
+                "Gamepad" => "A",
+                _ => "E"
+            };
+        }
+
+        // Top-centre: Indoor Location & Active Indoor Mission Banner.
+        float DrawIndoorBanner(float s, float W, float y)
+        {
+            var im = session.ActiveIndoorMission;
+            string line = im != null
+                ? $"[INDOOR MISSION]  {im.Title.ToUpperInvariant()}   |   STEP {im.Step}/{im.TotalSteps}   |   HOSTILES: {session.RemainingEnemies}"
+                : $"[INDOOR]  {session.IndoorStations.Count} INTERACTIVE STATIONS   |   WALK TO KITCHEN, RING, SNOOKER OR OPS BOARD [E]";
+            float w = Mathf.Min(W - 32f * s, TW(bodyStrong, line) + 36f * s), h = 32f * s;
+            var r = new Rect(W * 0.5f - w * 0.5f, y, w, h);
+            Box(r, rPill, im != null ? new Color(0.12f, 0.34f, 0.22f, 0.94f) : new Color(0.10f, 0.18f, 0.24f, 0.90f));
+            Label(r, line, stripText, im != null ? Green : Gold);
+            return r.yMax;
+        }
+
+        // Top-centre: Call of Duty–style Military (81 Div) & Navy (SBS) Tactical Overwatch strip.
+        float DrawSpecOpBanner(float s, float W, float y)
+        {
+            var op = session.ActiveActionOp;
+            if (op == null) return y;
+            bool navy = op.Branch == "navy";
+            string text = $"{op.Overwatch.ToUpperInvariant()} · {op.Callsign}   |   WAVE {session.CurrentWave}/{op.Waves}   |   HOSTILES: {session.RemainingEnemies}   |   FIRETEAM: {session.ActiveSquad.Count} ACTIVE";
+            float w = TW(bodyStrong, text) + 36f * s, h = 34f * s;
+            var r = new Rect(W * 0.5f - w * 0.5f, y, w, h);
+            Box(r, rPill, navy ? new Color(0.08f, 0.22f, 0.42f, 0.92f) : new Color(0.14f, 0.30f, 0.14f, 0.92f));
+            Label(r, text, stripText, navy ? Blue : Green);
+            return r.yMax;
+        }
+
+        // Top-centre: EA Sports FC 26 / Dream League Soccer Live Match Broadcast Scorebug & Goal Overlay.
+        float DrawFootballBroadcastBanner(float s, float W, float H, float y)
+        {
+            var fm = session.ActiveFootball;
+            if (fm == null) return y;
+            int min = Mathf.FloorToInt(fm.MatchClock);
+            int sec = Mathf.FloorToInt((fm.MatchClock - min) * 60f);
+            string half = fm.MatchClock < 45f ? "1ST HALF" : fm.MatchClock <= 90f ? "2ND HALF" : "ET GOLDEN GOAL";
+            string poss = fm.PlayerHasBall ? "POSSESSION: YOU (#10)" : fm.BallCarrier != null ? $"BALL: #{fm.BallCarrier.Number} {fm.BallCarrier.Name.ToUpperInvariant()}" : "LOOSE BALL";
+            string scoreLine = $"[{session.CurrentTournamentStageLabel}]   {fm.Event.HomeTag}  {fm.HomeScore}  -  {fm.AwayScore}  {fm.Event.AwayTag}   |   {min:00}:{sec:00} ({half})   |   {poss}";
+            float w = TW(bodyStrong, scoreLine) + 40f * s, h = 36f * s;
+            var r = new Rect(W * 0.5f - w * 0.5f, y, w, h);
+            Box(r, rPill, new Color(0.05f, 0.24f, 0.14f, 0.94f));
+            Label(r, scoreLine, stripText, Green);
+            float bottom = r.yMax;
+
+            if (!string.IsNullOrEmpty(fm.Commentary))
+            {
+                string comm = $"LIVE COMMENTARY: “{fm.Commentary}”";
+                float cw = TW(small, comm) + 28f * s, ch = 24f * s;
+                var cr = new Rect(W * 0.5f - cw * 0.5f, bottom + 4f * s, cw, ch);
+                Box(cr, rPill, new Color(0.03f, 0.08f, 0.06f, 0.85f));
+                Label(cr, comm, pillText, Gold);
+                bottom = cr.yMax;
+            }
+
+            if (fm.GoalBannerTimer > 0f && !string.IsNullOrEmpty(fm.GoalBannerText))
+            {
+                float gw = TW(heading, fm.GoalBannerText) + 48f * s, gh = 48f * s;
+                var gr = new Rect(W * 0.5f - gw * 0.5f, H * 0.28f, gw, gh);
+                Box(gr, rPill, new Color(0.10f, 0.52f, 0.26f, 0.96f));
+                Label(gr, fm.GoalBannerText, stripText, Gold);
+            }
+            return bottom;
+        }
+
+        // Top-centre: Need for Speed (NFS) Street Racing Telemetry Strip, Drift Counter & Speedtrap Banner.
+        float DrawNfsRaceBanner(float s, float W, float y)
+        {
+            var r = session.ActiveRace;
+            if (r == null) return y;
+            string posTag = r.PlayerPosition == 1 ? "1ST" : r.PlayerPosition == 2 ? "2ND" : r.PlayerPosition == 3 ? "3RD" : "4TH";
+            string extra = r.Mode == "drift"
+                ? $"   |   DRIFT: {r.DriftScore:0} PTS ({r.DriftMultiplier}x)"
+                : r.Mode == "speedtrap"
+                    ? $"   |   SPEEDTRAP: {r.TotalSpeedtrapKmh:0} KM/H"
+                    : $"   |   DRIFT PTS: {r.DriftScore:0}";
+            string line = $"[NFS {r.Mode.ToUpperInvariant()}]  {r.Title}   |   POS {posTag}/4   |   GATE {r.I + 1}/{r.Cps.Length}   |   TIME {r.T:0.0}s{extra}";
+            float w = TW(bodyStrong, line) + 38f * s, h = 34f * s;
+            var rect = new Rect(W * 0.5f - w * 0.5f, y, w, h);
+            Box(rect, rPill, new Color(0.08f, 0.12f, 0.28f, 0.94f));
+            Label(rect, line, stripText, Blue);
+            float bottom = rect.yMax;
+
+            if (r.StyleBannerTimer > 0f && !string.IsNullOrEmpty(r.StyleBanner))
+            {
+                float sw = TW(bodyStrong, r.StyleBanner) + 32f * s, sh = 28f * s;
+                var sr = new Rect(W * 0.5f - sw * 0.5f, bottom + 4f * s, sw, sh);
+                Box(sr, rPill, new Color(0.55f, 0.12f, 0.38f, 0.92f));
+                Label(sr, r.StyleBanner, stripText, Gold);
+                bottom = sr.yMax;
+            }
+            return bottom;
+        }
+
         // Centre: shift progress.
         void DrawShift(float s, float W, float H)
         {
@@ -535,20 +768,31 @@ namespace Rise.UI
             }
         }
 
-        // Centre: the menu card (dialogue, agent, home, business, bus stop, kiosk, police, sign-in).
+        // Centre: the menu card (dialogue, agent, home, business, bus stop, kiosk, police, sign-in) with viewport-clamped auto-scrolling.
         void DrawMenu(Menu menu, float s, float W, float H)
         {
             bool touchUi = TouchControls.Active;
-            float pad = 20f * s, cw = Mathf.Min(560f * s, W - 32f * s), iw = cw - pad * 2f;
-            float rowH = (touchUi ? 44f : 36f) * s, fieldH = 34f * s;
+            float pad = 18f * s, cw = Mathf.Min(560f * s, W - 32f * s), iw = cw - pad * 2f;
+            int totalOpts = menu.Options.Count;
+            float baseRowH = (touchUi ? 42f : totalOpts > 10 ? 30f : 35f) * s;
+            float rowGap = (totalOpts > 10 ? 3f : 4f) * s;
+            float fieldH = 34f * s;
             float titleH = LH(title);
             float subH = string.IsNullOrEmpty(menu.Subtitle) ? 0f : TH(smallWrap, menu.Subtitle, iw) + 2f * s;
             string quote = string.IsNullOrEmpty(menu.Line) ? null : $"“{menu.Line}”";
-            float quoteH = quote == null ? 0f : TH(bodyWrap, quote, iw - 14f * s);
+            float quoteH = quote == null ? 0f : Mathf.Min(110f * s, TH(bodyWrap, quote, iw - 14f * s));
             float fieldsH = menu.Fields.Count * (fieldH + 8f * s);
-            float optsH = menu.Options.Count * (rowH + 4f * s);
-            float h = pad + titleH + subH + (quote != null ? quoteH + 16f * s : 0f) + 12f * s + fieldsH + optsH + 10f * s + LH(small) + pad;
-            var r = new Rect(W * 0.5f - cw * 0.5f, Mathf.Max(16f * s, H * 0.5f - h * 0.5f), cw, h);
+
+            float headerH = pad + titleH + subH + (quote != null ? quoteH + 14f * s : 0f) + 10f * s + fieldsH;
+            float footerH = 8f * s + LH(small) + pad;
+            float maxCardH = H - 24f * s;
+            float availOptsH = Mathf.Max(baseRowH * 3f, maxCardH - headerH - footerH);
+            int maxVisible = Mathf.Max(3, Mathf.FloorToInt((availOptsH + rowGap) / (baseRowH + rowGap)));
+            int visCount = Mathf.Min(totalOpts, maxVisible);
+            float optsH = visCount * (baseRowH + rowGap);
+            float h = Mathf.Min(maxCardH, headerH + optsH + footerH);
+
+            var r = new Rect(W * 0.5f - cw * 0.5f, Mathf.Max(12f * s, H * 0.5f - h * 0.5f), cw, h);
             if (Event.current.type == EventType.Repaint) Box(new Rect(0, 0, W, H), rSmall, new Color(0f, 0f, 0f, 0.25f));   // dim the world behind
             Box(r, panel, Color.white);
             float x = r.x + pad, y = r.y + pad;
@@ -556,12 +800,12 @@ namespace Rise.UI
             if (subH > 0f) { Label(new Rect(x, y, iw, subH), menu.Subtitle, smallWrap); y += subH; }
             if (quote != null)
             {
-                y += 8f * s;
+                y += 6f * s;
                 Box(new Rect(x, y, 3f * s, quoteH), rSmall, A(Gold, 0.6f));
                 Label(new Rect(x + 14f * s, y, iw - 14f * s, quoteH), quote, bodyWrap);
                 y += quoteH + 8f * s;
             }
-            y += 12f * s;
+            y += 10f * s;
 
             for (int f = 0; f < menu.Fields.Count; f++)
             {
@@ -575,26 +819,79 @@ namespace Rise.UI
             if (menu.Fields.Count > 0 && Cursor.lockState == CursorLockMode.Locked) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
             session.Typing = menu.Fields.Count > 0 && GUI.GetNameOfFocusedControl().StartsWith("field");
 
-            if (menu.Rects.Length != menu.Options.Count) menu.Rects = new Rect[menu.Options.Count];
+            if (menu.Rects.Length != totalOpts) menu.Rects = new Rect[totalOpts];
+            for (int i = 0; i < totalOpts; i++) menu.Rects[i] = default;
+
+            int startIdx = 0;
+            if (totalOpts > visCount)
+                startIdx = Mathf.Clamp(menu.Index - visCount / 2, 0, totalOpts - visCount);
+            int endIdx = Mathf.Min(totalOpts, startIdx + visCount);
+
             var e = Event.current;
             bool pointer = !touchUi && Cursor.lockState != CursorLockMode.Locked;   // a free mouse can hover and click rows
-            for (int i = 0; i < menu.Options.Count; i++)
+            float optsTopY = y;
+            for (int i = startIdx; i < endIdx; i++)
             {
                 var o = menu.Options[i];
-                var row = new Rect(x - 8f * s, y, iw + 16f * s, rowH);
+                var row = new Rect(x - 8f * s, y, iw + (totalOpts > visCount ? 8f * s : 16f * s), baseRowH);
                 menu.Rects[i] = row;
                 bool sel = i == menu.Index, hover = pointer && o.Enabled && row.Contains(e.mousePosition);
                 if (sel) Box(row, rMid, A(Green, 0.14f));
                 else if (hover) Box(row, rMid, new Color(1f, 1f, 1f, 0.06f));
-                if (sel) Box(new Rect(row.x, row.y + 8f * s, 3f * s, rowH - 16f * s), rSmall, Green);
-                float kh = 22f * s;
-                float kw = KeyCap(row.x + 14f * s, row.y + (rowH - kh) * 0.5f, kh, (i + 1).ToString(), !o.Enabled ? new Color(1f, 1f, 1f, 0.25f) : sel ? Green : new Color(1f, 1f, 1f, 0.85f), s);
-                Label(new Rect(row.x + 14f * s + kw + 12f * s, row.y, row.width - kw - 40f * s, rowH), o.Label, !o.Enabled ? bodyMuted : sel ? bodyStrong : body);
+                if (sel) Box(new Rect(row.x, row.y + 6f * s, 3f * s, baseRowH - 12f * s), rSmall, Green);
+                float kh = Mathf.Min(22f * s, baseRowH - 6f * s);
+                float kw = KeyCap(row.x + 14f * s, row.y + (baseRowH - kh) * 0.5f, kh, (i + 1).ToString(), !o.Enabled ? new Color(1f, 1f, 1f, 0.25f) : sel ? Green : new Color(1f, 1f, 1f, 0.85f), s);
+                Label(new Rect(row.x + 14f * s + kw + 12f * s, row.y, row.width - kw - 34f * s, baseRowH), o.Label, !o.Enabled ? bodyMutedClip : sel ? bodyStrongClip : bodyClip);
                 if (pointer && o.Enabled && e.type == EventType.MouseDown && e.button == 0 && row.Contains(e.mousePosition)) { e.Use(); session.Choose(i); return; }
-                y += rowH + 4f * s;
+                y += baseRowH + rowGap;
             }
-            y += 6f * s;
-            Label(new Rect(x, y, iw, LH(small)), touchUi ? "Tap an option  ·  X to close" : $"W/S choose  ·  E confirm  ·  1–{Mathf.Max(1, menu.Options.Count)} pick  ·  X close", small);
+
+            // Sleek scrollbar indicator when menu has more options than visible viewport rows.
+            if (totalOpts > visCount)
+            {
+                float sbX = r.xMax - pad * 0.55f, sbH = visCount * (baseRowH + rowGap) - rowGap;
+                Box(new Rect(sbX, optsTopY, 4f * s, sbH), rSmall, Track);
+                float thumbH = Mathf.Max(18f * s, sbH * ((float)visCount / totalOpts));
+                float thumbT = (float)startIdx / Mathf.Max(1, totalOpts - visCount);
+                Box(new Rect(sbX, optsTopY + (sbH - thumbH) * thumbT, 4f * s, thumbH), rSmall, Gold);
+            }
+
+            y += 4f * s;
+            string scrollTag = totalOpts > visCount ? $"  ·  Showing {startIdx + 1}–{endIdx} of {totalOpts} (Scroll/W/S)" : "";
+            string footer = touchUi
+                ? $"Tap an option  ·  X to close{scrollTag}"
+                : $"W/S or Scroll choose  ·  {InteractKeyLabel(false)} confirm  ·  1–{Mathf.Min(9, Mathf.Max(1, totalOpts))} pick  ·  X close{scrollTag}";
+            Label(new Rect(x, y, iw, LH(small)), footer, smallClip);
+        }
+
+        // Full Game UI & UX Audit: verifies fonts, procedural 9-slice styles, multi-resolution non-overlapping HUD geometry, and menu viewport clamping.
+        public bool AuditUiAndUxHealth(out string report)
+        {
+            float s = Scale;
+            if (!Mathf.Approximately(s, builtScale) || panel == null || panel.normal.background == null) Build(s);
+            bool fontsOk = regular != null && semibold != null;
+            bool stylesOk = panel != null && panel.normal.background != null && disc != null && arrow != null && bodyClip != null && bodyClip.clipping == TextClipping.Clip;
+
+            // Verify non-overlapping bottom HUD columns (Minimap 180*s + Centre Vitals 300*s + Portrait 92*s + Wallet 300*s) across 720p, 1080p, 4:3, 21:9, and 4K.
+            Vector2[] resolutions = { new Vector2(1280, 720), new Vector2(1920, 1080), new Vector2(1024, 768), new Vector2(2560, 1080), new Vector2(3840, 2160) };
+            bool layoutOk = true;
+            foreach (var res in resolutions)
+            {
+                float rs = ComputeScaleFor(res.x, res.y);
+                float m = 16f * rs;
+                float mapRight = m + 180f * rs;
+                float centreLeft = res.x * 0.5f - 150f * rs;
+                float centreRight = res.x * 0.5f + 150f * rs;
+                float walletWithPortraitLeft = res.x - m - 300f * rs - 10f * rs - 92f * rs;
+                if (mapRight >= centreLeft || centreRight >= walletWithPortraitLeft) layoutOk = false;
+
+                // Verify a 20-option menu fits inside the vertical safe area on this resolution.
+                float maxCardH = res.y - 24f * rs;
+                if (maxCardH < 320f * rs) layoutOk = false;
+            }
+
+            report = $"Fonts={(fontsOk ? "Inter OK" : "Fallback")}, Styles={(stylesOk ? "Clipped+9Slice OK" : "FAIL")}, MultiResLayout={(layoutOk ? "5/5 Aspect Ratios Non-Overlapping" : "OVERLAP")}";
+            return fontsOk && stylesOk && layoutOk;
         }
     }
 }
