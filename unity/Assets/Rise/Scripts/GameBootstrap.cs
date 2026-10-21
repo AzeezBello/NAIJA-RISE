@@ -19,6 +19,7 @@ namespace Rise
 
         public WorldData Data { get; private set; }
         public WorldBuilder Builder { get; private set; }
+        public WorldStreamer Streamer { get; private set; }
         public DayNightCycle Clock { get; private set; }
         public PlayerController Player { get; private set; }
         public Session Session { get; private set; }
@@ -179,6 +180,17 @@ namespace Rise
 
             var sound = gameObject.AddComponent<UI.SoundSystem>();
             sound.Init(Session);
+
+            Streamer = gameObject.AddComponent<WorldStreamer>();
+            Streamer.Init(Data, Builder.Root, Player.transform);
+            weather.CurrentBiome = Streamer.CurrentBiome;
+            sound.SetBiome(Streamer.CurrentBiome);
+            Streamer.OnStateChanged = (st, bm) =>
+            {
+                weather.CurrentBiome = bm;
+                sound.SetBiome(bm);
+                state.Toast($"{UI.SoundSystem.RegionalGreeting(st)} · [{st.ToUpperInvariant()}]");
+            };
 
             if (DiagFlags.Has("shots")) gameObject.AddComponent<DiagShots>().Session = Session;
             if (UI.TouchControls.I != null) { UI.TouchControls.I.MenuOpen = () => Session.ActiveMenu != null; UI.TouchControls.I.Driving = () => Session.Vehicle != null; UI.TouchControls.I.MenuRects = () => Session.ActiveMenu?.Rects; }

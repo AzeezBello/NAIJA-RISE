@@ -13,7 +13,16 @@ namespace Rise.World
         float rainLeft, nextCheck = 60f;
         public bool Raining => rainLeft > 0f;
         public bool Storm { get; private set; }
-        public bool Harmattan => clock != null && clock.Day % 10 >= 7;
+        public string CurrentBiome = "coastal";
+        public bool Harmattan => (clock != null && clock.Day % 10 >= 7) || CurrentBiome == "sahel";
+        public float RegionalRainMultiplier => CurrentBiome switch
+        {
+            "niger_delta" => 1.5f,
+            "coastal" => 1.1f,
+            "sahel" => 0.35f,
+            "abuja" => 0.75f,
+            _ => 1.0f
+        };
         public float Wet => Raining ? 0.7f : 1f;   // grip factor for driving
         [System.NonSerialized] public System.Action<string> Notify;
         [System.NonSerialized] public System.Action<bool> OnWet;
@@ -53,7 +62,7 @@ namespace Rise.World
             else
             {
                 nextCheck -= dt;
-                if (nextCheck <= 0f) { nextCheck = 60f; if (Random.value < data.weather.rainChance) StartRain(Random.Range(data.weather.rainMinMinutes, data.weather.rainMaxMinutes), Random.value < 0.35f); }
+                if (nextCheck <= 0f) { nextCheck = 60f; if (Random.value < data.weather.rainChance * RegionalRainMultiplier) StartRain(Random.Range(data.weather.rainMinMinutes, data.weather.rainMaxMinutes), Random.value < 0.35f); }
             }
         }
 
