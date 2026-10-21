@@ -122,6 +122,7 @@ export const VEH = {
   },
 
   pickup: { name: 'Pickup', len: 4.8, wid: 2.05, max: 17, boost: 23, accel: 7 },
+  luxury: { name: 'Luxury Cruiser', len: 4.85, wid: 2.35, max: 30, boost: 42, accel: 16 },
   motorcycle: { name: 'Motorcycle', len: 2.5, wid: 0.95, max: 26, boost: 36, accel: 14 },
   van: { name: 'Van', len: 4.9, wid: 2.1, max: 18, boost: 24, accel: 7 },
   delivery: { name: 'Delivery Van', len: 4.7, wid: 2.0, max: 17, boost: 22, accel: 7 },

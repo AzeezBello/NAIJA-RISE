@@ -14,15 +14,16 @@ namespace Rise
         [System.NonSerialized] public WorldData Data; [System.NonSerialized] public GameState State; [System.NonSerialized] public DayNightCycle Clock;
         [System.NonSerialized] public PlayerController Player; [System.NonSerialized] public ThirdPersonCamera Camera;
         [System.NonSerialized] public TrafficSystem Traffic; [System.NonSerialized] public ContactSystem Contacts;
+        [System.NonSerialized] public PedestrianSystem Pedestrians;
 
         [System.NonSerialized] public VehicleController Vehicle;        // the vehicle being driven, if any
         [System.NonSerialized] public string Prompt;                    // "TALK TO BABA K", "ENTER DANFO", …
         [System.NonSerialized] public JobData Working; [System.NonSerialized] public float WorkT, WorkDuration;   // shift in progress (real seconds)
         [System.NonSerialized] public readonly System.Collections.Generic.List<VehicleController> Parked = new System.Collections.Generic.List<VehicleController>();
 
-        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Vendor, Gate, Home, Business, BusStop, Deliver, Place, Hustler }
+        enum Target { None, Contact, Vehicle, TrafficVehicle, Kiosk, Vendor, Gate, Home, Business, BusStop, Deliver, Place, Hustler, GroundItem }
         Target target; ContactSystem.Contact targetContact; VehicleController targetVehicle; TrafficSystem.Vehicle targetTraffic; Vector3 targetKiosk;
-        PropertyData targetProperty; BusinessData targetBusiness; BusStopData targetStop;
+        PropertyData targetProperty; BusinessData targetBusiness; BusStopData targetStop; StreetLife.GroundItem targetItem;
         float saveT, heatT = 45f;
         bool sinking;
         Vector3 lastShorePos;
@@ -44,6 +45,7 @@ namespace Rise
             lastShorePos = data.Spawn;
             SpawnParkedVehicles();
             Traffic.PlayerObstacle = Player.transform;
+            Player.SetWeapon(BestWeaponId());
         }
 
         // After the network objects exist: rejoin the crew channel from the save.
@@ -150,23 +152,30 @@ namespace Rise
             targetContact = Contacts.Nearest(pos, 3.4f);
 
             targetProperty = NearGate(pos); targetBusiness = NearBusiness(pos); targetStop = NearBusStop(pos);
+            targetItem = Street != null ? Street.NearestGroundItem(pos, 2.6f) : null;
 
             if (TaskDeliverable()) { target = Target.Deliver; Prompt = DeliverLabel(); }
+            else if (targetItem != null) { target = Target.GroundItem; Prompt = $"PICK UP {targetItem.label.ToUpper()} (E / G)"; }
             else if (targetVehicle != null) { target = Target.Vehicle; Prompt = $"ENTER {targetVehicle.Class.name.ToUpper()}"; }
             else if (targetContact != null) { target = Target.Contact; Prompt = $"TALK TO {targetContact.data.name.ToUpper()}"; }
             else if (targetProperty != null && IsHome(targetProperty)) { target = Target.Home; Prompt = "ENTER HOME"; }
             else if (targetProperty != null) { target = Target.Gate; Prompt = $"SEE AGENT KUNLE · {targetProperty.type.ToUpper()}"; }
             else if (targetBusiness != null) { target = Target.Business; Prompt = (State.Biz(targetBusiness.id) != null ? "MANAGE " : "BUY ") + targetBusiness.name.ToUpper(); }
             else if ((targetPlace = NearPlace(pos)) != null) { target = Target.Place; Prompt = PlacePrompt(targetPlace); }
-            else if (targetTraffic != null && targetTraffic.speed < 1f) { target = Target.TrafficVehicle; Prompt = $"TAKE {targetTraffic.cls.name.ToUpper()}"; }
+            else if (targetTraffic != null && targetTraffic.speed < 3.5f) { target = Target.TrafficVehicle; Prompt = $"TAKE {targetTraffic.cls.name.ToUpper()}"; }
             else if (targetStop != null) { target = Target.BusStop; Prompt = $"TAKE DANFO FROM {targetStop.shortName}"; }
             else if (NearKiosk(pos, out targetKiosk)) { target = Target.Kiosk; Prompt = "POS KIOSK · PURE WATER, SUYA"; }
             else if (NearVendor(pos, out targetVendor)) { target = Target.Vendor; Prompt = "ROADSIDE VENDOR · PURE WATER, GALA, SUYA"; }
             else if (Street != null && (targetHustler = Street.NearestNightlife(pos, 3.5f)) != null) { target = Target.Hustler; Prompt = $"TALK TO {targetHustler.Value.name.ToUpper()}"; }
 
+            if (GameInput.CycleWeaponPressed) { CycleWeapon(); return; }
+            if (GameInput.PickupPressed) { if (targetItem != null) PickupGroundItem(targetItem); else TryPickupOrCycleItem(); return; }
+            if (GameInput.AttackPressed) { PerformStreetAttack(); return; }
+
             if (!Interact()) return;
             switch (target)
             {
+                case Target.GroundItem: PickupGroundItem(targetItem); break;
                 case Target.Vehicle: Enter(targetVehicle); break;
                 case Target.TrafficVehicle: TryHijackTrafficVehicle(targetTraffic); break;
                 case Target.Deliver: FinishTask(true); break;
@@ -182,31 +191,34 @@ namespace Rise
             }
         }
 
-        // Commercial vehicles (danfo, keke, okada, fuel tanker, etc.) require a protection weapon to hijack,
+        // Commercial vehicles (danfo, keke, okada, fuel tanker, etc.) require a fight weapon to hijack,
         // and the driver/conductor fight back before fleeing.
         public bool TryHijackTrafficVehicle(TrafficSystem.Vehicle tv)
         {
             if (tv == null) return false;
             if (tv.cls != null && tv.cls.commercial)
             {
-                if (!State.Has("weapon"))
+                if (!HasWeapon())
                 {
-                    State.Toast("The driver and passengers will fight back. You need a weapon to hijack this vehicle.");
+                    State.Toast("The driver and passengers will fight back. You need a fight weapon to hijack this vehicle.");
                     return false;
                 }
-                int dmg = Random.Range(20, 50);
+                Player?.SwingWeapon();
+                int dmg = Mathf.Max(6, Random.Range(24, 48) - WeaponPower() / 4);
                 State.S.health = Mathf.Max(15f, State.S.health - dmg);
                 State.AddHeat(2, "Armed commercial hijack");
                 State.AddRep("public", -8);
                 State.AddRep("street", -5);
-                State.Toast($"Driver and conductor fought back (-{dmg} health) before you took the {tv.cls.name}!");
+                State.Toast($"Used {EquippedWeaponName} to force the driver out (-{dmg} health) and took the {tv.cls.name}!");
                 var vc = Traffic.TakeVehicle(tv);
                 Enter(vc);
                 return true;
             }
+            if (HasWeapon()) Player?.SwingWeapon();
             var plain = Traffic.TakeVehicle(tv);
             Enter(plain);
             State.AddHeat(1, "Vehicle taken");
+            State.Toast($"Pulled the driver out and took the {tv.cls?.name ?? "vehicle"}.");
             return true;
         }
 
@@ -285,6 +297,12 @@ namespace Rise
         public void Enter(VehicleController v)
         {
             Vehicle = v; v.SetDriven(true);
+            if (State != null && Data != null && Data.fabrics != null && Data.fabrics.Length > 0)
+            {
+                var look = State.Look;
+                var fab = Data.fabrics[Mathf.Clamp(look.Fabric, 0, Data.fabrics.Length - 1)];
+                v.StyleDriver(look.Skin, Entities.Mannequin.Hex(fab.baseColor));
+            }
             Player.gameObject.SetActive(false);
             Camera.SetDriving(v.transform);
             Traffic.PlayerObstacle = v.transform;

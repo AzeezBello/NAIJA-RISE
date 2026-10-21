@@ -28,6 +28,8 @@ export const DISTRICT = createArea({
     { id: 'apapa-wharf', name: 'Apapa Wharf', short: 'APAPA WHARF', x: -450, z: 220, c: '#5c4933', sign: '#ffc52f', h: 8, kind: 'garage' },
     { id: 'apapa-market', name: 'Apapa Market', short: 'APAPA MARKET', x: -250, z: 70, c: '#6b4737', sign: '#ffc52f', h: 6, kind: 'market' },
     { id: 'apapa-school', name: 'Apapa Community School', short: 'APAPA SCHOOL', x: -250, z: 220, c: '#8a7a4a', sign: '#ffffff', h: 6, kind: 'school' },
+    { id: 'nns-beecroft', name: 'NNS Beecroft Naval Base · Apapa', short: 'NNS BEECROFT', x: -480, z: 96, c: '#13294b', sign: '#ffffff', h: 7, kind: 'navy', big: true, region: 'apapa-wharf' },
+    { id: 'arakan-barracks', name: 'Arakan Barracks · Apapa', short: 'ARAKAN BARRACKS', x: -310, z: 96, c: '#3b5323', sign: '#ffffff', h: 6, kind: 'army', big: true, region: 'apapa-port' },
   ],
   busStops: [
     { id: 'apapa-bus', name: 'Apapa Bus Stop', short: 'APAPA', x: -350, z: 158, agberos: 1 },

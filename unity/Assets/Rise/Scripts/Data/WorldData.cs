@@ -77,6 +77,7 @@ namespace Rise.Data
     [Serializable] public class FabricData { public string name, baseColor, accent, pattern; }
     [Serializable] public class LevelData { public int level; public string title; }
     [Serializable] public class UnlockData { public int level; public string text; }
+    [Serializable] public class StateData { public string id, name, capital, zone, slogan, corridor, status; public int distanceKm, fare; }
 
     // A place any id can resolve to: landmark, bus stop or property.
     public struct Place
@@ -129,6 +130,7 @@ namespace Rise.Data
         public LevelData[] levels;
         public UnlockData[] unlocks;
         public CellData[] cells;
+        public StateData[] states;
 
         [NonSerialized] RegionData[] regionsByArea;
         [NonSerialized] Dictionary<string, List<SegmentData>> segmentIndex;
@@ -171,7 +173,7 @@ namespace Rise.Data
                 }
             businesses ??= new BusinessData[0]; dealer ??= new DealerData[0]; gym ??= new GymData(); food ??= new FoodData[0]; mall ??= new MallData(); cafe ??= new CafeData(); courses ??= new CourseData[0]; football ??= new FootballData(); school ??= new SchoolData(); weather ??= new WeatherData(); animals ??= new AnimalData[0]; family ??= new FamilyMemberData[0]; serviceNpcs ??= new ServiceNpcData[0]; nightlife ??= new NightlifeData[0]; upgrades ??= new UpgradeData[0]; liveries ??= new string[0]; slogans ??= new string[0]; staffNames ??= new string[0]; familyRequests ??= new FamilyRequestData[0]; familySpots ??= new FamilySpotData[0]; familySchedules ??= new FamilyScheduleData[0]; relationshipLevels ??= new RelationshipLevelData[0];
             outfits ??= new string[0]; hairStyles ??= new string[0]; faces ??= new string[0]; bodyTypes ??= new string[0]; accessories ??= new string[0]; facialHair ??= new string[0]; hairColors ??= new string[0]; jobs ??= new JobData[0]; contacts ??= new ContactData[0]; allContacts ??= new NameData[0]; vehicleClasses ??= new VehicleClassData[0];
-            fabrics ??= new FabricData[0]; skins ??= new string[0]; pants ??= new string[0]; levels ??= new LevelData[0]; unlocks ??= new UnlockData[0];
+            fabrics ??= new FabricData[0]; skins ??= new string[0]; pants ??= new string[0]; levels ??= new LevelData[0]; unlocks ??= new UnlockData[0]; states ??= new StateData[0];
         }
 
         // ---- places, contacts, jobs ----

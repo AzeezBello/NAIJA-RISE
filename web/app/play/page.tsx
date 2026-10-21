@@ -18,62 +18,23 @@ export default function PlayPage() {
   const embedUrl = resolveEmbedUrl(process.env.NEXT_PUBLIC_WEBGL_URL || process.env.WEBGL_URL);
 
   return (
-    <main
-      className="site"
-      style={{
-        width: '100vw',
-        height: '100vh',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        background: '#050b09',
-      }}
-    >
-      <header
-        style={{
-          height: 44,
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 20px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          background: 'rgba(5,11,9,0.94)',
-          zIndex: 10,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Link href="/" className="site-logo" style={{ fontSize: 18 }}>
+    <main className="site play-shell">
+      <header className="play-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+          <Link href="/" className="site-logo" style={{ fontSize: 18, whiteSpace: 'nowrap' }}>
             <b>RISE</b>: HUSTLE OR DIE TRYING
           </Link>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 9,
-              fontWeight: 900,
-              letterSpacing: '.16em',
-              color: '#81908a',
-            }}
-          >
+          <span className="play-brand-sub">
             <span className="site-status-dot" />
             LAGOS // SURULERE
           </span>
         </div>
 
-        <div
-          style={{
-            fontSize: 9,
-            fontWeight: 800,
-            letterSpacing: '.12em',
-            color: '#697870',
-          }}
-        >
-          WASD MOVE · SHIFT SPRINT · E TALK / VEHICLE · SPACE JUMP · TAB MAP
+        <div className="play-controls-hint">
+          WASD MOVE · SHIFT SPRINT · E INTERACT · F / CLICK FIGHT · G PICK ITEM · Q WEAPON · TAB PHONE
         </div>
 
-        <nav style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <nav style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <Link
             href="/account"
             style={{
@@ -121,7 +82,7 @@ export default function PlayPage() {
       </header>
 
       {embedUrl ? (
-        <div style={{ flex: 1, position: 'relative', width: '100%', height: 'calc(100vh - 44px)' }}>
+        <div className="play-stage">
           <iframe
             src={embedUrl}
             title="Rise: Hustle or Die Trying (Unity WebGL)"

@@ -23,6 +23,10 @@ namespace Rise.Vehicles
 
         Rigidbody rb;
         float yaw;
+        Transform occRoot, driverOcc, passengersOcc;
+
+        public bool HasDriver => driverOcc != null && driverOcc.gameObject.activeSelf && driverOcc.childCount > 0;
+        public int PassengerCount => passengersOcc != null && passengersOcc.gameObject.activeSelf ? passengersOcc.childCount : 0;
 
         public void Setup(VehicleClassData cls, Transform[] wheels)
         {
@@ -36,6 +40,29 @@ namespace Rise.Vehicles
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
             rb.linearDamping = 0.2f;
             rb.isKinematic = true;          // parked until someone drives it
+            occRoot = transform.Find("Occupants");
+            if (occRoot != null)
+            {
+                driverOcc = occRoot.Find("Driver");
+                passengersOcc = occRoot.Find("Passengers");
+            }
+            SetOccupants(false, false);     // parked vehicles have no driver inside until entered
+        }
+
+        public void SetOccupants(bool showDriver, bool showPassengers)
+        {
+            if (driverOcc != null) driverOcc.gameObject.SetActive(showDriver);
+            if (passengersOcc != null) passengersOcc.gameObject.SetActive(showPassengers);
+        }
+
+        public void StyleDriver(Color skin, Color top)
+        {
+            if (driverOcc == null) return;
+            foreach (var r in driverOcc.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (r.name == "Head" || r.name == "WindowArm") r.material.color = skin;
+                else if (r.name == "Torso" || r.name == "TorsoWindow") r.material.color = top;
+            }
         }
 
         // Move a vehicle: the Rigidbody (interpolated) keeps its own pose, so the transform alone is not enough.
@@ -53,6 +80,7 @@ namespace Rise.Vehicles
             rb.isKinematic = !driven;
             if (!driven) Speed = 0f;
             yaw = transform.eulerAngles.y;
+            SetOccupants(driven, false);
         }
 
         // gas / brake 0–1, steer -1 (left) … 1 (right)
@@ -82,28 +110,33 @@ namespace Rise.Vehicles
         void OnCollisionEnter(Collision c)
         {
             if (!Driven || c.contactCount == 0) return;
-            // Ground contacts (road, deck, kerb top) are not crashes: only count contacts whose normal is mostly
-            // horizontal, and weigh them by how squarely the car hit (head-on takes most of the speed, a graze little).
-            var n = c.GetContact(0).normal;
+            // Ground contacts (road, bridge deck, kerb top) are not crashes: ignore road/bridge surfaces and low wheel-level
+            // contacts, and only count horizontal impacts above bumper height.
+            string hitName = c.gameObject.name;
+            if (hitName == "Deck" || hitName == "Carriageway" || hitName == "Ground" || hitName == "Pavement") return;
+            var contact = c.GetContact(0);
+            if (contact.point.y < transform.position.y + 0.45f) return;
+            var n = contact.normal;
             if (Mathf.Abs(n.y) > 0.5f) return;
             float square = Mathf.Abs(Vector3.Dot(n, transform.forward));   // 1 head-on, 0 side scrape
             float closing = Mathf.Abs(Vector3.Dot(c.relativeVelocity, n));
-            if (closing < 3f) return;
+            if (closing < 3.5f) return;
             float lost = Mathf.Abs(Speed) * Mathf.Clamp(0.15f + 0.75f * square, 0f, 0.9f);
             Speed -= Mathf.Sign(Speed) * lost;
             Condition = Mathf.Max(0f, Condition - lost * 1.2f * (Insured ? 0.5f : 1f));
             LastImpact = lost;
-            LastHit = $"{c.gameObject.name} n={n} closing={closing:0.0} square={square:0.00} at {c.GetContact(0).point}";
+            LastHit = $"{hitName} n={n} closing={closing:0.0} square={square:0.00} at {contact.point}";
         }
 
         public float Kmh => Mathf.Abs(Speed) * 3.6f;
 
-        // Repaint: the body of a procedural vehicle, or every painted part of a model (wheels and glass stay).
+        // Repaint: the body of a procedural vehicle, or every painted part of a model (wheels, glass and occupants stay).
         public void ApplyLivery(Color c)
         {
             foreach (var r in GetComponentsInChildren<MeshRenderer>())
             {
                 if (r.name.StartsWith("wheel") || r.GetComponent<TextMesh>() != null) continue;
+                if (occRoot != null && r.transform.IsChildOf(occRoot)) continue;
                 var mats = r.materials;
                 foreach (var m in mats) { if (m.name.Contains("1a2530") || m.color == new Color(0.1f, 0.145f, 0.19f)) continue; if (m.HasProperty("baseColorFactor")) m.SetColor("baseColorFactor", c); else m.color = c; }
             }

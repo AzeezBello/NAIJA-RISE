@@ -50,7 +50,7 @@ namespace Rise.Net
         void Step(float dt)
         {
             if (Transport == null || follow == null) return;
-            if (Transport is SupabaseRealtimeTransport srt && !string.IsNullOrEmpty(srt.Error))
+            if (Transport is SupabaseRealtimeTransport srt && (!string.IsNullOrEmpty(srt.Error) || Application.platform == RuntimePlatform.WebGLPlayer))
             {
                 Transport = new LoopbackTransport();
                 if (!string.IsNullOrEmpty(Room)) Transport.Join(Room, SelfId);

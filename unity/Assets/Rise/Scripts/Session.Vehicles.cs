@@ -21,6 +21,14 @@ namespace Rise
             }
             bool hasWeapon = State.Has("weapon");
             m.Options.Add(new MenuOption { Label = hasWeapon ? "Protection weapon · carried" : $"Protection weapon · ₦{WeaponPrice:N0}", Enabled = !hasWeapon, Action = () => BuyProtectionWeapon() });
+            foreach (var wId in new[] { "koboko", "baton", "cutlass" })
+            {
+                var spec = FindWeaponSpec(wId);
+                if (!spec.HasValue) continue;
+                var w = spec.Value; string id = w.Id;
+                bool owned = State.Has(id); bool eq = State.S.equippedWeapon == id;
+                m.Options.Add(new MenuOption { Label = owned ? $"{w.Name} · {(eq ? "equipped" : "equip")}" : $"{w.Name} · ₦{w.Price:N0} ({w.Desc})", Enabled = !eq, Action = () => BuyFightWeapon(id) });
+            }
             foreach (var v in Parked)
             {
                 if (!v.Owned || string.IsNullOrEmpty(v.OwnedId) || (v.transform.position - dayo.pos).magnitude > 30f) continue;
@@ -37,6 +45,7 @@ namespace Rise
             if (State.Has("weapon")) { State.Toast("You already have a weapon"); return false; }
             if (!State.Pay(WeaponPrice)) { State.Toast("Not enough money"); return false; }
             State.AddItem("weapon");
+            if (string.IsNullOrEmpty(State.S.equippedWeapon)) EquipWeapon("weapon");
             State.Toast("Weapon added to your inventory");
             return true;
         }

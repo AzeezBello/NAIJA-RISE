@@ -12,7 +12,7 @@ globalThis.location ??= { hash: '', search: '' };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const load = f => import(pathToFileURL(resolve(root, f)).href);
-const [L, C, J, Ch, V, F, B, It] = await Promise.all([load('src/data/districts/lagos.js'), load('src/data/config.js'), load('src/data/jobs.js'), load('src/data/characters.js'), load('src/data/vehicles.js'), load('src/data/family.js'), load('src/data/businesses.js'), load('src/data/items.js')]);
+const [L, C, J, Ch, V, F, B, It, St] = await Promise.all([load('src/data/districts/lagos.js'), load('src/data/config.js'), load('src/data/jobs.js'), load('src/data/characters.js'), load('src/data/vehicles.js'), load('src/data/family.js'), load('src/data/businesses.js'), load('src/data/items.js'), load('src/data/nigeria-states.js')]);
 const out = process.argv[2] ? resolve(process.argv[2]) : resolve(root, 'unity/Assets/Rise/Resources/world/lagos.json');
 
 const AXES = ['h', 'v'];
@@ -125,6 +125,10 @@ const world = {
   unlocks: Object.entries(C.UNLOCKS).map(([level, text]) => ({ level: Number(level), text })),
   cells: [[L.VI_CELLS, 'vi'], [L.LEKKI_CELLS, 'lekki'], [L.YABA_CELLS, 'yaba'], [L.EBUTE_CELLS, 'ebute'], [L.ISLAND_CELLS, 'island']]
     .flatMap(([cells, style]) => cells.map(([x, z]) => ({ style, x, z }))),
+  states: St.NIGERIA_STATES.map(s => ({
+    id: s.id, name: s.name, capital: s.capital, zone: s.zone, slogan: s.slogan,
+    corridor: s.corridor, distanceKm: s.distanceKm, fare: s.fare, status: s.status,
+  })),
 };
 
 mkdirSync(dirname(out), { recursive: true });

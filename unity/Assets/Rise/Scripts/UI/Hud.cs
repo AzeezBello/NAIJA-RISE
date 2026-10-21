@@ -427,6 +427,13 @@ namespace Rise.UI
 
             float slotBottom = by - 26f * s, ph = 40f * s, py = slotBottom - ph;
             bool free = session.ActiveMenu == null && session.Working == null;
+            if (session.Vehicle == null && !string.IsNullOrEmpty(st.equippedWeapon))
+            {
+                string wLabel = $"{session.EquippedWeaponName.ToUpperInvariant()}  ·  {(touch ? "FIGHT / ITEM" : "F FIGHT · Q SWITCH")}";
+                Pill(x0, slotBottom - 20f * s, wLabel, Gold, s);
+                slotBottom -= 24f * s;
+                py = slotBottom - ph;
+            }
             if (!string.IsNullOrEmpty(session.Prompt) && free)
             {
                 string key = touch ? "ACT" : "E", label = session.Prompt.ToUpperInvariant();
@@ -439,8 +446,8 @@ namespace Rise.UI
             }
             else if (Time.time < hintUntil && free)
             {
-                string hint = touch ? "Left thumb moves  ·  drag right to look  ·  ACT to interact  ·  PHONE for the phone"
-                                    : "WASD move  ·  Shift sprint  ·  Space jump  ·  E interact  ·  P phone  ·  Esc frees the cursor";
+                string hint = touch ? "Left thumb moves  ·  drag right to look  ·  ACT interact  ·  FIGHT attack  ·  ITEM pick/switch  ·  PHONE"
+                                    : "WASD move  ·  Shift sprint  ·  Space jump  ·  E interact  ·  F / Click fight  ·  G pick item  ·  Q weapon  ·  P phone";
                 float fade = Mathf.Clamp01((hintUntil - Time.time) / 1.5f);
                 float room = touch ? W - 40f * s : W - 2f * (16f + 300f + 10f + 92f + 14f) * s;   // between the minimap column and the portrait
                 float w = Mathf.Min(Mathf.Max(260f * s, room), TW(small, hint) + 28f * s), h = TH(center, hint, w - 28f * s) + 14f * s;

@@ -11,6 +11,8 @@ namespace Rise
     //   Move      WASD / arrows, left stick          Look      mouse, right stick, Z / C
     //   Sprint    Shift, Square / X button           Jump      Space, Triangle / Y button
     //   Interact  E, Cross / A button                Decline   X, Backspace, Circle / B button
+    //   Attack    F, Left Click (locked), RB / R1    Pickup    G, D-pad down / E on ground item
+    //   Weapon    Q, LB / L1 (cycle equipped item)
     //   Driving   W/S or triggers for gas and brake, A/D or left stick to steer, Shift boost, Space handbrake
     //   Phone     P, Tab, Select                     Chat      T, Enter, D-pad up       Menu / cursor   Esc, Start
     public static class GameInput
@@ -19,7 +21,7 @@ namespace Rise
         static Mouse M => Mouse.current;
         static Gamepad G => Gamepad.current;
         static InputActionAsset asset; static InputActionMap map; static bool loaded;
-        static InputAction move, look, sprint, jump, interact, decline, phone, chat, menu, gas, brake, handbrake;
+        static InputAction move, look, sprint, jump, interact, decline, phone, chat, menu, gas, brake, handbrake, attack, pickup, cycleWeapon;
 
         public static bool UsingActions { get { Load(); return map != null; } }
 
@@ -32,6 +34,7 @@ namespace Rise
             if (map == null) return;
             move = map.FindAction("Move"); look = map.FindAction("Look"); sprint = map.FindAction("Sprint"); jump = map.FindAction("Jump"); interact = map.FindAction("Interact"); decline = map.FindAction("Decline");
             phone = map.FindAction("Phone"); chat = map.FindAction("Chat"); menu = map.FindAction("Menu"); gas = map.FindAction("Gas"); brake = map.FindAction("Brake"); handbrake = map.FindAction("Handbrake");
+            attack = map.FindAction("Attack"); pickup = map.FindAction("Pickup"); cycleWeapon = map.FindAction("CycleWeapon");
             map.Enable();
         }
 
@@ -94,6 +97,25 @@ namespace Rise
         public static bool ClickPressed => M != null && M.leftButton.wasPressedThisFrame;
         public static bool ChatPressed => Pressed(chat, K != null && (K.tKey.wasPressedThisFrame || K.enterKey.wasPressedThisFrame));
         public static bool PhonePressed => UI.TouchControls.TakePhone() || Pressed(phone, (K != null && (K.pKey.wasPressedThisFrame || K.tabKey.wasPressedThisFrame)) || (G != null && G.selectButton.wasPressedThisFrame));
+        public static bool AttackPressed
+        {
+            get
+            {
+                Load();
+                if (UI.TouchControls.TakeFight()) return true;
+                if (K != null && K.fKey.wasPressedThisFrame) return true;
+                if (G != null && G.rightShoulder.wasPressedThisFrame) return true;
+                if (M != null && Cursor.lockState == CursorLockMode.Locked && M.leftButton.wasPressedThisFrame) return true;
+                if (attack != null && attack.WasPressedThisFrame())
+                {
+                    if (attack.activeControl != null && attack.activeControl.device is Mouse && Cursor.lockState != CursorLockMode.Locked) return false;
+                    return true;
+                }
+                return false;
+            }
+        }
+        public static bool PickupPressed => UI.TouchControls.TakeItem() || Pressed(pickup, (K != null && K.gKey.wasPressedThisFrame) || (G != null && G.dpad.down.wasPressedThisFrame));
+        public static bool CycleWeaponPressed => Pressed(cycleWeapon, (K != null && K.qKey.wasPressedThisFrame) || (G != null && G.leftShoulder.wasPressedThisFrame));
 
         // A tapped menu row (touch), or -1.
         public static int MenuTap => UI.TouchControls.TakeMenuTap();

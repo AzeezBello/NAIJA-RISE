@@ -42,7 +42,7 @@ namespace Rise.World
             Auto = auto; cinematic = cinematicLook; follow = playerTransform; clock = dayNight;
             Level = Auto ? Detect() : Mathf.Clamp(savedLevel, 0, 2);
             Apply();
-            if (SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null && !DiagFlags.Has("noprobe"))
+            if (!GameBootstrap.Mobile && SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null && !DiagFlags.Has("noprobe"))
             {
                 var go = new GameObject("Environment probe"); go.transform.SetParent(transform, false);
                 Probe = go.AddComponent<ReflectionProbe>();
@@ -53,7 +53,7 @@ namespace Rise.World
             }
         }
 
-        public void SetLevel(int level, bool auto) { Auto = auto; Level = Mathf.Clamp(level, 0, 2); DynIndex = 0; Apply(); }
+        public void SetLevel(int level, bool auto) { Auto = auto; Level = Mathf.Clamp(level, 0, 2); DynIndex = 0; slowTicks = 0; fastTicks = 0; noGainUntil = 0f; levelLockUntil = 0f; Apply(); }
         public void SetCinematic(bool on) { cinematic = on; Apply(); }
 
         void Apply()

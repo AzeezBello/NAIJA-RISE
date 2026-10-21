@@ -28,6 +28,7 @@ export const DISTRICT = createArea({
     { id: 'alagomeji-startups', name: 'Alagomeji Innovation Centre', short: 'STARTUP HUB', x: 360, z: -360, c: '#35546a', sign: '#3dff79', h: 10, kind: 'landmark', region: 'alagomeji' },
     { id: 'yaba-painter', name: 'Yaba Sign Painting Studio', short: 'PAINTER', x: 360, z: -280, c: '#765a40', sign: '#ffc52f', h: 4, kind: 'artisan', profession: 'Painter' },
     { id: 'yaba-tailor', name: 'Alagomeji Fashion Tailor', short: 'TAILOR', x: 440, z: -320, c: '#725c8a', sign: '#f4d3a4', h: 4, kind: 'artisan', profession: 'Tailor' },
+    { id: 'myoung-barracks', name: 'Myoung Barracks · Yaba', short: 'MYOUNG BARRACKS', x: 348, z: -316, c: '#3b5323', sign: '#ffffff', h: 6, kind: 'army', big: true, region: 'yaba' },
   ],
   busStops: [
     { id: 'alagomeji-bus', name: 'Alagomeji Bus Stop', short: 'ALAGOMEJI', x: 384, z: -344, agberos: 1 },

@@ -10,7 +10,9 @@ namespace Rise.Vehicles
     {
         static Shader standard;
         static readonly Dictionary<string, Material> materials = new Dictionary<string, Material>();
-        public static readonly string[] CarColours = { "#d8d8d8", "#1f1f24", "#8a1c1c", "#2a4d8f", "#b0b7bd", "#5a5a5f", "#e8e3d3", "#3f6b3a", "#c47a1e" };
+        static readonly Dictionary<string, Material> tintedColormapMats = new Dictionary<string, Material>();
+        public static readonly string[] CarColours = { "#1c2430", "#8a1c1c", "#1d4d8c", "#c8cdd2", "#2b5b3c", "#d97706", "#374151", "#6d28d9", "#b45309", "#0f766e" };
+        public static readonly string[] LuxuryColours = { "#0d1117", "#d4af37", "#8c1523", "#153668", "#eef2f6", "#1b4332" };
 
         public static Material Mat(string hex, float gloss = 0.6f)
         {
@@ -40,7 +42,8 @@ namespace Rise.Vehicles
         // motorcycles, vans). A class with no model, or whose model fails to load, falls back to the procedural body.
         static readonly Dictionary<string, string[]> Models = new Dictionary<string, string[]>
         {
-            ["car"] = new[] { "sedan", "sedan-sports", "suv", "suv-luxury", "hatchback-sports", "taxi" },
+            ["car"] = new[] { "sedan", "suv", "taxi", "hatchback-sports" },
+            ["luxury"] = new[] { "suv-luxury", "sedan-sports", "hatchback-sports" },
             ["police"] = new[] { "police" }, ["lawma"] = new[] { "garbage-truck" }, ["fire"] = new[] { "firetruck" }, ["ambulance"] = new[] { "ambulance" },
             ["delivery"] = new[] { "delivery", "delivery-flat" }, ["truck"] = new[] { "truck", "truck-flat" },
             ["danfo"] = new[] { "danfo_vanagon" }, ["keke"] = new[] { "keke_bajaj_re" }, ["korope"] = new[] { "suzuki_carry_minivan" }, ["okada"] = new[] { "suzuki_gsx-r750" },
@@ -77,13 +80,13 @@ namespace Rise.Vehicles
         {
             wheels = null; LastModelName = null;
             if (!UseModels || !Models.TryGetValue(cls.id, out var names)) return null;
-            return BuildModel(cls, names[rng.Next(names.Length)], parent, out wheels);
+            return BuildModel(cls, names[rng.Next(names.Length)], parent, out wheels, rng);
         }
 
         public static string[] ModelsFor(string classId) => Models.TryGetValue(classId, out var n) ? n : new string[0];
 
         // Fit one named model to a class: up-axis fix, yaw, class length, wheels on the ground. Null if it does not load.
-        public static GameObject BuildModel(VehicleClassData cls, string name, Transform parent, out Transform[] wheels)
+        public static GameObject BuildModel(VehicleClassData cls, string name, Transform parent, out Transform[] wheels, System.Random rng = null)
         {
             wheels = null; LastModelName = null;
             var prefab = Resources.Load<GameObject>("Models/Vehicles/" + name);
@@ -119,8 +122,201 @@ namespace Rise.Vehicles
             var info = go.AddComponent<VehicleModelInfo>(); info.Model = name; info.Height = b.size.y; info.Length = b.size.z; info.Width = b.size.x;
             var col = go.AddComponent<BoxCollider>();
             col.center = new Vector3(0f, b.size.y * 0.5f, 0f); col.size = new Vector3(cls.wid, b.size.y, cls.len);   // class width: the data's lanes assume it
+            var finishRng = rng ?? new System.Random(cls.id.GetHashCode());
+            ApplyVehicleFinish(go.transform, model, cls, name, b.size, finishRng);
+            AttachOccupants(go.transform, cls, b.size, finishRng);
             LastModelName = name;
             return go;
+        }
+
+        static Material GetRecoloredColormapMat(Texture srcTex, string targetHex, float smoothness, float metallic)
+        {
+            string key = (srcTex != null ? srcTex.name : "null") + ":" + targetHex + ":" + smoothness.ToString("F2");
+            if (tintedColormapMats.TryGetValue(key, out var cached) && cached != null) return cached;
+
+            standard ??= ShaderLib.Lit;
+            var mat = new Material(standard) { name = "Colormap_" + targetHex };
+            mat.SetFloat("_Smoothness", smoothness);
+            if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", metallic);
+
+            if (srcTex != null && ColorUtility.TryParseHtmlString(targetHex, out var targetCol))
+            {
+                if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null)
+                {
+                    mat.color = targetCol;
+                    if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", targetCol);
+                    return tintedColormapMats[key] = mat;
+                }
+                try
+                {
+                    Color.RGBToHSV(targetCol, out float tH, out float tS, out float tV);
+                    int w = Mathf.Min(256, srcTex.width), h = Mathf.Min(256, srcTex.height);
+                    var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32);
+                    var prev = RenderTexture.active;
+                    Graphics.Blit(srcTex, rt);
+                    RenderTexture.active = rt;
+                    var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { name = "ColormapTex_" + targetHex, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+                    tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+                    RenderTexture.active = prev;
+                    RenderTexture.ReleaseTemporary(rt);
+
+                    var pixels = tex.GetPixels();
+                    for (int i = 0; i < pixels.Length; i++)
+                    {
+                        Color.RGBToHSV(pixels[i], out float pH, out float pS, out float pV);
+                        // Kenney colormap body paint swatches sit in the green/teal/blue band (H 0.22..0.85, S > 0.28).
+                        // Red taillights (H < 0.06 || H > 0.94), amber lights (H 0.07..0.20), and tires/windows/chrome (S <= 0.28) stay untouched.
+                        if (pH >= 0.22f && pH <= 0.85f && pS > 0.28f)
+                        {
+                            float vOut = Mathf.Clamp01(tV * (0.45f + 0.75f * pV));
+                            pixels[i] = Color.HSVToRGB(tH, Mathf.Clamp01(tS * (0.75f + 0.25f * pS)), vOut);
+                        }
+                    }
+                    tex.SetPixels(pixels);
+                    tex.Apply(false, false);
+                    mat.SetTexture("_BaseMap", tex);
+                    mat.mainTexture = tex;
+                    mat.color = Color.white;
+                }
+                catch
+                {
+                    mat.color = targetCol;
+                    if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", targetCol);
+                }
+            }
+            return tintedColormapMats[key] = mat;
+        }
+
+        static void SetRendererBodyColor(GameObject model, string matToken, string hex, float smoothness, float metallic = 0.25f)
+        {
+            if (!ColorUtility.TryParseHtmlString(hex, out var col)) return;
+            foreach (var r in model.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = r.sharedMaterials;
+                bool changed = false;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var m = mats[i];
+                    if (m == null || !m.name.Contains(matToken)) continue;
+                    string key = "BodyOverride:" + m.name + ":" + hex;
+                    if (!materials.TryGetValue(key, out var inst) || inst == null)
+                    {
+                        inst = new Material(ShaderLib.Lit) { name = m.name + "_" + hex, color = col };
+                        if (inst.HasProperty("_BaseColor")) inst.SetColor("_BaseColor", col);
+                        inst.SetFloat("_Smoothness", smoothness);
+                        if (inst.HasProperty("_Metallic")) inst.SetFloat("_Metallic", metallic);
+                        materials[key] = inst;
+                    }
+                    mats[i] = inst;
+                    changed = true;
+                }
+                if (changed) r.sharedMaterials = mats;
+            }
+        }
+
+        static void ReplaceColormapMaterial(GameObject model, string targetHex, float smoothness, float metallic = 0.28f)
+        {
+            foreach (var r in model.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = r.sharedMaterials;
+                bool changed = false;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var m = mats[i];
+                    if (m == null || !m.name.Contains("colormap")) continue;
+                    Texture tex = m.HasProperty("baseColorTexture") ? m.GetTexture("baseColorTexture") : m.mainTexture;
+                    mats[i] = GetRecoloredColormapMat(tex, targetHex, smoothness, metallic);
+                    changed = true;
+                }
+                if (changed) r.sharedMaterials = mats;
+            }
+        }
+
+        // Applies authentic Lagos vehicle colours, metallic PBR clear-coats, stripes, lightbars and signage to GLB models.
+        static void ApplyVehicleFinish(Transform root, GameObject model, VehicleClassData cls, string modelName, Vector3 size, System.Random rng)
+        {
+            float wid = size.x, h = size.y, len = size.z;
+            switch (cls.id)
+            {
+                case "lawma":
+                {
+                    // Vivid LAWMA Orange (#ff6a00) compactor truck + LAWMA side & cab signage
+                    ReplaceColormapMaterial(model, "#ff6a00", 0.62f, 0.18f);
+                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.56f, -len * 0.12f), new Vector3(wid + 0.04f, h * 0.22f, len * 0.48f), Mat("#ff6a00", 0.65f));
+                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.96f, len * 0.26f), new Vector3(wid * 0.42f, 0.12f, 0.22f), Mat("#ff9900", 0.9f));
+                    break;
+                }
+                case "brt":
+                {
+                    // LAMATA BRT Blue (#1559b8) with red/white waist stripe, roof A/C unit & front LED destination board
+                    SetRendererBodyColor(model, "Car_Paint", "#1559b8", 0.78f, 0.25f);
+                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.42f, 0f), new Vector3(wid + 0.03f, 0.16f, len * 0.88f), Mat("#f4f6fa", 0.6f));
+                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.36f, 0f), new Vector3(wid + 0.035f, 0.08f, len * 0.88f), Mat("#d62828", 0.6f));
+                    Part(root, PrimitiveType.Cube, new Vector3(0f, h + 0.06f, -len * 0.05f), new Vector3(wid * 0.58f, 0.16f, len * 0.42f), Mat("#e8ecf2", 0.5f));
+                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.84f, len * 0.46f), new Vector3(wid * 0.56f, 0.18f, 0.08f), Mat("#ff9f1c", 0.9f));
+                    break;
+                }
+                case "korope":
+                {
+                    // Lagos Yellow (#f5c518) Suzuki Carry Korope minibus + black waist stripe
+                    SetRendererBodyColor(model, "S_Boya", "#f5c518", 0.72f, 0.18f);
+                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.43f, 0f), new Vector3(wid + 0.02f, 0.13f, len * 0.86f), Mat("#141414", 0.35f));
+                    break;
+                }
+                case "danfo":
+                {
+                    // Iconic Lagos Danfo yellow with jet-black waist stripe
+                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.44f, 0f), new Vector3(wid + 0.02f, 0.16f, len * 0.88f), Mat("#141414", 0.35f));
+                    break;
+                }
+                case "police":
+                {
+                    // Nigeria Police Force (NPF) deep navy blue (#142442) + yellow NPF belt stripe + red/blue roof Lightbar
+                    ReplaceColormapMaterial(model, "#142442", 0.78f, 0.30f);
+                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.42f, 0f), new Vector3(wid + 0.02f, 0.10f, len * 0.76f), Mat("#f5c518", 0.65f));
+                    var lb = Part(root, PrimitiveType.Cube, new Vector3(0f, h + 0.05f, -0.1f), new Vector3(wid * 0.48f, 0.12f, 0.24f), Mat("#2563eb", 0.92f));
+                    lb.name = "Lightbar";
+                    break;
+                }
+                case "army":
+                {
+                    // Nigerian Army Olive Drab (#3b5323)
+                    SetRendererBodyColor(model, "gmcphong16SG1", "#3b5323", 0.42f, 0.15f);
+                    SetRendererBodyColor(model, "gmcphong8SG1", "#2e421b", 0.38f, 0.15f);
+                    break;
+                }
+                case "fire":
+                {
+                    ReplaceColormapMaterial(model, "#c62828", 0.75f, 0.22f);
+                    var lb = Part(root, PrimitiveType.Cube, new Vector3(0f, h + 0.05f, len * 0.28f), new Vector3(wid * 0.48f, 0.12f, 0.24f), Mat("#ef4444", 0.92f));
+                    lb.name = "Lightbar";
+                    break;
+                }
+                case "pickup":
+                {
+                    string pickCol = CarColours[rng.Next(CarColours.Length)];
+                    SetRendererBodyColor(model, "UTLTRUCK90_Bodymat", pickCol, 0.74f, 0.32f);
+                    break;
+                }
+                case "luxury":
+                {
+                    string luxCol = LuxuryColours[rng.Next(LuxuryColours.Length)];
+                    ReplaceColormapMaterial(model, luxCol, 0.90f, 0.48f);
+                    break;
+                }
+                case "car":
+                case "van":
+                case "truck":
+                case "delivery":
+                {
+                    if (modelName != "taxi")
+                    {
+                        string carCol = CarColours[rng.Next(CarColours.Length)];
+                        ReplaceColormapMaterial(model, carCol, 0.78f, 0.32f);
+                    }
+                    break;
+                }
+            }
         }
 
         // Models whose parts carry rotated local boxes, so renderer bounds overstate them (the korope's read 3.8 m square):
@@ -129,9 +325,9 @@ namespace Rise.Vehicles
         static readonly Dictionary<Mesh, Vector3[]> vertexCache = new Dictionary<Mesh, Vector3[]>();
         static bool warnedUnreadable;
 
-        // Models whose glTF materials render black in player builds (the keke's uses KHR_materials_specular, which works in
-        // the editor only): their materials are rebuilt on URP Lit from the base colour texture and factor.
-        static readonly HashSet<string> LitRemap = new HashSet<string> { "keke_bajaj_re" };
+        // Models whose glTF materials render black in player builds (keke and pickup use KHR_materials_specular, which works in
+        // the editor only): their opaque materials are rebuilt on URP Lit from the base colour texture and factor.
+        static readonly HashSet<string> LitRemap = new HashSet<string> { "keke_bajaj_re", "lightbody_90_md_pickup_-_low_poly_model" };
         static readonly Dictionary<Material, Material> litCache = new Dictionary<Material, Material>();
 
         static void RemapToLit(GameObject model)
@@ -142,6 +338,7 @@ namespace Rise.Vehicles
                 for (int i = 0; i < mats.Length; i++)
                 {
                     var src = mats[i]; if (src == null) continue;
+                    if (src.renderQueue >= 2800 || src.name.Contains("Transp") || (src.HasProperty("baseColorFactor") && src.GetColor("baseColorFactor").a < 0.98f)) continue;
                     if (!litCache.TryGetValue(src, out var lit))
                     {
                         lit = new Material(ShaderLib.Lit) { name = src.name + " (Lit)" };
@@ -212,16 +409,16 @@ namespace Rise.Vehicles
                     Part(t, PrimitiveType.Cube, new Vector3(0, 1.45f, -0.2f), new Vector3(wid * 0.5f, 0.15f, 0.3f), Mat("#3d7cff", 0.9f)).name = "Lightbar";
                     foreach (var x in new[] { -wid * 0.34f, wid * 0.34f }) foreach (var z in new[] { len * 0.3f, -len * 0.3f }) w.Add(Wheel(t, new Vector3(x, 0.32f, z), 0.32f));
                     break;
-                case "car": case "pickup": case "van": case "delivery": case "ambulance":
+                case "car": case "luxury": case "pickup": case "van": case "delivery": case "ambulance":
                     height = 1.5f;
-                    var paint = Mat(CarColours[rng.Next(CarColours.Length)], 0.92f);
+                    var paint = Mat(cls.id == "luxury" ? LuxuryColours[rng.Next(LuxuryColours.Length)] : CarColours[rng.Next(CarColours.Length)], 0.92f);
                     Part(t, PrimitiveType.Cube, new Vector3(0, 0.55f, 0), new Vector3(wid * 0.72f, 0.6f, len), paint);
                     Part(t, PrimitiveType.Cube, new Vector3(0, 1.1f, -0.2f), new Vector3(wid * 0.64f, 0.55f, len * 0.5f), glass);
                     foreach (var x in new[] { -wid * 0.34f, wid * 0.34f }) foreach (var z in new[] { len * 0.3f, -len * 0.3f }) w.Add(Wheel(t, new Vector3(x, 0.32f, z), 0.32f));
                     break;
                 default:   // trucks, tanker, fire, army, lawma
                     height = 2.8f;
-                    string body = cls.id == "fire" ? "#b71c1c" : cls.id == "army" ? "#4b5a2a" : cls.id == "lawma" ? "#e2711d" : cls.id == "tanker" ? "#c9c9c9" : "#6c7a89";
+                    string body = cls.id == "fire" ? "#c62828" : cls.id == "army" ? "#3b5323" : cls.id == "lawma" ? "#ff6a00" : cls.id == "tanker" ? "#c9c9c9" : "#6c7a89";
                     Part(t, PrimitiveType.Cube, new Vector3(0, 1.3f, len * 0.3f), new Vector3(wid, 2.2f, len * 0.3f), Mat(body, 0.5f));            // cab
                     Part(t, PrimitiveType.Cube, new Vector3(0, 1.7f, len * 0.3f), new Vector3(wid + 0.02f, 0.6f, len * 0.3f * 0.6f), glass);
                     if (cls.id == "tanker") Part(t, PrimitiveType.Cylinder, new Vector3(0, 1.6f, -len * 0.15f), new Vector3(wid * 0.9f, len * 0.3f, wid * 0.9f), Mat(body, 0.7f), Quaternion.Euler(90, 0, 0));
@@ -232,8 +429,204 @@ namespace Rise.Vehicles
             var col = go.AddComponent<BoxCollider>();
             col.center = new Vector3(0, height * 0.5f + 0.1f, 0);
             col.size = new Vector3(wid, height, len);
+            AttachOccupants(go.transform, cls, new Vector3(wid, height, len), rng ?? new System.Random(cls.id.GetHashCode()));
             wheels = w.ToArray();
             return go;
+        }
+
+        static readonly string[] SkinHex = { "#3b2416", "#4a2e1b", "#5c3a21", "#6e472b", "#2d1b10" };
+        static readonly string[] TopHex = { "#c98a2c", "#2a5c8a", "#8a2a3b", "#2e6e4e", "#d8d2c5", "#6b3fa0", "#b85d19", "#1e4d2b", "#c43c2b", "#e0a82e" };
+        static readonly string[] HelmetHex = { "#d93829", "#e5b822", "#1f4e8c", "#222428" };
+
+        // Seated driver + passengers under "Occupants" ("Driver" and "Passengers"). Traffic vehicles keep both active;
+        // VehicleController hides them while parked and shows "Driver" when driven.
+        public static void AttachOccupants(Transform root, VehicleClassData cls, Vector3 bodySize, System.Random rng)
+        {
+            var existing = root.Find("Occupants");
+            if (existing != null) { if (Application.isPlaying) Object.Destroy(existing.gameObject); else Object.DestroyImmediate(existing.gameObject); }
+
+            var occ = new GameObject("Occupants").transform;
+            occ.SetParent(root, false);
+            var driverRoot = new GameObject("Driver").transform;
+            driverRoot.SetParent(occ, false);
+            var paxRoot = new GameObject("Passengers").transform;
+            paxRoot.SetParent(occ, false);
+
+            float wid = Mathf.Max(0.8f, bodySize.x), h = Mathf.Max(1.1f, bodySize.y), len = Mathf.Max(1.8f, bodySize.z);
+            bool police = cls.id == "police";
+
+            switch (cls.id)
+            {
+                case "okada":
+                case "motorcycle":
+                {
+                    BuildSeatedPerson(driverRoot, "Rider", new Vector3(0f, h * 0.52f, -0.04f), rng, isDriver: true, bikePose: true, helmet: true, scale: 1.18f);
+                    if (cls.id == "okada" && rng.NextDouble() < 0.85)
+                        BuildSeatedPerson(paxRoot, "Pillion", new Vector3(0f, h * 0.55f, -0.44f), rng, isDriver: false, bikePose: true, helmet: false, scale: 1.15f);
+                    break;
+                }
+                case "keke":
+                {
+                    // Keke Bajaj RE has an open doorway on both sides: seat the rider on the front bench and two passengers on the rear bench.
+                    BuildSeatedPerson(driverRoot, "Rider", new Vector3(0f, h * 0.34f, len * 0.12f), rng, isDriver: true, windowSide: -1, scale: 1.24f);
+                    BuildSeatedPerson(paxRoot, "PaxL", new Vector3(-wid * 0.23f, h * 0.36f, -len * 0.15f), rng, windowSide: -1, scale: 1.20f);
+                    BuildSeatedPerson(paxRoot, "PaxR", new Vector3(wid * 0.23f, h * 0.36f, -len * 0.15f), rng, windowSide: 1, scale: 1.20f);
+                    break;
+                }
+                case "danfo":
+                {
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.36f, h * 0.44f, len * 0.26f), rng, isDriver: true, windowSide: -1, scale: 1.18f);
+                    // Conductor ("motor boy") hanging out the right doorway calling bus stops.
+                    BuildSeatedPerson(paxRoot, "Conductor", new Vector3(wid * 0.46f, h * 0.35f, len * 0.05f), rng, hangingSide: true, windowSide: 1, scale: 1.18f);
+                    float[] zs = { -len * 0.05f, -len * 0.18f, -len * 0.30f };
+                    for (int i = 0; i < zs.Length; i++)
+                    {
+                        BuildSeatedPerson(paxRoot, "PaxL" + i, new Vector3(-wid * 0.36f, h * 0.44f, zs[i]), rng, windowSide: -1, scale: 1.15f);
+                        if (rng.NextDouble() < 0.85)
+                            BuildSeatedPerson(paxRoot, "PaxR" + i, new Vector3(wid * 0.36f, h * 0.44f, zs[i]), rng, windowSide: 1, scale: 1.15f);
+                    }
+                    break;
+                }
+                case "korope":
+                {
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.31f, h * 0.43f, len * 0.20f), rng, isDriver: true, windowSide: -1, scale: 1.15f);
+                    BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.31f, h * 0.43f, len * 0.20f), rng, windowSide: 1, scale: 1.15f);
+                    BuildSeatedPerson(paxRoot, "MidPaxL", new Vector3(-wid * 0.32f, h * 0.44f, -len * 0.06f), rng, windowSide: -1, scale: 1.12f);
+                    BuildSeatedPerson(paxRoot, "MidPaxR", new Vector3(wid * 0.32f, h * 0.44f, -len * 0.06f), rng, windowSide: 1, scale: 1.12f);
+                    BuildSeatedPerson(paxRoot, "RearPaxL", new Vector3(-wid * 0.32f, h * 0.44f, -len * 0.24f), rng, windowSide: -1, scale: 1.12f);
+                    BuildSeatedPerson(paxRoot, "RearPaxR", new Vector3(wid * 0.32f, h * 0.44f, -len * 0.24f), rng, windowSide: 1, scale: 1.12f);
+                    break;
+                }
+                case "brt":
+                {
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.36f, h * 0.42f, len * 0.34f), rng, isDriver: true, windowSide: -1, scale: 1.18f);
+                    float[] zs = { len * 0.16f, 0f, -len * 0.16f, -len * 0.30f };
+                    for (int i = 0; i < zs.Length; i++)
+                    {
+                        BuildSeatedPerson(paxRoot, "PaxL" + i, new Vector3(-wid * 0.37f, h * 0.45f, zs[i]), rng, windowSide: -1, scale: 1.15f);
+                        BuildSeatedPerson(paxRoot, "PaxR" + i, new Vector3(wid * 0.37f, h * 0.45f, zs[i]), rng, windowSide: 1, scale: 1.15f);
+                    }
+                    break;
+                }
+                case "pickup":
+                {
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.28f, h * 0.44f, len * 0.08f), rng, isDriver: true, windowSide: -1, scale: 1.16f);
+                    if (rng.NextDouble() < 0.75)
+                        BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.28f, h * 0.44f, len * 0.08f), rng, windowSide: 1, scale: 1.16f);
+                    if (rng.NextDouble() < 0.70)
+                        BuildSeatedPerson(paxRoot, "BedPax", new Vector3(wid * 0.18f, h * 0.47f, -len * 0.22f), rng, scale: 1.16f);
+                    break;
+                }
+                case "car":
+                case "luxury":
+                case "police":
+                {
+                    string uHex = police ? "#162442" : null;
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.29f, h * 0.44f, len * 0.03f), rng, isDriver: true, uniformPolice: police, uniformHex: uHex, windowSide: -1, scale: 1.16f);
+                    if (police || rng.NextDouble() < 0.65)
+                        BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.29f, h * 0.44f, len * 0.03f), rng, uniformPolice: police, uniformHex: uHex, windowSide: 1, scale: 1.16f);
+                    if (!police && rng.NextDouble() < 0.45)
+                        BuildSeatedPerson(paxRoot, "RearPax", new Vector3(wid * 0.28f, h * 0.44f, -len * 0.15f), rng, windowSide: 1, scale: 1.14f);
+                    break;
+                }
+                case "van":
+                case "delivery":
+                case "ambulance":
+                {
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.31f, h * 0.45f, len * 0.20f), rng, isDriver: true, windowSide: -1, scale: 1.16f);
+                    if (rng.NextDouble() < 0.65)
+                        BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.31f, h * 0.45f, len * 0.20f), rng, windowSide: 1, scale: 1.16f);
+                    break;
+                }
+                default: // truck, tanker, lawma, fire, army
+                {
+                    string uHex = cls.id == "lawma" ? "#ff6a00" : cls.id == "fire" ? "#c62828" : cls.id == "army" ? "#3b5323" : null;
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.31f, h * 0.47f, len * 0.28f), rng, isDriver: true, uniformHex: uHex, windowSide: -1, scale: 1.18f);
+                    if (rng.NextDouble() < 0.75)
+                        BuildSeatedPerson(paxRoot, "CoDriver", new Vector3(wid * 0.31f, h * 0.47f, len * 0.28f), rng, uniformHex: uHex, windowSide: 1, scale: 1.18f);
+                    break;
+                }
+            }
+        }
+
+        static Transform BuildSeatedPerson(Transform parent, string name, Vector3 seatPos, System.Random rng, bool isDriver = false, bool bikePose = false, bool helmet = false, bool hangingSide = false, bool uniformPolice = false, string uniformHex = null, int windowSide = 0, float scale = 1.15f)
+        {
+            var p = new GameObject(name).transform;
+            p.SetParent(parent, false);
+            p.localPosition = seatPos;
+            p.localScale = Vector3.one * scale;
+            if (bikePose) p.localRotation = Quaternion.Euler(14f, 0f, 0f);
+            else if (hangingSide) p.localRotation = Quaternion.Euler(0f, 18f, -10f);
+
+            var skin = Mat(SkinHex[rng.Next(SkinHex.Length)], 0.35f);
+            var top = !string.IsNullOrEmpty(uniformHex) ? Mat(uniformHex, 0.45f) : uniformPolice ? Mat("#1b2845", 0.4f) : Mat(TopHex[rng.Next(TopHex.Length)], 0.4f);
+            var pants = Mat("#1e2430", 0.3f);
+            var hair = Mat("#141210", 0.25f);
+
+            // Seated torso & shoulders
+            var torso = Part(p, PrimitiveType.Cube, new Vector3(0f, 0.22f, 0f), new Vector3(0.36f, 0.44f, 0.24f), top);
+            torso.name = "Torso";
+            if (bikePose && isDriver)
+            {
+                // High-vis reflector vest worn by Lagos okada riders
+                var vest = Part(p, PrimitiveType.Cube, new Vector3(0f, 0.23f, 0f), new Vector3(0.38f, 0.36f, 0.25f), Mat("#c8e020", 0.5f));
+                vest.name = "Vest";
+            }
+
+            // Seated thighs & lower legs
+            float legSpread = bikePose ? 0.19f : 0.12f;
+            Part(p, PrimitiveType.Cube, new Vector3(-legSpread, 0.04f, 0.15f), new Vector3(0.14f, 0.14f, 0.32f), pants);
+            Part(p, PrimitiveType.Cube, new Vector3(legSpread, 0.04f, 0.15f), new Vector3(0.14f, 0.14f, 0.32f), pants);
+            Part(p, PrimitiveType.Cube, new Vector3(-legSpread, -0.14f, 0.26f), new Vector3(0.12f, 0.28f, 0.12f), pants);
+            Part(p, PrimitiveType.Cube, new Vector3(legSpread, -0.14f, 0.26f), new Vector3(0.12f, 0.28f, 0.12f), pants);
+
+            // Arms
+            if (isDriver)
+            {
+                Part(p, PrimitiveType.Cube, new Vector3(-0.20f, 0.25f, 0.15f), new Vector3(0.11f, 0.11f, 0.32f), top, Quaternion.Euler(12f, 8f, 0f));
+                Part(p, PrimitiveType.Cube, new Vector3(0.20f, 0.25f, 0.15f), new Vector3(0.11f, 0.11f, 0.32f), top, Quaternion.Euler(12f, -8f, 0f));
+                Part(p, PrimitiveType.Sphere, new Vector3(-0.16f, 0.22f, 0.30f), new Vector3(0.10f, 0.10f, 0.10f), skin);
+                Part(p, PrimitiveType.Sphere, new Vector3(0.16f, 0.22f, 0.30f), new Vector3(0.10f, 0.10f, 0.10f), skin);
+            }
+            else if (hangingSide)
+            {
+                // Conductor holding the top door rail with one hand and waving with the other
+                Part(p, PrimitiveType.Cube, new Vector3(-0.18f, 0.42f, 0.06f), new Vector3(0.11f, 0.34f, 0.11f), top, Quaternion.Euler(-20f, 0f, 15f));
+                Part(p, PrimitiveType.Cube, new Vector3(0.22f, 0.28f, 0.08f), new Vector3(0.11f, 0.28f, 0.11f), skin, Quaternion.Euler(0f, 0f, -35f));
+            }
+            else
+            {
+                Part(p, PrimitiveType.Cube, new Vector3(-0.20f, 0.20f, 0.05f), new Vector3(0.11f, 0.26f, 0.11f), top);
+                Part(p, PrimitiveType.Cube, new Vector3(0.20f, 0.20f, 0.05f), new Vector3(0.11f, 0.26f, 0.11f), top);
+            }
+
+            // Window-sill elbow/shoulder & head silhouette so occupants on enclosed cars/buses show at the open side window
+            if (windowSide != 0)
+            {
+                float sx = windowSide * 0.19f;
+                var sillArm = Part(p, PrimitiveType.Cube, new Vector3(sx, 0.23f, 0.05f), new Vector3(0.15f, 0.12f, 0.28f), skin);
+                sillArm.name = "WindowArm";
+                var sillShoulder = Part(p, PrimitiveType.Cube, new Vector3(sx * 0.88f, 0.32f, 0.01f), new Vector3(0.18f, 0.22f, 0.22f), top);
+                sillShoulder.name = "TorsoWindow";
+            }
+
+            // Neck & Head
+            Part(p, PrimitiveType.Cylinder, new Vector3(windowSide * 0.06f, 0.46f, 0.02f), new Vector3(0.10f, 0.06f, 0.10f), skin);
+            var head = Part(p, PrimitiveType.Sphere, new Vector3(windowSide * 0.09f, 0.57f, 0.04f), new Vector3(0.25f, 0.27f, 0.25f), skin);
+            head.name = "Head";
+
+            if (helmet)
+            {
+                var hMat = Mat(HelmetHex[rng.Next(HelmetHex.Length)], 0.75f);
+                Part(p, PrimitiveType.Sphere, new Vector3(0f, 0.60f, 0.03f), new Vector3(0.28f, 0.26f, 0.29f), hMat);
+                Part(p, PrimitiveType.Cube, new Vector3(0f, 0.58f, 0.14f), new Vector3(0.23f, 0.09f, 0.08f), Mat("#141820", 0.9f)); // visor
+            }
+            else
+            {
+                Part(p, PrimitiveType.Sphere, new Vector3(windowSide * 0.09f, 0.64f, 0.03f), new Vector3(0.26f, 0.15f, 0.26f), uniformPolice ? Mat("#141d33", 0.5f) : hair);
+            }
+
+            return p;
         }
     }
 }

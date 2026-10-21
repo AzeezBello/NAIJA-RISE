@@ -4,7 +4,6 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import {
   ContactShadows,
   OrbitControls,
-  Environment,
 } from '@react-three/drei';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -592,19 +591,17 @@ function LagosScene() {
         position={[8, 14, 8]}
         intensity={2.4}
         castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={512}
+        shadow-mapSize-height={512}
       />
 
       <hemisphereLight
         args={[
           '#d9ecdf',
           '#14231c',
-          1.1,
+          1.35,
         ]}
       />
-
-      <Environment preset="city" />
 
       <Road />
 
@@ -706,7 +703,8 @@ function LagosScene() {
         opacity={0.52}
         blur={2.8}
         far={24}
-        resolution={512}
+        frames={1}
+        resolution={256}
       />
     </>
   );
@@ -716,7 +714,8 @@ export default function Hero() {
   return (
     <Canvas
       shadows
-      dpr={[1, 1.5]}
+      dpr={[1, 1.25]}
+      style={{ touchAction: 'pan-y' }}
       camera={{
         position: [15, 9, 17],
         fov: 42,
@@ -725,14 +724,14 @@ export default function Hero() {
       }}
       gl={{
         antialias: true,
-        powerPreference: 'high-performance',
+        powerPreference: 'default',
       }}
     >
       <LagosScene />
 
       <OrbitControls
         enablePan={false}
-        enableZoom
+        enableZoom={false}
         minDistance={15}
         maxDistance={27}
         minPolarAngle={0.72}

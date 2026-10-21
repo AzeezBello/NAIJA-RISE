@@ -3,19 +3,21 @@ import { createArea } from './area.js';
 export const DISTRICT = createArea({
   id: 'lekki',
   name: 'Lekki–Epe Corridor',
-  bounds: { x: [470, 1120], z: [160, 350] },
+  bounds: { x: [470, 1750], z: [160, 350] },
   spawn: { x: 620, z: 268 },
   regions: [
     { id: 'lekki', name: 'Lekki Phase 1', x: [470, 620], z: [160, 350] },
     { id: 'ajah', name: 'Ajah', x: [620, 840], z: [160, 350] },
     { id: 'eleko', name: 'Eleko', x: [840, 1120], z: [160, 350] },
+    { id: 'ibeju-lekki', name: 'Ibeju-Lekki', x: [1120, 1440], z: [160, 350] },
+    { id: 'epe', name: 'Epe · Lekki Free Zone', x: [1440, 1750], z: [160, 350] },
   ],
   roads: {
     h: [
-      { k: 240, from: 470, to: 1120, name: 'Lekki–Epe Expressway', width: 24, class: 'highway' },
+      { k: 240, from: 470, to: 1720, name: 'Lekki–Epe Expressway', width: 24, class: 'highway' },
       { k: 270, from: 620, to: 840, name: 'Ajah Community Link', width: 12, class: 'residential' },
-      { k: 300, from: 480, to: 1120, name: 'Coastal Road', width: 18, class: 'main' },
-      { k: 180, from: 620, to: 840, name: 'Ado Road', width: 16, class: 'commercial' },
+      { k: 300, from: 480, to: 1720, name: 'Lagos–Calabar Coastal Road', width: 18, class: 'main' },
+      { k: 180, from: 620, to: 1680, name: 'Ado–Epe Lagoon Road', width: 16, class: 'commercial' },
     ],
     v: [
       { k: 560, from: 180, to: 330, name: 'Admiralty Way', width: 18, class: 'commercial' },
@@ -23,6 +25,9 @@ export const DISTRICT = createArea({
       { k: 800, from: 180, to: 330, name: 'Abraham Adesanya Road', width: 18, class: 'main' },
       { k: 920, from: 180, to: 330, name: 'Ogombo Road', width: 16, class: 'commercial' },
       { k: 1040, from: 180, to: 330, name: 'Eleko Beach Road', width: 16, class: 'residential' },
+      { k: 1260, from: 180, to: 330, name: 'Ibeju–Lekki Boulevard', width: 18, class: 'main' },
+      { k: 1480, from: 180, to: 330, name: 'Free Trade Zone & Refinery Road', width: 20, class: 'highway' },
+      { k: 1680, from: 180, to: 330, name: 'Epe Marina Road', width: 18, class: 'commercial' },
     ],
   },
   landmarks: [
@@ -35,6 +40,10 @@ export const DISTRICT = createArea({
     { id: 'oniru-beach', name: 'Oniru Beach', short: 'ONIRU BEACH', x: 500, z: 318, c: '#cbb98a', sign: '#ffffff', h: 3, kind: 'landmark', waterfront: true, region: 'oniru' },
     { id: 'elegushi-beach', name: 'Elegushi Beach', short: 'ELEGUSHI', x: 580, z: 318, c: '#cbb98a', sign: '#ffffff', h: 3, kind: 'landmark', waterfront: true, region: 'elegushi' },
     { id: 'quilox', name: 'Quilox Nightclub', short: 'QUILOX', x: 520, z: 278, c: '#29253f', sign: '#f3a4ff', h: 7, kind: 'venue', region: 'oniru' },
+    { id: 'dangote-refinery', name: 'Lekki Refinery & Petrochemicals', short: 'LEKKI REFINERY', x: 1380, z: 276, c: '#5c6770', sign: '#f97316', h: 16, kind: 'landmark', big: true, region: 'ibeju-lekki' },
+    { id: 'lekki-deep-port', name: 'Lekki Deep Sea Port', short: 'LEKKI DEEP PORT', x: 1480, z: 318, c: '#35546a', sign: '#ffffff', h: 14, kind: 'landmark', big: true, waterfront: true, region: 'epe' },
+    { id: 'epe-fish-market', name: 'Epe Chief Mojisola Fish Market', short: 'EPE FISH MKT', x: 1680, z: 210, c: '#6b4737', sign: '#ffc52f', h: 6, kind: 'market', big: true, region: 'epe' },
+    { id: 'epe-cantonment', name: 'Epe Military Cantonment · Sala', short: 'EPE BARRACKS', x: 1600, z: 268, c: '#3b5323', sign: '#ffffff', h: 7, kind: 'army', big: true, region: 'epe' },
   ],
   busStops: [
     { id: 'ajah-bus', name: 'Ajah Bus Stop', short: 'AJAH', x: 800, z: 226, agberos: 2 },
@@ -42,6 +51,9 @@ export const DISTRICT = createArea({
     { id: 'eleko-bus', name: 'Eleko Bus Stop', short: 'ELEKO', x: 1040, z: 226, agberos: 1 },
     { id: 'oniru-bus', name: 'Oniru Bus Stop', short: 'ONIRU', x: 500, z: 302, agberos: 1 },
     { id: 'elegushi-bus', name: 'Elegushi Bus Stop', short: 'ELEGUSHI', x: 580, z: 302, agberos: 1 },
+    { id: 'ibeju-bus', name: 'Ibeju-Lekki Bus Stop', short: 'IBEJU LEKKI', x: 1260, z: 226, agberos: 2 },
+    { id: 'refinery-bus', name: 'Free Trade Zone Bus Stop', short: 'FREE ZONE', x: 1480, z: 226, agberos: 1 },
+    { id: 'epe-bus', name: 'Epe Marina Bus Terminal', short: 'EPE', x: 1680, z: 226, agberos: 2 },
   ],
-  water: [{ id: 'lekki-atlantic', name: 'Atlantic Ocean', x: [470, 1120], z: [350, 410] }],
+  water: [{ id: 'lekki-atlantic', name: 'Atlantic Ocean', x: [470, 1750], z: [350, 410] }],
 });

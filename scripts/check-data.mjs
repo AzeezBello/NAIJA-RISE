@@ -12,10 +12,13 @@ globalThis.location ??= { hash: '', search: '' };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../src/data');
 const load = f => import(pathToFileURL(resolve(root, f)).href);
-const [L, J, C, I] = await Promise.all([load('locations.js'), load('jobs.js'), load('characters.js'), load('items.js')]);
+const [L, J, C, I, S] = await Promise.all([load('locations.js'), load('jobs.js'), load('characters.js'), load('items.js'), load('nigeria-states.js')]);
 
 const errors = [], warnings = [];
 const err = m => errors.push(m), warn = m => warnings.push(m);
+
+if (!Array.isArray(S.NIGERIA_STATES) || S.NIGERIA_STATES.length < 36) err('nigeria-states.js must define all 36 states');
+for (const st of S.NIGERIA_STATES) if (!st.id || !st.name || !st.capital) err(`state entry missing id/name/capital: ${JSON.stringify(st)}`);
 
 // 1. place ids are unique
 const seen = new Set();
