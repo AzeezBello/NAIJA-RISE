@@ -105,6 +105,7 @@ rise-lagos/
         ├── Editor/                        # Build & verification pipeline (SceneSetup, PlayTest, ShaderSetup, CharacterImport)
         ├── Resources/
         │   ├── world/lagos.json           # Exported world, districts, contacts, jobs, vehicles & states
+        │   ├── world/manifest.json        # Multi-state manifest (bounds, spawns, airports, rail, commodity multipliers)
         │   ├── Input/Rise.inputactions    # Multi-platform Input System actions (Keyboard, Gamepad, PS, Xbox, Switch, Touch)
         │   ├── Materials/                 # URP shader preservation templates (NR_Lit, NR_Unlit, NR_LitEmissive)
         │   ├── Models/                    # GLB 3D assets (Characters, Vehicles, Landmarks, Animals, Vegetation)
@@ -114,14 +115,14 @@ rise-lagos/
             ├── GameInput.cs               # Unified cross-platform input & 1–9 / scroll-wheel menu routing
             ├── GameState.cs               # Persistent player state, inventory, bank, property & away earnings
             ├── Session*.cs                # Partial Session classes (Story, Places, Phone, Crew, Shootout, Vehicles, etc.)
-            ├── Data/WorldData.cs          # JSON loader & Unity coordinate mirror (WorldData.W)
+            ├── Data/WorldData.cs          # JSON loader, StateAt/BiomeAt lookup & Unity coordinate mirror (WorldData.W)
             ├── Entities/                  # CharacterRig (7 clips incl. jump/turn/vehicle) & procedural Nigerian Fabrics
             ├── Player/                    # PlayerController & ThirdPersonCamera (with IndoorMode framing)
             ├── Vehicles/                  # VehicleController (arcade physics) & VehicleBodies (GLB fitter)
             ├── Story/Story.cs             # Prologue, Amaka/Baba K arcs & dynamic reward table
-            ├── UI/                        # Hud, Minimap, Portrait, TouchControls & procedural SoundSystem
-            ├── Net/                       # Account, CloudSave, CloudEconomy (live polling), Multiplayer & Realtime
-            └── World/                     # WorldBuilder, StreetLife, ContactSystem, Law, Events, Weather, Navigation, QualityGovernor
+            ├── UI/                        # Hud, Minimap, Portrait, TouchControls & procedural SoundSystem (biome audio)
+            ├── Net/                       # Account, CloudSave, CloudEconomy (state commodity index), Multiplayer & Realtime
+            └── World/                     # WorldBuilder, WorldStreamer (500m chunks), StreetLife, ContactSystem, Law, Events, Weather, Navigation, QualityGovernor
 ```
 
 ---
@@ -220,31 +221,34 @@ Beyond Lagos State, **Rise: Hustle or Die Trying** expands across Nigeria's **6 
 
 ---
 
-## 5. Technical Architecture for Multi-District & Multi-State Scale
+## 5. Technical Architecture for Multi-District & Multi-State Scale (Implemented)
 
-Scaling from a single monolithic city scene to all 20 Lagos LGAs and multiple Nigerian states requires four core upgrades across `src/data/` and `unity/Assets/Rise/Scripts/`:
+Scaling across all 20 Lagos LGAs and Nigeria's 6 Geopolitical Zones is powered by four architectural systems in `src/data/` and `unity/Assets/Rise/Scripts/`:
 
-### 5.1 Multi-State Data Schema (`src/data/states/` & `Resources/world/lagos.json`)
-- `createArea()` in `src/data/districts/area.js` tags `META.state`, `PROPERTIES`, and `CELLS`, and `src/data/states/` (`index.js`, `ogun.js`, `oyo.js`, `fct.js`, `rivers.js`, `anambra.js`, `kano.js`) defines the 6 Geopolitical Zone maps merged by `src/data/districts/lagos.js`.
-- `npm run export` (`scripts/export-world.mjs`) validates and exports the unified `unity/Assets/Rise/Resources/world/lagos.json` (`323 places, 119 roads, 85 regions, 102 cells, 106 contacts, 34 jobs, 37 states`) and supports per-state manifest splitting as additional states are added.
+### 5.1 Multi-State Data Schema (`src/data/states/`, `Resources/world/lagos.json` & `Resources/world/manifest.json`)
+- **Done**: `createArea()` in `src/data/districts/area.js` tags `META.state`, `PROPERTIES`, and `CELLS`, and `src/data/states/` (`index.js`, `ogun.js`, `oyo.js`, `fct.js`, `rivers.js`, `anambra.js`, `kano.js`) defines the 6 Geopolitical Zone maps merged by `src/data/districts/lagos.js`.
+- **Done**: `npm run export` (`scripts/export-world.mjs`) tags every `RegionData` with `state` and `biome` (`coastal`, `southwest`, `abuja`, `niger_delta`, `southeast`, `sahel`), exports `unity/Assets/Rise/Resources/world/lagos.json` (`323 places, 119 roads, 85 regions, 102 cells, 106 contacts, 34 jobs, 37 states`), and writes `unity/Assets/Rise/Resources/world/manifest.json` with per-state bounding boxes, spawns, airports, rail stations, and commodity price multipliers.
+- **Done**: `WorldData.StateAt(Vector3)` and `WorldData.BiomeAt(Vector3)` (`unity/Assets/Rise/Scripts/Data/WorldData.cs`) resolve the active state and biome anywhere in the world.
 
 ### 5.2 Spatial Chunk Streaming & Floating-Origin Rebasing (`WorldBuilder.cs` & `WorldStreamer.cs`)
-- **Spatial Grid Chunking**: Instead of building the entire state geometry in a single `WorldBuilder.Build()` pass, partition roads, housing plots, street furniture, and static batch groups into **500 m × 500 m spatial cells (`WorldChunk`)**.
-- **Active Radius Streaming**: `WorldStreamer` loads a `3 × 3` grid of full-detail chunks around the player (with static batching per chunk) and low-poly LOD skyline proxies for distant chunks, keeping memory and draw calls constant regardless of how many districts or states exist.
-- **Coordinate Rebasing**: Store global positions as `(stateId, Vector2 worldXZ)` and rebase the Unity scene origin when crossing state highway portals or exceeding `±4000 m` from origin to prevent floating-point jitter in physics and shaders.
+- **Spatial Grid Chunking (`WorldStreamer.cs`)**: `WorldStreamer` partitions world detail (`Buildings`, `Trees`, `Parks`, `Bus stops`) into **500 m × 500 m spatial cells (`WorldChunk`)** while keeping `Roads`, `Water`, `Landmarks`, and `Intersections` globally visible for long-range navigation and skyline silhouettes.
+- **Active Radius Streaming**: `WorldStreamer` streams a `3 × 3` radius (`ActiveRadius = 3`) of full-detail chunks around the player and culls distant detail chunks (`ActiveChunkCount` / `TotalChunkCount`), keeping draw calls and memory bounded across states.
+- **State Transitions & Coordinate Rebasing**: Tracks `(CurrentStateId, CurrentBiome)` and fires `OnStateChanged` when crossing state borders, plus monitors `NeedsRebase` (`RebaseThreshold = 4000f`) and `CumulativeRebaseOffset`.
 
-### 5.3 Regional Architecture, Biomes, Weather & Audio
-- **Biome & Architectural Palettes (`WorldBuilder.cs`)**:
-  - *Lagos Coastal & Island*: Afro-Brazilian stucco, glass towers, lagoon stilt settlements, yellow/black danfo corridors.
-  - *South-West Hinterland (Ogun/Oyo)*: Red laterite earth, hilly topography (Olumo Rock, Ibadan seven hills), rust-brown corrugated roofs, ancient compound walls.
-  - *Abuja (North-Central)*: Wide 6–8 lane boulevards, granite monoliths (Aso Rock, Zuma Rock), modern ministerial complexes, manicured green belts.
-  - *South-South (Rivers/Delta)*: Mangrove creeks, flared gas stacks on the horizon, bridges, industrial pipeyards, tropical wet-season downpours.
-  - *South-East (Onitsha/Enugu/Aba)*: Multi-storey concrete market plazas, red-earth escarpments, dense commercial workshops.
-  - *North (Kano/Kaduna/Borno)*: Sahelian ochre earth, traditional Tubali mud-brick architecture and city gates (*Kofar*), date palms and baobabs, dry Harmattan dust skies.
-- **Regional Weather & Ambience (`WeatherSystem.cs` & `SoundSystem.cs`)**:
-  - State-specific climate tables (heavy coastal rain in Lagos/Port Harcourt vs. intense Harmattan haze in Kano/Maiduguri).
-  - Regional street ambience, local language greetings (Yoruba, Pidgin, Igbo, Hausa, Efik/Ijaw), and regional music synthesis (Afrobeats/Jùjú/Fuji in South-West, Highlife/Ogene in South-East, Port Harcourt Dancehall in South-South, Goje/Kakaki in the North).
+### 5.3 Regional Architecture, Biomes, Weather & Audio (`WorldBuilder.cs`, `Weather.cs`, `SoundSystem.cs`)
+- **Biome & Architectural Palettes (`WorldBuilder.PlaceRegionalBuilding` & `BuildCells`)**:
+  - *Lagos Coastal & Island (`coastal`)*: Afro-Brazilian stucco, glass towers, Makoko lagoon stilt settlements, Festac ’77 medium-rise blocks, Magodo gated twin-duplexes, and Epe timber compounds.
+  - *South-West Hinterland (`southwest` — Ogun/Oyo)*: Red laterite earth, rust-brown corrugated roofs, ancient compound walls, and Olumo/Mapo heritage landmarks.
+  - *Abuja (`abuja` — North-Central)*: Wide boulevards, ministerial complexes, Aso Rock / NASS landmarks, and manicured green belts.
+  - *South-South (`niger_delta` — Rivers/Delta/Edo)*: Mangrove creeks, Bonny/Onne/Warri petrochemical tank farms, and tropical wet-season downpours.
+  - *South-East (`southeast` — Anambra/Enugu/Abia)*: Multi-storey concrete commercial market plazas with wrap-around trading balconies and deep red-brown zinc roofs (`PlaceRegionalBuilding`).
+  - *North (`sahel` — Kano/Kaduna/Borno)*: Sahelian ochre Tubali mud-brick compounds with flat parapets and corner pinnacles (`PlaceRegionalBuilding`).
+- **Regional Weather & Ambience (`Weather.cs` & `SoundSystem.cs`)**:
+  - `Weather.RegionalRainMultiplier` scales rainfall intensity by biome (`1.5×` in `niger_delta`, `1.1×` in `coastal`, `0.75×` in `abuja`, `0.35×` in `sahel`) and activates Sahelian Harmattan dust skies in `sahel`.
+  - `SoundSystem.SetBiome(biome)` and `SoundSystem.RegionalGreeting(stateId)` switch regional music pitch/style (`Afrobeats & Owambe`, `Fuji & Apala`, `Ogene & Highlife`, `Port Harcourt Creek Highlife`, `Hausa Goje & Kalangu`, `Abuja Executive Lounge`) and greet the player in local languages when entering a new state.
 
-### 5.4 Per-State Multiplayer Sharding & Economy Sync (`Net/MultiplayerManager.cs` & `CloudEconomy.cs`)
-- Shard Supabase Realtime channels by `stateId:districtId` (`rise:lagos:surulere`, `rise:abuja:wuse`, `rise:rivers:ph-gra`) so local player sync stays low-latency while crew chat and shared crew treasuries remain global.
-- Extend `CloudEconomy.cs` and `/admin` with state-level commodity price multipliers (e.g. cheaper farm produce in Mile 12/Kano/Benue, cheaper electronics in Alaba/Computer Village, cheaper refined fuel near Ibeju-Lekki/Warri, higher luxury property yields in Ikoyi/Maitama) to power genuine interstate trade and arbitrage.
+### 5.4 Per-State Multiplayer Sharding & Economy Sync (`Multiplayer.cs`, `CloudEconomy.cs`, `Session.Places.cs`)
+- **Per-State Channel Sharding (`Multiplayer.cs`)**: `Multiplayer.StateChannel` tracks the state-sharded channel (`rise:<stateId>:<districtId>`, e.g. `rise:lagos:surulere`, `rise:fct:abuja-central`, `rise:rivers:port-harcourt`) alongside `Room` (`district:<districtId>`).
+- **State-Level Commodity Arbitrage (`CloudEconomy.GetStateCommodityMultiplier` & `Session.Places.cs`)**:
+  - `CloudEconomy.GetStateCommodityMultiplier(stateId, commodity)` provides regional price indices for `produce` (cheapest in Kano `0.72×` and Oyo `0.82×`), `electronics` (cheapest in Anambra `0.78×` and Lagos `0.92×`), `fuel` (cheapest in Rivers `0.75×` and Lagos `0.95×`), and `propertyYield` (highest in FCT Abuja `1.45×` and Lagos `1.25×`).
+  - `OpenMarketMenu` and `OpenDepotMenu` (`Session.Places.cs`) dynamically price wholesale trade lots, arbitrage flip margins, and bulk depot refuelling using the active state's commodity multiplier.

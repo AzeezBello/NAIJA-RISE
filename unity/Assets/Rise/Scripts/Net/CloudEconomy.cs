@@ -180,5 +180,29 @@ namespace Rise.Net
             var m = Regex.Match(block, "\"" + Regex.Escape(key) + "\"\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)");
             return m.Success && float.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
         }
+
+        // State-level commodity price multipliers for interstate trade & supply-chain arbitrage (Section 5.4).
+        public static float GetStateCommodityMultiplier(string stateId, string commodity)
+        {
+            string st = string.IsNullOrEmpty(stateId) ? "lagos" : stateId.ToLowerInvariant();
+            string c = string.IsNullOrEmpty(commodity) ? "produce" : commodity.ToLowerInvariant();
+            switch (st)
+            {
+                case "ogun":
+                    return c == "produce" ? 0.88f : c == "electronics" ? 1.05f : c == "fuel" ? 0.98f : 0.90f;
+                case "oyo":
+                    return c == "produce" ? 0.82f : c == "electronics" ? 1.08f : c == "fuel" ? 1.02f : 0.85f;
+                case "fct":
+                    return c == "produce" ? 1.15f : c == "electronics" ? 1.12f : c == "fuel" ? 1.08f : 1.45f;
+                case "rivers":
+                    return c == "produce" ? 1.10f : c == "electronics" ? 1.06f : c == "fuel" ? 0.75f : 1.18f;
+                case "anambra":
+                    return c == "produce" ? 0.95f : c == "electronics" ? 0.78f : c == "fuel" ? 1.04f : 1.10f;
+                case "kano":
+                    return c == "produce" ? 0.72f : c == "electronics" ? 1.14f : c == "fuel" ? 1.12f : 0.95f;
+                default: // lagos
+                    return c == "produce" ? 1.00f : c == "electronics" ? 0.92f : c == "fuel" ? 0.95f : 1.25f;
+            }
+        }
     }
 }

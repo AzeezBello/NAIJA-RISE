@@ -1198,13 +1198,18 @@ namespace Rise
         public void OpenMarketMenu(LandmarkData p)
         {
             bool isAuto = p != null && p.id.Contains("ladipo");
+            string st = Data.StateAt(p != null ? p.World() : Focus.position);
+            string commodity = p != null && (p.id.Contains("alaba") || p.id.Contains("onitsha") || p.id.Contains("ariaria")) ? "electronics" : "produce";
+            float mult = Net.CloudEconomy.GetStateCommodityMultiplier(st, commodity);
+            int lotCost = Mathf.RoundToInt(12000 * mult);
+            int lotRev = Mathf.RoundToInt(17500 / Mathf.Max(0.68f, mult));
             var m = new Menu
             {
                 Title = p?.name ?? "Lagos Mega Market",
-                Subtitle = isAuto ? "Tokunbo Auto Spare Parts, Respray & Tuning" : "Wholesale Produce, Electronics & Container Trade",
+                Subtitle = isAuto ? "Tokunbo Auto Spare Parts, Respray & Tuning" : $"Wholesale {commodity.ToUpperInvariant()} Trade · [{st.ToUpperInvariant()} Index {mult:0.00}×]",
                 Line = isAuto
                     ? "Repair or respray your vehicle at Ladipo prices, or buy bulk tokunbo spare parts."
-                    : "Source wholesale market crates, restock your businesses, or grab fresh street provisions."
+                    : $"Source wholesale market crates at {st.ToUpperInvariant()} regional prices (₦{lotCost:N0}), flip to interstate retailers, or step inside."
             };
             if (isAuto && Vehicle != null)
             {
@@ -1223,19 +1228,19 @@ namespace Rise
             }
             m.Options.Add(new MenuOption
             {
-                Label = "Buy Wholesale Trade Lot & Flip to Retailers · ₦12,000 → +₦16,500 (+2 Business Skill)",
+                Label = $"Buy Wholesale Trade Lot & Flip ({st.ToUpperInvariant()} {mult:0.00}×) · ₦{lotCost:N0} → +₦{lotRev:N0} (+2 Business Skill)",
                 Action = () =>
                 {
                     if (State.S.stamina < 20f) { State.Toast("Too tired to hustle the market"); return; }
-                    if (!State.Pay(12000)) { State.Toast("Need ₦12,000 capital for wholesale lot"); return; }
+                    if (!State.Pay(lotCost)) { State.Toast($"Need ₦{lotCost:N0} capital for wholesale lot"); return; }
                     State.S.stamina -= 20f;
                     Hours(1.5f);
-                    int revenue = 16500 + Mathf.RoundToInt(State.S.skills.business * 60f);
+                    int revenue = lotRev + Mathf.RoundToInt(State.S.skills.business * 60f);
                     State.Earn(revenue);
                     State.GainSkill("business", 2);
                     State.AddRep("business", 3);
                     State.AddXp(16);
-                    State.Toast($"Flipped wholesale lot at {p?.shortName ?? "Market"} · +₦{revenue:N0}");
+                    State.Toast($"Flipped wholesale lot at {p?.shortName ?? "Market"} ({st.ToUpperInvariant()}) · +₦{revenue:N0}");
                 }
             });
             if (!InInterior)
@@ -1246,23 +1251,26 @@ namespace Rise
 
         public void OpenDepotMenu(LandmarkData p)
         {
+            string st = Data.StateAt(p != null ? p.World() : Focus.position);
+            float fuelMult = Net.CloudEconomy.GetStateCommodityMultiplier(st, "fuel");
+            int fuelCost = Mathf.RoundToInt(1500 * fuelMult);
             var m = new Menu
             {
                 Title = p?.name ?? "Industrial Depot & Terminal",
-                Subtitle = "Refinery, Deep Sea Port, Tank Farm & Agro-Mill Operations",
-                Line = "Refuel vehicles at bulk depot rates, inspect industrial logistics, or step inside the operations floor."
+                Subtitle = $"Refinery, Deep Sea Port, Tank Farm & Agro-Mill · [{st.ToUpperInvariant()} Fuel Index {fuelMult:0.00}×]",
+                Line = "Refuel vehicles at regional bulk depot rates, inspect industrial logistics, or step inside the operations floor."
             };
             if (Vehicle != null)
             {
                 m.Options.Add(new MenuOption
                 {
-                    Label = "Bulk Depot Fuel & Maintenance · ₦1,500 (Full Tank & 100% Condition)",
+                    Label = $"Bulk Depot Fuel & Maintenance ({st.ToUpperInvariant()} {fuelMult:0.00}×) · ₦{fuelCost:N0} (Full Tank & 100% Condition)",
                     Action = () =>
                     {
-                        if (!State.Pay(1500)) { State.Toast("Need ₦1,500 for depot refuel"); return; }
+                        if (!State.Pay(fuelCost)) { State.Toast($"Need ₦{fuelCost:N0} for depot refuel"); return; }
                         State.S.fuel = 100f;
                         if (Vehicle != null) Vehicle.Condition = 100f;
-                        State.Toast("Refuelled & serviced at industrial depot");
+                        State.Toast($"Refuelled & serviced at {st.ToUpperInvariant()} industrial depot");
                     }
                 });
             }

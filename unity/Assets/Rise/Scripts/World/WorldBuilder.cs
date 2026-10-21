@@ -1092,6 +1092,7 @@ namespace Rise.World
         {
             var region = Data.RegionAtData(x, z);
             string id = region != null ? region.id : "mainland";
+            string biome = region != null && !string.IsNullOrEmpty(region.biome) ? region.biome : "coastal";
             var rng = new System.Random(Mathf.RoundToInt(x * 73f + z * 151f));
             float jx = roadside ? 0f : ((float)rng.NextDouble() - 0.5f) * 3f;
             float jz = roadside ? 0f : ((float)rng.NextDouble() - 0.5f) * 3f;
@@ -1105,6 +1106,19 @@ namespace Rise.World
             {
                 Compound(pos, 19f, 17f, group);
                 House(pos, 13f, 11f, 10.5f + (float)rng.NextDouble() * 4f, "#f5f3ee", false, group);
+            }
+            else if (biome == "sahel")
+            {
+                // Northern Sahelian Tubali ochre mud-brick architecture with parapet walls (Kano, Kaduna, Borno)
+                string[] sahelCols = { "#c88a4b", "#d49b63", "#b57c4a", "#d9a66e" };
+                Compound(pos, 18f, 16f, group);
+                House(pos, 12f, 10f, 6.5f + rng.Next(0, 2) * 3.2f, sahelCols[rng.Next(sahelCols.Length)], false, group);
+            }
+            else if (biome == "southeast" && !estate && !industrial)
+            {
+                // South-East multi-storey commercial concrete plazas & red-earth compounds (Onitsha, Enugu, Aba)
+                string[] seCols = { "#d7ccc8", "#bcaaa4", "#e0d6cc", "#c5b8a5" };
+                House(pos, 13f, 11f, 10.5f + rng.Next(0, 3) * 3.5f, seCols[rng.Next(seCols.Length)], false, group);
             }
             else if (dense)
             {

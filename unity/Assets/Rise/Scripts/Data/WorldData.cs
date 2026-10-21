@@ -21,7 +21,7 @@ namespace Rise.Data
         public int pursuitHeat = 3, ticketKmh = 90, checkpointKmh = 60, fineRate = 10000, bustRate = 15000, speedTicket = 2000, leaseDays = 30, propertyLevel = 2;
         public float bustSeconds = 2.5f, payCycle = 60f, agentFeeRate = 0.1f, priceLow = 0.8f, priceHigh = 1.2f;
     }
-    [Serializable] public class RegionData { public string id, name; public float minX, maxX, minZ, maxZ; public float Area => (maxX - minX) * (maxZ - minZ); public bool ContainsData(float x, float z) => x >= minX && x < maxX && z >= minZ && z < maxZ; }
+    [Serializable] public class RegionData { public string id, name, state = "lagos", biome = "coastal"; public float minX, maxX, minZ, maxZ; public float Area => (maxX - minX) * (maxZ - minZ); public bool ContainsData(float x, float z) => x >= minX && x < maxX && z >= minZ && z < maxZ; }
     [Serializable] public class RoadData
     {
         public string axis; public float k, from, to, width; public string name, cls;
@@ -210,6 +210,8 @@ namespace Rise.Data
         // ---- geometry queries (Unity world positions) ----
         public RegionData RegionAt(Vector3 w) => RegionAtData(w.x, DataZ(w.z));
         public RegionData RegionAtData(float x, float z) { foreach (var r in regionsByArea) if (r.ContainsData(x, z)) return r; return null; }
+        public string StateAt(Vector3 w) { var r = RegionAt(w); return r != null && !string.IsNullOrEmpty(r.state) ? r.state : "lagos"; }
+        public string BiomeAt(Vector3 w) { var r = RegionAt(w); return r != null && !string.IsNullOrEmpty(r.biome) ? r.biome : "coastal"; }
 
         public bool InWater(Vector3 w) => InWaterData(w.x, DataZ(w.z));
         public bool InWaterData(float x, float z) { foreach (var wa in waters) if (wa.ContainsData(x, z)) return true; return false; }
