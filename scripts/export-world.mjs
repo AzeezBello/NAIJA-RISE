@@ -32,7 +32,6 @@ const segments = AXES.flatMap(axis => Object.entries(L.ROAD_SEGMENTS[axis] || {}
 
 // Bridge deck profiles: [along, height] pairs; halfW: half the deck width used for height queries.
 const bridges = [
-  { id: 'shitta', name: 'Shitta Bridge', axis: 'v', k: -72, halfW: 7, profile: [[-50, 0], [-16, 6.5], [16, 6.5], [50, 0]] },
   { id: 'eko', name: 'Eko Bridge', axis: 'h', k: 0, halfW: 10, profile: [[155, 0], [192, 9], [310, 9], [345, 0]] },
   { id: 'falomo', name: 'Falomo Bridge', axis: 'v', k: 440, halfW: 10, profile: [[82, 0], [108, 8], [156, 8], [180, 0]] },
   { id: 'thirdmainland', name: 'Third Mainland Bridge', axis: 'v', k: 360, halfW: 10, profile: [[-248, 0], [-218, 9], [-115, 9], [-86, 0]] },
