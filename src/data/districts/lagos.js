@@ -37,8 +37,8 @@ const ROAD_WIDTHS = mergeAxisMap(surulere.ROAD_WIDTHS, areas.map(area => area.RO
 const ROAD_CLASS = mergeAxisMap(surulere.ROAD_CLASS, areas.map(area => area.ROAD_CLASS));
 const ROAD_SEGMENTS = mergeAxisMap(surulere.ROAD_SEGMENTS, areas.map(area => area.ROAD_SEGMENTS));
 const extraExtent = {
-  h: { 0: [-150, 470], 142: [-520, 150], '-330': [-520, 480], 240: [340, 2280], 300: [340, 2280] },
-  v: { 0: [-3350, 150], '-300': [-1950, -780], 440: [-80, 330], 560: [180, 330], 1980: [-1680, 320] },
+  h: { 0: [-196, 470], 142: [-520, 150], '-330': [-520, 480], 240: [340, 2280], 300: [340, 2280] },
+  v: { 0: [-3350, 150], '-300': [-1950, -780], 360: [-400, 96], 440: [-80, 330], 560: [180, 330], 1980: [-1680, 320] },
 };
 for (const axis of ['h', 'v']) {
   for (const [k, extent] of Object.entries(extraExtent[axis])) {
@@ -46,12 +46,19 @@ for (const axis of ['h', 'v']) {
   }
 }
 ROAD_EXTENT.h[300] = [-520, 2280];
+ROAD_NAMES.h[0] = 'Bode Thomas Street';
+ROAD_NAMES.h[-330] = 'Ikorodu Road';
 ROAD_NAMES.h[300] = 'Ahmadu Bello Way · Lagos–Calabar Coastal Road';
+ROAD_NAMES.v[360] = 'Broad Street · Third Mainland Bridge';
+ROAD_NAMES.v[440] = 'Marina · Falomo Bridge';
+ROAD_SEGMENTS.h[0] = surulere.ROAD_SEGMENTS.h[0];
 ROAD_SEGMENTS.h[300] = [[340, 480, 'Ahmadu Bello Way'], [480, 1120, 'Coastal Road'], [1120, 1720, 'Lagos–Calabar Coastal Highway'], [1720, 2280, 'Lagos–Calabar Coastal Highway · Niger Delta & Bonny']];
 ROAD_SEGMENTS.h[240] = [[340, 480, 'Adeola Odeku Street'], [480, 505, 'Lekki Toll Gate'], [505, 620, 'Lekki–Epe Expressway · Lekki Phase 1'], [620, 840, 'Lekki–Epe Expressway · Ajah'], [840, 1120, 'Lekki–Epe Expressway · Eleko'], [1120, 1440, 'Lekki–Epe Expressway · Ibeju-Lekki'], [1440, 1720, 'Lekki–Epe Expressway · Epe'], [1720, 2280, 'East–West Road · Warri & Port Harcourt']];
 ROAD_SEGMENTS.h[-330] = [[-520, -150, 'Ikorodu Road · Ikorodu'], [-150, -100, 'Ikorodu Road · Ikorodu Garage'], [-100, 300, 'Ikorodu Road · Ebute Metta'], [300, 480, 'Ikorodu Road · Jibowu']];
 ROAD_SEGMENTS.h[142] = [[-520, -150, 'Apapa–Oworonshoki Expressway · Apapa Port Road'], [-150, 150, 'Apapa–Oworonshoki Expressway']];
 ROAD_SEGMENTS.v[0] = [[-3350, -2900, 'Abuja–Kaduna–Kano Expressway (A2)'], [-2900, -2420, 'Abuja Airport & Three Arms Expressway (A2)'], [-2420, -1980, 'Lagos–Ibadan Expressway · Ibadan Sector'], [-1980, -1520, 'Lagos–Ibadan Expressway · Mowe & Sagamu'], [-1520, -1000, 'Lagos–Ibadan Expressway · Ojodu Berger'], [-1000, -480, 'Adeniran Ogunsanya Street · Ikeja Link'], [-480, -330, 'Adeniran Ogunsanya Street · Maryland Link'], [-330, 150, 'Adeniran Ogunsanya Street']];
+ROAD_SEGMENTS.v[360] = [[-400, -250, 'Murtala Muhammed Way · Yaba'], [-250, -85, 'Third Mainland Bridge'], [-85, 80, 'Broad Street'], [80, 96, 'Kingsway Road']];
+ROAD_SEGMENTS.v[440] = [[-400, -250, 'University Road'], [-80, 80, 'Marina'], [80, 180, 'Falomo Bridge'], [180, 330, 'Akin Adesola Street']];
 ROAD_NAMES.v[0] = 'Adeniran Ogunsanya Street · Lagos–Ibadan Expressway';
 ROAD_CLASS.h[142] = 'expressway';
 ROAD_CLASS.h[-330] = 'highway';
@@ -87,7 +94,7 @@ ROAD_EXTENT.v[-350] = [-410, 230];
 ROAD_EXTENT.v[-360] = [-410, -250];
 ROAD_EXTENT.v[-270] = [-410, -250];
 ROAD_EXTENT.v[-250] = [50, 230];
-ROAD_EXTENT.v[488] = [80, 230];
+ROAD_EXTENT.v[488] = [78, 230];
 ROAD_EXTENT.v[720] = [180, 330];
 ROAD_EXTENT.v[800] = [180, 330];
 ROAD_EXTENT.v[920] = [180, 330];
@@ -102,7 +109,7 @@ ROAD_WIDTHS.v[1040] = 16;
 const LANDMARKS = [
   ...surulere.LANDMARKS.filter(l => !['ajegunle', 'ajpitch', 'makoko', 'ikorodu', 'tejuosho', 'yabatech', 'unilag'].includes(l.id)),
   ...areas.flatMap(area => area.LANDMARKS),
-  { id: 'obalende', name: 'Obalende', short: 'OBALENDE', x: 300, z: 60, c: '#8a7d6a', sign: '#ffc52f', h: 6, kind: 'landmark', region: 'obalende' },
+  { id: 'obalende', name: 'Obalende', short: 'OBALENDE', x: 420, z: 74, c: '#8a7d6a', sign: '#ffc52f', h: 6, kind: 'landmark', region: 'obalende' },
   { id: 'balogun-market', name: 'Balogun Market', short: 'BALOGUN MKT', x: 390, z: 42, c: '#6b4737', sign: '#ffc52f', h: 7, kind: 'market', big: true, region: 'island' },
   { id: 'bet9ja-surulere', name: 'Bet9ja Sports Betting', short: 'BET9JA', x: 12, z: -52, c: '#f2bd18', sign: '#ffffff', h: 4, kind: 'betshop' },
   { id: 'sportybet-yaba', name: 'SportyBet', short: 'SPORTYBET', x: 408, z: -318, c: '#111f3c', sign: '#47b54a', h: 4, kind: 'betshop', region: 'yaba' },
@@ -110,7 +117,7 @@ const LANDMARKS = [
   { id: 'marina-rail', name: 'Marina Blue Line Rail Station', short: 'MARINA RAIL', x: 356, z: 20, c: '#1559b8', sign: '#ffffff', h: 9, kind: 'rail', big: true, region: 'island' },
   { id: 'theatre-rail', name: 'National Theatre Blue Line Station', short: 'THEATRE RAIL', x: 152, z: -20, c: '#1559b8', sign: '#ffffff', h: 9, kind: 'rail', region: 'costain' },
   { id: 'ebute-rail', name: 'Mobolaji Johnson Station · Ebute Metta', short: 'EBUTE RAIL', x: 184, z: -308, c: '#1559b8', sign: '#ffffff', h: 9, kind: 'rail', big: true, region: 'ebute' },
-  { id: 'dodan-barracks', name: 'Dodan Barracks · Obalende', short: 'DODAN BARRACKS', x: 348, z: 62, c: '#3b5323', sign: '#ffffff', h: 7, kind: 'army', big: true, region: 'island' },
+  { id: 'dodan-barracks', name: 'Dodan Barracks · Obalende', short: 'DODAN BARRACKS', x: 404, z: 74, c: '#3b5323', sign: '#ffffff', h: 7, kind: 'army', big: true, region: 'island' },
   { id: 'bonny-camp', name: 'Bonny Camp Military Cantonment', short: 'BONNY CAMP', x: 396, z: 268, c: '#3b5323', sign: '#ffffff', h: 7, kind: 'army', big: true, region: 'vi' },
   { id: 'naval-dockyard', name: 'Naval Dockyard · Victoria Island', short: 'NAVAL DOCKYARD', x: 356, z: 186, c: '#13294b', sign: '#ffffff', h: 6, kind: 'navy', big: true, waterfront: true, region: 'vi' },
   { id: 'island-fire', name: 'Lagos Island Fire Station', short: 'ISLAND FIRE', x: 420, z: 16, c: '#c62828', sign: '#ffffff', h: 6, kind: 'service', region: 'island' },
@@ -187,7 +194,7 @@ const roadFootprintOverlap = (x, z, width, depth) =>
 const buildingFootprint = landmark => {
   if (
     landmark.stadium || landmark.waterfront ||
-    ['airport', 'beach', 'checkpoint', 'pitch', 'post', 'settlement', 'street', 'toll', 'waypoint'].includes(landmark.kind)
+    ['airport', 'beach', 'checkpoint', 'pitch', 'post', 'rail', 'settlement', 'street', 'toll', 'waypoint'].includes(landmark.kind)
   ) return null;
   if (landmark.kind === 'artisan') return { width: 16, depth: 13 };
   if (landmark.big) return { width: 26, depth: 20 };

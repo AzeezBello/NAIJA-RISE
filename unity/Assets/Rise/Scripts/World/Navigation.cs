@@ -91,6 +91,21 @@ namespace Rise.World
             return ToWorld(clean);
         }
 
+        float SegmentHeight(Vector2 a, Vector2 b, Vector2 p)
+        {
+            if (Mathf.Approximately(a.y, b.y) && !Mathf.Approximately(a.x, b.x))
+            {
+                var r = data.FindRoad("h", a.y);
+                if (r != null) return data.RoadHeightAt(r, p.x);
+            }
+            else if (Mathf.Approximately(a.x, b.x) && !Mathf.Approximately(a.y, b.y))
+            {
+                var r = data.FindRoad("v", a.x);
+                if (r != null) return data.RoadHeightAt(r, p.y);
+            }
+            return data.DeckHeightAtData(p.x, p.y);
+        }
+
         List<Vector3> ToWorld(List<Vector2> pts)
         {
             var w = new List<Vector3>(pts.Count * 2);
@@ -104,10 +119,11 @@ namespace Rise.World
                     for (int s = 1; s <= steps; s++)
                     {
                         var p = Vector2.Lerp(a, b, (float)s / (steps + 1));
-                        var sv = WorldData.W(p.x, 0f, p.y); sv.y = data.DeckHeightAtData(p.x, p.y) + 0.16f; w.Add(sv);
+                        var sv = WorldData.W(p.x, 0f, p.y); sv.y = SegmentHeight(a, b, p) + 0.16f; w.Add(sv);
                     }
                 }
-                var v = WorldData.W(pts[i].x, 0f, pts[i].y); v.y = data.DeckHeightAtData(pts[i].x, pts[i].y) + 0.16f; w.Add(v);
+                float h = i > 0 ? SegmentHeight(pts[i - 1], pts[i], pts[i]) : data.DeckHeightAtData(pts[i].x, pts[i].y);
+                var v = WorldData.W(pts[i].x, 0f, pts[i].y); v.y = h + 0.16f; w.Add(v);
             }
             return w;
         }
