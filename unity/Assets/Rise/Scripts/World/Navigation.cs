@@ -11,7 +11,10 @@ namespace Rise.World
     {
         WorldData data;
         LineRenderer line;
-        Transform marker, arrow;
+        Transform marker, beacon, chevronRoot;
+        readonly List<Transform> chevrons = new List<Transform>();
+        readonly List<Material> chevronMats = new List<Material>();
+        List<Vector3> currentRoute = new List<Vector3>();
         float refreshT;
         class Node { public float x, z; public List<(Node to, float w)> edges = new List<(Node, float)>(); }
         readonly List<Node> nodes = new List<Node>();
@@ -43,14 +46,54 @@ namespace Rise.World
             var go = new GameObject("GPS route"); go.transform.SetParent(parent, false);
             go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);   // TransformZ alignment: the strip lies flat on the road
             line = go.AddComponent<LineRenderer>();
-            line.material = new Material(unlit) { color = new Color(0.2f, 0.9f, 0.42f, 0.85f) };
+            line.material = new Material(unlit) { color = new Color(1.0f, 0.86f, 0.16f, 0.92f) };
             line.widthMultiplier = 0.55f; line.numCornerVertices = 3; line.numCapVertices = 3; line.alignment = LineAlignment.TransformZ; line.positionCount = 0;
             line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-            marker = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
-            marker.name = "Mission marker"; marker.SetParent(parent, false); marker.localScale = new Vector3(3.4f, 0.09f, 3.4f);
-            marker.GetComponent<MeshRenderer>().sharedMaterial = new Material(unlit) { color = new Color(0.24f, 1f, 0.47f, 0.9f) };
-            Destroy(marker.GetComponent<Collider>());
+            // Glowing golden-yellow 3D ground halo ring + floating taxi/objective beacon + road approach chevrons
+            marker = new GameObject("Mission marker").transform;
+            marker.SetParent(parent, false);
+            var haloGold = new Material(unlit) { color = new Color(1.0f, 0.88f, 0.12f, 1f) };
+            var haloRim = new Material(unlit) { color = new Color(1.0f, 0.76f, 0.08f, 1f) };
+            var beaconMat = new Material(unlit) { color = new Color(1.0f, 0.84f, 0.10f, 1f) };
+
+            Transform RingPart(Transform p, string n, PrimitiveType pt, Vector3 pos, Vector3 sc, Material m, Quaternion? rot = null)
+            {
+                var g = GameObject.CreatePrimitive(pt); g.name = n;
+                g.transform.SetParent(p, false); g.transform.localPosition = pos; g.transform.localScale = sc;
+                if (rot.HasValue) g.transform.localRotation = rot.Value;
+                var mr = g.GetComponent<MeshRenderer>(); mr.sharedMaterial = m; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                Destroy(g.GetComponent<Collider>());
+                return g.transform;
+            }
+
+            // Ground halo ring & vertical light rim
+            RingPart(marker, "HaloBase", PrimitiveType.Cylinder, new Vector3(0f, 0.04f, 0f), new Vector3(4.2f, 0.04f, 4.2f), haloGold);
+            RingPart(marker, "HaloRim", PrimitiveType.Cylinder, new Vector3(0f, 0.28f, 0f), new Vector3(4.35f, 0.22f, 4.35f), haloRim);
+
+            // Floating 3D Taxi / Objective Beacon above the ring
+            beacon = new GameObject("Beacon").transform;
+            beacon.SetParent(marker, false);
+            beacon.localPosition = new Vector3(0f, 1.85f, 0f);
+            RingPart(beacon, "CarBody", PrimitiveType.Cube, new Vector3(0f, 0f, 0f), new Vector3(0.95f, 0.30f, 1.45f), beaconMat);
+            RingPart(beacon, "CarCabin", PrimitiveType.Cube, new Vector3(0f, 0.24f, -0.05f), new Vector3(0.76f, 0.26f, 0.82f), beaconMat);
+            RingPart(beacon, "TaxiTopper", PrimitiveType.Cube, new Vector3(0f, 0.44f, -0.05f), new Vector3(0.36f, 0.16f, 0.24f), haloRim);
+
+            // Animated glowing white/gold ground chevrons ("> > > > >") leading into the ring
+            chevronRoot = new GameObject("ApproachChevrons").transform;
+            chevronRoot.SetParent(parent, false);
+            for (int i = 0; i < 6; i++)
+            {
+                var ch = new GameObject("Chevron_" + i).transform;
+                ch.SetParent(chevronRoot, false);
+                var cMat = new Material(unlit) { color = new Color(1.0f, 0.96f, 0.82f, 1f) };
+                RingPart(ch, "LeftWing", PrimitiveType.Cube, new Vector3(-0.46f, 0.05f, -0.22f), new Vector3(1.10f, 0.04f, 0.20f), cMat, Quaternion.Euler(0f, -32f, 0f));
+                RingPart(ch, "RightWing", PrimitiveType.Cube, new Vector3(0.46f, 0.05f, -0.22f), new Vector3(1.10f, 0.04f, 0.20f), cMat, Quaternion.Euler(0f, 32f, 0f));
+                ch.gameObject.SetActive(false);
+                chevrons.Add(ch);
+                chevronMats.Add(cMat);
+            }
+
             marker.gameObject.SetActive(false);
         }
 
@@ -152,21 +195,59 @@ namespace Rise.World
 
         public void Refresh(Vector3 from)
         {
-            if (Target == null) { line.positionCount = 0; marker.gameObject.SetActive(false); RouteLength = 0f; return; }
-            var pts = Route(from, Target.Value);
-            line.positionCount = pts.Count; line.SetPositions(pts.ToArray());
-            float len = 0f; for (int i = 1; i < pts.Count; i++) len += Vector3.Distance(pts[i], pts[i - 1]);
+            if (Target == null)
+            {
+                line.positionCount = 0;
+                marker.gameObject.SetActive(false);
+                foreach (var c in chevrons) if (c != null) c.gameObject.SetActive(false);
+                RouteLength = 0f;
+                return;
+            }
+            currentRoute = Route(from, Target.Value);
+            line.positionCount = currentRoute.Count; line.SetPositions(currentRoute.ToArray());
+            float len = 0f; for (int i = 1; i < currentRoute.Count; i++) len += Vector3.Distance(currentRoute[i], currentRoute[i - 1]);
             RouteLength = len;
-            NextWaypoint = pts.Count > 1 ? pts[1] : Target.Value;
+            NextWaypoint = currentRoute.Count > 1 ? currentRoute[1] : Target.Value;
             marker.gameObject.SetActive(true);
-            var m = Target.Value; m.y = data.DeckHeightAt(m) + 0.25f; marker.position = m;
+            var m = Target.Value; m.y = data.DeckHeightAt(m) + 0.12f; marker.position = m;
+
+            // Place the 6 approach chevrons along the road leading into the destination marker.
+            Vector3 dest = m;
+            Vector3 prev = currentRoute.Count > 1 ? currentRoute[Mathf.Max(0, currentRoute.Count - 2)] : from;
+            Vector3 approachDir = (dest - prev); approachDir.y = 0f;
+            if (approachDir.sqrMagnitude < 0.01f) approachDir = Vector3.forward;
+            else approachDir.Normalize();
+            Quaternion rot = Quaternion.LookRotation(approachDir, Vector3.up);
+            for (int i = 0; i < chevrons.Count; i++)
+            {
+                float backDist = 3.2f + i * 2.1f;
+                Vector3 cPos = dest - approachDir * backDist;
+                cPos.y = data.DeckHeightAt(cPos) + 0.14f;
+                chevrons[i].position = cPos;
+                chevrons[i].rotation = rot;
+                chevrons[i].gameObject.SetActive(true);
+            }
         }
 
         public void Tick(Vector3 from)
         {
             refreshT -= Time.deltaTime;
             if (refreshT <= 0f) { refreshT = 0.5f; Refresh(from); }
-            if (marker.gameObject.activeSelf) { marker.Rotate(Vector3.up, Time.deltaTime * 60f); var p = marker.position; p.y = data.DeckHeightAt(p) + 0.25f + Mathf.Sin(Time.time * 3.6f) * 0.1f; marker.position = p; }
+            if (marker.gameObject.activeSelf)
+            {
+                if (beacon != null)
+                {
+                    beacon.Rotate(Vector3.up, Time.deltaTime * 55f, Space.Self);
+                    beacon.localPosition = new Vector3(0f, 1.85f + Mathf.Sin(Time.time * 3.4f) * 0.18f, 0f);
+                }
+                for (int i = 0; i < chevronMats.Count; i++)
+                {
+                    float wave = Mathf.Sin(Time.time * 6.5f + i * 0.85f) * 0.5f + 0.5f;
+                    var col = Color.Lerp(new Color(1.0f, 0.78f, 0.15f), new Color(1.25f, 1.20f, 0.95f), wave);
+                    chevronMats[i].color = col;
+                    if (chevronMats[i].HasProperty("_BaseColor")) chevronMats[i].SetColor("_BaseColor", col);
+                }
+            }
         }
     }
 }

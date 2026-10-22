@@ -19,7 +19,7 @@ namespace Rise.Entities
         public Animation Anim; public GameObject Root; public bool Cesium;
         public readonly List<Material> Top = new List<Material>(), Bottom = new List<Material>(), Skin = new List<Material>(), Hair = new List<Material>(), Cap = new List<Material>();
         public readonly List<Renderer> HairRenderers = new List<Renderer>(), BeardRenderers = new List<Renderer>(), CapRenderers = new List<Renderer>();
-        public Transform Overlay, Glasses, Chain, WeaponRoot; public Material OverlayMaterial;
+        public Transform Overlay, Glasses, Chain, Watch, TattooL, TattooR, WeaponRoot; public Material OverlayMaterial, TattooMaterial;
         public float BaseScale = 1f;
         public string State = "idle";
 
@@ -182,31 +182,76 @@ namespace Rise.Entities
 
         static void BuildAttachments(RigInstance rig, Transform root, float k)
         {
-            var hips = Find(root, "Hips") ?? Find(root, "Spine"); var head = Find(root, "Head"); var neck = Find(root, "Neck") ?? head;
+            var hips = Find(root, "Hips") ?? Find(root, "Spine");
+            var head = Find(root, "Head");
+            var neck = Find(root, "Neck") ?? head;
+            var leftForeArm = Find(root, "LeftForeArm");
+            var rightForeArm = Find(root, "RightForeArm");
+            int layer = root.gameObject.layer;
+
+            Transform SubPart(Transform parent, string name, PrimitiveType pt, Vector3 pos, Vector3 sc, Material mat, Quaternion? rot = null)
+            {
+                var p = GameObject.CreatePrimitive(pt); p.name = name; p.layer = layer; DestroyObj(p.GetComponent<Collider>());
+                p.transform.SetParent(parent, false); p.transform.localPosition = pos; p.transform.localScale = sc;
+                if (rot.HasValue) p.transform.localRotation = rot.Value;
+                p.GetComponent<MeshRenderer>().sharedMaterial = mat;
+                return p.transform;
+            }
+
             if (hips != null)
             {
-                var ov = GameObject.CreatePrimitive(PrimitiveType.Cylinder); ov.name = "Outfit overlay"; DestroyObj(ov.GetComponent<Collider>());
+                var ov = GameObject.CreatePrimitive(PrimitiveType.Cylinder); ov.name = "Outfit overlay"; ov.layer = layer; DestroyObj(ov.GetComponent<Collider>());
                 ov.transform.SetParent(hips, false);
-                rig.OverlayMaterial = new Material(ShaderLib.Lit) { color = Color.white }; rig.OverlayMaterial.SetFloat("_Smoothness", 0.12f);
+                rig.OverlayMaterial = new Material(ShaderLib.Lit) { color = Color.white }; rig.OverlayMaterial.SetFloat("_Smoothness", 0.22f);
                 ov.GetComponent<MeshRenderer>().sharedMaterial = rig.OverlayMaterial;
                 rig.Overlay = ov.transform; ov.SetActive(false);
             }
             if (head != null)
             {
-                var g = GameObject.CreatePrimitive(PrimitiveType.Cube); g.name = "Glasses"; DestroyObj(g.GetComponent<Collider>());
-                g.transform.SetParent(head, false); g.GetComponent<MeshRenderer>().sharedMaterial = Mannequin.Mat(new Color(0.07f, 0.07f, 0.07f));
-                rig.Glasses = g.transform; g.SetActive(false);
+                var gRoot = new GameObject("Glasses") { layer = layer }.transform;
+                gRoot.SetParent(head, false);
+                var lensMat = new Material(ShaderLib.Lit) { color = new Color(0.05f, 0.07f, 0.10f) }; lensMat.SetFloat("_Smoothness", 0.95f); lensMat.SetFloat("_Metallic", 0.45f);
+                var frameMat = new Material(ShaderLib.Lit) { color = new Color(0.90f, 0.92f, 0.95f) }; frameMat.SetFloat("_Smoothness", 0.85f); frameMat.SetFloat("_Metallic", 0.70f);
+                SubPart(gRoot, "LeftLens", PrimitiveType.Cube, new Vector3(-0.30f, 0f, 0f), new Vector3(0.42f, 0.86f, 0.24f), lensMat);
+                SubPart(gRoot, "RightLens", PrimitiveType.Cube, new Vector3(0.30f, 0f, 0f), new Vector3(0.42f, 0.86f, 0.24f), lensMat);
+                SubPart(gRoot, "TopBar", PrimitiveType.Cube, new Vector3(0f, 0.42f, 0.04f), new Vector3(1.04f, 0.20f, 0.28f), frameMat);
+                SubPart(gRoot, "Bridge", PrimitiveType.Cube, new Vector3(0f, 0.08f, 0.06f), new Vector3(0.22f, 0.18f, 0.26f), frameMat);
+                SubPart(gRoot, "LeftTemple", PrimitiveType.Cube, new Vector3(-0.51f, 0.12f, -1.6f), new Vector3(0.08f, 0.22f, 3.2f), frameMat);
+                SubPart(gRoot, "RightTemple", PrimitiveType.Cube, new Vector3(0.51f, 0.12f, -1.6f), new Vector3(0.08f, 0.22f, 3.2f), frameMat);
+                rig.Glasses = gRoot; gRoot.gameObject.SetActive(false);
             }
             if (neck != null)
             {
-                var c = GameObject.CreatePrimitive(PrimitiveType.Cylinder); c.name = "Chain"; DestroyObj(c.GetComponent<Collider>());
-                c.transform.SetParent(neck, false); var gold = new Material(ShaderLib.Lit) { color = new Color(1f, 0.77f, 0.18f) }; gold.SetFloat("_Metallic", 0.9f); gold.SetFloat("_Smoothness", 0.8f);
-                c.GetComponent<MeshRenderer>().sharedMaterial = gold;
-                rig.Chain = c.transform; c.SetActive(false);
+                var cRoot = new GameObject("Chain") { layer = layer }.transform;
+                cRoot.SetParent(neck, false);
+                var silver = new Material(ShaderLib.Lit) { color = new Color(0.92f, 0.86f, 0.68f) }; silver.SetFloat("_Metallic", 0.92f); silver.SetFloat("_Smoothness", 0.88f);
+                SubPart(cRoot, "LeftLink", PrimitiveType.Cylinder, new Vector3(-0.28f, -0.35f, 0.32f), new Vector3(0.10f, 0.48f, 0.10f), silver, Quaternion.Euler(28f, 0f, 26f));
+                SubPart(cRoot, "RightLink", PrimitiveType.Cylinder, new Vector3(0.28f, -0.35f, 0.32f), new Vector3(0.10f, 0.48f, 0.10f), silver, Quaternion.Euler(28f, 0f, -26f));
+                SubPart(cRoot, "BottomCurve", PrimitiveType.Cylinder, new Vector3(0f, -0.78f, 0.50f), new Vector3(0.11f, 0.24f, 0.11f), silver, Quaternion.Euler(0f, 0f, 90f));
+                SubPart(cRoot, "Medallion", PrimitiveType.Cylinder, new Vector3(0f, -0.94f, 0.54f), new Vector3(0.24f, 0.04f, 0.24f), silver, Quaternion.Euler(90f, 0f, 0f));
+                rig.Chain = cRoot; cRoot.gameObject.SetActive(false);
             }
-            var hand = Find(root, "RightHand") ?? Find(root, "RightForeArm") ?? hips;
+            if (leftForeArm != null)
+            {
+                var wRoot = new GameObject("Wristwatch") { layer = layer }.transform;
+                wRoot.SetParent(leftForeArm, false);
+                var metal = new Material(ShaderLib.Lit) { color = new Color(0.88f, 0.86f, 0.78f) }; metal.SetFloat("_Metallic", 0.92f); metal.SetFloat("_Smoothness", 0.88f);
+                var dial = new Material(ShaderLib.Lit) { color = new Color(0.08f, 0.12f, 0.18f) }; dial.SetFloat("_Smoothness", 0.92f);
+                SubPart(wRoot, "Band", PrimitiveType.Cylinder, Vector3.zero, new Vector3(1.0f, 0.35f, 1.0f), metal);
+                SubPart(wRoot, "Face", PrimitiveType.Cylinder, new Vector3(0f, 0f, 0.48f), new Vector3(0.65f, 0.12f, 0.65f), dial, Quaternion.Euler(90f, 0f, 0f));
+                rig.Watch = wRoot;
+
+                rig.TattooMaterial = new Material(ShaderLib.Lit) { color = Color.white };
+                rig.TattooMaterial.SetFloat("_Smoothness", 0.34f);
+                if (rig.TattooMaterial.HasProperty("_BaseMap")) rig.TattooMaterial.SetTexture("_BaseMap", ShaderLib.TattooTex);
+                rig.TattooMaterial.mainTexture = ShaderLib.TattooTex;
+                rig.TattooL = SubPart(leftForeArm, "TattooSleeveL", PrimitiveType.Cylinder, Vector3.zero, Vector3.one, rig.TattooMaterial);
+                if (rightForeArm != null)
+                    rig.TattooR = SubPart(rightForeArm, "TattooSleeveR", PrimitiveType.Cylinder, Vector3.zero, Vector3.one, rig.TattooMaterial);
+            }
+            var hand = Find(root, "RightHand") ?? rightForeArm ?? hips;
             if (hand != null)
-                rig.WeaponRoot = BuildWeaponProp(hand, root.gameObject.layer);
+                rig.WeaponRoot = BuildWeaponProp(hand, layer);
         }
 
         public static Transform BuildWeaponProp(Transform hand, int layer = 0)
@@ -367,15 +412,30 @@ namespace Rise.Entities
             Color fabricColour = Data != null && Data.fabrics.Length > 0 ? Mannequin.Hex(Data.fabrics[Mathf.Clamp(look.Fabric, 0, Data.fabrics.Length - 1)].baseColor) : new Color(0.88f, 0.48f, 0.1f);
             foreach (var m in rig.Top)
             {
+                if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.28f);
                 if (print == null) { Tint(m, fabricColour); continue; }
                 Tint(m, Color.white);
                 if (m.HasProperty("baseColorTexture")) { m.SetTexture("baseColorTexture", print); if (m.HasProperty("baseColorTexture_ST")) m.SetVector("baseColorTexture_ST", new Vector4(2f, 2f, 0f, 0f)); }
                 else if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", print); m.SetTextureScale("_BaseMap", new Vector2(2f, 2f)); }
                 else m.mainTexture = print;
             }
-            foreach (var m in rig.Bottom) Tint(m, look.Pants);
-            foreach (var m in rig.Skin) Tint(m, Color.Lerp(look.Skin, Color.white, 0.35f));
-            foreach (var m in rig.Hair) Tint(m, look.Hair);
+            foreach (var m in rig.Bottom)
+            {
+                if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.26f);
+                Tint(m, look.Pants);
+            }
+            Color richSkin = Color.Lerp(look.Skin, new Color(0.84f, 0.58f, 0.40f), 0.10f);
+            foreach (var m in rig.Skin)
+            {
+                if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.36f);
+                Tint(m, richSkin);
+            }
+            if (rig.TattooMaterial != null) Tint(rig.TattooMaterial, richSkin);
+            foreach (var m in rig.Hair)
+            {
+                if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.30f);
+                Tint(m, look.Hair);
+            }
             foreach (var m in rig.Cap) Tint(m, look.Cap ?? Color.white);
             if (!look.Cap.HasValue) foreach (var r in rig.Root.GetComponentsInChildren<Renderer>()) if (r.sharedMaterial != null && r.sharedMaterial.name.Contains("Headwear")) r.enabled = false;
         }
@@ -393,10 +453,16 @@ namespace Rise.Entities
             // Accessory: fila / face cap use the headwear; glasses and chain are attachments.
             string acc = Data != null && look.Accessory < Data.accessories.Length ? Data.accessories[look.Accessory] : "None";
             foreach (var r in rig.CapRenderers) r.enabled = acc == "Fila" || acc == "Face cap";
-            if (rig.Glasses != null) { rig.Glasses.gameObject.SetActive(acc == "Glasses"); if (acc == "Glasses") Fit(rig.Glasses, rig.Glasses.parent, new Vector3(0.14f, 0.024f, 0.02f), new Vector3(0f, 0.045f, 0.095f), rig.BaseScale); }
-            if (rig.Chain != null) { rig.Chain.gameObject.SetActive(acc == "Chain"); if (acc == "Chain") Fit(rig.Chain, rig.Chain.parent, new Vector3(0.16f, 0.005f, 0.16f), new Vector3(0f, -0.025f, 0.02f), rig.BaseScale); }
-            // Outfit silhouette overlays in the fabric print, scaled snugly to the waist so they never protrude like a barrel.
             string outfit = look.Outfit < OutfitNames.Length ? OutfitNames[look.Outfit] : "Ankara shirt";
+            bool showGlasses = acc == "Glasses";
+            bool showChain = acc == "Chain" || outfit == "T-shirt & jeans" || outfit == "Singlet & jeans" || outfit == "Tank top & shorts" || outfit == "Super Eagles";
+            bool bareArms = outfit == "T-shirt & jeans" || outfit == "Singlet & jeans" || outfit == "Tank top & shorts" || outfit == "Super Eagles" || outfit == "Ankara shirt";
+            if (rig.Glasses != null) { rig.Glasses.gameObject.SetActive(showGlasses); if (showGlasses) Fit(rig.Glasses, rig.Glasses.parent, new Vector3(0.145f, 0.032f, 0.028f), new Vector3(0f, 0.042f, 0.098f), rig.BaseScale); }
+            if (rig.Chain != null) { rig.Chain.gameObject.SetActive(showChain); if (showChain) Fit(rig.Chain, rig.Chain.parent, new Vector3(0.14f, 0.09f, 0.14f), new Vector3(0f, -0.02f, 0.02f), rig.BaseScale); }
+            if (rig.Watch != null) { rig.Watch.gameObject.SetActive(true); Fit(rig.Watch, rig.Watch.parent, new Vector3(0.068f, 0.028f, 0.068f), new Vector3(0f, 0.14f, 0f), rig.BaseScale); }
+            if (rig.TattooL != null) { rig.TattooL.gameObject.SetActive(bareArms); if (bareArms) Fit(rig.TattooL, rig.TattooL.parent, new Vector3(0.072f, 0.085f, 0.072f), new Vector3(0f, 0.06f, 0f), rig.BaseScale); }
+            if (rig.TattooR != null) { rig.TattooR.gameObject.SetActive(bareArms); if (bareArms) Fit(rig.TattooR, rig.TattooR.parent, new Vector3(0.072f, 0.085f, 0.072f), new Vector3(0f, 0.06f, 0f), rig.BaseScale); }
+            // Outfit silhouette overlays in the fabric print, scaled snugly to the waist so they never protrude like a barrel.
             if (rig.Overlay != null)
             {
                 var hips = rig.Overlay.parent;
