@@ -11,16 +11,35 @@ namespace Rise.Vehicles
         static Shader standard;
         static readonly Dictionary<string, Material> materials = new Dictionary<string, Material>();
         static readonly Dictionary<string, Material> tintedColormapMats = new Dictionary<string, Material>();
-        public static readonly string[] CarColours = { "#1c2430", "#8a1c1c", "#1d4d8c", "#c8cdd2", "#2b5b3c", "#d97706", "#374151", "#6d28d9", "#b45309", "#0f766e" };
-        public static readonly string[] LuxuryColours = { "#0d1117", "#d4af37", "#8c1523", "#153668", "#eef2f6", "#1b4332" };
+        static Material checkerMat;
+        public static readonly string[] CarColours = { "#f29b0a", "#1c2430", "#9e1b1b", "#1d4d8c", "#d0d6dc", "#1f7a44", "#e06d06", "#374151", "#6d28d9", "#eab308", "#0f766e" };
+        public static readonly string[] LuxuryColours = { "#0d1117", "#d4af37", "#991b1b", "#153668", "#f1f5f9", "#22c55e", "#f59e0b" };
 
-        public static Material Mat(string hex, float gloss = 0.6f)
+        public static Material Mat(string hex, float gloss = 0.72f, float metallic = 0.24f)
         {
-            string key = hex + gloss;
-            if (materials.TryGetValue(key, out var m)) return m;
+            string key = $"{hex}:{gloss:F2}:{metallic:F2}";
+            if (materials.TryGetValue(key, out var m) && m != null) return m;
             standard ??= ShaderLib.Lit;
-            m = new Material(standard); ColorUtility.TryParseHtmlString(hex, out var c); m.color = c; m.SetFloat("_Smoothness", gloss);
+            m = new Material(standard);
+            ColorUtility.TryParseHtmlString(hex, out var c);
+            m.color = c;
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+            m.SetFloat("_Smoothness", gloss);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", metallic);
             return materials[key] = m;
+        }
+
+        static Material CheckerMat()
+        {
+            if (checkerMat != null) return checkerMat;
+            standard ??= ShaderLib.Lit;
+            checkerMat = new Material(standard) { name = "TaxiChecker", color = Color.white };
+            if (checkerMat.HasProperty("_BaseColor")) checkerMat.SetColor("_BaseColor", Color.white);
+            checkerMat.mainTexture = ShaderLib.CheckerTex;
+            if (checkerMat.HasProperty("_BaseMap")) { checkerMat.SetTexture("_BaseMap", ShaderLib.CheckerTex); checkerMat.SetTextureScale("_BaseMap", new Vector2(4f, 1f)); }
+            checkerMat.SetFloat("_Smoothness", 0.84f);
+            if (checkerMat.HasProperty("_Metallic")) checkerMat.SetFloat("_Metallic", 0.28f);
+            return checkerMat;
         }
 
         static Transform Part(Transform parent, PrimitiveType type, Vector3 pos, Vector3 scale, Material m, Quaternion? rot = null)
@@ -301,7 +320,8 @@ namespace Rise.Vehicles
                 case "luxury":
                 {
                     string luxCol = LuxuryColours[rng.Next(LuxuryColours.Length)];
-                    ReplaceColormapMaterial(model, luxCol, 0.90f, 0.48f);
+                    ReplaceColormapMaterial(model, luxCol, 0.92f, 0.52f);
+                    AttachAutomotiveTrim(root, wid, h, len, luxCol, isTaxi: false);
                     break;
                 }
                 case "car":
@@ -309,13 +329,71 @@ namespace Rise.Vehicles
                 case "truck":
                 case "delivery":
                 {
-                    if (modelName != "taxi")
-                    {
-                        string carCol = CarColours[rng.Next(CarColours.Length)];
-                        ReplaceColormapMaterial(model, carCol, 0.78f, 0.32f);
-                    }
+                    bool isTaxi = modelName == "taxi" || (cls.id == "car" && rng.NextDouble() < 0.28);
+                    string carCol = isTaxi ? "#f29b0a" : CarColours[rng.Next(CarColours.Length)];
+                    ReplaceColormapMaterial(model, carCol, 0.88f, 0.36f);
+                    if (cls.id == "car") AttachAutomotiveTrim(root, wid, h, len, carCol, isTaxi);
                     break;
                 }
+            }
+            // Ground contact drop shadow under every vehicle so wheels sit firmly planted on the road.
+            if (cls.id != "okada" && cls.id != "motorcycle")
+            {
+                var shadow = Part(root, PrimitiveType.Cube, new Vector3(0f, 0.02f, 0f), new Vector3(wid * 0.92f, 0.015f, len * 0.92f), Mat("#090c0e", 0.05f, 0f));
+                shadow.name = "DropShadow";
+            }
+        }
+
+        // Adds rear trunk garnish bar, multi-element ruby LED taillights, recessed license plate, side wing mirrors,
+        // checkered taxi livery + wedge roof sign (for taxis), and an animated hinged front door ("DoorPivot").
+        static void AttachAutomotiveTrim(Transform root, float wid, float h, float len, string bodyHex, bool isTaxi)
+        {
+            var trimDark = Mat("#12151a", 0.78f, 0.35f);
+            var rubyLight = Mat("#d91b24", 0.92f, 0.25f);
+            var reverseLens = Mat("#e8eef5", 0.92f, 0.30f);
+            var plateGold = Mat("#f59e0b", 0.65f, 0.15f);
+            var bodyMat = Mat(bodyHex, 0.88f, 0.36f);
+            var glassMat = Mat("#111924", 0.95f, 0.40f);
+
+            // Rear black trunk garnish bar & multi-element taillights
+            float rearZ = -len * 0.47f;
+            Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.48f, rearZ), new Vector3(wid * 0.78f, h * 0.11f, 0.06f), trimDark);
+            foreach (float sx in new[] { -1f, 1f })
+            {
+                Part(root, PrimitiveType.Cube, new Vector3(sx * wid * 0.36f, h * 0.48f, rearZ - 0.01f), new Vector3(wid * 0.14f, h * 0.12f, 0.07f), rubyLight);
+                Part(root, PrimitiveType.Cube, new Vector3(sx * wid * 0.32f, h * 0.48f, rearZ - 0.015f), new Vector3(wid * 0.05f, h * 0.06f, 0.07f), reverseLens);
+                // Side wing mirrors
+                Part(root, PrimitiveType.Cube, new Vector3(sx * (wid * 0.48f), h * 0.63f, len * 0.14f), new Vector3(0.14f, 0.08f, 0.10f), bodyMat);
+            }
+
+            // Recessed rear license plate well & yellow/black plate
+            Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.33f, rearZ - 0.01f), new Vector3(0.36f, 0.14f, 0.04f), trimDark);
+            Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.33f, rearZ - 0.02f), new Vector3(0.30f, 0.10f, 0.04f), plateGold);
+
+            // Hinged front-right door ("DoorPivot") that swings open on vehicle enter/exit
+            var doorPivot = new GameObject("DoorPivot").transform;
+            doorPivot.SetParent(root, false);
+            doorPivot.localPosition = new Vector3(wid * 0.44f, h * 0.42f, len * 0.16f);
+            Part(doorPivot, PrimitiveType.Cube, new Vector3(0.02f, -h * 0.04f, -len * 0.11f), new Vector3(0.055f, h * 0.36f, len * 0.22f), bodyMat);
+            Part(doorPivot, PrimitiveType.Cube, new Vector3(0.015f, h * 0.20f, -len * 0.11f), new Vector3(0.04f, h * 0.20f, len * 0.20f), glassMat);
+
+            if (isTaxi)
+            {
+                // Black-and-amber checkered rear & quarter-panel strips
+                var chk = CheckerMat();
+                Part(root, PrimitiveType.Cube, new Vector3(-wid * 0.25f, h * 0.34f, rearZ - 0.008f), new Vector3(wid * 0.22f, h * 0.12f, 0.05f), chk);
+                Part(root, PrimitiveType.Cube, new Vector3(wid * 0.25f, h * 0.34f, rearZ - 0.008f), new Vector3(wid * 0.22f, h * 0.12f, 0.05f), chk);
+                Part(root, PrimitiveType.Cube, new Vector3(-wid * 0.46f, h * 0.44f, -len * 0.04f), new Vector3(0.04f, h * 0.11f, len * 0.56f), chk);
+                Part(root, PrimitiveType.Cube, new Vector3(wid * 0.46f, h * 0.44f, -len * 0.04f), new Vector3(0.04f, h * 0.11f, len * 0.56f), chk);
+
+                // Sculpted 3D wedge illuminated TAXI roof sign
+                var signRoot = new GameObject("TaxiSign").transform;
+                signRoot.SetParent(root, false);
+                signRoot.localPosition = new Vector3(0f, h + 0.02f, -len * 0.02f);
+                Part(signRoot, PrimitiveType.Cube, new Vector3(0f, 0.02f, 0f), new Vector3(0.32f, 0.04f, 0.62f), trimDark);
+                var signMat = Mat("#f59e0b", 0.88f, 0.15f);
+                Part(signRoot, PrimitiveType.Cube, new Vector3(0f, 0.12f, 0f), new Vector3(0.22f, 0.18f, 0.56f), signMat);
+                Part(signRoot, PrimitiveType.Cube, new Vector3(0f, 0.21f, 0f), new Vector3(0.14f, 0.06f, 0.52f), signMat);
             }
         }
 

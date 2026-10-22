@@ -71,7 +71,31 @@ namespace Rise.World
         {
             if (materials.TryGetValue(key, out var m)) return m;
             m = new Material(standard) { name = key };
-            m.color = Hex(hex);
+            var col = Hex(hex);
+            m.color = col;
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", col);
+            if (key == "asphalt" || key == "asphalt-hi")
+            {
+                smoothness = Mathf.Max(smoothness, 0.34f);
+                m.mainTexture = ShaderLib.AsphaltTex;
+                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", ShaderLib.AsphaltTex); m.SetTextureScale("_BaseMap", new Vector2(8f, 8f)); }
+            }
+            else if (key == "pavement" || key == "concrete")
+            {
+                smoothness = Mathf.Max(smoothness, 0.24f);
+                m.mainTexture = ShaderLib.PavementTex;
+                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", ShaderLib.PavementTex); m.SetTextureScale("_BaseMap", new Vector2(6f, 6f)); }
+            }
+            else if (key == "glass")
+            {
+                smoothness = Mathf.Max(smoothness, 0.92f);
+                if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0.35f);
+            }
+            else if (key.StartsWith("#") && smoothness <= 0.2f)
+            {
+                m.mainTexture = ShaderLib.BrickTex;
+                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", ShaderLib.BrickTex); m.SetTextureScale("_BaseMap", new Vector2(3f, 3f)); }
+            }
             m.SetFloat("_Smoothness", smoothness);
             if (emissive) { m.EnableKeyword("_EMISSION"); m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive; m.SetColor("_EmissionColor", Color.black); }
             materials[key] = m;

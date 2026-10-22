@@ -19,18 +19,19 @@ namespace Rise.World
             var profile = ScriptableObject.CreateInstance<VolumeProfile>();
             profile.name = "Lagos Look";
             var bloom = profile.Add<Bloom>(true);
-            bloom.threshold.Override(1.05f);
-            bloom.intensity.Override(0.55f);
-            bloom.scatter.Override(0.7f);
+            bloom.threshold.Override(0.92f);
+            bloom.intensity.Override(0.68f);
+            bloom.scatter.Override(0.72f);
             var tone = profile.Add<Tonemapping>(true);
             tone.mode.Override(TonemappingMode.ACES);
             var grade = profile.Add<ColorAdjustments>(true);
-            grade.postExposure.Override(0.15f);
-            grade.contrast.Override(6f);
-            grade.saturation.Override(4f);
+            grade.postExposure.Override(0.22f);
+            grade.contrast.Override(12f);
+            grade.saturation.Override(10f);
+            grade.colorFilter.Override(new Color(1.02f, 0.99f, 0.95f));
             var vignette = profile.Add<Vignette>(true);
-            vignette.intensity.Override(0.18f);
-            vignette.smoothness.Override(0.5f);
+            vignette.intensity.Override(0.16f);
+            vignette.smoothness.Override(0.55f);
 
             var volume = host.AddComponent<Volume>();
             volume.isGlobal = true;

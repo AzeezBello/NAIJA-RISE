@@ -11,12 +11,15 @@ namespace Rise.World
         public float HoursPerSecond = 1f / 45f;
 
         Light sun;
-        Material lampHead;
+        Material lampHead, skyDomeMat, sunDiscMat;
+        Transform skyDome, sunDisc;
         [System.NonSerialized] public Weather Weather;
         [System.NonSerialized] public Events Events;
-        static readonly Color NightAmbient = new Color(0.10f, 0.12f, 0.20f), DayAmbient = new Color(0.56f, 0.58f, 0.62f);
-        static readonly Color NightFog = new Color(0.07f, 0.09f, 0.14f), DayFog = new Color(0.78f, 0.80f, 0.82f);
-        static readonly Color LowSun = new Color(1f, 0.62f, 0.36f), NoonSun = new Color(1f, 0.97f, 0.92f), Moon = new Color(0.55f, 0.65f, 0.9f);
+        static readonly Color NightAmbient = new Color(0.12f, 0.15f, 0.24f), DayAmbient = new Color(0.68f, 0.66f, 0.64f);
+        static readonly Color NightEquator = new Color(0.14f, 0.14f, 0.22f), GoldenEquator = new Color(0.96f, 0.68f, 0.44f), DayEquator = new Color(0.78f, 0.76f, 0.72f);
+        static readonly Color NightGround = new Color(0.06f, 0.07f, 0.10f), DayGround = new Color(0.36f, 0.33f, 0.29f);
+        static readonly Color NightFog = new Color(0.07f, 0.09f, 0.15f), GoldenFog = new Color(0.95f, 0.72f, 0.50f), DayFog = new Color(0.84f, 0.85f, 0.86f);
+        static readonly Color LowSun = new Color(1f, 0.68f, 0.38f), NoonSun = new Color(1f, 0.96f, 0.90f), Moon = new Color(0.55f, 0.68f, 0.92f);
 
         public float SunElevation01 { get; private set; }   // -1 midnight … 1 noon
         public bool IsNight => SunElevation01 < 0.05f;
@@ -53,17 +56,71 @@ namespace Rise.World
         {
             sun = sunLight; Clock = startClock; HoursPerSecond = hoursPerSecond; lampHead = lamp;
             RenderSettings.sun = sun;
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+            RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Custom;
+            RenderSettings.customReflectionTexture = ShaderLib.EnvCubemap;
+            RenderSettings.reflectionIntensity = 1.0f;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.0022f;
+            RenderSettings.fogDensity = 0.0014f;
             sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = 0.85f;
-            if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline is UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset urp) urp.shadowDistance = 160f;
+            sun.shadowStrength = 0.82f;
+            if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline is UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset urp) urp.shadowDistance = 180f;
+            BuildSkyDome();
             Apply();
         }
 
+        void BuildSkyDome()
+        {
+            if (skyDome != null) return;
+            var domeGo = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            domeGo.name = "SkyDome";
+            var col = domeGo.GetComponent<Collider>();
+            if (Application.isPlaying) Destroy(col); else DestroyImmediate(col);
+            // Invert triangle winding & normals on an instanced sphere mesh so it renders cleanly from inside.
+            var mf = domeGo.GetComponent<MeshFilter>();
+            if (mf != null && mf.sharedMesh != null)
+            {
+                var mesh = Instantiate(mf.sharedMesh);
+                mesh.name = "InvertedSkySphere";
+                var tris = mesh.triangles;
+                for (int i = 0; i < tris.Length; i += 3) { int tmp = tris[i]; tris[i] = tris[i + 2]; tris[i + 2] = tmp; }
+                mesh.triangles = tris;
+                mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 4000f);
+                mf.sharedMesh = mesh;
+            }
+            skyDomeMat = new Material(ShaderLib.Unlit) { name = "SkyDomeMat", color = Color.white };
+            skyDomeMat.mainTexture = ShaderLib.SkyDomeTex;
+            if (skyDomeMat.HasProperty("_BaseMap")) skyDomeMat.SetTexture("_BaseMap", ShaderLib.SkyDomeTex);
+            var mr = domeGo.GetComponent<MeshRenderer>();
+            mr.sharedMaterial = skyDomeMat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+            skyDome = domeGo.transform;
+            skyDome.SetParent(transform, false);
+            skyDome.localScale = Vector3.one * 3100f;
+
+            var discGo = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            discGo.name = "SunDisc";
+            var dCol = discGo.GetComponent<Collider>();
+            if (Application.isPlaying) Destroy(dCol); else DestroyImmediate(dCol);
+            sunDiscMat = new Material(ShaderLib.Unlit) { name = "SunDiscMat", color = new Color(1.0f, 0.90f, 0.68f) };
+            var dMr = discGo.GetComponent<MeshRenderer>();
+            dMr.sharedMaterial = sunDiscMat;
+            dMr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            dMr.receiveShadows = false;
+            sunDisc = discGo.transform;
+            sunDisc.SetParent(skyDome, false);
+            sunDisc.localScale = Vector3.one * 0.045f;
+        }
+
         void Update() => Advance(Time.deltaTime * HoursPerSecond);
+
+        void LateUpdate()
+        {
+            var cam = Camera.main;
+            if (cam != null && skyDome != null) skyDome.position = cam.transform.position;
+        }
 
         public void SetTime(float clock, int day) { Clock = Mathf.Repeat(clock, 24f); Day = day; Apply(); }
 
@@ -83,22 +140,51 @@ namespace Rise.World
             float sunAngle = (Clock / 24f) * 360f - 90f;
             sun.transform.rotation = Quaternion.Euler(sunAngle, 38f, 0f);
             float dayAmount = Mathf.Clamp01(e * 1.6f);
+            float goldenHour = Mathf.Clamp01(1f - Mathf.Abs(e - 0.22f) / 0.38f);
             if (e > 0f)
             {
-                sun.color = Color.Lerp(LowSun, NoonSun, Mathf.Clamp01(e * 2.2f));
-                sun.intensity = Mathf.Lerp(0.25f, 1.35f, dayAmount);
+                sun.color = Color.Lerp(LowSun, NoonSun, Mathf.Clamp01(e * 1.85f));
+                sun.intensity = Mathf.Lerp(0.45f, 1.48f, dayAmount);
             }
             else
             {
                 // Moonlight from the opposite side of the sky so the night still has shape.
                 sun.transform.rotation = Quaternion.Euler(sunAngle + 180f, 38f, 0f);
                 sun.color = Moon;
-                sun.intensity = 0.16f;
+                sun.intensity = 0.22f;
             }
-            float t = Mathf.Clamp01(e * 1.4f + 0.15f);
-            var ambient = Color.Lerp(NightAmbient, DayAmbient, t); var fog = Color.Lerp(NightFog, DayFog, t); float density = 0.0022f, intensity = sun.intensity;
+            float t = Mathf.Clamp01(e * 1.4f + 0.18f);
+            var ambient = Color.Lerp(NightAmbient, DayAmbient, t);
+            var equator = Color.Lerp(Color.Lerp(NightEquator, DayEquator, t), GoldenEquator, goldenHour * 0.72f);
+            var ground = Color.Lerp(NightGround, DayGround, t);
+            var fog = Color.Lerp(Color.Lerp(NightFog, DayFog, t), GoldenFog, goldenHour * 0.65f);
+            float density = 0.0014f, intensity = sun.intensity;
             if (Weather != null) Weather.Grade(ref ambient, ref fog, ref density, ref intensity);
-            RenderSettings.ambientLight = ambient; RenderSettings.fogColor = fog; RenderSettings.fogDensity = density; sun.intensity = intensity;
+            RenderSettings.ambientSkyColor = ambient;
+            RenderSettings.ambientEquatorColor = equator;
+            RenderSettings.ambientGroundColor = ground;
+            RenderSettings.ambientLight = ambient;
+            RenderSettings.fogColor = fog;
+            RenderSettings.fogDensity = density;
+            RenderSettings.reflectionIntensity = Mathf.Lerp(0.38f, 1.0f, t);
+            sun.intensity = intensity;
+            if (skyDomeMat != null)
+            {
+                var skyTint = Color.Lerp(new Color(0.12f, 0.15f, 0.26f), Color.Lerp(Color.white, new Color(1.04f, 0.88f, 0.72f), goldenHour * 0.55f), t);
+                skyDomeMat.color = skyTint;
+                if (skyDomeMat.HasProperty("_BaseColor")) skyDomeMat.SetColor("_BaseColor", skyTint);
+            }
+            if (sunDisc != null)
+            {
+                Vector3 sunDir = -sun.transform.forward;
+                sunDisc.localPosition = new Vector3(sunDir.x, Mathf.Max(0.06f, sunDir.y), sunDir.z).normalized * 0.46f;
+                var discCol = e > 0f ? new Color(1.4f, 1.12f, 0.75f) : new Color(0.75f, 0.85f, 1.1f);
+                if (sunDiscMat != null)
+                {
+                    sunDiscMat.color = discCol;
+                    if (sunDiscMat.HasProperty("_BaseColor")) sunDiscMat.SetColor("_BaseColor", discCol);
+                }
+            }
             if (lampHead != null) lampHead.SetColor("_EmissionColor", Events != null && Events.Outage > 0f ? Color.black : Color.Lerp(new Color(1f, 0.72f, 0.3f) * 2.4f, Color.black, Mathf.Clamp01(e * 3f + 0.3f)));
         }
     }
