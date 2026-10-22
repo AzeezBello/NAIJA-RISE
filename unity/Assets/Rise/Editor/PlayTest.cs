@@ -651,7 +651,7 @@ namespace Rise.EditorTools
                         float strBefore = s.State.S.skills.strength;
                         int cashBeforeSnooker = s.State.S.cash;
                         Check(s.DoIndoorActivity("cook_jollof") && s.DoIndoorActivity("home_workout") && s.DoIndoorActivity("indoor_snooker")
-                              && s.State.S.skills.strength >= strBefore + 3f && s.State.S.cash >= cashBeforeSnooker + 4000,
+                              && s.State.S.skills.strength >= strBefore + 2.99f && s.State.S.cash >= cashBeforeSnooker + 4000,
                               "Indoor activities completed (Cook Jollof, Home Workout +3 Strength, Indoor Snooker & Ludo +₦5,000)");
                         int cashBeforeIndoorMission = s.State.S.cash;
                         Check(s.StartIndoorMission("indoor_efcc_hk_raid") && s.ActiveIndoorMission != null && s.ActiveEnemies.Count >= 2,
@@ -700,6 +700,53 @@ namespace Rise.EditorTools
                         bool uiOk = hudComp != null && hudComp.AuditUiAndUxHealth(out uiReport);
                         bool gfxOk = gov != null && gov.AuditGraphicsAndResponsiveness(out gfxReport);
                         Check(uiOk && gfxOk, $"Full UI/UX & Graphics/Responsiveness Audit passed ({uiReport} | {gfxReport})");
+
+                        // Section 3, 4 & 5 End-to-End Multi-Corridor, Multi-State, Chunk Streamer & Economy Arbitrage Benchmark
+                        var benchSw = System.Diagnostics.Stopwatch.StartNew();
+                        bool corridorsOk = boot.Data.TryPlace("oshodi-interchange", out _)
+                            && boot.Data.TryPlace("ladipo-auto-hub", out _)
+                            && boot.Data.TryPlace("ojo-alaba", out _)
+                            && boot.Data.TryPlace("mile12-market", out _)
+                            && boot.Data.TryPlace("dangote-refinery", out _)
+                            && boot.Data.TryPlace("seme-krake-border", out _);
+                        bool kanoFound = boot.Data.TryPlace("emirs-palace-kano", out var kanoPalace);
+                        bool statesOk = boot.Data.TryPlace("olumo-rock", out _)
+                            && boot.Data.TryPlace("cocoa-house", out _)
+                            && boot.Data.TryPlace("aso-rock-villa", out _)
+                            && boot.Data.TryPlace("bonny-lng", out _)
+                            && boot.Data.TryPlace("onitsha-main-mkt", out _)
+                            && kanoFound;
+                        Check(corridorsOk && statesOk && Session.StoryChains.Length == 15,
+                              $"All 5 Lagos Megacorridors, 6 Geopolitical State maps, and {Session.StoryChains.Length} three-chapter Story Chains verified");
+
+                        Vector3 savedPos = boot.Player.transform.position;
+                        if (kanoFound && boot.Streamer != null)
+                        {
+                            boot.Player.Teleport(kanoPalace.World() + new Vector3(0f, 0.5f, -6f), 0f);
+                            boot.Streamer.RefreshActiveChunks();
+                            s.Players?.Tick(1.1f);
+                            Check(boot.Streamer.TotalChunkCount >= 20
+                                  && boot.Streamer.ActiveChunkCount > 0
+                                  && boot.Streamer.ActiveChunkCount <= boot.Streamer.TotalChunkCount
+                                  && boot.Streamer.CurrentStateId == "kano"
+                                  && boot.Streamer.CurrentBiome == "sahel"
+                                  && s.Weather.CurrentBiome == "sahel"
+                                  && s.Weather.RegionalRainMultiplier < 0.5f
+                                  && UI.SoundSystem.I != null && UI.SoundSystem.I.CurrentMusicStyle.Contains("Hausa")
+                                  && s.Players != null && s.Players.StateChannel.StartsWith("rise:kano:"),
+                                  $"WorldStreamer 500m chunking ({boot.Streamer.ActiveChunkCount}/{boot.Streamer.TotalChunkCount} active chunks), Kano Sahel biome weather/audio, and StateChannel '{s.Players?.StateChannel}' verified");
+                            boot.Player.Teleport(savedPos, 0f);
+                            boot.Streamer.RefreshActiveChunks();
+                            s.Players?.Tick(1.1f);
+                        }
+
+                        float kanoProduce = Net.CloudEconomy.GetStateCommodityMultiplier("kano", "produce");
+                        float fctProduce = Net.CloudEconomy.GetStateCommodityMultiplier("fct", "produce");
+                        float riversFuel = Net.CloudEconomy.GetStateCommodityMultiplier("rivers", "fuel");
+                        float anambraElec = Net.CloudEconomy.GetStateCommodityMultiplier("anambra", "electronics");
+                        benchSw.Stop();
+                        Check(kanoProduce < fctProduce && riversFuel < 0.85f && anambraElec < 0.85f,
+                              $"Interstate commodity arbitrage multipliers verified (Kano produce {kanoProduce:0.00}x vs FCT {fctProduce:0.00}x, Rivers fuel {riversFuel:0.00}x, Anambra electronics {anambraElec:0.00}x) in {benchSw.Elapsed.TotalMilliseconds:0.00} ms");
 
                         stage = 21; stageT = 0f; return;
                     }

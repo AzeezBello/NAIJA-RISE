@@ -12,9 +12,31 @@ import * as ajegunle from './ajegunle.js';
 import * as makoko from './makoko.js';
 import * as agege from './agege.js';
 import * as ojoBadagry from './ojo-badagry.js';
+import * as westMainland from './west-mainland.js';
+import * as eastMainland from './east-mainland.js';
+import * as alimoshoOshodi from './alimosho-oshodi.js';
+import * as kosofeMagodo from './kosofe-magodo.js';
 import * as lagos from './lagos.js';
 
-export const DISTRICTS = { lagos, surulere, ikoyi, lekki, ikorodu, apapa, ikeja, oyingbo, yaba, ajegunle, makoko, agege, 'ojo-badagry': ojoBadagry };
+export const DISTRICTS = {
+  lagos,
+  surulere,
+  ikoyi,
+  lekki,
+  ikorodu,
+  apapa,
+  ikeja,
+  oyingbo,
+  yaba,
+  ajegunle,
+  makoko,
+  agege,
+  'ojo-badagry': ojoBadagry,
+  'west-mainland': westMainland,
+  'east-mainland': eastMainland,
+  'alimosho-oshodi': alimoshoOshodi,
+  'kosofe-magodo': kosofeMagodo,
+};
 export const ACTIVE_DISTRICT = (typeof location !== 'undefined' && new URLSearchParams(location.search).get('district')) || 'lagos';
 export const DISTRICT = DISTRICTS[ACTIVE_DISTRICT] || surulere;
 export const districtList = () => Object.values(DISTRICTS).map(d => d.META);

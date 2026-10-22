@@ -95,6 +95,106 @@ namespace Rise
                     R("Chapter 3 · Rush headliner soundcheck gear to Murtala Muhammed Airport", "ikeja-airport", "event_cables", 40, 58000, "Soundcheck Gear", "social"),
                 }
             },
+            new StoryChain
+            {
+                Id = "alimosho_chain", Title = "West Mainland Engine", Who = "alimosho_hub", District = "Alimosho · Oshodi · Ladipo",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Move tokunbo gearboxes from Oshodi Interchange to Ladipo Auto Market", "ladipo-auto-hub", "auto_parts", 25, 28000, "Tokunbo Gearbox", "street"),
+                    R("Chapter 2 · Deliver medical outreach crates to Alimosho General Hospital in Igando", "alimosho-hospital", "school_supplies", 30, 38000, "Igando Medical Crate", "public"),
+                    R("Chapter 3 · Rush commercial dispatch manifests to Ogba & Fagba Plaza", "ifako-ogba-hub", "documents", 30, 54000, "Ogba Dispatch Manifest", "business"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "amuwo_chain", Title = "Container Kings", Who = "amuwo_trade_hub", District = "Festac · Trade Fair · Alaba",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Clear electronics bills of lading from Trade Fair ASPAMDA to Alaba Market", "ojo-alaba", "documents", 25, 30000, "Alaba Bill of Lading", "business"),
+                    R("Chapter 2 · Deliver boutique electronics to Festival Mall in Festac ’77", "festac-77-mall", "phone_parts", 25, 40000, "Festival Mall Stock", "business"),
+                    R("Chapter 3 · Escort bulk fuel allocation clearance to Mile 2 Tank Farm Depot", "mile2-tank-farm", "dock_manifest", 30, 62000, "Tank Farm Clearance", "business"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "kosofe_chain", Title = "Basket of the Megacity", Who = "kosofe_mile12_hub", District = "Kosofe · Mile 12 · Magodo",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Dispatch fresh foodstuff waybills from Mile 12 to Ojota Motor Park", "ojota-motor-park", "market_basket", 25, 26000, "Mile 12 Waybills", "business"),
+                    R("Chapter 2 · Deliver executive catering crates to Magodo GRA Phase 2 Clubhouse", "magodo-phase2-club", "food_cooler", 25, 38000, "Magodo VIP Catering", "social"),
+                    R("Chapter 3 · Rush lagoon ferry cargo manifests to Oworonshoki Rim Jetty", "oworonshoki-jetty", "dock_manifest", 30, 55000, "Oworonshoki Manifest", "business"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "ibeju_chain", Title = "Eastern Refinery Frontier", Who = "ibeju_epe_hub", District = "Ibeju-Lekki · Epe · Imota",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Carry export container seals from Dangote Refinery to Lekki Deep Sea Port", "lekki-deep-port", "dock_manifest", 25, 35000, "Deep Port Seals", "business"),
+                    R("Chapter 2 · Deliver aviation logistics plans to Lekki–Epe International Airport", "lekki-epe-airport", "documents", 25, 46000, "Airport Logistics Plan", "public"),
+                    R("Chapter 3 · Haul agricultural processing parts to Imota Rice Mill in Ikorodu Division", "imota-rice-mill", "auto_parts", 45, 72000, "Imota Mill Parts", "business"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "badagry_chain", Title = "ECOWAS Coastal Gateway", Who = "badagry_border_hub", District = "Badagry · Seme Border · Tarkwa Bay",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Escort ECOWAS customs manifests from Seme Border to Badagry Marina", "badagry-heritage", "dock_manifest", 25, 30000, "ECOWAS Manifest", "public"),
+                    R("Chapter 2 · Deliver archival preservation crates to the First Storey Building", "first-storey-badagry", "archive_box", 25, 42000, "Heritage Preservation", "public"),
+                    R("Chapter 3 · Rush marine shipyard spares to Tarkwa Bay & Snake Island Jetty", "tarkwa-snake-island", "outboard_parts", 35, 64000, "Snake Island Spares", "business"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "southwest_chain", Title = "Gateway to Pace Setter Empire", Who = "southwest_ogun_oyo_hub", District = "Ogun · Abeokuta · Ibadan",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Haul industrial manufacturing blueprints from Cocoa House to Ota & Agbara Factory Hub", "ota-industrial", "documents", 30, 38000, "Ota Factory Blueprint", "business"),
+                    R("Chapter 2 · Deliver state industrial accords to Ogun State Secretariat at Oke-Mosan, Abeokuta", "oke-mosan", "sealed_envelope", 30, 48000, "Oke-Mosan Accord", "public"),
+                    R("Chapter 3 · Rush AI & research hardware to University of Ibadan Main Gate in Agbowo", "ui-gate", "laptop_parts", 30, 68000, "UI Agbowo Research Kit", "business"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "abuja_chain", Title = "Three Arms Sovereign Mandate", Who = "abuja_federal_hub", District = "FCT Abuja · Three Arms & CBD",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Escort a federal infrastructure appropriation bill from NASS to Aso Rock Villa", "aso-rock-villa", "sealed_envelope", 25, 50000, "Aso Rock Appropriation", "public"),
+                    R("Chapter 2 · Deliver sovereign monetary reserve ledgers to CBN Headquarters in Abuja CBD", "cbn-hq-abuja", "documents", 25, 64000, "CBN HQ Reserve Ledger", "business"),
+                    R("Chapter 3 · File anti-corruption tribunal dossiers at EFCC National Headquarters in Jabi", "efcc-hq-abuja", "efcc_dossier", 30, 88000, "EFCC Grand Tribunal File", "public"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "niger_delta_chain", Title = "Bonny LNG & Creek Command", Who = "niger_delta_oil_hub", District = "Rivers · Delta · Edo",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Transport offshore LNG turbine valves from Bonny Island to Trans-Amadi Base", "trans-amadi-yard", "auto_parts", 25, 48000, "Bonny LNG Valves", "business"),
+                    R("Chapter 2 · Escort petrochemical feedstock manifests to Warri Refinery & Escravos Jetty", "warri-refinery", "dock_manifest", 30, 62000, "Warri Refinery Manifest", "business"),
+                    R("Chapter 3 · Deliver royal bronze heritage deeds to Benin Igun Street Bronze Guild", "benin-igun-bronze", "archive_box", 30, 80000, "Benin Royal Bronze Deed", "public"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "eastern_chain", Title = "Igba Boi to Industrial Titan", Who = "eastern_commerce_hub", District = "Anambra · Enugu · Abia",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Clear West African trade containers from Onitsha Main Market at Niger Bridgehead", "niger-bridge-gate", "dock_manifest", 25, 42000, "Niger Bridge Clearance", "business"),
+                    R("Chapter 2 · Supply indigenous chassis assemblies to Nnewi Vehicle Manufacturing Plant", "nnewi-auto-plant", "auto_parts", 25, 58000, "Nnewi Chassis Supply", "business"),
+                    R("Chapter 3 · Dispatch export shoe & garment bales to Ariaria International Market in Aba", "ariaria-market", "parcel", 30, 78000, "Ariaria Export Bale", "business"),
+                }
+            },
+            new StoryChain
+            {
+                Id = "northern_chain", Title = "Trans-Saharan Caravans & Northern Shield", Who = "northern_trade_hub", District = "Kano · Kaduna · Borno",
+                Steps = new[]
+                {
+                    R("Chapter 1 · Move bulk grain export waybills from Kurmi Market to Dawanau International Grains Market", "dawanau-grains", "documents", 25, 44000, "Dawanau Grain Waybill", "business"),
+                    R("Chapter 2 · Deliver royal Durbar ceremonial tapestries to the Emir’s Palace in Kano City", "emirs-palace-kano", "fabric_order", 25, 58000, "Emir Durbar Tapestry", "social"),
+                    R("Chapter 3 · Escort Northern Frontier logistics to Giwa Barracks & Lake Chad JTF Base", "jtf-fob-north", "sealed_envelope", 30, 85000, "JTF Frontier Dispatch", "public"),
+                }
+            },
         };
 
         public static StoryChain ChainForContact(string contactId)
@@ -172,25 +272,75 @@ namespace Rise
             OpenMenu(menu);
         }
 
+        public static string StateHubLandmarkId(string stateId, string zone) => stateId switch
+        {
+            "lagos" => "ikeja-city",
+            "ogun" => "oke-mosan",
+            "oyo" => "cocoa-house",
+            "fct" => "nass-complex",
+            "rivers" => "bonny-lng",
+            "delta" => "warri-refinery",
+            "edo" => "benin-igun-bronze",
+            "anambra" => "onitsha-main-mkt",
+            "enugu" => "enugu-lion-building",
+            "abia" => "ariaria-market",
+            "kano" => "kurmi-market",
+            "kaduna" => "kaduna-kakuri-works",
+            "borno" => "jtf-fob-north",
+            _ => zone switch
+            {
+                "South-West" => "cocoa-house",
+                "North-Central" => "nass-complex",
+                "South-South" => "bonny-lng",
+                "South-East" => "onitsha-main-mkt",
+                "North-West" => "kurmi-market",
+                "North-East" => "jtf-fob-north",
+                _ => "berger-gate"
+            }
+        };
+
         public void OpenStatesDirectory()
         {
             var menu = new Menu
             {
                 Title = "Nigeria · 36 States & FCT",
-                Subtitle = "Interstate Corridors & Capitals (Provisioned from Ojodu Berger)",
-                Line = "All 36 Nigerian States and FCT Abuja with their capitals, highway corridors and distances from Lagos."
+                Subtitle = "6 Geopolitical Zones · Interstate Highways, NRC Rail & Air Travel",
+                Line = "Select any Nigerian State or FCT Abuja to travel via interstate express coach/charter to its capital or geopolitical zone hub."
             };
             if (Data.states != null)
             {
                 foreach (var st in Data.states)
                 {
                     var s = st;
-                    string tag = s.status == "active" ? "ACTIVE NOW" : $"{s.distanceKm} km · ₦{s.fare:N0}";
+                    int fare = Mathf.Max(0, s.fare);
+                    string tag = s.status == "active"
+                        ? (fare > 0 ? $"PLAYABLE HUB · ₦{fare:N0}" : "PLAYABLE HUB · LOCAL")
+                        : $"ZONE HUB · {s.distanceKm} km · ₦{fare:N0}";
                     menu.Options.Add(new MenuOption
                     {
                         Label = $"{s.name} ({s.capital}) · {s.zone} · {tag}",
                         Enabled = true,
-                        Action = () => State.Toast($"{s.name} State ({s.capital}) — \"{s.slogan}\" via {s.corridor}")
+                        Action = () =>
+                        {
+                            string hubId = StateHubLandmarkId(s.id, s.zone);
+                            if (Data.TryPlace(hubId, out var dest))
+                            {
+                                if (fare > 0 && !State.Pay(fare))
+                                {
+                                    State.Toast($"Need ₦{fare:N0} for interstate travel to {s.name} ({s.capital})");
+                                    return;
+                                }
+                                if (Vehicle != null) Exit();
+                                Player.Teleport(dest.World() + new Vector3(0f, 0.6f, -10f), Player.transform.eulerAngles.y);
+                                Hours(Mathf.Clamp(s.distanceKm / 180f, 0.5f, 4f));
+                                State.AddXp(15);
+                                State.Toast($"Arrived in {s.name} ({s.capital}) — \"{s.slogan}\" via {s.corridor}");
+                            }
+                            else
+                            {
+                                State.Toast($"{s.name} State ({s.capital}) — \"{s.slogan}\" via {s.corridor}");
+                            }
+                        }
                     });
                 }
             }
@@ -256,8 +406,25 @@ namespace Rise
                 OpenMenu(menu);
                 return;
             }
-            var m = new Menu { Title = "Community Grammar School", Subtitle = p.name, Line = "Evening adult classes — or support a student." };
+            var m = new Menu { Title = p != null ? p.name : "Community Grammar School", Subtitle = p != null && p.id == "ui-gate" ? "Premier University · Agbowo, Ibadan" : (p?.name ?? "Adult Education"), Line = p != null && p.id == "ui-gate" ? "Attend an executive seminar or recruit UI computer science & engineering talent." : "Evening adult classes — or support a student." };
             m.Options.Add(new MenuOption { Label = $"Evening class · ₦{cfg.eveningClass:N0}", Action = () => EveningClass() });
+            if (p != null && p.id == "ui-gate")
+            {
+                m.Options.Add(new MenuOption
+                {
+                    Label = "UI Agbowo Tech & Policy Colloquium · ₦8,000 (+4 Business, +3 Charisma, +20 XP)",
+                    Action = () =>
+                    {
+                        if (!State.Pay(8000)) { State.Toast("Need ₦8,000 for UI colloquium"); return; }
+                        State.GainSkill("business", 4);
+                        State.GainSkill("charisma", 3);
+                        State.AddRep("public", 4);
+                        State.AddXp(20);
+                        Hours(2f);
+                        State.Toast("Completed University of Ibadan colloquium · Business +4 · Charisma +3");
+                    }
+                });
+            }
             m.Options.Add(new MenuOption { Label = "Leave", Action = null });
             OpenMenu(m);
         }

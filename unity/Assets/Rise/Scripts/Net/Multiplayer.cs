@@ -17,6 +17,7 @@ namespace Rise.Net
 
         public IRealtimeTransport Transport { get; private set; }
         public string Room { get; private set; } = "";
+        public string StateChannel { get; private set; } = "";
         public string SelfId { get; private set; } = "";
         public string DisplayName = "Tunde";
         [System.NonSerialized] public readonly Dictionary<string, Remote> Remotes = new Dictionary<string, Remote>();
@@ -59,6 +60,12 @@ namespace Rise.Net
             if (roomT <= 0f)
             {
                 roomT = 1f; string room = RoomFor(follow.position);
+                if (data != null)
+                {
+                    string st = data.StateAt(follow.position);
+                    string reg = data.RegionAt(follow.position)?.id ?? "lagos";
+                    StateChannel = $"rise:{st}:{reg}";
+                }
                 if (room != Room) { Room = room; Transport.Join(Room, SelfId); foreach (var r in Remotes.Values) Destroy(r.t.gameObject); Remotes.Clear(); }
             }
             sendT -= dt;

@@ -41,6 +41,12 @@ export const DISTRICT = createArea({
     { id: 'lasu-campus', name: 'Lagos State University (LASU) · Ojo', short: 'LASU CAMPUS', x: -640, z: 310, c: '#6a7a5a', sign: '#ffffff', h: 9, kind: 'school', big: true, region: 'lasu-iyana-iba' },
     { id: 'badagry-barracks', name: '244 Recce Battalion Barracks · Badagry', short: 'BADAGRY BARRACKS', x: -820, z: 310, c: '#3b5323', sign: '#ffffff', h: 7, kind: 'army', big: true, region: 'badagry-town' },
     { id: 'badagry-heritage', name: 'Badagry Heritage Museum & Marina', short: 'BADAGRY MARINA', x: -960, z: 360, c: '#7a6040', sign: '#f5c518', h: 6, kind: 'museum', big: true, waterfront: true, region: 'badagry-town' },
+    { id: 'festac-77-mall', name: 'Festac ’77 Estate & Festival Mall · Amuwo-Odofin', short: 'FESTIVAL MALL', x: -460, z: 348, c: '#2b5876', sign: '#ffc52f', h: 9, kind: 'mall', big: true, region: 'festac-satellite-town' },
+    { id: 'trade-fair-aspamda', name: 'Lagos International Trade Fair Complex · ASPAMDA', short: 'TRADE FAIR', x: -560, z: 310, c: '#5a4638', sign: '#ffc52f', h: 9, kind: 'market', big: true, region: 'ojo-badagry' },
+    { id: 'mile2-tank-farm', name: 'Mile 2 & Kirikiri Petroleum Tank Farm Depot', short: 'MILE 2 DEPOT', x: -180, z: 356, c: '#4a5568', sign: '#f97316', h: 11, kind: 'warehouse', big: true, region: 'mile-2' },
+    { id: 'first-storey-badagry', name: 'First Storey Building & Point of No Return · Badagry', short: 'FIRST STOREY', x: -910, z: 358, c: '#8c6d53', sign: '#ffd700', h: 7, kind: 'museum', big: true, waterfront: true, region: 'badagry-town' },
+    { id: 'seme-krake-border', name: 'Seme–Krake ECOWAS International Border Post', short: 'SEME BORDER', x: -1018, z: 298, c: '#1f4e3d', sign: '#ffffff', h: 8, kind: 'checkpoint', big: true, region: 'badagry-town' },
+    { id: 'tarkwa-snake-island', name: 'Tarkwa Bay Beach & Snake Island Shipyard Jetty', short: 'TARKWA BAY', x: -156, z: 392, c: '#cbb98a', sign: '#3dd68c', h: 5, kind: 'beach', waterfront: true, region: 'mile-2' },
   ],
   busStops: [
     { id: 'festac-bus', name: 'Festac Satellite Town Bus Stop', short: 'FESTAC', x: -430, z: 350, agberos: 2 },
@@ -49,6 +55,11 @@ export const DISTRICT = createArea({
     { id: 'alaba-bus', name: 'Alaba Bus Stop', short: 'ALABA', x: -220, z: 352, agberos: 2 },
     { id: 'lasu-bus', name: 'LASU Gate Bus Stop', short: 'LASU GATE', x: -640, z: 294, agberos: 2 },
     { id: 'badagry-bus', name: 'Badagry Roundabout Bus Stop', short: 'BADAGRY', x: -960, z: 294, agberos: 2 },
+  ],
+  cells: [
+    { style: 'festac', x: -495, z: 392 },
+    { style: 'festac', x: -405, z: 392 },
+    { style: 'festac', x: -365, z: 392 },
   ],
   water: [{ id: 'ojo-atlantic', name: 'Atlantic Ocean · Badagry Coast', x: [-1050, -140], z: [400, 410] }],
 });

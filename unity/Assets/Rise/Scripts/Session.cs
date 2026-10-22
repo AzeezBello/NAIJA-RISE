@@ -181,8 +181,8 @@ namespace Rise
             else if (targetProperty != null && IsHome(targetProperty)) { target = Target.Home; Prompt = "ENTER HOME"; }
             else if (targetProperty != null) { target = Target.Gate; Prompt = $"SEE AGENT KUNLE · {targetProperty.type.ToUpper()}"; }
             else if (targetBusiness != null) { target = Target.Business; Prompt = (State.Biz(targetBusiness.id) != null ? "MANAGE " : "BUY ") + targetBusiness.name.ToUpper(); }
+            else if (targetTraffic != null && targetTraffic.speed < 6.5f) { target = Target.TrafficVehicle; Prompt = $"TAKE {targetTraffic.cls.name.ToUpper()}"; }
             else if ((targetPlace = NearPlace(pos)) != null) { target = Target.Place; Prompt = PlacePrompt(targetPlace); }
-            else if (targetTraffic != null && targetTraffic.speed < 3.5f) { target = Target.TrafficVehicle; Prompt = $"TAKE {targetTraffic.cls.name.ToUpper()}"; }
             else if (targetStop != null) { target = Target.BusStop; Prompt = $"TAKE DANFO FROM {targetStop.shortName}"; }
             else if (NearKiosk(pos, out targetKiosk)) { target = Target.Kiosk; Prompt = "POS KIOSK · PURE WATER, SUYA"; }
             else if (NearVendor(pos, out targetVendor)) { target = Target.Vendor; Prompt = "ROADSIDE VENDOR · PURE WATER, GALA, SUYA"; }
@@ -357,8 +357,33 @@ namespace Rise
         {
             var v = Vehicle; Vehicle = null;
             v.SetDriven(false);
-            var pos = v.transform.position - v.transform.right * (v.Class.wid * 0.5f + 1.2f) + Vector3.up * 0.5f;
-            Player.Teleport(pos, v.transform.eulerAngles.y);
+            float sideDist = v.Class.wid * 0.5f + 1.2f;
+            float endDist = v.Class.len * 0.5f + 1.2f;
+            Vector3 vPos = v.transform.position;
+            Vector3 right = v.transform.right;
+            Vector3 fwd = v.transform.forward;
+            Vector3[] candidates =
+            {
+                vPos - right * sideDist,
+                vPos + right * sideDist,
+                vPos - fwd * endDist,
+                vPos + fwd * endDist,
+                vPos - right * (sideDist + 1.4f),
+                vPos + right * (sideDist + 1.4f),
+            };
+            Vector3 chosen = candidates[0];
+            foreach (var c in candidates)
+            {
+                float groundY = Data != null ? Data.DeckHeightAt(c) : c.y;
+                Vector3 p0 = new Vector3(c.x, groundY + 0.45f, c.z);
+                Vector3 p1 = new Vector3(c.x, groundY + 1.45f, c.z);
+                if (!Physics.CheckCapsule(p0, p1, 0.35f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    chosen = new Vector3(c.x, groundY + 0.5f, c.z);
+                    break;
+                }
+            }
+            Player.Teleport(chosen, v.transform.eulerAngles.y);
             Player.gameObject.SetActive(true);
             Player.TriggerVehicleExitAnim();
             Camera.SetDriving(null);
@@ -381,6 +406,7 @@ namespace Rise
             }
             else sinking = false;
             Vehicle.Drive(gas, brake, boost, hand, h, State.S.fuel / 100f, dt);
+            if (Player != null) Player.transform.position = Vehicle.transform.position;
             if (Vehicle.LastImpact > 2f) { UI.SoundSystem.I?.PlayHorn(); State.Toast(Vehicle.LastImpact > 8f ? "Crash! Vehicle damaged" : "Scrape"); Vehicle.LastImpact = 0f; }
             bool slow = Mathf.Abs(Vehicle.Speed) < 2f;
             Prompt = null;

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Pre-commit hook:
+# 1. When src/data/ or scripts/export-world.mjs is modified, validates data and auto-exports lagos.json & manifest.json.
+# 2. When Unity C# scripts are modified, runs the fast headless Roslyn compile check.
+
+set -e
+
+STAGED_FILES=$(git diff --cached --name-only)
+
+if echo "$STAGED_FILES" | grep -Eq '^(src/data/|scripts/export-world\.mjs|scripts/check-data\.mjs)'; then
+  echo "[pre-commit] Data changes detected — running data check and syncing Unity world export..."
+  npm run check
+  node scripts/export-world.mjs
+  git add unity/Assets/Rise/Resources/world/lagos.json unity/Assets/Rise/Resources/world/manifest.json
+fi
+
+if echo "$STAGED_FILES" | grep -Eq '^unity/Assets/Rise/.*\.cs$'; then
+  echo "[pre-commit] C# changes detected — running fast Roslyn compile check..."
+  node scripts/build-unity.mjs compile
+fi

@@ -119,7 +119,7 @@ export const LANDMARKS = [
   { id: 'mosque', name: 'Surulere Central Mosque', short: 'MOSQUE', x: -48, z: 120, c: '#2f6b5a', sign: '#ffffff', h: 8, kind: 'worship' },
   { id: 'nepa', name: 'PHCN / Eko Disco Office', short: 'NEPA', x: 120, z: 48, c: '#4a4a4a', sign: '#ffc52f', h: 7, kind: 'nepa' },
   { id: 'fuel', name: 'Mobil Filling Station', short: 'FUEL', x: -48, z: -96, c: '#b32020', sign: '#ffffff', h: 4, kind: 'fuel' },
-  { id: 'owambe', name: 'Surulere Event Centre', short: 'EVENT CTR', x: -120, z: 120, c: '#7a3a6a', sign: '#ffc52f', h: 7, kind: 'owambe', cost: 3000 },
+  { id: 'owambe', name: 'Surulere Event Centre', short: 'EVENT CTR', x: -36, z: 24, c: '#7a3a6a', sign: '#ffc52f', h: 7, kind: 'owambe', cost: 3000 },
   // Living City · places (Phase 2)
   { id: 'gym', name: 'Surulere Fitness Gym', short: 'GYM', x: 24, z: 48, c: '#2a4a6a', sign: '#3dff79', h: 6, kind: 'gym' },
   { id: 'fastfood', name: 'Chicken Republic', short: 'FAST FOOD', x: 48, z: -24, c: '#c62828', sign: '#ffffff', h: 5, kind: 'restaurant' },

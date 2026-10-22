@@ -460,61 +460,60 @@ namespace Rise.Vehicles
                 case "okada":
                 case "motorcycle":
                 {
-                    BuildSeatedPerson(driverRoot, "Rider", new Vector3(0f, h * 0.52f, -0.04f), rng, isDriver: true, bikePose: true, helmet: true, scale: 1.18f);
+                    BuildSeatedPerson(driverRoot, "Rider", new Vector3(0f, h * 0.48f, -0.04f), rng, isDriver: true, bikePose: true, helmet: true, scale: 0.96f);
                     if (cls.id == "okada" && rng.NextDouble() < 0.85)
-                        BuildSeatedPerson(paxRoot, "Pillion", new Vector3(0f, h * 0.55f, -0.44f), rng, isDriver: false, bikePose: true, helmet: false, scale: 1.15f);
+                        BuildSeatedPerson(paxRoot, "Pillion", new Vector3(0f, h * 0.50f, -0.42f), rng, isDriver: false, bikePose: true, helmet: false, scale: 0.94f);
                     break;
                 }
                 case "keke":
                 {
                     // Keke Bajaj RE has an open doorway on both sides: seat the rider on the front bench and two passengers on the rear bench.
-                    BuildSeatedPerson(driverRoot, "Rider", new Vector3(0f, h * 0.34f, len * 0.12f), rng, isDriver: true, windowSide: -1, scale: 1.24f);
-                    BuildSeatedPerson(paxRoot, "PaxL", new Vector3(-wid * 0.23f, h * 0.36f, -len * 0.15f), rng, windowSide: -1, scale: 1.20f);
-                    BuildSeatedPerson(paxRoot, "PaxR", new Vector3(wid * 0.23f, h * 0.36f, -len * 0.15f), rng, windowSide: 1, scale: 1.20f);
+                    BuildSeatedPerson(driverRoot, "Rider", new Vector3(0f, h * 0.32f, len * 0.12f), rng, isDriver: true, windowSide: 0, scale: 0.94f);
+                    BuildSeatedPerson(paxRoot, "PaxL", new Vector3(-wid * 0.17f, h * 0.34f, -len * 0.15f), rng, windowSide: -1, scale: 0.90f);
+                    BuildSeatedPerson(paxRoot, "PaxR", new Vector3(wid * 0.17f, h * 0.34f, -len * 0.15f), rng, windowSide: 1, scale: 0.90f);
                     break;
                 }
                 case "danfo":
                 {
-                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.36f, h * 0.44f, len * 0.26f), rng, isDriver: true, windowSide: -1, scale: 1.18f);
-                    // Conductor ("motor boy") hanging out the right doorway calling bus stops.
-                    BuildSeatedPerson(paxRoot, "Conductor", new Vector3(wid * 0.46f, h * 0.35f, len * 0.05f), rng, hangingSide: true, windowSide: 1, scale: 1.18f);
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.21f, h * 0.38f, len * 0.22f), rng, isDriver: true, windowSide: -1, scale: 0.86f);
+                    BuildSeatedPerson(paxRoot, "Conductor", new Vector3(wid * 0.24f, h * 0.36f, len * 0.05f), rng, hangingSide: true, windowSide: 1, scale: 0.86f);
                     float[] zs = { -len * 0.05f, -len * 0.18f, -len * 0.30f };
                     for (int i = 0; i < zs.Length; i++)
                     {
-                        BuildSeatedPerson(paxRoot, "PaxL" + i, new Vector3(-wid * 0.36f, h * 0.44f, zs[i]), rng, windowSide: -1, scale: 1.15f);
+                        BuildSeatedPerson(paxRoot, "PaxL" + i, new Vector3(-wid * 0.21f, h * 0.38f, zs[i]), rng, windowSide: -1, scale: 0.84f);
                         if (rng.NextDouble() < 0.85)
-                            BuildSeatedPerson(paxRoot, "PaxR" + i, new Vector3(wid * 0.36f, h * 0.44f, zs[i]), rng, windowSide: 1, scale: 1.15f);
+                            BuildSeatedPerson(paxRoot, "PaxR" + i, new Vector3(wid * 0.21f, h * 0.38f, zs[i]), rng, windowSide: 1, scale: 0.84f);
                     }
                     break;
                 }
                 case "korope":
                 {
-                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.31f, h * 0.43f, len * 0.20f), rng, isDriver: true, windowSide: -1, scale: 1.15f);
-                    BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.31f, h * 0.43f, len * 0.20f), rng, windowSide: 1, scale: 1.15f);
-                    BuildSeatedPerson(paxRoot, "MidPaxL", new Vector3(-wid * 0.32f, h * 0.44f, -len * 0.06f), rng, windowSide: -1, scale: 1.12f);
-                    BuildSeatedPerson(paxRoot, "MidPaxR", new Vector3(wid * 0.32f, h * 0.44f, -len * 0.06f), rng, windowSide: 1, scale: 1.12f);
-                    BuildSeatedPerson(paxRoot, "RearPaxL", new Vector3(-wid * 0.32f, h * 0.44f, -len * 0.24f), rng, windowSide: -1, scale: 1.12f);
-                    BuildSeatedPerson(paxRoot, "RearPaxR", new Vector3(wid * 0.32f, h * 0.44f, -len * 0.24f), rng, windowSide: 1, scale: 1.12f);
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.20f, h * 0.38f, len * 0.18f), rng, isDriver: true, windowSide: -1, scale: 0.84f);
+                    BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.20f, h * 0.38f, len * 0.18f), rng, windowSide: 1, scale: 0.84f);
+                    BuildSeatedPerson(paxRoot, "MidPaxL", new Vector3(-wid * 0.20f, h * 0.38f, -len * 0.06f), rng, windowSide: -1, scale: 0.82f);
+                    BuildSeatedPerson(paxRoot, "MidPaxR", new Vector3(wid * 0.20f, h * 0.38f, -len * 0.06f), rng, windowSide: 1, scale: 0.82f);
+                    BuildSeatedPerson(paxRoot, "RearPaxL", new Vector3(-wid * 0.20f, h * 0.38f, -len * 0.22f), rng, windowSide: -1, scale: 0.82f);
+                    BuildSeatedPerson(paxRoot, "RearPaxR", new Vector3(wid * 0.20f, h * 0.38f, -len * 0.22f), rng, windowSide: 1, scale: 0.82f);
                     break;
                 }
                 case "brt":
                 {
-                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.36f, h * 0.42f, len * 0.34f), rng, isDriver: true, windowSide: -1, scale: 1.18f);
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.22f, h * 0.38f, len * 0.32f), rng, isDriver: true, windowSide: -1, scale: 0.88f);
                     float[] zs = { len * 0.16f, 0f, -len * 0.16f, -len * 0.30f };
                     for (int i = 0; i < zs.Length; i++)
                     {
-                        BuildSeatedPerson(paxRoot, "PaxL" + i, new Vector3(-wid * 0.37f, h * 0.45f, zs[i]), rng, windowSide: -1, scale: 1.15f);
-                        BuildSeatedPerson(paxRoot, "PaxR" + i, new Vector3(wid * 0.37f, h * 0.45f, zs[i]), rng, windowSide: 1, scale: 1.15f);
+                        BuildSeatedPerson(paxRoot, "PaxL" + i, new Vector3(-wid * 0.22f, h * 0.40f, zs[i]), rng, windowSide: -1, scale: 0.86f);
+                        BuildSeatedPerson(paxRoot, "PaxR" + i, new Vector3(wid * 0.22f, h * 0.40f, zs[i]), rng, windowSide: 1, scale: 0.86f);
                     }
                     break;
                 }
                 case "pickup":
                 {
-                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.28f, h * 0.44f, len * 0.08f), rng, isDriver: true, windowSide: -1, scale: 1.16f);
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.18f, h * 0.36f, len * 0.05f), rng, isDriver: true, windowSide: -1, scale: 0.82f);
                     if (rng.NextDouble() < 0.75)
-                        BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.28f, h * 0.44f, len * 0.08f), rng, windowSide: 1, scale: 1.16f);
+                        BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.18f, h * 0.36f, len * 0.05f), rng, windowSide: 1, scale: 0.82f);
                     if (rng.NextDouble() < 0.70)
-                        BuildSeatedPerson(paxRoot, "BedPax", new Vector3(wid * 0.18f, h * 0.47f, -len * 0.22f), rng, scale: 1.16f);
+                        BuildSeatedPerson(paxRoot, "BedPax", new Vector3(wid * 0.14f, h * 0.40f, -len * 0.22f), rng, scale: 0.84f);
                     break;
                 }
                 case "car":
@@ -522,41 +521,41 @@ namespace Rise.Vehicles
                 case "police":
                 {
                     string uHex = police ? "#162442" : null;
-                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.29f, h * 0.44f, len * 0.03f), rng, isDriver: true, uniformPolice: police, uniformHex: uHex, windowSide: -1, scale: 1.16f);
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.18f, h * 0.35f, 0f), rng, isDriver: true, uniformPolice: police, uniformHex: uHex, windowSide: -1, scale: 0.82f);
                     if (police || rng.NextDouble() < 0.65)
-                        BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.29f, h * 0.44f, len * 0.03f), rng, uniformPolice: police, uniformHex: uHex, windowSide: 1, scale: 1.16f);
+                        BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.18f, h * 0.35f, 0f), rng, uniformPolice: police, uniformHex: uHex, windowSide: 1, scale: 0.82f);
                     if (!police && rng.NextDouble() < 0.45)
-                        BuildSeatedPerson(paxRoot, "RearPax", new Vector3(wid * 0.28f, h * 0.44f, -len * 0.15f), rng, windowSide: 1, scale: 1.14f);
+                        BuildSeatedPerson(paxRoot, "RearPax", new Vector3(wid * 0.18f, h * 0.35f, -len * 0.14f), rng, windowSide: 1, scale: 0.80f);
                     break;
                 }
                 case "van":
                 case "delivery":
                 case "ambulance":
                 {
-                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.31f, h * 0.45f, len * 0.20f), rng, isDriver: true, windowSide: -1, scale: 1.16f);
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.19f, h * 0.37f, len * 0.16f), rng, isDriver: true, windowSide: -1, scale: 0.84f);
                     if (rng.NextDouble() < 0.65)
-                        BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.31f, h * 0.45f, len * 0.20f), rng, windowSide: 1, scale: 1.16f);
+                        BuildSeatedPerson(paxRoot, "FrontPax", new Vector3(wid * 0.19f, h * 0.37f, len * 0.16f), rng, windowSide: 1, scale: 0.84f);
                     break;
                 }
                 default: // truck, tanker, lawma, fire, army
                 {
                     string uHex = cls.id == "lawma" ? "#ff6a00" : cls.id == "fire" ? "#c62828" : cls.id == "army" ? "#3b5323" : null;
-                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.31f, h * 0.47f, len * 0.28f), rng, isDriver: true, uniformHex: uHex, windowSide: -1, scale: 1.18f);
+                    BuildSeatedPerson(driverRoot, "DriverSeat", new Vector3(-wid * 0.20f, h * 0.40f, len * 0.24f), rng, isDriver: true, uniformHex: uHex, windowSide: -1, scale: 0.86f);
                     if (rng.NextDouble() < 0.75)
-                        BuildSeatedPerson(paxRoot, "CoDriver", new Vector3(wid * 0.31f, h * 0.47f, len * 0.28f), rng, uniformHex: uHex, windowSide: 1, scale: 1.18f);
+                        BuildSeatedPerson(paxRoot, "CoDriver", new Vector3(wid * 0.20f, h * 0.40f, len * 0.24f), rng, uniformHex: uHex, windowSide: 1, scale: 0.86f);
                     break;
                 }
             }
         }
 
-        static Transform BuildSeatedPerson(Transform parent, string name, Vector3 seatPos, System.Random rng, bool isDriver = false, bool bikePose = false, bool helmet = false, bool hangingSide = false, bool uniformPolice = false, string uniformHex = null, int windowSide = 0, float scale = 1.15f)
+        static Transform BuildSeatedPerson(Transform parent, string name, Vector3 seatPos, System.Random rng, bool isDriver = false, bool bikePose = false, bool helmet = false, bool hangingSide = false, bool uniformPolice = false, string uniformHex = null, int windowSide = 0, float scale = 0.86f)
         {
             var p = new GameObject(name).transform;
             p.SetParent(parent, false);
             p.localPosition = seatPos;
             p.localScale = Vector3.one * scale;
             if (bikePose) p.localRotation = Quaternion.Euler(14f, 0f, 0f);
-            else if (hangingSide) p.localRotation = Quaternion.Euler(0f, 18f, -10f);
+            else if (hangingSide) p.localRotation = Quaternion.Euler(0f, 8f, -4f);
 
             var skin = Mat(SkinHex[rng.Next(SkinHex.Length)], 0.35f);
             var top = !string.IsNullOrEmpty(uniformHex) ? Mat(uniformHex, 0.45f) : uniformPolice ? Mat("#1b2845", 0.4f) : Mat(TopHex[rng.Next(TopHex.Length)], 0.4f);
@@ -564,66 +563,67 @@ namespace Rise.Vehicles
             var hair = Mat("#141210", 0.25f);
 
             // Seated torso & shoulders
-            var torso = Part(p, PrimitiveType.Cube, new Vector3(0f, 0.22f, 0f), new Vector3(0.36f, 0.44f, 0.24f), top);
+            var torso = Part(p, PrimitiveType.Cube, new Vector3(0f, 0.20f, 0f), new Vector3(0.30f, 0.38f, 0.20f), top);
             torso.name = "Torso";
             if (bikePose && isDriver)
             {
                 // High-vis reflector vest worn by Lagos okada riders
-                var vest = Part(p, PrimitiveType.Cube, new Vector3(0f, 0.23f, 0f), new Vector3(0.38f, 0.36f, 0.25f), Mat("#c8e020", 0.5f));
+                var vest = Part(p, PrimitiveType.Cube, new Vector3(0f, 0.21f, 0f), new Vector3(0.32f, 0.32f, 0.22f), Mat("#c8e020", 0.5f));
                 vest.name = "Vest";
             }
 
-            // Seated thighs & lower legs
-            float legSpread = bikePose ? 0.19f : 0.12f;
-            Part(p, PrimitiveType.Cube, new Vector3(-legSpread, 0.04f, 0.15f), new Vector3(0.14f, 0.14f, 0.32f), pants);
-            Part(p, PrimitiveType.Cube, new Vector3(legSpread, 0.04f, 0.15f), new Vector3(0.14f, 0.14f, 0.32f), pants);
-            Part(p, PrimitiveType.Cube, new Vector3(-legSpread, -0.14f, 0.26f), new Vector3(0.12f, 0.28f, 0.12f), pants);
-            Part(p, PrimitiveType.Cube, new Vector3(legSpread, -0.14f, 0.26f), new Vector3(0.12f, 0.28f, 0.12f), pants);
+            // Seated thighs & lower legs (compact inside cabin so they never clip through doors)
+            float legSpread = bikePose ? 0.16f : 0.08f;
+            Part(p, PrimitiveType.Cube, new Vector3(-legSpread, 0.04f, 0.11f), new Vector3(0.11f, 0.11f, 0.22f), pants);
+            Part(p, PrimitiveType.Cube, new Vector3(legSpread, 0.04f, 0.11f), new Vector3(0.11f, 0.11f, 0.22f), pants);
+            if (bikePose)
+            {
+                Part(p, PrimitiveType.Cube, new Vector3(-legSpread, -0.12f, 0.20f), new Vector3(0.10f, 0.24f, 0.10f), pants);
+                Part(p, PrimitiveType.Cube, new Vector3(legSpread, -0.12f, 0.20f), new Vector3(0.10f, 0.24f, 0.10f), pants);
+            }
 
             // Arms
             if (isDriver)
             {
-                Part(p, PrimitiveType.Cube, new Vector3(-0.20f, 0.25f, 0.15f), new Vector3(0.11f, 0.11f, 0.32f), top, Quaternion.Euler(12f, 8f, 0f));
-                Part(p, PrimitiveType.Cube, new Vector3(0.20f, 0.25f, 0.15f), new Vector3(0.11f, 0.11f, 0.32f), top, Quaternion.Euler(12f, -8f, 0f));
-                Part(p, PrimitiveType.Sphere, new Vector3(-0.16f, 0.22f, 0.30f), new Vector3(0.10f, 0.10f, 0.10f), skin);
-                Part(p, PrimitiveType.Sphere, new Vector3(0.16f, 0.22f, 0.30f), new Vector3(0.10f, 0.10f, 0.10f), skin);
+                Part(p, PrimitiveType.Cube, new Vector3(-0.15f, 0.22f, 0.12f), new Vector3(0.09f, 0.09f, 0.24f), top, Quaternion.Euler(12f, 8f, 0f));
+                Part(p, PrimitiveType.Cube, new Vector3(0.15f, 0.22f, 0.12f), new Vector3(0.09f, 0.09f, 0.24f), top, Quaternion.Euler(12f, -8f, 0f));
+                Part(p, PrimitiveType.Sphere, new Vector3(-0.12f, 0.20f, 0.24f), new Vector3(0.08f, 0.08f, 0.08f), skin);
+                Part(p, PrimitiveType.Sphere, new Vector3(0.12f, 0.20f, 0.24f), new Vector3(0.08f, 0.08f, 0.08f), skin);
             }
             else if (hangingSide)
             {
-                // Conductor holding the top door rail with one hand and waving with the other
-                Part(p, PrimitiveType.Cube, new Vector3(-0.18f, 0.42f, 0.06f), new Vector3(0.11f, 0.34f, 0.11f), top, Quaternion.Euler(-20f, 0f, 15f));
-                Part(p, PrimitiveType.Cube, new Vector3(0.22f, 0.28f, 0.08f), new Vector3(0.11f, 0.28f, 0.11f), skin, Quaternion.Euler(0f, 0f, -35f));
+                Part(p, PrimitiveType.Cube, new Vector3(-0.14f, 0.34f, 0.04f), new Vector3(0.09f, 0.26f, 0.09f), top, Quaternion.Euler(-15f, 0f, 10f));
+                Part(p, PrimitiveType.Cube, new Vector3(0.14f, 0.24f, 0.06f), new Vector3(0.09f, 0.22f, 0.09f), skin, Quaternion.Euler(0f, 0f, -18f));
             }
             else
             {
-                Part(p, PrimitiveType.Cube, new Vector3(-0.20f, 0.20f, 0.05f), new Vector3(0.11f, 0.26f, 0.11f), top);
-                Part(p, PrimitiveType.Cube, new Vector3(0.20f, 0.20f, 0.05f), new Vector3(0.11f, 0.26f, 0.11f), top);
+                Part(p, PrimitiveType.Cube, new Vector3(-0.15f, 0.18f, 0.04f), new Vector3(0.09f, 0.22f, 0.09f), top);
+                Part(p, PrimitiveType.Cube, new Vector3(0.15f, 0.18f, 0.04f), new Vector3(0.09f, 0.22f, 0.09f), top);
             }
 
-            // Window-sill elbow/shoulder & head silhouette so occupants on enclosed cars/buses show at the open side window
             if (windowSide != 0)
             {
-                float sx = windowSide * 0.19f;
-                var sillArm = Part(p, PrimitiveType.Cube, new Vector3(sx, 0.23f, 0.05f), new Vector3(0.15f, 0.12f, 0.28f), skin);
+                float sx = windowSide * 0.06f;
+                var sillArm = Part(p, PrimitiveType.Cube, new Vector3(sx, 0.21f, 0.04f), new Vector3(0.10f, 0.10f, 0.20f), skin);
                 sillArm.name = "WindowArm";
-                var sillShoulder = Part(p, PrimitiveType.Cube, new Vector3(sx * 0.88f, 0.32f, 0.01f), new Vector3(0.18f, 0.22f, 0.22f), top);
+                var sillShoulder = Part(p, PrimitiveType.Cube, new Vector3(sx, 0.28f, 0.01f), new Vector3(0.12f, 0.16f, 0.16f), top);
                 sillShoulder.name = "TorsoWindow";
             }
 
             // Neck & Head
-            Part(p, PrimitiveType.Cylinder, new Vector3(windowSide * 0.06f, 0.46f, 0.02f), new Vector3(0.10f, 0.06f, 0.10f), skin);
-            var head = Part(p, PrimitiveType.Sphere, new Vector3(windowSide * 0.09f, 0.57f, 0.04f), new Vector3(0.25f, 0.27f, 0.25f), skin);
+            Part(p, PrimitiveType.Cylinder, new Vector3(windowSide * 0.02f, 0.42f, 0.02f), new Vector3(0.08f, 0.05f, 0.08f), skin);
+            var head = Part(p, PrimitiveType.Sphere, new Vector3(windowSide * 0.03f, 0.51f, 0.03f), new Vector3(0.21f, 0.23f, 0.21f), skin);
             head.name = "Head";
 
             if (helmet)
             {
                 var hMat = Mat(HelmetHex[rng.Next(HelmetHex.Length)], 0.75f);
-                Part(p, PrimitiveType.Sphere, new Vector3(0f, 0.60f, 0.03f), new Vector3(0.28f, 0.26f, 0.29f), hMat);
-                Part(p, PrimitiveType.Cube, new Vector3(0f, 0.58f, 0.14f), new Vector3(0.23f, 0.09f, 0.08f), Mat("#141820", 0.9f)); // visor
+                Part(p, PrimitiveType.Sphere, new Vector3(0f, 0.54f, 0.02f), new Vector3(0.24f, 0.23f, 0.25f), hMat);
+                Part(p, PrimitiveType.Cube, new Vector3(0f, 0.52f, 0.12f), new Vector3(0.20f, 0.08f, 0.06f), Mat("#141820", 0.9f)); // visor
             }
             else
             {
-                Part(p, PrimitiveType.Sphere, new Vector3(windowSide * 0.09f, 0.64f, 0.03f), new Vector3(0.26f, 0.15f, 0.26f), uniformPolice ? Mat("#141d33", 0.5f) : hair);
+                Part(p, PrimitiveType.Sphere, new Vector3(windowSide * 0.03f, 0.57f, 0.02f), new Vector3(0.22f, 0.13f, 0.22f), uniformPolice ? Mat("#141d33", 0.5f) : hair);
             }
 
             return p;

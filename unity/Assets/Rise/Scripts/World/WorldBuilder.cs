@@ -101,6 +101,21 @@ namespace Rise.World
             return go;
         }
 
+        GameObject LocalBox(string name, Vector3 localCenter, Vector3 localSize, Material m, Transform parent, bool collider = true, Quaternion? localRotation = null)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localCenter;
+            go.transform.localScale = localSize;
+            if (localRotation.HasValue) go.transform.localRotation = localRotation.Value;
+            go.GetComponent<MeshRenderer>().sharedMaterial = m;
+            if (!collider) Remove(go.GetComponent<Collider>());
+            go.isStatic = true;
+            ObjectCount++;
+            return go;
+        }
+
         static void Remove(Object o) { if (Application.isPlaying) Destroy(o); else DestroyImmediate(o); }
 
         GameObject Cylinder(string name, Vector3 baseCenter, float radius, float height, Material m, Transform parent = null, bool collider = true)
@@ -160,6 +175,7 @@ namespace Rise.World
                 if (o.axis == r.axis) continue;
                 if (r.k < o.from - 0.01f || r.k > o.to + 0.01f) continue;       // the crossing road must reach us
                 if (o.k < r.from - 0.01f || o.k > r.to + 0.01f) continue;       // and we must reach it
+                if (Data.OnBridge(r.axis, r.k, o.k) || Data.OnBridge(o.axis, o.k, r.k)) continue; // grade-separated overpass
                 gaps.Add(new Vector2(o.k - o.width * 0.5f - margin, o.k + o.width * 0.5f + margin));
             }
             return gaps;
@@ -231,7 +247,7 @@ namespace Rise.World
                         float across = r.k + s * (r.width * 0.5f + 2.4f);
                         var basePos = r.Point(along, across, 0.3f);
                         if (Data.InWater(basePos)) continue;
-                        Cylinder("Lamp post", basePos, 0.12f, 7f, pole, group);
+                        Cylinder("Lamp post", basePos, 0.12f, 7f, pole, group, false);
                         // The arm leans over the carriageway (towards the centreline).
                         var toCentre = (r.Point(along, r.k, 0.3f) - basePos).normalized;
                         var head = basePos + Vector3.up * 7.1f + toCentre * 1.1f;
@@ -279,6 +295,14 @@ namespace Rise.World
                 {
                     float height = h ? Data.DeckHeightAtData(along, b.k) : Data.DeckHeightAtData(b.k, along);
                     if (height < 2f) continue;
+                    bool hitsCrossRoad = false;
+                    foreach (var cr in Data.roads)
+                    {
+                        if (cr.axis == b.axis) continue;
+                        if (b.k < cr.from - 2f || b.k > cr.to + 2f) continue;
+                        if (Mathf.Abs(along - cr.k) < cr.width * 0.5f + 2.5f) { hitsCrossRoad = true; break; }
+                    }
+                    if (hitsCrossRoad) continue;
                     for (int s = -1; s <= 1; s += 2)
                     {
                         float across = b.k + s * deckW * 0.28f;
@@ -600,19 +624,19 @@ namespace Rise.World
             plane.localScale = Vector3.one * scale;
 
             // Cylindrical fuselage + nose cone + cockpit glass + windows + swept wings + twin under-wing turbofans + vertical tail fin + horizontal tailplane
-            Box("Fuselage", Vector3.zero, new Vector3(22f, 2.5f, 2.6f), whiteMat, plane);
-            Box("Livery stripe", new Vector3(0f, 0.25f, 0f), new Vector3(22.1f, 0.42f, 2.68f), accentMat, plane, false);
-            Box("Nose", new Vector3(11.8f, -0.15f, 0f), new Vector3(2.4f, 1.8f, 1.9f), whiteMat, plane, false);
-            Box("Cockpit glass", new Vector3(10.6f, 0.65f, 0f), new Vector3(1.8f, 0.75f, 2.1f), glassMat, plane, false);
-            Box("Wings", new Vector3(1.2f, -0.35f, 0f), new Vector3(3.8f, 0.24f, 21.5f), whiteMat, plane, false);
-            Box("Winglet L", new Vector3(0.4f, 0.45f, -10.7f), new Vector3(1.2f, 1.5f, 0.18f), accentMat, plane, false);
-            Box("Winglet R", new Vector3(0.4f, 0.45f, 10.7f), new Vector3(1.2f, 1.5f, 0.18f), accentMat, plane, false);
-            Box("Engine L", new Vector3(2.4f, -0.95f, -4.6f), new Vector3(2.8f, 1.15f, 1.15f), accentMat, plane, false);
-            Box("Engine R", new Vector3(2.4f, -0.95f, 4.6f), new Vector3(2.8f, 1.15f, 1.15f), accentMat, plane, false);
-            Box("Tail fin", new Vector3(-9.6f, 2.5f, 0f), new Vector3(3.2f, 3.8f, 0.28f), accentMat, plane, false);
-            Box("Tailplane", new Vector3(-9.8f, 0.6f, 0f), new Vector3(2.2f, 0.18f, 7.6f), whiteMat, plane, false);
-            Box("Landing gear N", new Vector3(9.2f, -1.6f, 0f), new Vector3(0.5f, 0.9f, 0.6f), darkMat, plane, false);
-            Box("Landing gear M", new Vector3(0.4f, -1.6f, 0f), new Vector3(0.7f, 0.9f, 3.6f), darkMat, plane, false);
+            LocalBox("Fuselage", Vector3.zero, new Vector3(22f, 2.5f, 2.6f), whiteMat, plane);
+            LocalBox("Livery stripe", new Vector3(0f, 0.25f, 0f), new Vector3(22.1f, 0.42f, 2.68f), accentMat, plane, false);
+            LocalBox("Nose", new Vector3(11.8f, -0.15f, 0f), new Vector3(2.4f, 1.8f, 1.9f), whiteMat, plane, false);
+            LocalBox("Cockpit glass", new Vector3(10.6f, 0.65f, 0f), new Vector3(1.8f, 0.75f, 2.1f), glassMat, plane, false);
+            LocalBox("Wings", new Vector3(1.2f, -0.35f, 0f), new Vector3(3.8f, 0.24f, 21.5f), whiteMat, plane, false);
+            LocalBox("Winglet L", new Vector3(0.4f, 0.45f, -10.7f), new Vector3(1.2f, 1.5f, 0.18f), accentMat, plane, false);
+            LocalBox("Winglet R", new Vector3(0.4f, 0.45f, 10.7f), new Vector3(1.2f, 1.5f, 0.18f), accentMat, plane, false);
+            LocalBox("Engine L", new Vector3(2.4f, -0.95f, -4.6f), new Vector3(2.8f, 1.15f, 1.15f), accentMat, plane, false);
+            LocalBox("Engine R", new Vector3(2.4f, -0.95f, 4.6f), new Vector3(2.8f, 1.15f, 1.15f), accentMat, plane, false);
+            LocalBox("Tail fin", new Vector3(-9.6f, 2.5f, 0f), new Vector3(3.2f, 3.8f, 0.28f), accentMat, plane, false);
+            LocalBox("Tailplane", new Vector3(-9.8f, 0.6f, 0f), new Vector3(2.2f, 0.18f, 7.6f), whiteMat, plane, false);
+            LocalBox("Landing gear N", new Vector3(9.2f, -1.6f, 0f), new Vector3(0.5f, 0.9f, 0.6f), darkMat, plane, false);
+            LocalBox("Landing gear M", new Vector3(0.4f, -1.6f, 0f), new Vector3(0.7f, 0.9f, 3.6f), darkMat, plane, false);
         }
 
         void BuildYacht(Vector3 pos, Material hullMat, Material glassMat, Material deckMat, Transform group)
@@ -789,11 +813,11 @@ namespace Rise.World
             boat.SetParent(group, false);
             boat.position = pos;
             boat.rotation = Quaternion.Euler(0f, yaw, 0f);
-            Box("Boat hull", Vector3.zero, new Vector3(1.55f, 0.48f, 6.2f), woodMat, boat, false);
-            Box("Boat gunwale", new Vector3(0f, 0.26f, 0f), new Vector3(1.68f, 0.14f, 6.4f), trimMat, boat, false);
-            Box("Boat thwarts", new Vector3(0f, 0.22f, 0.4f), new Vector3(1.45f, 0.08f, 2.6f), woodMat, boat, false);
-            Box("Fish basket", new Vector3(0f, 0.38f, 0.9f), new Vector3(0.85f, 0.35f, 1.1f), trimMat, boat, false);
-            Box("Outboard motor", new Vector3(0f, 0.36f, -3.25f), new Vector3(0.36f, 0.65f, 0.45f), Mat("outboard", "#1e293b", 0.6f), boat, false);
+            LocalBox("Boat hull", Vector3.zero, new Vector3(1.55f, 0.48f, 6.2f), woodMat, boat, false);
+            LocalBox("Boat gunwale", new Vector3(0f, 0.26f, 0f), new Vector3(1.68f, 0.14f, 6.4f), trimMat, boat, false);
+            LocalBox("Boat thwarts", new Vector3(0f, 0.22f, 0.4f), new Vector3(1.45f, 0.08f, 2.6f), woodMat, boat, false);
+            LocalBox("Fish basket", new Vector3(0f, 0.38f, 0.9f), new Vector3(0.85f, 0.35f, 1.1f), trimMat, boat, false);
+            LocalBox("Outboard motor", new Vector3(0f, 0.36f, -3.25f), new Vector3(0.36f, 0.65f, 0.45f), Mat("outboard", "#1e293b", 0.6f), boat, false);
         }
 
         // Lagos Rail Mass Transit (LRMT):
@@ -1030,6 +1054,29 @@ namespace Rise.World
                     case "vi": Tower(pos, 14f, 14f, 18f + (float)rng.NextDouble() * 24f, group, rng); break;
                     case "yaba": House(pos, 12f, 10f, 7f + (float)rng.Next(0, 2) * 3.5f, HouseColours[rng.Next(HouseColours.Length)], false, group); break;
                     case "lekki": Compound(pos, 22f, 20f, group); House(pos, 13f, 11f, 8f, Cream, false, group); break;
+                    case "festac":
+                        // Festac ’77 medium-rise residential apartment block with wrap-around balconies
+                        Compound(pos, 24f, 20f, group);
+                        House(pos, 16f, 12f, 12.5f + (float)rng.Next(0, 2) * 3.5f, "#d8cfb8", false, group);
+                        break;
+                    case "magodo":
+                        // Magodo GRA gated luxury twin-duplex compound with security gatehouse
+                        Compound(pos, 24f, 22f, group);
+                        House(pos + new Vector3(-3.6f, 0f, 0f), 8.2f, 11f, 9.2f, "#f5f3ee", false, group);
+                        House(pos + new Vector3(3.6f, 0f, 0f), 8.2f, 11f, 9.2f, "#e8e0d0", false, group);
+                        Box("Gatehouse", pos + new Vector3(-8.5f, 1.4f, 9.2f), new Vector3(3.2f, 2.8f, 2.6f), Mat("gatehouse", "#c9c2b3"), group);
+                        break;
+                    case "ladipo":
+                        // Ladipo / Alimosho dense auto-parts warehouse & double-decker trade stalls
+                        Box("Trade Warehouse", pos + Vector3.up * 3.8f, new Vector3(16f, 7.6f, 12f), Mat("ladipo-wh", "#6c7a89"), group);
+                        Box("Canopy", pos + new Vector3(0f, 3.2f, 7.2f), new Vector3(16.4f, 0.25f, 3.2f), Mat("zinc", Zinc, 0.5f), group, false);
+                        break;
+                    case "epe":
+                        // Epe waterfront fishing & timber veranda compound
+                        Compound(pos, 20f, 18f, group);
+                        House(pos, 12f, 9.5f, 5.2f, "#d9c8a0", true, group);
+                        Box("Fish Veranda", pos + new Vector3(0f, 1.5f, -6.2f), new Vector3(10f, 2.6f, 3.0f), Mat("wood-stilt", "#5c4028"), group);
+                        break;
                     default: Compound(pos, 22f, 20f, group); House(pos, 11f, 9f, rng.NextDouble() < 0.5 ? 3.6f : 7f, HouseColours[rng.Next(HouseColours.Length)], true, group); break;
                 }
             }
@@ -1069,19 +1116,33 @@ namespace Rise.World
         {
             var region = Data.RegionAtData(x, z);
             string id = region != null ? region.id : "mainland";
+            string biome = region != null && !string.IsNullOrEmpty(region.biome) ? region.biome : "coastal";
             var rng = new System.Random(Mathf.RoundToInt(x * 73f + z * 151f));
             float jx = roadside ? 0f : ((float)rng.NextDouble() - 0.5f) * 3f;
             float jz = roadside ? 0f : ((float)rng.NextDouble() - 0.5f) * 3f;
             var pos = WorldData.W(x + jx, 0f, z + jz);
             bool banana = id.Contains("banana");
-            bool dense = id.Contains("island") || id == "obalende" || id == "vi" || id.Contains("marina");
-            bool estate = id.Contains("lekki") || id.Contains("ajah") || id.Contains("ikoyi") || id.Contains("oniru") || id.Contains("eleko") || id.Contains("magodo");
-            bool industrial = id.Contains("apapa") || id.Contains("costain") || (z > 105f && z < 190f && x < 165f);
+            bool dense = id.Contains("island") || id == "obalende" || id == "vi" || id.Contains("marina") || id == "abuja-cbd" || id == "three-arms" || id == "ibadan-dugbe";
+            bool estate = id.Contains("lekki") || id.Contains("ajah") || id.Contains("ikoyi") || id.Contains("oniru") || id.Contains("eleko") || id.Contains("magodo") || id == "wuse-maitama" || id == "ph-gra" || id == "enugu-coal-city";
+            bool industrial = id.Contains("apapa") || id.Contains("costain") || id == "ota-agbara" || id == "trans-amadi" || id == "bonny-onne" || id == "nnewi-industrial" || (z > 105f && z < 190f && x < 165f);
 
             if (banana)
             {
                 Compound(pos, 19f, 17f, group);
                 House(pos, 13f, 11f, 10.5f + (float)rng.NextDouble() * 4f, "#f5f3ee", false, group);
+            }
+            else if (biome == "sahel")
+            {
+                // Northern Sahelian Tubali ochre mud-brick architecture with parapet walls (Kano, Kaduna, Borno)
+                string[] sahelCols = { "#c88a4b", "#d49b63", "#b57c4a", "#d9a66e" };
+                Compound(pos, 18f, 16f, group);
+                House(pos, 12f, 10f, 6.5f + rng.Next(0, 2) * 3.2f, sahelCols[rng.Next(sahelCols.Length)], false, group);
+            }
+            else if (biome == "southeast" && !estate && !industrial)
+            {
+                // South-East multi-storey commercial concrete plazas & red-earth compounds (Onitsha, Enugu, Aba)
+                string[] seCols = { "#d7ccc8", "#bcaaa4", "#e0d6cc", "#c5b8a5" };
+                House(pos, 13f, 11f, 10.5f + rng.Next(0, 3) * 3.5f, seCols[rng.Next(seCols.Length)], false, group);
             }
             else if (dense)
             {
@@ -1153,9 +1214,11 @@ namespace Rise.World
             }
 
             var m = Data.meta;
+            float fillMinX = Mathf.Max(m.minX, -1050f), fillMaxX = Mathf.Min(m.maxX, 1750f);
+            float fillMinZ = Mathf.Max(m.minZ, -1550f), fillMaxZ = Mathf.Min(m.maxZ, 410f);
             var candidates = new List<Vector2>();
-            for (float z = m.minZ + HouseGrid * 0.5f; z < m.maxZ; z += HouseGrid)
-                for (float x = m.minX + HouseGrid * 0.5f; x < m.maxX; x += HouseGrid)
+            for (float z = fillMinZ + HouseGrid * 0.5f; z < fillMaxZ; z += HouseGrid)
+                for (float x = fillMinX + HouseGrid * 0.5f; x < fillMaxX; x += HouseGrid)
                     candidates.Add(new Vector2(x, z));
 
             // Prioritize central Lagos (Surulere, Costain, Apapa, Island, Ikoyi, Banana Island, VI, Yaba, Ebute Metta, Lekki) first.

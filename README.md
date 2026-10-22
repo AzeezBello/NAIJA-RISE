@@ -65,20 +65,57 @@ Render deploys this site from the repo root: its build command (`yarn`) runs the
 
 ## Project Layout
 
+```text
+rise-lagos/
+├── .github/workflows/
+│   ├── web.yml                CI: data check, lagos.json & manifest.json drift check, Next.js build, Supabase check
+│   ├── unity.yml              CI: Unity preflight & GameCI multi-target builds (WebGL, macOS, Windows, Android, iOS)
+│   └── release.yml            CD: Tag/manual release manifest, GitHub Release upload, Supabase/Render/itch.io deploy
+├── .githooks/                 Pre-commit & pre-push hooks (auto-export world JSON on data edits & C# compile check)
+├── PLAN.md                    Product plan, milestones & multi-district / multi-state roadmap
+├── MIGRATION-REPORT.md        Reproducible verification report, test commands & platform status
+├── unity/                     Unity 6000.6.5f1 project (URP 17.6, Input System 1.19, glTFast 6.0.1); see unity/README.md
+├── src/data/
+│   ├── districts/             16 Lagos district modules (surulere, ikoyi, lekki, yaba, ikeja, ikorodu, apapa,
+│   │                          ajegunle, makoko, oyingbo, agege, ojo-badagry, west-mainland, east-mainland,
+│   │                          alimosho-oshodi, kosofe-magodo) merged by lagos.js
+│   ├── states/                Multi-state modules across Nigeria (ogun, oyo, fct, rivers, anambra, kano)
+│   └── *.js                   config, jobs (34), characters (106), vehicles (18), family, businesses, items, crew, schedules
+├── scripts/                   build-unity.mjs, deploy.mjs, setup-hooks.mjs, export-world.mjs, check-data.mjs,
+│                              verify-supabase.mjs, package-webgl.mjs, render-build.mjs
+├── supabase/                  schema.sql, migrations/ and tests/ for Auth, saves, crews & live economy_config
+├── web/                       Next.js 16 / React 19 / TypeScript site (/play, /account, /admin, /api/economy)
+└── webgl_server.py            Local Gzip-aware HTTP server for Unity WebGL builds
 ```
-unity/                   Unity 6 project (the game); see unity/README.md
-src/data/                shared map and content data (districts/, config, jobs, characters, vehicles, family,
-                         businesses, items, crew, schedules), exported to unity/ by scripts/export-world.mjs
-scripts/                 export-world.mjs (src/data → unity/Assets/Rise/Resources/world/lagos.json), check-data.mjs
-supabase/                schema, migrations and SQL tests for accounts, saves and crews
-web/                     Next.js 16 / React 19 / TypeScript site (/play, /account, /admin)
-webgl_server.py          local server for the Unity WebGL build (gzip headers)
+
+Add a new Lagos district by creating `src/data/districts/<id>.js` with `createArea()` (`src/data/districts/area.js`), registering it in `src/data/districts/index.js` and `src/data/districts/lagos.js`, or add a new Nigerian state in `src/data/states/<state>.js`, then run `npm run export:unity`.
+
+## Build, Verification & Release Automations
+
+```bash
+# Data & World Export
+npm run check               # Validate syntax & references across all 16 Lagos districts + 6 states
+npm run export:unity        # Export src/data → unity/Assets/Rise/Resources/world/{lagos,manifest}.json
+npm run export:check        # Export and fail if lagos.json or manifest.json have uncommitted drift
+
+# Unity Verification & Multi-Platform Builds (scripts/build-unity.mjs)
+npm run unity:compile       # Fast (~3s) headless Roslyn C# compile check (Assembly-CSharp + Editor)
+npm run unity:smoke         # Headless Unity Edit-Mode SmokeTest
+npm run unity:test          # Headless Unity Play-Mode benchmark suite (194 checks)
+npm run unity:validate      # Validate all 10 platform build targets
+npm run build:webgl         # Build Unity WebGL player + package WebGL.zip
+npm run build:mac           # Build macOS Universal player (Builds/Rise-Lagos.app + Rise-Lagos-macOS.zip)
+npm run build:windows       # Build Windows 64-bit player (Builds/Windows/Rise-Lagos.exe)
+npm run build:ios           # Build iOS Xcode project (Builds/iOS)
+npm run build:android       # Build Android APK (Builds/Android/Rise-Lagos.apk)
+npm run build:all           # Full pipeline: export -> compile -> smoke -> test -> validate -> all targets
+
+# Packaging, Release & Deployment (scripts/deploy.mjs)
+npm run build:manifest      # Generate unity/Builds/build-manifest.json with SHA-256 checksums
+npm run release             # Verify data, export world, compile C#, build Next.js web, write manifest
+npm run release:full        # Full release including headless SmokeTest, PlayTest, WebGL & macOS builds
+npm run deploy:supabase     # Verify & sync live Supabase schema and game-config/economy.json
+npm run deploy:itch         # Push WebGL/macOS/Windows/Android builds to itch.io via butler
+npm run deploy:render       # Trigger production Render deployment via RENDER_DEPLOY_HOOK_URL
+npm run hooks:install       # Install .githooks (pre-commit & pre-push)
 ```
-
-Add a new area by creating `src/data/districts/<id>.js` with the same exports as `surulere.js`, registering it in `districts/index.js` and `districts/lagos.js`, then running `npm run export:unity`.
-
-## QA
-
-- `npm run check`: `node --check` on every data module plus the place, job and contact reference checks.
-- CI ([.github/workflows/web.yml](.github/workflows/web.yml)) fails if `lagos.json` drifts from a fresh export, and builds the Next.js site.
-- Unity headless smoke and play tests run locally; see [unity/README.md](unity/README.md).

@@ -21,7 +21,7 @@ namespace Rise.Data
         public int pursuitHeat = 3, ticketKmh = 90, checkpointKmh = 60, fineRate = 10000, bustRate = 15000, speedTicket = 2000, leaseDays = 30, propertyLevel = 2;
         public float bustSeconds = 2.5f, payCycle = 60f, agentFeeRate = 0.1f, priceLow = 0.8f, priceHigh = 1.2f;
     }
-    [Serializable] public class RegionData { public string id, name; public float minX, maxX, minZ, maxZ; public float Area => (maxX - minX) * (maxZ - minZ); public bool ContainsData(float x, float z) => x >= minX && x < maxX && z >= minZ && z < maxZ; }
+    [Serializable] public class RegionData { public string id, name, state = "lagos", biome = "coastal"; public float minX, maxX, minZ, maxZ; public float Area => (maxX - minX) * (maxZ - minZ); public bool ContainsData(float x, float z) => x >= minX && x <= maxX && z >= minZ && z <= maxZ; }
     [Serializable] public class RoadData
     {
         public string axis; public float k, from, to, width; public string name, cls;
@@ -209,7 +209,23 @@ namespace Rise.Data
 
         // ---- geometry queries (Unity world positions) ----
         public RegionData RegionAt(Vector3 w) => RegionAtData(w.x, DataZ(w.z));
-        public RegionData RegionAtData(float x, float z) { foreach (var r in regionsByArea) if (r.ContainsData(x, z)) return r; return null; }
+        public RegionData RegionAtData(float x, float z)
+        {
+            if (regionsByArea == null || regionsByArea.Length == 0) return null;
+            foreach (var r in regionsByArea) if (r.ContainsData(x, z)) return r;
+            RegionData best = regionsByArea[0];
+            float bestD = float.MaxValue;
+            foreach (var r in regionsByArea)
+            {
+                float dx = x < r.minX ? r.minX - x : (x > r.maxX ? x - r.maxX : 0f);
+                float dz = z < r.minZ ? r.minZ - z : (z > r.maxZ ? z - r.maxZ : 0f);
+                float d = dx * dx + dz * dz;
+                if (d < bestD) { bestD = d; best = r; }
+            }
+            return best;
+        }
+        public string StateAt(Vector3 w) { var r = RegionAt(w); return r != null && !string.IsNullOrEmpty(r.state) ? r.state : "lagos"; }
+        public string BiomeAt(Vector3 w) { var r = RegionAt(w); return r != null && !string.IsNullOrEmpty(r.biome) ? r.biome : "coastal"; }
 
         public bool InWater(Vector3 w) => InWaterData(w.x, DataZ(w.z));
         public bool InWaterData(float x, float z) { foreach (var wa in waters) if (wa.ContainsData(x, z)) return true; return false; }
@@ -219,12 +235,14 @@ namespace Rise.Data
         // The road whose carriageway (plus margin) contains the point; the nearest centreline wins.
         public RoadData RoadAt(Vector3 w, float margin = 8f)
         {
-            RoadData best = null; float bestD = float.MaxValue;
+            RoadData best = null; float bestScore = float.MaxValue;
             foreach (var r in roads)
             {
                 float along = r.Along(w), across = Mathf.Abs(r.Across(w) - r.k);
                 if (along < r.from || along > r.to || across > r.width * 0.5f + margin) continue;
-                if (across < bestD) { bestD = across; best = r; }
+                float hDiff = Mathf.Abs(w.y - RoadHeightAt(r, along));
+                float score = across + (hDiff > 2.2f ? hDiff * 4f : 0f);
+                if (score < bestScore) { bestScore = score; best = r; }
             }
             return best;
         }
@@ -234,6 +252,29 @@ namespace Rise.Data
             if (r != null && segmentIndex.TryGetValue(r.axis + ":" + r.k, out var list))
                 foreach (var s in list) if (along >= s.from && along < s.to) return s.name;
             return r?.name ?? "the main road";
+        }
+
+        // Deck height along a specific road (only considers bridges on that road's own axis and k).
+        public float RoadHeightAt(RoadData r, float along)
+        {
+            if (r == null || bridges == null) return 0f;
+            float best = 0f;
+            foreach (var b in bridges)
+            {
+                if (b.axis != r.axis || !Mathf.Approximately(b.k, r.k)) continue;
+                if (along < b.From || along > b.To) continue;
+                var p = b.profile;
+                for (int i = 1; i < p.Length; i++)
+                {
+                    if (along > p[i].along) continue;
+                    var a = p[i - 1]; var c = p[i];
+                    float t = Mathf.Approximately(c.along, a.along) ? 0f : (along - a.along) / (c.along - a.along);
+                    float height = Mathf.Lerp(a.height, c.height, t);
+                    if (height > best) best = height;
+                    break;
+                }
+            }
+            return best;
         }
 
         // Deck height at a position (0 at ground).

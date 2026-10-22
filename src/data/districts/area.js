@@ -3,16 +3,22 @@ const NOOP = () => false;
 export function createArea({
   id,
   name,
+  state = 'Lagos',
   bounds,
   spawn,
   regions,
   roads,
   landmarks,
   busStops = [],
+  properties = [],
+  cells = [],
+  kiosks = [],
+  vendors = [],
+  footbridges = [],
   water = [],
   uTurns = [],
 }) {
-  const meta = { id, name, state: 'Lagos', bounds, spawn };
+  const meta = { id, name, state, bounds, spawn };
   const roadGroups = { h: [], v: [] };
   const extents = { h: {}, v: {} };
   const names = { h: {}, v: {} };
@@ -58,8 +64,9 @@ export function createArea({
     roadRules: (axis, k) => area.CLASS_RULES[area.roadClass(axis, k)],
     LANDMARKS: landmarks,
     BUSSTOPS: busStops,
-    PROPERTIES: [],
-    KIOSKS: [],
+    PROPERTIES: properties,
+    CELLS: cells,
+    KIOSKS: kiosks,
     ANIMALS: [],
     UNIFORMS: {},
     SERVICE_NPCS: [],
@@ -67,9 +74,10 @@ export function createArea({
     RESERVED: [
       ...landmarks.map(l => ({ x: l.x, z: l.z, r: 14 })),
       ...busStops.map(b => ({ x: b.x, z: b.z, r: 12 })),
+      ...properties.map(p => ({ x: p.x, z: p.z, r: 16 })),
     ],
     PLACES: [...landmarks, ...busStops],
-    placeOf: placeId => landmarks.find(l => l.id === placeId) || busStops.find(b => b.id === placeId),
+    placeOf: placeId => landmarks.find(l => l.id === placeId) || busStops.find(b => b.id === placeId) || properties.find(p => p.id === placeId),
     placesOfKind: kind => landmarks.filter(l => l.kind === kind),
     WATER: { x: 0, w: 0 },
     WATERS: water,
@@ -83,8 +91,8 @@ export function createArea({
     YABA_CELLS: [],
     EBUTE_CELLS: [],
     TOLLS: [],
-    FOOTBRIDGES: [],
-    VENDORS: [],
+    FOOTBRIDGES: footbridges,
+    VENDORS: vendors,
     JUNCTIONS: [],
     ISLAND_CELLS: [],
   };

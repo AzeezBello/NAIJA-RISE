@@ -12,8 +12,9 @@ globalThis.location ??= { hash: '', search: '' };
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const load = f => import(pathToFileURL(resolve(root, f)).href);
-const [L, C, J, Ch, V, F, B, It, St] = await Promise.all([load('src/data/districts/lagos.js'), load('src/data/config.js'), load('src/data/jobs.js'), load('src/data/characters.js'), load('src/data/vehicles.js'), load('src/data/family.js'), load('src/data/businesses.js'), load('src/data/items.js'), load('src/data/nigeria-states.js')]);
+const [L, C, J, Ch, V, F, B, It, St, SMap] = await Promise.all([load('src/data/districts/lagos.js'), load('src/data/config.js'), load('src/data/jobs.js'), load('src/data/characters.js'), load('src/data/vehicles.js'), load('src/data/family.js'), load('src/data/businesses.js'), load('src/data/items.js'), load('src/data/nigeria-states.js'), load('src/data/states/index.js')]);
 const out = process.argv[2] ? resolve(process.argv[2]) : resolve(root, 'unity/Assets/Rise/Resources/world/lagos.json');
+const manifestOut = resolve(dirname(out), 'manifest.json');
 
 const AXES = ['h', 'v'];
 const roads = AXES.flatMap(axis => L.ROADS[axis].map(k => {
@@ -31,13 +32,30 @@ const segments = AXES.flatMap(axis => Object.entries(L.ROAD_SEGMENTS[axis] || {}
 
 // Bridge deck profiles: [along, height] pairs; halfW: half the deck width used for height queries.
 const bridges = [
-  { id: 'shitta', name: 'Shitta Bridge', axis: 'v', k: -72, halfW: 7, profile: [[-50, 0], [-16, 6.5], [16, 6.5], [50, 0]] },
   { id: 'eko', name: 'Eko Bridge', axis: 'h', k: 0, halfW: 10, profile: [[155, 0], [192, 9], [310, 9], [345, 0]] },
   { id: 'falomo', name: 'Falomo Bridge', axis: 'v', k: 440, halfW: 10, profile: [[82, 0], [108, 8], [156, 8], [180, 0]] },
   { id: 'thirdmainland', name: 'Third Mainland Bridge', axis: 'v', k: 360, halfW: 10, profile: [[-248, 0], [-218, 9], [-115, 9], [-86, 0]] },
 ].map(b => ({ ...b, profile: b.profile.map(([along, height]) => ({ along, height })) }));
 
-const rect = r => ({ id: r.id, name: r.name, minX: r.x[0], maxX: r.x[1], minZ: r.z[0], maxZ: r.z[1] });
+const regionStateMap = new Map();
+const biomeForState = {
+  lagos: 'coastal',
+  ogun: 'southwest',
+  oyo: 'southwest',
+  fct: 'abuja',
+  rivers: 'niger_delta',
+  anambra: 'southeast',
+  kano: 'sahel',
+};
+for (const [stateKey, area] of Object.entries(SMap.STATE_MAPS)) {
+  if (stateKey === 'lagos') continue;
+  for (const r of (area.REGIONS || [])) regionStateMap.set(r.id, stateKey);
+}
+const rect = r => {
+  const state = regionStateMap.get(r.id) || 'lagos';
+  return { id: r.id, name: r.name, state, biome: biomeForState[state] || 'coastal', minX: r.x[0], maxX: r.x[1], minZ: r.z[0], maxZ: r.z[1] };
+};
+const waterRect = r => ({ id: r.id, name: r.name, minX: r.x[0], maxX: r.x[1], minZ: r.z[0], maxZ: r.z[1] });
 const point = ([x, z]) => ({ x, z });
 
 const world = {
@@ -100,7 +118,7 @@ const world = {
   familySchedules: Object.entries(F.FAMILY_SCHEDULES).flatMap(([who, plan]) => plan.map(w => ({ who, from: w.from, to: w.to, spot: w.spot, label: w.label }))),
   relationshipLevels: F.RELATIONSHIP_LEVELS.map(l => ({ min: l.min, label: l.label })),
   outfits: Ch.LOOK.outfit, hairStyles: Ch.LOOK.hair, faces: Ch.LOOK.face, bodyTypes: Ch.LOOK.bodyType, accessories: Ch.LOOK.accessory, facialHair: Ch.LOOK.facialHair, hairColors: Ch.LOOK.hairColor,
-  waters: L.WATERS.map(rect),
+  waters: L.WATERS.map(waterRect),
   tolls: L.TOLLS.map(t => ({ id: t.id, name: t.name, axis: t.axis, k: t.k, at: t.at, fee: t.fee })),
   footbridges: L.FOOTBRIDGES.map(f => ({ axis: f.axis, k: f.k, at: f.at, name: '' })),
   uTurns: L.U_TURNS.map(u => ({ axis: u.axis, k: u.k, at: u.at, name: u.name || '' })),
@@ -123,8 +141,11 @@ const world = {
   skins: Ch.LOOK.skin, pants: Ch.LOOK.pants,
   levels: C.LEVELS.map(([level, title]) => ({ level, title })),
   unlocks: Object.entries(C.UNLOCKS).map(([level, text]) => ({ level: Number(level), text })),
-  cells: [[L.VI_CELLS, 'vi'], [L.LEKKI_CELLS, 'lekki'], [L.YABA_CELLS, 'yaba'], [L.EBUTE_CELLS, 'ebute'], [L.ISLAND_CELLS, 'island']]
-    .flatMap(([cells, style]) => cells.map(([x, z]) => ({ style, x, z }))),
+  cells: [
+    ...[[L.VI_CELLS, 'vi'], [L.LEKKI_CELLS, 'lekki'], [L.YABA_CELLS, 'yaba'], [L.EBUTE_CELLS, 'ebute'], [L.ISLAND_CELLS, 'island']]
+      .flatMap(([cells, style]) => cells.map(([x, z]) => ({ style, x, z }))),
+    ...(L.AREA_CELLS || []).map(c => ({ style: c.style || 'mainland', x: c.x, z: c.z })),
+  ],
   states: St.NIGERIA_STATES.map(s => ({
     id: s.id, name: s.name, capital: s.capital, zone: s.zone, slogan: s.slogan,
     corridor: s.corridor, distanceKm: s.distanceKm, fare: s.fare, status: s.status,
@@ -133,8 +154,25 @@ const world = {
 
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, JSON.stringify(world));
+
+const manifest = {
+  version: C.GAME.version,
+  chunkSizeMeters: 500,
+  activeRadiusChunks: 3,
+  rebaseThresholdMeters: 4000,
+  states: [
+    { id: 'lagos', name: 'Lagos', biome: 'coastal', bounds: { x: [-1050, 1750], z: [-1550, 410] }, spawn: L.META.spawn, airports: ['ikeja-airport', 'lekki-epe-airport'], railStations: ['marina-rail', 'theatre-rail', 'ebute-rail'], commodityMultipliers: { produce: 1.0, electronics: 1.25, fuel: 0.85, propertyYield: 1.3 } },
+    { id: 'ogun', name: 'Ogun', biome: 'southwest', bounds: SMap.STATE_MAPS.ogun.META.bounds, spawn: SMap.STATE_MAPS.ogun.META.spawn, airports: [], railStations: ['abeokuta-rail'], commodityMultipliers: { produce: 1.15, electronics: 1.1, fuel: 1.0, propertyYield: 1.05 } },
+    { id: 'oyo', name: 'Oyo (Ibadan)', biome: 'southwest', bounds: SMap.STATE_MAPS.oyo.META.bounds, spawn: SMap.STATE_MAPS.oyo.META.spawn, airports: [], railStations: ['ibadan-rail'], commodityMultipliers: { produce: 1.3, electronics: 1.05, fuel: 1.0, propertyYield: 1.1 } },
+    { id: 'fct', name: 'FCT Abuja', biome: 'abuja', bounds: SMap.STATE_MAPS.fct.META.bounds, spawn: SMap.STATE_MAPS.fct.META.spawn, airports: ['abuja-airport'], railStations: ['abuja-rail'], commodityMultipliers: { produce: 1.1, electronics: 1.15, fuel: 1.0, propertyYield: 1.45 } },
+    { id: 'rivers', name: 'Rivers · Delta · Edo', biome: 'niger_delta', bounds: SMap.STATE_MAPS.rivers.META.bounds, spawn: SMap.STATE_MAPS.rivers.META.spawn, airports: ['ph-airport'], railStations: [], commodityMultipliers: { produce: 1.05, electronics: 1.1, fuel: 0.65, propertyYield: 1.25 } },
+    { id: 'anambra', name: 'Anambra · Enugu · Abia', biome: 'southeast', bounds: SMap.STATE_MAPS.anambra.META.bounds, spawn: SMap.STATE_MAPS.anambra.META.spawn, airports: ['enugu-anambra-airport'], railStations: [], commodityMultipliers: { produce: 1.1, electronics: 1.35, fuel: 1.0, propertyYield: 1.2 } },
+    { id: 'kano', name: 'Kano · Kaduna · Borno', biome: 'sahel', bounds: SMap.STATE_MAPS.kano.META.bounds, spawn: SMap.STATE_MAPS.kano.META.spawn, airports: ['kano-airport'], railStations: ['kano-rail'], commodityMultipliers: { produce: 1.4, electronics: 1.15, fuel: 1.05, propertyYield: 1.1 } },
+  ],
+};
+writeFileSync(manifestOut, JSON.stringify(manifest, null, 2));
 const n = k => world[k].length;
-console.log(`exported ${out}`);
+console.log(`exported ${out} & ${manifestOut}`);
 console.log(`businesses ${n('businesses')}`);
 console.log(`jobs ${n('jobs')} · contacts ${n('contacts')} · vehicle classes ${n('vehicleClasses')} · fabrics ${n('fabrics')}`);
 console.log(`roads ${n('roads')} · segments ${n('segments')} · bridges ${n('bridges')} · junctions ${n('junctions')} · landmarks ${n('landmarks')} · bus stops ${n('busStops')} · properties ${n('properties')} · waters ${n('waters')} · cells ${n('cells')} · regions ${n('regions')}`);

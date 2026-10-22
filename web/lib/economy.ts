@@ -69,6 +69,18 @@ export const JOB_META: { id: string; title: string; where: string; defaultPay: n
   { id: 'fish_smoker', title: 'Smoked Fish & Jetty Run', where: 'Bariga Fishing Jetty', defaultPay: 10500 },
   { id: 'boat_charter', title: 'Lagoon Boat Skipper', where: 'Five Cowrie Creek Jetty', defaultPay: 16000 },
   { id: 'firefighter_shift', title: 'Fire & Rescue Auxiliary', where: 'Lagos State Fire Service', defaultPay: 14500 },
+  { id: 'cbn_escort', title: 'CBN Bullion Vault Escort', where: 'Central Bank · Tinubu Square', defaultPay: 26000 },
+  { id: 'efcc_analyst', title: 'EFCC Financial Compliance Aide', where: 'EFCC Command · Ikoyi', defaultPay: 28000 },
+  { id: 'oshodi_dispatch', title: 'Oshodi Interchange Dispatch', where: 'Oshodi 3-Terminal Interchange', defaultPay: 24000 },
+  { id: 'aspamda_clearing', title: 'Trade Fair & Alaba Clearing Agent', where: 'Trade Fair Complex · ASPAMDA', defaultPay: 32000 },
+  { id: 'mile12_produce', title: 'Mile 12 Produce Logistics', where: 'Mile 12 International Market', defaultPay: 25000 },
+  { id: 'refinery_haulage', title: 'Refinery & Deep Port Haulage', where: 'Dangote Refinery · Ibeju-Lekki', defaultPay: 45000 },
+  { id: 'seme_customs', title: 'Seme ECOWAS Border Escort', where: 'Seme–Krake Border Post', defaultPay: 38000 },
+  { id: 'ota_ibadan_haulage', title: 'Ota Factory & Cocoa House Logistics', where: 'Cocoa House · Ibadan', defaultPay: 46000 },
+  { id: 'federal_tender_convoy', title: 'Three Arms Federal Tender Convoy', where: 'National Assembly · Abuja', defaultPay: 65000 },
+  { id: 'bonny_lng_offshore', title: 'Bonny LNG & Trans-Amadi Logistics', where: 'Nigeria LNG · Bonny Island', defaultPay: 58000 },
+  { id: 'onitsha_nnewi_trade', title: 'Onitsha Market & Nnewi Auto Supply', where: 'Onitsha Main Market', defaultPay: 54000 },
+  { id: 'dawanau_trans_saharan', title: 'Dawanau Grains & Frontier Convoy', where: 'Kurmi & Dawanau Market · Kano', defaultPay: 60000 },
 ];
 
 export const MISSION_META: { id: string; title: string; arc: string; defaultReward: number }[] = [

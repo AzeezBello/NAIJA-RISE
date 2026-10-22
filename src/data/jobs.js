@@ -28,6 +28,18 @@ export const JOBS = [
   { id: 'firefighter_shift', title: 'Fire & Rescue Auxiliary', where: 'Lagos State Fire Service', at: 'fire', pay: 14500, xp: 22, dur: 5, by: 'fire_chief', skill: 'fitness', min: 8 },
   { id: 'cbn_escort', title: 'CBN Bullion Vault Escort', where: 'Central Bank · Tinubu Square', at: 'cbn-lagos', pay: 26000, xp: 30, dur: 5, by: 'cbn_director', skill: 'driving', min: 10 },
   { id: 'efcc_analyst', title: 'EFCC Financial Compliance Aide', where: 'EFCC Command · Ikoyi', at: 'efcc-ikoyi', pay: 28000, xp: 32, dur: 5, by: 'efcc_commander', skill: 'business', min: 10 },
+  // Megacorridor jobs (Alimosho/Oshodi, Amuwo/Trade Fair, Kosofe/Mile 12, Ibeju-Lekki/Epe, Badagry/Seme Border)
+  { id: 'oshodi_dispatch', title: 'Oshodi Interchange Dispatch', where: 'Oshodi 3-Terminal Interchange', at: 'oshodi-interchange', pay: 24000, xp: 28, dur: 5, by: 'alimosho_hub', skill: 'driving', min: 10 },
+  { id: 'aspamda_clearing', title: 'Trade Fair & Alaba Clearing Agent', where: 'Trade Fair Complex · ASPAMDA', at: 'trade-fair-aspamda', pay: 32000, xp: 34, dur: 5, by: 'amuwo_trade_hub', skill: 'business', min: 12, far: true },
+  { id: 'mile12_produce', title: 'Mile 12 Produce Logistics', where: 'Mile 12 International Market', at: 'mile12-market', pay: 25000, xp: 28, dur: 5, by: 'kosofe_mile12_hub', skill: 'business', min: 8, far: true },
+  { id: 'refinery_haulage', title: 'Refinery & Deep Port Haulage', where: 'Dangote Refinery · Ibeju-Lekki', at: 'dangote-refinery', pay: 45000, xp: 42, dur: 6, by: 'ibeju_epe_hub', skill: 'driving', min: 20, far: true },
+  { id: 'seme_customs', title: 'Seme ECOWAS Border Escort', where: 'Seme–Krake Border Post', at: 'seme-krake-border', pay: 38000, xp: 36, dur: 6, by: 'badagry_border_hub', skill: 'driving', min: 15, far: true },
+  // Multi-State Geopolitical Zone Jobs (Ogun/Oyo, FCT Abuja, Rivers/Niger Delta, Anambra/East, Kano/North)
+  { id: 'ota_ibadan_haulage', title: 'Ota Factory & Cocoa House Logistics', where: 'Cocoa House · Ibadan', at: 'cocoa-house', pay: 46000, xp: 42, dur: 6, by: 'southwest_ogun_oyo_hub', skill: 'driving', min: 15, far: true },
+  { id: 'federal_tender_convoy', title: 'Three Arms Federal Tender Convoy', where: 'National Assembly · Abuja', at: 'nass-complex', pay: 65000, xp: 52, dur: 6, by: 'abuja_federal_hub', skill: 'business', min: 20, far: true },
+  { id: 'bonny_lng_offshore', title: 'Bonny LNG & Trans-Amadi Logistics', where: 'Nigeria LNG · Bonny Island', at: 'bonny-lng', pay: 58000, xp: 48, dur: 6, by: 'niger_delta_oil_hub', skill: 'driving', min: 18, far: true },
+  { id: 'onitsha_nnewi_trade', title: 'Onitsha Market & Nnewi Auto Supply', where: 'Onitsha Main Market', at: 'onitsha-main-mkt', pay: 54000, xp: 46, dur: 6, by: 'eastern_commerce_hub', skill: 'business', min: 16, far: true },
+  { id: 'dawanau_trans_saharan', title: 'Dawanau Grains & Frontier Convoy', where: 'Kurmi & Dawanau Market · Kano', at: 'kurmi-market', pay: 60000, xp: 50, dur: 6, by: 'northern_trade_hub', skill: 'driving', min: 18, far: true },
 ];
 export const jobOf = id => JOBS.find(j => j.id === id) || null;
 export const jobPay = (j, skills) => Math.round(j.pay * (1 + (skills?.[j.skill] || 0) * 0.01));   // +1% per skill point

@@ -10,12 +10,12 @@ export const DISTRICT = createArea({
   ],
   roads: {
     h: [
-      { k: 64, from: -165, to: -60, name: 'Ajegunle Main Street', width: 16, class: 'commercial' },
-      { k: 112, from: -165, to: -60, name: 'Boundary Road · AJ City', width: 18, class: 'main' },
+      { k: 64, from: -165, to: -72, name: 'Ajegunle Main Street', width: 16, class: 'commercial' },
+      { k: 112, from: -165, to: -72, name: 'Boundary Road · AJ City', width: 18, class: 'main' },
     ],
     v: [
-      { k: -132, from: 40, to: 150, name: 'Wilmer Crescent', width: 14, class: 'residential' },
-      { k: -84, from: 40, to: 150, name: 'Tolu Road', width: 16, class: 'commercial' },
+      { k: -132, from: 0, to: 142, name: 'Wilmer Crescent', width: 14, class: 'residential' },
+      { k: -108, from: 0, to: 142, name: 'Tolu Road', width: 16, class: 'commercial' },
     ],
   },
   landmarks: [
@@ -24,6 +24,6 @@ export const DISTRICT = createArea({
   ],
   busStops: [
     { id: 'ajstop', name: 'Ajegunle Bus Stop', short: 'AJ B/S', x: -100, z: 88, agberos: 2 },
-    { id: 'tolu-road-stop', name: 'Tolu Road Bus Stop', short: 'TOLU RD', x: -84, z: 128, agberos: 1 },
+    { id: 'tolu-road-stop', name: 'Tolu Road Bus Stop', short: 'TOLU RD', x: -108, z: 124, agberos: 1 },
   ],
 });

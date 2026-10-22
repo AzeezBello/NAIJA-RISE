@@ -12,10 +12,58 @@ namespace Rise.UI
         AudioSource engineSrc, rainSrc, genSrc, streetAmbienceSrc, owambeMusicSrc, sfxSrc;
         AudioClip chimeClip, hornClip, gunshotClip, whistleClip, kickClip, crowdClip, streetAmbienceClip, owambeMusicClip;
         public bool Initialized { get; private set; }
+        public string CurrentBiome { get; private set; } = "coastal";
+        public string CurrentMusicStyle { get; private set; } = "Afrobeats & Owambe";
         public AudioClip StreetAmbienceClip => streetAmbienceClip;
         public AudioClip OwambeMusicClip => owambeMusicClip;
         public float StreetAmbienceVolume => streetAmbienceSrc != null ? streetAmbienceSrc.volume : 0f;
         public float OwambeMusicVolume => owambeMusicSrc != null ? owambeMusicSrc.volume : 0f;
+
+        public void SetBiome(string biome)
+        {
+            CurrentBiome = string.IsNullOrEmpty(biome) ? "coastal" : biome;
+            switch (CurrentBiome)
+            {
+                case "southwest":
+                    CurrentMusicStyle = "Fuji & Apala";
+                    if (owambeMusicSrc != null) owambeMusicSrc.pitch = 0.95f;
+                    break;
+                case "southeast":
+                    CurrentMusicStyle = "Ogene & Highlife";
+                    if (owambeMusicSrc != null) owambeMusicSrc.pitch = 1.06f;
+                    break;
+                case "niger_delta":
+                    CurrentMusicStyle = "Port Harcourt Creek Highlife";
+                    if (owambeMusicSrc != null) owambeMusicSrc.pitch = 1.02f;
+                    break;
+                case "sahel":
+                    CurrentMusicStyle = "Hausa Goje & Kalangu";
+                    if (owambeMusicSrc != null) owambeMusicSrc.pitch = 0.90f;
+                    break;
+                case "abuja":
+                    CurrentMusicStyle = "Abuja Executive Lounge & Afrobeats";
+                    if (owambeMusicSrc != null) owambeMusicSrc.pitch = 1.0f;
+                    break;
+                default:
+                    CurrentMusicStyle = "Afrobeats & Owambe";
+                    if (owambeMusicSrc != null) owambeMusicSrc.pitch = 1.0f;
+                    break;
+            }
+        }
+
+        public static string RegionalGreeting(string stateId)
+        {
+            switch (stateId)
+            {
+                case "ogun": return "E ku ishe o! Welcome to Ogun State";
+                case "oyo": return "E kaabo si Ibadan! Oyo Alaafin";
+                case "fct": return "Sannu da zuwa! Welcome to Abuja FCT";
+                case "rivers": return "Bole & Fish! Welcome to Port Harcourt";
+                case "anambra": return "Nnoo! Kedu? Welcome to Onitsha & East";
+                case "kano": return "Sannu da zuwa! Ina kwana? Welcome to Kano";
+                default: return "E kaabo! How far? Welcome to Lagos";
+            }
+        }
 
         const int SampleRate = 22050;
 
