@@ -153,6 +153,26 @@ const SHADOW_GUARD_SCRIPT = `  <script id="rise-webgl-shadow-guard">
         guardShadowSamplers(this);
         return origDrawArrays.call(this, mode, first, count);
       };
+      if (typeof window.fetch === 'function') {
+        const origFetch = window.fetch.bind(window);
+        window.fetch = async function(input, init) {
+          const url = typeof input === 'string' ? input : (input && input.url) || '';
+          const isBuildAsset = /\.(unityweb|wasm|data|js)(\?|$)/i.test(url);
+          const maxAttempts = isBuildAsset ? 4 : 1;
+          let lastErr;
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+              const res = await origFetch(input, init);
+              if (res.ok || attempt === maxAttempts || res.status < 500) return res;
+            } catch (err) {
+              lastErr = err;
+              if (attempt === maxAttempts) throw err;
+            }
+            await new Promise(r => setTimeout(r, attempt * 600));
+          }
+          throw lastErr;
+        };
+      }
     })();
   </script>`;
 

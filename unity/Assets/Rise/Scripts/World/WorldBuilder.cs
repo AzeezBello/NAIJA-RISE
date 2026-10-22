@@ -247,7 +247,7 @@ namespace Rise.World
                         float across = r.k + s * (r.width * 0.5f + 2.4f);
                         var basePos = r.Point(along, across, 0.3f);
                         if (Data.InWater(basePos)) continue;
-                        Cylinder("Lamp post", basePos, 0.12f, 7f, pole, group);
+                        Cylinder("Lamp post", basePos, 0.12f, 7f, pole, group, false);
                         // The arm leans over the carriageway (towards the centreline).
                         var toCentre = (r.Point(along, r.k, 0.3f) - basePos).normalized;
                         var head = basePos + Vector3.up * 7.1f + toCentre * 1.1f;

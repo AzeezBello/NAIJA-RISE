@@ -20,8 +20,8 @@ namespace Rise
             Data.NearestLandmark("bank", pos, 11f) ?? Data.NearestLandmark("venue", pos, 11f) ?? Data.NearestLandmark("owambe", pos, 16f) ??
             Data.NearestLandmark("worship", pos, 12f) ?? Data.NearestLandmark("hotel", pos, 13f) ??
             (State.S.heat > 0 ? Data.NearestLandmark("police", pos, 13f) : null) ?? Data.NearestLandmark("nepa", pos, 12f) ??
-            Data.NearestLandmark("army", pos, 18f) ?? Data.NearestLandmark("navy", pos, 18f) ??
-            Data.NearestLandmark("cbn", pos, 18f) ?? Data.NearestLandmark("efcc", pos, 18f) ??
+            Data.NearestLandmark("army", pos, 22f) ?? Data.NearestLandmark("navy", pos, 22f) ??
+            Data.NearestLandmark("cbn", pos, 20f) ?? Data.NearestLandmark("efcc", pos, 20f) ??
             Data.NearestLandmark("hospital", pos, 16f) ?? Data.NearestLandmark("airport", pos, 22f) ??
             Data.NearestLandmark("museum", pos, 15f) ?? Data.NearestLandmark("market", pos, 16f) ??
             Data.NearestLandmark("warehouse", pos, 16f) ?? Data.NearestLandmark("garage", pos, 16f) ??

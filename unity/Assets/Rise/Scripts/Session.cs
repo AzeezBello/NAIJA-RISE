@@ -357,8 +357,33 @@ namespace Rise
         {
             var v = Vehicle; Vehicle = null;
             v.SetDriven(false);
-            var pos = v.transform.position - v.transform.right * (v.Class.wid * 0.5f + 1.2f) + Vector3.up * 0.5f;
-            Player.Teleport(pos, v.transform.eulerAngles.y);
+            float sideDist = v.Class.wid * 0.5f + 1.2f;
+            float endDist = v.Class.len * 0.5f + 1.2f;
+            Vector3 vPos = v.transform.position;
+            Vector3 right = v.transform.right;
+            Vector3 fwd = v.transform.forward;
+            Vector3[] candidates =
+            {
+                vPos - right * sideDist,
+                vPos + right * sideDist,
+                vPos - fwd * endDist,
+                vPos + fwd * endDist,
+                vPos - right * (sideDist + 1.4f),
+                vPos + right * (sideDist + 1.4f),
+            };
+            Vector3 chosen = candidates[0];
+            foreach (var c in candidates)
+            {
+                float groundY = Data != null ? Data.DeckHeightAt(c) : c.y;
+                Vector3 p0 = new Vector3(c.x, groundY + 0.45f, c.z);
+                Vector3 p1 = new Vector3(c.x, groundY + 1.45f, c.z);
+                if (!Physics.CheckCapsule(p0, p1, 0.35f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    chosen = new Vector3(c.x, groundY + 0.5f, c.z);
+                    break;
+                }
+            }
+            Player.Teleport(chosen, v.transform.eulerAngles.y);
             Player.gameObject.SetActive(true);
             Player.TriggerVehicleExitAnim();
             Camera.SetDriving(null);
@@ -381,6 +406,7 @@ namespace Rise
             }
             else sinking = false;
             Vehicle.Drive(gas, brake, boost, hand, h, State.S.fuel / 100f, dt);
+            if (Player != null) Player.transform.position = Vehicle.transform.position;
             if (Vehicle.LastImpact > 2f) { UI.SoundSystem.I?.PlayHorn(); State.Toast(Vehicle.LastImpact > 8f ? "Crash! Vehicle damaged" : "Scrape"); Vehicle.LastImpact = 0f; }
             bool slow = Mathf.Abs(Vehicle.Speed) < 2f;
             Prompt = null;

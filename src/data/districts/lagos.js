@@ -59,6 +59,7 @@ ROAD_SEGMENTS.h[142] = [[-520, -150, 'Apapa–Oworonshoki Expressway · Apapa Po
 ROAD_SEGMENTS.v[0] = [[-3350, -2900, 'Abuja–Kaduna–Kano Expressway (A2)'], [-2900, -2420, 'Abuja Airport & Three Arms Expressway (A2)'], [-2420, -1980, 'Lagos–Ibadan Expressway · Ibadan Sector'], [-1980, -1520, 'Lagos–Ibadan Expressway · Mowe & Sagamu'], [-1520, -1000, 'Lagos–Ibadan Expressway · Ojodu Berger'], [-1000, -480, 'Adeniran Ogunsanya Street · Ikeja Link'], [-480, -330, 'Adeniran Ogunsanya Street · Maryland Link'], [-330, 150, 'Adeniran Ogunsanya Street']];
 ROAD_SEGMENTS.v[360] = [[-400, -250, 'Murtala Muhammed Way · Yaba'], [-250, -85, 'Third Mainland Bridge'], [-85, 80, 'Broad Street'], [80, 96, 'Kingsway Road']];
 ROAD_SEGMENTS.v[440] = [[-400, -250, 'University Road'], [-80, 80, 'Marina'], [80, 180, 'Falomo Bridge'], [180, 330, 'Akin Adesola Street']];
+ROAD_SEGMENTS.v[-350] = [[-410, -180, 'Apapa–Oshodi Expressway · Mile 2 Link'], [-180, 40, 'Mile 2 · Creek Link'], [40, 230, 'Liverpool Road']];
 ROAD_NAMES.v[0] = 'Adeniran Ogunsanya Street · Lagos–Ibadan Expressway';
 ROAD_CLASS.h[142] = 'expressway';
 ROAD_CLASS.h[-330] = 'highway';
@@ -143,12 +144,13 @@ const REGIONS = [
   { id: 'falomo', name: 'Falomo Bridge · Five Cowrie Creek', x: [340, 426], z: [100, 180] },
   ...ikoyi.REGIONS,
   { id: 'vi', name: 'Victoria Island', x: [340, 480], z: [180, 330] },
-  ...lekki.REGIONS.filter(r => r.id !== 'lekki'),
+  ...lekki.REGIONS,
   { id: 'bar-beach', name: 'Bar Beach', x: [426, 470], z: [180, 350] },
   { id: 'oniru', name: 'Oniru', x: [470, 535], z: [250, 350] },
   { id: 'elegushi', name: 'Elegushi · Quilox', x: [535, 620], z: [250, 350] },
   { id: 'ikorodu', name: 'Ikorodu Town', x: [-520, -140], z: [-420, -240] },
   { id: 'apapa', name: 'Apapa Port', x: [-520, -140], z: [40, 240] },
+  ...apapa.REGIONS,
   ...ikeja.REGIONS,
   ...oyingbo.REGIONS,
   ...yaba.REGIONS,
@@ -293,7 +295,13 @@ export const roadRules = (axis, k) => surulere.CLASS_RULES[roadClass(axis, k)];
 export const roadName = (axis, k) => ROAD_NAMES[axis][k] || 'the main road';
 export const roadNameAt = (axis, k, along) => ROAD_SEGMENTS[axis][k]?.find(([a, b]) => along >= a && along < b)?.[2] || roadName(axis, k);
 export const regionAt = (x, z = 0) =>
-  REGION_PRIORITY.find(r => x >= r.x[0] && x < r.x[1] && z >= r.z[0] && z < r.z[1]) || LAGOS_REGION;
+  REGION_PRIORITY.find(r => x >= r.x[0] && x <= r.x[1] && z >= r.z[0] && z <= r.z[1]) ||
+  REGION_PRIORITY.reduce((best, r) => {
+    const dx = x < r.x[0] ? r.x[0] - x : x > r.x[1] ? x - r.x[1] : 0;
+    const dz = z < r.z[0] ? r.z[0] - z : z > r.z[1] ? z - r.z[1] : 0;
+    const d = dx * dx + dz * dz;
+    return !best || d < best.d ? { r, d } : best;
+  }, null)?.r || LAGOS_REGION;
 export const placeOf = id => LANDMARKS.find(l => l.id === id) || BUSSTOPS.find(b => b.id === id) || PROPERTIES.find(p => p.id === id);
 export const placesOfKind = kind => LANDMARKS.filter(l => l.kind === kind);
 export const inWater = (x, z) => WATERS.some(w => x >= w.x[0] && x <= w.x[1] && z >= w.z[0] && z <= w.z[1]);

@@ -115,6 +115,7 @@ namespace Rise
         public string BestWeaponId()
         {
             string eq = State.S.equippedWeapon;
+            if (eq == "none") return "";
             if (!string.IsNullOrEmpty(eq) && State.Has(eq)) return eq;
             string best = ""; int bestP = -1;
             foreach (var w in FightWeapons)
@@ -145,13 +146,13 @@ namespace Rise
         public void EquipWeapon(string id)
         {
             State.S.equippedWeapon = id ?? "";
-            Player?.SetWeapon(State.S.equippedWeapon);
+            Player?.SetWeapon(BestWeaponId());
         }
 
         // Cycle through owned fight weapons and bare hands (Q / LB / ITEM button).
         public string CycleWeapon()
         {
-            var owned = new System.Collections.Generic.List<string> { "" };
+            var owned = new System.Collections.Generic.List<string> { "none" };
             foreach (var w in FightWeapons) if (State.Has(w.Id)) owned.Add(w.Id);
             if (owned.Count == 1 && State.Has("weapon")) owned.Add("weapon");
             if (owned.Count <= 1)
@@ -159,12 +160,13 @@ namespace Rise
                 State.Toast("No fight weapons in inventory — pick one up (G / E) or buy at Ladipo / vendors");
                 return "";
             }
-            string cur = State.S.equippedWeapon ?? "";
+            string cur = BestWeaponId();
+            if (string.IsNullOrEmpty(cur)) cur = "none";
             int idx = owned.IndexOf(cur);
             string next = owned[(idx + 1) % owned.Count];
             EquipWeapon(next);
-            State.Toast(string.IsNullOrEmpty(next) ? "Holstered weapon · Bare Fists" : $"Equipped {EquippedWeaponName} (power {WeaponPower()})");
-            return next;
+            State.Toast(next == "none" ? "Holstered weapon · Bare Fists" : $"Equipped {EquippedWeaponName} (power {WeaponPower()})");
+            return next == "none" ? "" : next;
         }
 
         // Pick up a 3D street item (G / E / D-pad Down / ITEM button).
@@ -268,7 +270,7 @@ namespace Rise
             if (Time.time - lastSwingToast > 1.8f)
             {
                 lastSwingToast = Time.time;
-                State.Toast(!string.IsNullOrEmpty(State.S.equippedWeapon) ? $"Swung {EquippedWeaponName}" : "Threw a punch (press Q to equip a weapon, G to pick up items)");
+                State.Toast(!string.IsNullOrEmpty(BestWeaponId()) ? $"Swung {EquippedWeaponName}" : "Threw a punch (press Q to equip a weapon, G to pick up items)");
             }
             return true;
         }
