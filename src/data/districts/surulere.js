@@ -35,7 +35,7 @@ export const ROAD_SEGMENTS = {
        440: [[-80, 80, 'Marina'], [80, 180, 'Falomo Bridge'], [180, 330, 'Akin Adesola Street']] },
 };
 // Bridge spans (rush-hour profile, no street lights at ground level).
-export const BRIDGES = [{ axis: 'h', k: 0, from: 155, to: 345 }, { axis: 'v', k: 360, from: -250, to: -85 }, { axis: 'v', k: 440, from: 80, to: 180 }];
+export const BRIDGES = [{ axis: 'v', k: -72, from: -50, to: 50 }, { axis: 'h', k: 0, from: 155, to: 345 }, { axis: 'v', k: 360, from: -250, to: -85 }, { axis: 'v', k: 440, from: 80, to: 180 }];
 export const onBridge = (axis, k, along) => BRIDGES.some(b => b.axis === axis && b.k === k && along > b.from && along < b.to);
 export const U_TURNS = [{ axis: 'h', k: -330, at: 0, name: 'Ikorodu Road U-turn' }];
 export const roadNameAt = (axis, k, along) => { const seg = (ROAD_SEGMENTS[axis]?.[k] || []).find(([a, b]) => along >= a && along < b); return seg ? seg[2] : ROAD_NAMES[axis][k] || 'the main road'; };

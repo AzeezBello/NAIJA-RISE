@@ -110,8 +110,19 @@ namespace Rise.World
 
         public Vehicle Nearest(Vector3 pos, float maxDist)
         {
-            Vehicle best = null; float bestD = maxDist * maxDist;
-            foreach (var v in vehicles) { float d = (v.t.position - pos).sqrMagnitude; if (d < bestD) { bestD = d; best = v; } }
+            Vehicle best = null; float bestD = maxDist;
+            foreach (var v in vehicles)
+            {
+                if (v.t == null) continue;
+                if (Mathf.Abs(v.t.position.y - pos.y) > 3.2f) continue;
+                Vector3 toPos = pos - v.t.position;
+                toPos.y = 0f;
+                float halfLen = v.cls != null ? Mathf.Max(0f, v.cls.len * 0.5f - 1.1f) : 0f;
+                float along = Mathf.Clamp(Vector3.Dot(toPos, v.t.forward), -halfLen, halfLen);
+                Vector3 closest = v.t.position + v.t.forward * along;
+                float d = Vector2.Distance(new Vector2(pos.x, pos.z), new Vector2(closest.x, closest.z));
+                if (d < bestD) { bestD = d; best = v; }
+            }
             return best;
         }
 
@@ -135,20 +146,37 @@ namespace Rise.World
                 if (Events != null && Events.InJam(v.road, v.along)) target = Mathf.Min(target, 1.6f);
                 if (Weather != null && Weather.Raining) target *= 0.7f;
                 float gap = float.MaxValue, aheadSpeed = 0f;
+                float laneAcross = v.road.k + LaneOffsetSign(v) * LaneOffset(v);
                 for (int j = 0; j < vehicles.Count; j++)
                 {
                     if (i == j) continue; var o = vehicles[j];
-                    if (o.road != v.road || o.dir != v.dir || o.lane != v.lane) continue;
-                    float d = (o.along - v.along) * v.dir;
-                    if (d > 0f && d < gap) { gap = d; aheadSpeed = o.speed; }
+                    if (o.road == v.road)
+                    {
+                        if (o.dir != v.dir || o.lane != v.lane) continue;
+                        float d = (o.along - v.along) * v.dir - (o.cls.len - v.cls.len) * 0.5f;
+                        if (d > 0f && d < gap) { gap = d; aheadSpeed = o.speed; }
+                    }
+                    else if (o.t != null && Mathf.Abs(o.t.position.y - v.t.position.y) < 2.5f)
+                    {
+                        float oAlong = v.road.Along(o.t.position), oAcross = v.road.Across(o.t.position);
+                        float d = (oAlong - v.along) * v.dir;
+                        float crossHalfLen = (o.cls != null ? o.cls.len * 0.5f : 2.2f) + 1.2f;
+                        if (d > 0f && d < 18f && Mathf.Abs(oAcross - laneAcross) < crossHalfLen)
+                        {
+                            if (Mathf.Abs(oAcross - laneAcross) < crossHalfLen - 0.6f || o.speed > v.speed || i > j)
+                            {
+                                gap = Mathf.Min(gap, Mathf.Max(0.5f, d - (o.cls != null ? o.cls.wid * 0.5f : 1f)));
+                                aheadSpeed = 0f;
+                            }
+                        }
+                    }
                 }
                 // The player (on foot or driving) ahead or beside our lane: stop for them.
                 if (PlayerObstacle != null)
                 {
                     float pAlong = v.road.Along(PlayerObstacle.position), pAcross = v.road.Across(PlayerObstacle.position);
-                    float d = (pAlong - v.along) * v.dir;
-                    float laneAcross = v.road.k + LaneOffsetSign(v) * LaneOffset(v);
-                    if (d > -2.5f && d < 16f && Mathf.Abs(pAcross - laneAcross) < 3.4f && Mathf.Abs(PlayerObstacle.position.y - v.t.position.y) < 3f) { gap = Mathf.Min(gap, Mathf.Max(0.5f, d)); aheadSpeed = 0f; }
+                    float d = (pAlong - v.along) * v.dir - v.cls.len * 0.5f;
+                    if (d > -3.5f && d < 16f && Mathf.Abs(pAcross - laneAcross) < 3.8f && Mathf.Abs(PlayerObstacle.position.y - v.t.position.y) < 3f) { gap = Mathf.Min(gap, Mathf.Max(0.5f, d)); aheadSpeed = 0f; }
                 }
                 // Red or amber light at the next junction ahead: stop short of it unless already inside.
                 if (Lights != null)
@@ -214,8 +242,8 @@ namespace Rise.World
             var fwd = r.Forward(v.dir);
             var right = Vector3.Cross(Vector3.up, fwd);
             var p = r.Point(v.along, r.k) + right * LaneOffset(v);
-            float y0 = data.DeckHeightAt(p);
-            float y1 = data.DeckHeightAt(p + fwd * 2f);
+            float y0 = data.RoadHeightAt(r, v.along);
+            float y1 = data.RoadHeightAt(r, v.along + v.dir * 2f);
             p.y = y0 + 0.11f;
             v.t.position = p;
             var slopeFwd = (fwd * 2f + Vector3.up * (y1 - y0)).normalized;

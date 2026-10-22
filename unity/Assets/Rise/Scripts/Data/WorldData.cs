@@ -221,12 +221,14 @@ namespace Rise.Data
         // The road whose carriageway (plus margin) contains the point; the nearest centreline wins.
         public RoadData RoadAt(Vector3 w, float margin = 8f)
         {
-            RoadData best = null; float bestD = float.MaxValue;
+            RoadData best = null; float bestScore = float.MaxValue;
             foreach (var r in roads)
             {
                 float along = r.Along(w), across = Mathf.Abs(r.Across(w) - r.k);
                 if (along < r.from || along > r.to || across > r.width * 0.5f + margin) continue;
-                if (across < bestD) { bestD = across; best = r; }
+                float hDiff = Mathf.Abs(w.y - RoadHeightAt(r, along));
+                float score = across + (hDiff > 2.2f ? hDiff * 4f : 0f);
+                if (score < bestScore) { bestScore = score; best = r; }
             }
             return best;
         }
@@ -236,6 +238,29 @@ namespace Rise.Data
             if (r != null && segmentIndex.TryGetValue(r.axis + ":" + r.k, out var list))
                 foreach (var s in list) if (along >= s.from && along < s.to) return s.name;
             return r?.name ?? "the main road";
+        }
+
+        // Deck height along a specific road (only considers bridges on that road's own axis and k).
+        public float RoadHeightAt(RoadData r, float along)
+        {
+            if (r == null || bridges == null) return 0f;
+            float best = 0f;
+            foreach (var b in bridges)
+            {
+                if (b.axis != r.axis || !Mathf.Approximately(b.k, r.k)) continue;
+                if (along < b.From || along > b.To) continue;
+                var p = b.profile;
+                for (int i = 1; i < p.Length; i++)
+                {
+                    if (along > p[i].along) continue;
+                    var a = p[i - 1]; var c = p[i];
+                    float t = Mathf.Approximately(c.along, a.along) ? 0f : (along - a.along) / (c.along - a.along);
+                    float height = Mathf.Lerp(a.height, c.height, t);
+                    if (height > best) best = height;
+                    break;
+                }
+            }
+            return best;
         }
 
         // Deck height at a position (0 at ground).

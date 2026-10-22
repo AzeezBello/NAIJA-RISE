@@ -101,6 +101,21 @@ namespace Rise.World
             return go;
         }
 
+        GameObject LocalBox(string name, Vector3 localCenter, Vector3 localSize, Material m, Transform parent, bool collider = true, Quaternion? localRotation = null)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localCenter;
+            go.transform.localScale = localSize;
+            if (localRotation.HasValue) go.transform.localRotation = localRotation.Value;
+            go.GetComponent<MeshRenderer>().sharedMaterial = m;
+            if (!collider) Remove(go.GetComponent<Collider>());
+            go.isStatic = true;
+            ObjectCount++;
+            return go;
+        }
+
         static void Remove(Object o) { if (Application.isPlaying) Destroy(o); else DestroyImmediate(o); }
 
         GameObject Cylinder(string name, Vector3 baseCenter, float radius, float height, Material m, Transform parent = null, bool collider = true)
@@ -160,6 +175,7 @@ namespace Rise.World
                 if (o.axis == r.axis) continue;
                 if (r.k < o.from - 0.01f || r.k > o.to + 0.01f) continue;       // the crossing road must reach us
                 if (o.k < r.from - 0.01f || o.k > r.to + 0.01f) continue;       // and we must reach it
+                if (Data.OnBridge(r.axis, r.k, o.k) || Data.OnBridge(o.axis, o.k, r.k)) continue; // grade-separated overpass
                 gaps.Add(new Vector2(o.k - o.width * 0.5f - margin, o.k + o.width * 0.5f + margin));
             }
             return gaps;
@@ -279,6 +295,14 @@ namespace Rise.World
                 {
                     float height = h ? Data.DeckHeightAtData(along, b.k) : Data.DeckHeightAtData(b.k, along);
                     if (height < 2f) continue;
+                    bool hitsCrossRoad = false;
+                    foreach (var cr in Data.roads)
+                    {
+                        if (cr.axis == b.axis) continue;
+                        if (b.k < cr.from - 2f || b.k > cr.to + 2f) continue;
+                        if (Mathf.Abs(along - cr.k) < cr.width * 0.5f + 2.5f) { hitsCrossRoad = true; break; }
+                    }
+                    if (hitsCrossRoad) continue;
                     for (int s = -1; s <= 1; s += 2)
                     {
                         float across = b.k + s * deckW * 0.28f;
@@ -600,19 +624,19 @@ namespace Rise.World
             plane.localScale = Vector3.one * scale;
 
             // Cylindrical fuselage + nose cone + cockpit glass + windows + swept wings + twin under-wing turbofans + vertical tail fin + horizontal tailplane
-            Box("Fuselage", Vector3.zero, new Vector3(22f, 2.5f, 2.6f), whiteMat, plane);
-            Box("Livery stripe", new Vector3(0f, 0.25f, 0f), new Vector3(22.1f, 0.42f, 2.68f), accentMat, plane, false);
-            Box("Nose", new Vector3(11.8f, -0.15f, 0f), new Vector3(2.4f, 1.8f, 1.9f), whiteMat, plane, false);
-            Box("Cockpit glass", new Vector3(10.6f, 0.65f, 0f), new Vector3(1.8f, 0.75f, 2.1f), glassMat, plane, false);
-            Box("Wings", new Vector3(1.2f, -0.35f, 0f), new Vector3(3.8f, 0.24f, 21.5f), whiteMat, plane, false);
-            Box("Winglet L", new Vector3(0.4f, 0.45f, -10.7f), new Vector3(1.2f, 1.5f, 0.18f), accentMat, plane, false);
-            Box("Winglet R", new Vector3(0.4f, 0.45f, 10.7f), new Vector3(1.2f, 1.5f, 0.18f), accentMat, plane, false);
-            Box("Engine L", new Vector3(2.4f, -0.95f, -4.6f), new Vector3(2.8f, 1.15f, 1.15f), accentMat, plane, false);
-            Box("Engine R", new Vector3(2.4f, -0.95f, 4.6f), new Vector3(2.8f, 1.15f, 1.15f), accentMat, plane, false);
-            Box("Tail fin", new Vector3(-9.6f, 2.5f, 0f), new Vector3(3.2f, 3.8f, 0.28f), accentMat, plane, false);
-            Box("Tailplane", new Vector3(-9.8f, 0.6f, 0f), new Vector3(2.2f, 0.18f, 7.6f), whiteMat, plane, false);
-            Box("Landing gear N", new Vector3(9.2f, -1.6f, 0f), new Vector3(0.5f, 0.9f, 0.6f), darkMat, plane, false);
-            Box("Landing gear M", new Vector3(0.4f, -1.6f, 0f), new Vector3(0.7f, 0.9f, 3.6f), darkMat, plane, false);
+            LocalBox("Fuselage", Vector3.zero, new Vector3(22f, 2.5f, 2.6f), whiteMat, plane);
+            LocalBox("Livery stripe", new Vector3(0f, 0.25f, 0f), new Vector3(22.1f, 0.42f, 2.68f), accentMat, plane, false);
+            LocalBox("Nose", new Vector3(11.8f, -0.15f, 0f), new Vector3(2.4f, 1.8f, 1.9f), whiteMat, plane, false);
+            LocalBox("Cockpit glass", new Vector3(10.6f, 0.65f, 0f), new Vector3(1.8f, 0.75f, 2.1f), glassMat, plane, false);
+            LocalBox("Wings", new Vector3(1.2f, -0.35f, 0f), new Vector3(3.8f, 0.24f, 21.5f), whiteMat, plane, false);
+            LocalBox("Winglet L", new Vector3(0.4f, 0.45f, -10.7f), new Vector3(1.2f, 1.5f, 0.18f), accentMat, plane, false);
+            LocalBox("Winglet R", new Vector3(0.4f, 0.45f, 10.7f), new Vector3(1.2f, 1.5f, 0.18f), accentMat, plane, false);
+            LocalBox("Engine L", new Vector3(2.4f, -0.95f, -4.6f), new Vector3(2.8f, 1.15f, 1.15f), accentMat, plane, false);
+            LocalBox("Engine R", new Vector3(2.4f, -0.95f, 4.6f), new Vector3(2.8f, 1.15f, 1.15f), accentMat, plane, false);
+            LocalBox("Tail fin", new Vector3(-9.6f, 2.5f, 0f), new Vector3(3.2f, 3.8f, 0.28f), accentMat, plane, false);
+            LocalBox("Tailplane", new Vector3(-9.8f, 0.6f, 0f), new Vector3(2.2f, 0.18f, 7.6f), whiteMat, plane, false);
+            LocalBox("Landing gear N", new Vector3(9.2f, -1.6f, 0f), new Vector3(0.5f, 0.9f, 0.6f), darkMat, plane, false);
+            LocalBox("Landing gear M", new Vector3(0.4f, -1.6f, 0f), new Vector3(0.7f, 0.9f, 3.6f), darkMat, plane, false);
         }
 
         void BuildYacht(Vector3 pos, Material hullMat, Material glassMat, Material deckMat, Transform group)
@@ -789,11 +813,11 @@ namespace Rise.World
             boat.SetParent(group, false);
             boat.position = pos;
             boat.rotation = Quaternion.Euler(0f, yaw, 0f);
-            Box("Boat hull", Vector3.zero, new Vector3(1.55f, 0.48f, 6.2f), woodMat, boat, false);
-            Box("Boat gunwale", new Vector3(0f, 0.26f, 0f), new Vector3(1.68f, 0.14f, 6.4f), trimMat, boat, false);
-            Box("Boat thwarts", new Vector3(0f, 0.22f, 0.4f), new Vector3(1.45f, 0.08f, 2.6f), woodMat, boat, false);
-            Box("Fish basket", new Vector3(0f, 0.38f, 0.9f), new Vector3(0.85f, 0.35f, 1.1f), trimMat, boat, false);
-            Box("Outboard motor", new Vector3(0f, 0.36f, -3.25f), new Vector3(0.36f, 0.65f, 0.45f), Mat("outboard", "#1e293b", 0.6f), boat, false);
+            LocalBox("Boat hull", Vector3.zero, new Vector3(1.55f, 0.48f, 6.2f), woodMat, boat, false);
+            LocalBox("Boat gunwale", new Vector3(0f, 0.26f, 0f), new Vector3(1.68f, 0.14f, 6.4f), trimMat, boat, false);
+            LocalBox("Boat thwarts", new Vector3(0f, 0.22f, 0.4f), new Vector3(1.45f, 0.08f, 2.6f), woodMat, boat, false);
+            LocalBox("Fish basket", new Vector3(0f, 0.38f, 0.9f), new Vector3(0.85f, 0.35f, 1.1f), trimMat, boat, false);
+            LocalBox("Outboard motor", new Vector3(0f, 0.36f, -3.25f), new Vector3(0.36f, 0.65f, 0.45f), Mat("outboard", "#1e293b", 0.6f), boat, false);
         }
 
         // Lagos Rail Mass Transit (LRMT):

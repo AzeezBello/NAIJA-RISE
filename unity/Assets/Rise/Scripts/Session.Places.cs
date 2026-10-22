@@ -25,7 +25,8 @@ namespace Rise
             Data.NearestLandmark("hospital", pos, 16f) ?? Data.NearestLandmark("airport", pos, 22f) ??
             Data.NearestLandmark("museum", pos, 15f) ?? Data.NearestLandmark("market", pos, 16f) ??
             Data.NearestLandmark("warehouse", pos, 16f) ?? Data.NearestLandmark("garage", pos, 16f) ??
-            Data.NearestLandmark("rail", pos, 16f) ?? Data.NearestLandmark("checkpoint", pos, 16f);
+            Data.NearestLandmark("rail", pos, 16f) ?? Data.NearestLandmark("checkpoint", pos, 16f) ??
+            Data.NearestLandmark("service", pos, 14f);
 
         bool NearVendor(Vector3 pos, out Vector3 vendor)
         {
@@ -62,6 +63,7 @@ namespace Rise
             "garage" => $"ENTER {p.shortName} · TRANSPORT HUB",
             "rail" => $"BOARD TRAIN · {p.shortName} (METRO & NRC)",
             "checkpoint" => $"INSPECT AT {p.shortName} · FRSC & CUSTOMS",
+            "service" => $"ENTER {p.shortName} · CIVIC & EMERGENCY OPS",
             _ => $"ENTER {p.shortName}"
         };
 
@@ -94,6 +96,7 @@ namespace Rise
                 case "garage": OpenInterchangeMenu(p); break;
                 case "rail": OpenRailMenu(p); break;
                 case "checkpoint": OpenCheckpointMenu(p); break;
+                case "service": OpenDepotMenu(p); break;
             }
         }
 
@@ -207,15 +210,30 @@ namespace Rise
             }
 
             bool home = kind == "home";
-            RoomBox("Floor", new Vector3(0f, -0.1f, 0f), new Vector3(home ? 14f : 18f, 0.2f, home ? 12f : 16f), home ? new Color(0.42f, 0.31f, 0.22f) : new Color(0.55f, 0.53f, 0.49f));
-            RoomBox("Ceiling", new Vector3(0f, 4.2f, 0f), new Vector3(home ? 14f : 18f, 0.2f, home ? 12f : 16f), new Color(0.88f, 0.86f, 0.82f));
+            bool club = kind == "venue" || kind == "owambe";
+            Color floorCol = home ? new Color(0.42f, 0.31f, 0.22f) : club ? new Color(0.16f, 0.11f, 0.22f) : new Color(0.48f, 0.45f, 0.40f);
+            Color wallCol = club ? new Color(0.24f, 0.15f, 0.32f) : new Color(0.82f, 0.78f, 0.70f);
+            Color trimCol = club ? new Color(0.78f, 0.22f, 0.85f) : new Color(0.38f, 0.28f, 0.20f);
+            RoomBox("Floor", new Vector3(0f, -0.1f, 0f), new Vector3(home ? 14f : 18f, 0.2f, home ? 12f : 16f), floorCol);
+            RoomBox("Ceiling", new Vector3(0f, 4.2f, 0f), new Vector3(home ? 14f : 18f, 0.2f, home ? 12f : 16f), club ? new Color(0.14f, 0.10f, 0.20f) : new Color(0.88f, 0.86f, 0.82f));
             float hw = home ? 7f : 9f, hd = home ? 6f : 8f;
-            RoomBox("NorthWall", new Vector3(0f, 2f, -hd), new Vector3(hw * 2f, 4.2f, 0.3f), new Color(0.82f, 0.78f, 0.70f));
-            RoomBox("SouthWall", new Vector3(0f, 2f, hd), new Vector3(hw * 2f, 4.2f, 0.3f), new Color(0.82f, 0.78f, 0.70f));
-            RoomBox("WestWall", new Vector3(-hw, 2f, 0f), new Vector3(0.3f, 4.2f, hd * 2f), new Color(0.82f, 0.78f, 0.70f));
-            RoomBox("EastWall", new Vector3(hw, 2f, 0f), new Vector3(0.3f, 4.2f, hd * 2f), new Color(0.82f, 0.78f, 0.70f));
+            RoomBox("NorthWall", new Vector3(0f, 2f, -hd), new Vector3(hw * 2f, 4.2f, 0.3f), wallCol);
+            RoomBox("SouthWall", new Vector3(0f, 2f, hd), new Vector3(hw * 2f, 4.2f, 0.3f), wallCol);
+            RoomBox("WestWall", new Vector3(-hw, 2f, 0f), new Vector3(0.3f, 4.2f, hd * 2f), wallCol);
+            RoomBox("EastWall", new Vector3(hw, 2f, 0f), new Vector3(0.3f, 4.2f, hd * 2f), wallCol);
+            // Wall wainscoting / neon club cornice strips & central carpet runner
+            RoomBox("NorthTrim", new Vector3(0f, 3.1f, -hd + 0.18f), new Vector3(hw * 1.9f, 0.14f, 0.08f), trimCol, false);
+            RoomBox("WestTrim", new Vector3(-hw + 0.18f, 3.1f, 0f), new Vector3(0.08f, 0.14f, hd * 1.9f), trimCol, false);
+            RoomBox("EastTrim", new Vector3(hw - 0.18f, 3.1f, 0f), new Vector3(0.08f, 0.14f, hd * 1.9f), trimCol, false);
+            RoomBox("CenterRug", new Vector3(0f, 0.02f, 1.2f), new Vector3(3.4f, 0.03f, 5.2f), club ? new Color(0.48f, 0.12f, 0.38f) : new Color(0.62f, 0.22f, 0.18f), false);
             RoomBox("Door", new Vector3(0f, 1.1f, hd - 0.2f), new Vector3(1.4f, 2.2f, 0.18f), new Color(0.29f, 0.19f, 0.12f), false);
-            RoomBox(home ? "Bed" : "Counter", new Vector3(0f, 0.55f, -2.4f), home ? new Vector3(3.2f, 0.8f, 2.2f) : new Vector3(5.6f, 1.1f, 1.4f), home ? new Color(0.75f, 0.28f, 0.24f) : new Color(0.46f, 0.33f, 0.24f));
+            RoomLabel("EXIT TO STREET", new Vector3(0f, 2.5f, hd - 0.35f), new Color(0.55f, 0.95f, 0.65f));
+            RoomBox(home ? "Bed" : "Counter", new Vector3(0f, 0.55f, -2.4f), home ? new Vector3(3.2f, 0.8f, 2.2f) : new Vector3(5.6f, 1.1f, 1.4f), home ? new Color(0.75f, 0.28f, 0.24f) : club ? new Color(0.32f, 0.16f, 0.38f) : new Color(0.46f, 0.33f, 0.24f));
+            if (!home)
+            {
+                RoomBox("BackBarShelf", new Vector3(0f, 1.8f, -hd + 0.45f), new Vector3(5.4f, 2.0f, 0.45f), club ? new Color(0.22f, 0.10f, 0.28f) : new Color(0.35f, 0.25f, 0.18f), false);
+                RoomBox("BackBarGlow", new Vector3(0f, 2.2f, -hd + 0.70f), new Vector3(4.8f, 0.18f, 0.08f), trimCol, false);
+            }
             RoomLabel(home ? "BED · SLEEP" : name.ToUpperInvariant(), new Vector3(0f, 1.65f, -2.4f), new Color(1f, 0.86f, 0.35f));
 
             // Left Wing: Context-Sensitive Indoor Activity Station
@@ -508,16 +526,21 @@ namespace Rise
                 Prompt = nearestSt.Prompt;
                 if (Interact()) nearestSt.OnInteract?.Invoke();
             }
-            else if (dDesk < 3.2f)
+            else if (ActiveIndoorMission != null)
+            {
+                Prompt = $"{ActiveIndoorMission.Title.ToUpperInvariant()} ({ActiveIndoorMission.Step}/{ActiveIndoorMission.TotalSteps})";
+                if (Interact()) CompleteIndoorStep();
+            }
+            else
             {
                 Prompt = interiorKind == "home" ? "SLEEP TILL MORNING" : $"USE {interiorName.ToUpper()}";
                 if (Interact())
                 {
                     if (interiorKind == "home") Sleep();
-                    else interiorService?.Invoke();
+                    else if (interiorService != null) interiorService.Invoke();
+                    else OpenIndoorMenu();
                 }
             }
-            else Prompt = ActiveIndoorMission != null ? $"{ActiveIndoorMission.Title.ToUpperInvariant()} ({ActiveIndoorMission.Step}/{ActiveIndoorMission.TotalSteps})" : interiorName.ToUpper();
             return true;
         }
 
