@@ -1,6 +1,8 @@
-# Web checks on every push and pull request: src/data syntax + reference checks, the Unity data export staying in sync
-# with the committed JSON, and the Next.js production build. Unity tests need an editor licence and run locally
-# (see unity/README.md "Headless"); a self-hosted runner with a Unity licence is the route to CI for those.
+# Web, data & Supabase checks on every push and pull request:
+# 1. src/data syntax + reference integrity check (npm run check)
+# 2. Unity world export & multi-state manifest sync check (lagos.json + manifest.json)
+# 3. Next.js 16 production build (web/)
+# 4. Live Supabase verification (when NEXT_PUBLIC_SUPABASE_URL & NEXT_PUBLIC_SUPABASE_ANON_KEY secrets are configured)
 name: web
 on:
   push:
@@ -8,18 +10,30 @@ on:
   pull_request:
     branches: ['**']
   workflow_dispatch:
+
 jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - run: npm ci || npm install
-      - run: npm run check
-      - name: Unity export is up to date
-        run: |
-          node scripts/export-world.mjs
-          git diff --exit-code unity/Assets/Rise/Resources/world/lagos.json
-      - run: npm --prefix web ci || npm --prefix web install
-      - run: npm run web:build
+      - name: Validate shared data & state modules
+        run: npm run check
+      - name: Verify Unity world export & manifest are up to date
+        run: npm run export:check
+      - name: Install Next.js companion dependencies
+        run: npm --prefix web ci || npm --prefix web install
+      - name: Build Next.js companion & admin site
+        run: npm run web:build
+      - name: Verify live Supabase schema & economy config (if secrets present)
+        if: ${{ env.NEXT_PUBLIC_SUPABASE_URL != '' && env.NEXT_PUBLIC_SUPABASE_ANON_KEY != '' }}
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run verify:supabase

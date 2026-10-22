@@ -63,7 +63,25 @@ Unity 6000.6.5f1 · Universal Render Pipeline 17.6 · Input System 1.19 · glTFa
 
 Open `unity/` in Unity Hub (editor 6000.6.5f1), open `Assets/Rise/Scenes/Lagos.unity` and press Play.
 
-### Headless CLI
+### Headless CLI & Build Automations
+
+From the repo root (`..`), use the automated build runner (`scripts/build-unity.mjs`):
+
+```bash
+npm run export:unity          # export src/data → Assets/Rise/Resources/world/{lagos,manifest}.json
+npm run unity:compile         # fast (~3s) headless Roslyn C# compile check (Assembly-CSharp + Editor)
+npm run unity:validate        # inspect all 10 platform targets, playback modules & C# compilation
+npm run unity:smoke           # headless Edit-Mode SmokeTest (SceneSetup.SmokeTest)
+npm run unity:test            # headless Play-Mode benchmark suite (PlayTest.Run — 194 checks)
+npm run build:webgl           # build WebGL player (Builds/WebGL) + package WebGL.zip
+npm run build:mac             # build macOS Universal player (Builds/Rise-Lagos.app + Rise-Lagos-macOS.zip)
+npm run build:windows         # build Windows 64-bit player (Builds/Windows/Rise-Lagos.exe)
+npm run build:ios             # build iOS Xcode project (Builds/iOS)
+npm run build:android         # build Android APK (Builds/Android/Rise-Lagos.apk)
+npm run build:all             # run full pipeline across all targets
+```
+
+Or invoke Unity directly:
 
 ```bash
 UNITY="/Applications/Unity/Hub/Editor/6000.6.5f1/Unity.app/Contents/MacOS/Unity"

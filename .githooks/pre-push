@@ -1,0 +1,17 @@
+#!/bin/sh
+# Pre-push hook:
+# Ensures all shared data checks pass, Unity world JSON exports have zero drift, and C# scripts compile cleanly.
+
+set -e
+
+echo "[pre-push] Validating shared data modules..."
+npm run check
+
+echo "[pre-push] Verifying Unity world export sync (lagos.json & manifest.json)..."
+node scripts/export-world.mjs
+git diff --exit-code unity/Assets/Rise/Resources/world/lagos.json unity/Assets/Rise/Resources/world/manifest.json
+
+if [ -d "unity/Library/ScriptAssemblies" ]; then
+  echo "[pre-push] Verifying Unity C# script compilation..."
+  node scripts/build-unity.mjs compile
+fi

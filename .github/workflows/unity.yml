@@ -1,0 +1,133 @@
+# Unity verification and multi-platform build pipeline:
+# - unity-preflight: Always runs on ubuntu-latest (no Unity license secret required) to verify exported world JSON,
+#   multi-state manifest, Input System actions, URP shader templates, and C# script integrity.
+# - unity-build: Runs multi-target player builds (WebGL, macOS, Windows, Android, iOS) via GameCI when
+#   UNITY_LICENSE (or UNITY_EMAIL + UNITY_PASSWORD) secrets are configured in GitHub repository settings.
+name: unity
+on:
+  push:
+    branches: ['main', 'master', 'feat/**']
+    paths:
+      - 'unity/**'
+      - 'src/data/**'
+      - 'scripts/**'
+      - '.github/workflows/unity.yml'
+  pull_request:
+    paths:
+      - 'unity/**'
+      - 'src/data/**'
+      - 'scripts/**'
+      - '.github/workflows/unity.yml'
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: 'Comma-separated targets to build (WebGL,StandaloneOSX,StandaloneWindows64,Android,iOS)'
+        required: false
+        default: 'WebGL,StandaloneOSX,StandaloneWindows64'
+
+jobs:
+  unity-preflight:
+    name: Unity Preflight & World Sync
+    runs-on: ubuntu-latest
+    outputs:
+      has_unity_license: ${{ steps.check_secrets.outputs.has_license }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate data modules & Unity export sync
+        run: |
+          npm run check
+          npm run export:check
+      - name: Verify Unity project assets, scenes & C# scripts
+        run: |
+          test -f unity/ProjectSettings/ProjectVersion.txt
+          test -f unity/Assets/Rise/Scenes/Lagos.unity
+          test -f unity/Assets/Rise/Resources/world/lagos.json
+          test -f unity/Assets/Rise/Resources/world/manifest.json
+          test -f unity/Assets/Rise/Resources/Input/Rise.inputactions
+          CS_COUNT=$(find unity/Assets/Rise -name '*.cs' | wc -l | tr -d ' ')
+          echo "Verified $CS_COUNT C# scripts and required Unity resources."
+          test "$CS_COUNT" -ge 50
+      - name: Check Unity license secrets
+        id: check_secrets
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ] || [ -n "$UNITY_EMAIL" ]; then
+            echo "has_license=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_license=false" >> "$GITHUB_OUTPUT"
+            echo "Notice: UNITY_LICENSE secret not configured; skipping cloud GameCI player compilation (run 'npm run build:all' locally)."
+          fi
+
+  unity-build:
+    name: Build Unity (${{ matrix.targetPlatform }})
+    needs: unity-preflight
+    if: ${{ needs.unity-preflight.outputs.has_unity_license == 'true' }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - targetPlatform: WebGL
+            os: ubuntu-latest
+            buildMethod: Rise.EditorTools.SceneSetup.BuildWebGL
+          - targetPlatform: StandaloneOSX
+            os: macos-latest
+            buildMethod: Rise.EditorTools.SceneSetup.BuildMac
+          - targetPlatform: StandaloneWindows64
+            os: ubuntu-latest
+            buildMethod: Rise.EditorTools.SceneSetup.BuildWindows
+          - targetPlatform: Android
+            os: ubuntu-latest
+            buildMethod: Rise.EditorTools.SceneSetup.BuildAndroid
+          - targetPlatform: iOS
+            os: macos-latest
+            buildMethod: Rise.EditorTools.SceneSetup.BuildiOS
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Export shared world data
+        run: npm run export:unity
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: unity/Library
+          key: Library-unity-${{ matrix.targetPlatform }}-${{ hashFiles('unity/Assets/**', 'unity/Packages/**', 'unity/ProjectSettings/**') }}
+          restore-keys: |
+            Library-unity-${{ matrix.targetPlatform }}-
+      - name: Build Unity Player (${{ matrix.targetPlatform }})
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          projectPath: unity
+          targetPlatform: ${{ matrix.targetPlatform }}
+          buildMethod: ${{ matrix.buildMethod }}
+          buildsPath: unity/Builds
+      - name: Package WebGL.zip
+        if: matrix.targetPlatform == 'WebGL'
+        run: npm run package:webgl
+      - name: Upload Build Artifact (${{ matrix.targetPlatform }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rise-Lagos-${{ matrix.targetPlatform }}
+          path: |
+            WebGL.zip
+            unity/Builds/${{ matrix.targetPlatform }}
+            unity/Builds/Rise-Lagos.app
+            unity/Builds/Windows
+            unity/Builds/Android
+            unity/Builds/iOS
+          if-no-files-found: ignore
+          retention-days: 14
