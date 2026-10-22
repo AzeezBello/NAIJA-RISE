@@ -31,6 +31,7 @@ node_modules/
 
 # Unity edition (unity/): generated folders, IDE solution files and local builds
 unity/Library/
+unity/.local/
 unity/Stevedore.conf
 unity/Temp/
 unity/Obj/

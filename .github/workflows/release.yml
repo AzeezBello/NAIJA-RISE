@@ -1,0 +1,77 @@
+# Automated Release & Deployment workflow:
+# Triggered when a version tag (v*.*.*) is pushed or manually via workflow_dispatch.
+# Validates data & web build, generates build-manifest.json, publishes a GitHub Release,
+# and triggers optional deployments to Supabase, itch.io (butler), and Render.
+name: release
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v1.2.0)'
+        required: false
+        default: 'v1.2.0'
+      deploy_supabase:
+        description: 'Sync live Supabase economy config'
+        type: boolean
+        default: true
+      deploy_itch:
+        description: 'Deploy builds to itch.io via butler'
+        type: boolean
+        default: true
+      deploy_render:
+        description: 'Trigger Render production deploy hook'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, Manifest & Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
+          npm --prefix web ci || npm --prefix web install
+      - name: Validate data & export world JSON + manifest
+        run: |
+          npm run check
+          npm run export:check
+      - name: Build Next.js companion & admin site
+        run: npm run web:build
+      - name: Generate build manifest
+        env:
+          RELEASE_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version || 'v1.2.0' }}
+        run: npm run build:manifest
+      - name: Sync Supabase live economy config
+        if: ${{ (github.event_name == 'push' || inputs.deploy_supabase) && env.NEXT_PUBLIC_SUPABASE_URL != '' }}
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run deploy:supabase
+      - name: Trigger Render production deploy
+        if: ${{ (github.event_name == 'push' || inputs.deploy_render) && env.RENDER_DEPLOY_HOOK_URL != '' }}
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: npm run deploy:render
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            unity/Builds/build-manifest.json
+            unity/Assets/Rise/Resources/world/lagos.json
+            unity/Assets/Rise/Resources/world/manifest.json
