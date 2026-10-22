@@ -252,3 +252,16 @@ Scaling across all 20 Lagos LGAs and Nigeria's 6 Geopolitical Zones is powered b
 - **State-Level Commodity Arbitrage (`CloudEconomy.GetStateCommodityMultiplier` & `Session.Places.cs`)**:
   - `CloudEconomy.GetStateCommodityMultiplier(stateId, commodity)` provides regional price indices for `produce` (cheapest in Kano `0.72×` and Oyo `0.82×`), `electronics` (cheapest in Anambra `0.78×` and Lagos `0.92×`), `fuel` (cheapest in Rivers `0.75×` and Lagos `0.95×`), and `propertyYield` (highest in FCT Abuja `1.45×` and Lagos `1.25×`).
   - `OpenMarketMenu` and `OpenDepotMenu` (`Session.Places.cs`) dynamically price wholesale trade lots, arbitrage flip margins, and bulk depot refuelling using the active state's commodity multiplier.
+
+
+
+
+## 6. Platform & Deployment Status Assessment
+
+| Platform / Area | Current Verified State | Remaining Hardware / Live Verification |
+|---|---|---|
+| **Unity Core (macOS)** | Compiles cleanly; Edit-mode SmokeTest and Play-mode PlayTest pass; universal binary (`Builds/Rise-Lagos.app`) builds | Profile 60 fps frame-time percentiles on Apple Silicon & Intel GPU across rainy night traffic |
+| **WebGL (`/play`)** | `Builds/WebGL` + `WebGL.zip` packaged with Gzip + decompression fallback; `EnsureBootstrapped()` prevents blank scenes | Verify cold-cache load time and IndexedDB save persistence on hosted `NEXT_PUBLIC_WEBGL_URL` in Chrome, Safari, and Firefox |
+| **iPhone / Android** | `TouchControls` virtual joystick/buttons, `GameBootstrap.Mobile` crowd/house budgets (`TrafficCount=54, PedestrianCount=32, MaxHouses=2200, 30 fps`), and `BuildiOS` / `BuildAndroid` configured | Deploy Xcode archive to a physical iPhone to measure thermal throttling, memory footprint, and touch ergonomics |
+| **PlayStation, Xbox & Switch** | `Rise.inputactions` (6 control schemes) and `SceneSetup.PlatformTargets` configured | Requires licensed console SDK modules and physical devkits |
+| **Supabase Online Services** | `supabase/schema.sql` defines RLS on `players`, `saves`, `crews`, `crew_members`, `economy_config`, `validate_save_state` trigger, and `claim_verified_reward` RPC | Run `supabase/schema.sql` in the live Supabase SQL Editor and set `ADMIN_ACCESS_TOKEN` + `SUPABASE_SERVICE_ROLE_KEY` in Render |
