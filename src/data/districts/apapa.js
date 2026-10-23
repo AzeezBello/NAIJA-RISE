@@ -12,15 +12,15 @@ export const DISTRICT = createArea({
   ],
   roads: {
     h: [
-      { k: 70, from: -500, to: -150, name: 'Creek Road', width: 18, class: 'commercial' },
-      { k: 110, from: -500, to: -150, name: 'Apapa Wharf Link', width: 12, class: 'residential' },
-      { k: 142, from: -520, to: 150, name: 'Apapa–Oworonshoki Expressway', width: 24, class: 'expressway' },
-      { k: 220, from: -500, to: -150, name: 'Warehouse Road', width: 18, class: 'highway' },
+      { k: 70, from: -450, to: -72, name: 'Creek Road', width: 16, class: 'commercial' },
+      { k: 110, from: -450, to: -72, name: 'Apapa Wharf Link', width: 14, class: 'residential' },
+      { k: 142, from: -450, to: 105, name: 'Apapa–Oworonshoki Expressway', width: 28, class: 'expressway' },
+      { k: 220, from: -450, to: -250, name: 'Warehouse Road', width: 18, class: 'highway' },
     ],
     v: [
-      { k: -450, from: 50, to: 230, name: 'Wharf Road', width: 18, class: 'commercial' },
-      { k: -350, from: 50, to: 230, name: 'Liverpool Road', width: 20, class: 'highway' },
-      { k: -250, from: 50, to: 230, name: 'Marine Road', width: 18, class: 'commercial' },
+      { k: -450, from: 70, to: 220, name: 'Wharf Road', width: 18, class: 'commercial' },
+      { k: -350, from: -420, to: 220, name: 'Liverpool Road', width: 18, class: 'highway' },
+      { k: -250, from: 70, to: 220, name: 'Marine Road', width: 18, class: 'commercial' },
     ],
   },
   landmarks: [

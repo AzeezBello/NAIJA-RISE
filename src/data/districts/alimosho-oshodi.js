@@ -13,14 +13,14 @@ export const DISTRICT = createArea({
   ],
   roads: {
     h: [
-      { k: -820, from: -780, to: -260, name: 'Ogba–Fagba–Iju-Ishaga Road', width: 20, class: 'commercial' },
-      { k: -520, from: -920, to: -160, name: 'Egbeda–Idimu–Ikotun–Igando Road', width: 20, class: 'commercial' },
-      { k: -420, from: -920, to: -160, name: 'Apapa–Oshodi Expressway · Isolo & Ago Palace Link', width: 28, class: 'expressway' },
-      { k: -280, from: -520, to: -160, name: 'Ladipo–Palm Avenue–Daleko–Mushin Road', width: 18, class: 'market' },
+      { k: -820, from: -740, to: -120, name: 'Ogba–Fagba–Iju-Ishaga Road', width: 20, class: 'commercial' },
+      { k: -520, from: -740, to: -120, name: 'Egbeda–Idimu–Ikotun–Igando Road', width: 20, class: 'commercial' },
+      { k: -420, from: -740, to: 0, name: 'Apapa–Oshodi Expressway · Isolo & Ago Palace Link', width: 24, class: 'expressway' },
+      { k: -280, from: -740, to: 360, name: 'Ladipo–Palm Avenue–Daleko–Mushin Road', width: 18, class: 'market' },
     ],
     v: [
-      { k: -740, from: -920, to: -280, name: 'LASU–Isheri–Ipaja–Alagbado Expressway', width: 24, class: 'highway' },
-      { k: -420, from: -920, to: -180, name: 'Oshodi–Mafoluku–Ogba–Fagba Link', width: 22, class: 'main' },
+      { k: -740, from: -820, to: 280, name: 'LASU–Isheri–Ipaja–Alagbado Expressway', width: 22, class: 'highway' },
+      { k: -420, from: -820, to: -280, name: 'Oshodi–Mafoluku–Ogba–Fagba Link', width: 20, class: 'main' },
     ],
   },
   landmarks: [

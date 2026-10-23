@@ -202,10 +202,22 @@ namespace Rise.World
             foreach (var o in Data.roads)
             {
                 if (o.axis == r.axis) continue;
-                if (r.k < o.from - 0.01f || r.k > o.to + 0.01f) continue;       // the crossing road must reach us
-                if (o.k < r.from - 0.01f || o.k > r.to + 0.01f) continue;       // and we must reach it
+                if (r.k < o.from - r.width * 0.5f - 2f || r.k > o.to + r.width * 0.5f + 2f) continue; // the crossing road must reach us
+                if (o.k < r.from - o.width * 0.5f - 2f || o.k > r.to + o.width * 0.5f + 2f) continue; // and we must reach it
                 if (Data.OnBridge(r.axis, r.k, o.k) || Data.OnBridge(o.axis, o.k, r.k)) continue; // grade-separated overpass
                 gaps.Add(new Vector2(o.k - o.width * 0.5f - margin, o.k + o.width * 0.5f + margin));
+            }
+            return gaps;
+        }
+
+        List<Vector2> ParallelCarriagewayGaps(RoadData r, float across)
+        {
+            var gaps = new List<Vector2>();
+            foreach (var o in Data.roads)
+            {
+                if (o.axis != r.axis || Mathf.Approximately(o.k, r.k)) continue;
+                if (Mathf.Abs(across - o.k) < o.width * 0.5f + 2.2f)
+                    gaps.Add(new Vector2(o.from - 2f, o.to + 2f));
             }
             return gaps;
         }
@@ -244,21 +256,40 @@ namespace Rise.World
                 float y = h ? 0.05f : 0.055f;   // tiny offset so crossing carriageways do not z-fight
                 var group = new GameObject(r.name).transform; group.SetParent(roadsRoot, false);
 
-                foreach (var span in Split(r.from, r.to, bridgeCuts))
+                // Extend carriageway flush to the outer edge of any perpendicular road at r.from / r.to so L-corners & T-junctions have zero missing notches.
+                float cFrom = r.from, cTo = r.to;
+                foreach (var o in Data.roads)
+                {
+                    if (o.axis == r.axis) continue;
+                    if (r.k < o.from - r.width * 0.5f - 2f || r.k > o.to + r.width * 0.5f + 2f) continue;
+                    if (Data.OnBridge(r.axis, r.k, o.k) || Data.OnBridge(o.axis, o.k, r.k)) continue;
+                    if (Mathf.Abs(r.from - o.k) <= o.width * 0.5f + 2f && !Data.OnBridge(r.axis, r.k, r.from))
+                        cFrom = Mathf.Min(cFrom, o.k - o.width * 0.5f);
+                    if (Mathf.Abs(r.to - o.k) <= o.width * 0.5f + 2f && !Data.OnBridge(r.axis, r.k, r.to))
+                        cTo = Mathf.Max(cTo, o.k + o.width * 0.5f);
+                }
+
+                foreach (var span in Split(cFrom, cTo, bridgeCuts))
                 {
                     float len = span.y - span.x, mid = (span.x + span.y) * 0.5f;
                     Box("Carriageway", r.Point(mid, r.k, y), h ? new Vector3(len, 0.1f, r.width) : new Vector3(r.width, 0.1f, len), asphalt, group);
                 }
 
-                var gaps = CrossingGaps(r, 3f);
-                foreach (var span in Split(r.from, r.to, Merge(gaps, bridgeCuts)))
+                var gaps = CrossingGaps(r, 3.1f);
+                var baseCuts = Merge(gaps, bridgeCuts);
+                for (int s = -1; s <= 1; s += 2)
                 {
-                    float len = span.y - span.x, mid = (span.x + span.y) * 0.5f;
-                    for (int s = -1; s <= 1; s += 2)
+                    float across = r.k + s * (r.width * 0.5f + 1.6f);
+                    var paveCuts = Merge(baseCuts, ParallelCarriagewayGaps(r, across));
+                    foreach (var span in Split(r.from, r.to, paveCuts))
                     {
-                        float across = r.k + s * (r.width * 0.5f + 1.6f);
+                        float len = span.y - span.x, mid = (span.x + span.y) * 0.5f;
                         Box("Pavement", r.Point(mid, across, 0.15f), h ? new Vector3(len, 0.3f, 3.2f) : new Vector3(3.2f, 0.3f, len), pavement, group);
                     }
+                }
+                foreach (var span in Split(r.from, r.to, baseCuts))
+                {
+                    float len = span.y - span.x, mid = (span.x + span.y) * 0.5f;
                     // Centre line (or median) between the carriageways.
                     if (r.median)
                         Box("Median", r.Point(mid, r.k, 0.3f), h ? new Vector3(len, 0.5f, 1.4f) : new Vector3(1.4f, 0.5f, len), concrete, group);
@@ -373,7 +404,10 @@ namespace Rise.World
                 }
                 switch (l.kind)
                 {
-                    case "checkpoint": case "post": case "toll":
+                    case "toll":
+                        // BuildTolls() builds the full overhead gantry and booths for toll gates.
+                        continue;
+                    case "checkpoint": case "post":
                         Box(l.name, pos + Vector3.up * 1.6f, new Vector3(5f, 3.2f, 3.5f), Mat("lm-" + l.color, l.color), group);
                         Sign(l.shortName, pos + new Vector3(0, 4.2f, 0), l.sign, 0.8f, group);
                         continue;
@@ -414,79 +448,69 @@ namespace Rise.World
                         var navyMat = Mat("plane-navy", "#153b78", 0.65f);
                         var darkMat = Mat("plane-dark", "#1c2026", 0.35f);
 
-                        // Wide concrete apron & taxiway
-                        Box(l.name + " apron", pos + Vector3.up * 0.12f, new Vector3(110f, 0.24f, 64f), apron, group);
+                        // Compact concrete apron & taxiway sized to fit city blocks without overlapping adjacent streets
+                        Box(l.name + " apron", pos + Vector3.up * 0.12f, new Vector3(62f, 0.24f, 26f), apron, group);
                         // Main International Terminal (MMIA) + Domestic Wing (MMA2)
-                        Box(l.name + " terminal", pos + new Vector3(0f, 5.5f, 16f), new Vector3(52f, 11f, 16f), body, group);
-                        Box(l.name + " upper concourse", pos + new Vector3(0f, 12.2f, 16f), new Vector3(36f, 2.8f, 12f), conc, group);
-                        Box(l.name + " glass", pos + new Vector3(0f, 5.2f, 7.85f), new Vector3(48f, 7.6f, 0.3f), glassMat, group, false);
-                        Box(l.name + " landside canopy", pos + new Vector3(0f, 4.2f, 26.5f), new Vector3(44f, 0.5f, 5.5f), conc, group, false);
-                        // 3 telescoping passenger jet bridges (aerobridges)
-                        foreach (float jx in new[] { -16f, 0f, 16f })
+                        Box(l.name + " terminal", pos + new Vector3(0f, 5.5f, 6.5f), new Vector3(38f, 11f, 10f), body, group);
+                        Box(l.name + " upper concourse", pos + new Vector3(0f, 12.2f, 6.5f), new Vector3(28f, 2.8f, 8f), conc, group);
+                        Box(l.name + " glass", pos + new Vector3(0f, 5.2f, 1.35f), new Vector3(34f, 7.6f, 0.3f), glassMat, group, false);
+                        Box(l.name + " landside canopy", pos + new Vector3(0f, 4.2f, 12.2f), new Vector3(30f, 0.5f, 3.2f), conc, group, false);
+                        // 2 telescoping passenger jet bridges (aerobridges)
+                        foreach (float jx in new[] { -11f, 11f })
                         {
-                            Box("Jetbridge", pos + new Vector3(jx, 4.2f, 2.5f), new Vector3(2.6f, 2.6f, 10.5f), conc, group);
-                            Box("Jetbridge glass", pos + new Vector3(jx, 4.4f, 2.5f), new Vector3(2.75f, 1.1f, 8.5f), glassMat, group, false);
+                            Box("Jetbridge", pos + new Vector3(jx, 4.2f, -1.8f), new Vector3(2.2f, 2.4f, 6.5f), conc, group);
+                            Box("Jetbridge glass", pos + new Vector3(jx, 4.4f, -1.8f), new Vector3(2.35f, 1.0f, 5.5f), glassMat, group, false);
                         }
                         // Control Tower with observation cab & radar dome
-                        Cylinder(l.name + " tower", pos + new Vector3(32f, 0.2f, 15f), 2.5f, 24f, conc, group);
-                        Box(l.name + " cab", pos + new Vector3(32f, 25.4f, 15f), new Vector3(7.2f, 3.2f, 7.2f), glassMat, group, false);
-                        Box(l.name + " tower roof", pos + new Vector3(32f, 27.3f, 15f), new Vector3(7.8f, 0.6f, 7.8f), conc, group, false);
-                        Cylinder(l.name + " radar", pos + new Vector3(32f, 27.6f, 15f), 0.9f, 1.8f, whiteMat, group, false);
+                        Cylinder(l.name + " tower", pos + new Vector3(23f, 0.2f, 6.5f), 2.2f, 24f, conc, group);
+                        Box(l.name + " cab", pos + new Vector3(23f, 25.4f, 6.5f), new Vector3(6.4f, 3.2f, 6.4f), glassMat, group, false);
+                        Box(l.name + " tower roof", pos + new Vector3(23f, 27.3f, 6.5f), new Vector3(7.0f, 0.6f, 7.0f), conc, group, false);
+                        Cylinder(l.name + " radar", pos + new Vector3(23f, 27.6f, 6.5f), 0.9f, 1.8f, whiteMat, group, false);
                         // Airport Hangar & Fuel Farm tanks on the west apron
-                        Box(l.name + " hangar", pos + new Vector3(-38f, 4.5f, 14f), new Vector3(18f, 9f, 16f), Mat("hangar", "#525e6a", 0.4f), group);
-                        Cylinder("Fuel tank 1", pos + new Vector3(-42f, 0.2f, -2f), 3.2f, 5.5f, whiteMat, group);
-                        Cylinder("Fuel tank 2", pos + new Vector3(-33f, 0.2f, -2f), 3.2f, 5.5f, whiteMat, group);
+                        Box(l.name + " hangar", pos + new Vector3(-24f, 4.2f, 6.0f), new Vector3(11f, 8.4f, 10f), Mat("hangar", "#525e6a", 0.4f), group);
+                        Cylinder("Fuel tank 1", pos + new Vector3(-26f, 0.2f, -3.5f), 2.4f, 5.0f, whiteMat, group);
+                        Cylinder("Fuel tank 2", pos + new Vector3(-20f, 0.2f, -3.5f), 2.4f, 5.0f, whiteMat, group);
 
-                        // Full Runway strip with threshold piano keys & centreline dashes
-                        var rwPos = pos + new Vector3(0f, 0.17f, -18f);
-                        Box(l.name + " runway", rwPos, new Vector3(106f, 0.12f, 16f), Mat("asphalt", Asphalt), group);
-                        for (float rx = -44f; rx <= 44f; rx += 8f)
-                            Box("Runway line", rwPos + new Vector3(rx, 0.08f, 0f), new Vector3(4.2f, 0.02f, 0.35f), whiteMat, group, false);
-                        for (int s = -1; s <= 1; s += 2)
-                            for (float rz = -5.4f; rz <= 5.4f; rz += 1.8f)
-                                Box("Threshold key", rwPos + new Vector3(s * 49f, 0.08f, rz), new Vector3(3.8f, 0.02f, 0.9f), whiteMat, group, false);
+                        // Runway strip with threshold piano keys & centreline dashes
+                        var rwPos = pos + new Vector3(0f, 0.17f, -8.5f);
+                        Box(l.name + " runway", rwPos, new Vector3(60f, 0.12f, 8.5f), Mat("asphalt", Asphalt), group);
+                        for (float rx = -24f; rx <= 24f; rx += 8f)
+                            Box("Runway line", rwPos + new Vector3(rx, 0.08f, 0f), new Vector3(4.0f, 0.02f, 0.3f), whiteMat, group, false);
 
-                        // 3 realistic parked aircraft: (1) Flagship wide-body airliner at gate, (2) Domestic jet at gate, (3) VIP jet on runway/taxiway
-                        BuildAircraft(pos + new Vector3(-11f, 2.2f, -5.5f), 90f, 1.05f, greenMat, whiteMat, darkMat, glassMat, group);
-                        BuildAircraft(pos + new Vector3(17f, 2.0f, -5.5f), 90f, 0.85f, navyMat, whiteMat, darkMat, glassMat, group);
-                        BuildAircraft(pos + new Vector3(-14f, 1.75f, -18f), 0f, 0.72f, greenMat, whiteMat, darkMat, glassMat, group);
+                        // 2 realistic parked aircraft at gates
+                        BuildAircraft(pos + new Vector3(-8f, 1.8f, -5.2f), 90f, 0.72f, greenMat, whiteMat, darkMat, glassMat, group);
+                        BuildAircraft(pos + new Vector3(12f, 1.7f, -5.2f), 90f, 0.65f, navyMat, whiteMat, darkMat, glassMat, group);
 
-                        Sign("MURTALA MUHAMMED INT'L AIRPORT", pos + new Vector3(0, 14.5f, 24.4f), l.sign, 1.35f, group);
+                        Sign("MURTALA MUHAMMED INT'L AIRPORT", pos + new Vector3(0, 14.5f, 11.8f), l.sign, 1.2f, group);
                         continue;
                     }
                     case "banana":
                     {
-                        // Banana Island waterfront ultra-luxury estate: security archway, tiered white & glass villas, infinity pool & moored yachts
+                        // Banana Island waterfront ultra-luxury estate: security archway, tiered white & glass villas, infinity pool
                         var whiteVilla = Mat("villa-white", "#f5f3ee", 0.6f);
                         var glassVilla = Mat("villa-glass", "#5ca0c8", 0.92f);
                         var teak = Mat("villa-teak", "#8a5a36", 0.4f);
                         var poolMat = Mat("villa-pool", "#1ec8e6", 0.95f);
                         var goldMat = Mat("villa-gold", "#e6b830", 0.75f);
 
-                        Compound(pos, 38f, 30f, group);
+                        Compound(pos, 18f, 16f, group);
                         // Gated security archway
-                        Box("Banana Arch L", pos + new Vector3(-4.5f, 2.6f, 15.1f), new Vector3(1.2f, 5.2f, 1.2f), whiteVilla, group);
-                        Box("Banana Arch R", pos + new Vector3(4.5f, 2.6f, 15.1f), new Vector3(1.2f, 5.2f, 1.2f), whiteVilla, group);
-                        Box("Banana Arch Top", pos + new Vector3(0f, 5.4f, 15.1f), new Vector3(11.4f, 1.1f, 1.6f), goldMat, group);
+                        Box("Banana Arch L", pos + new Vector3(-3.2f, 2.4f, 8.0f), new Vector3(0.9f, 4.8f, 0.9f), whiteVilla, group);
+                        Box("Banana Arch R", pos + new Vector3(3.2f, 2.4f, 8.0f), new Vector3(0.9f, 4.8f, 0.9f), whiteVilla, group);
+                        Box("Banana Arch Top", pos + new Vector3(0f, 5.0f, 8.0f), new Vector3(7.8f, 0.9f, 1.2f), goldMat, group);
 
                         // Main contemporary mansion + cantilevered glass upper deck
-                        Box(l.name + " ground", pos + new Vector3(-4f, 2.4f, -1f), new Vector3(20f, 4.8f, 14f), whiteVilla, group);
-                        Box(l.name + " second", pos + new Vector3(-2.5f, 6.8f, -1f), new Vector3(17f, 4.2f, 12f), whiteVilla, group);
-                        Box(l.name + " penthouse", pos + new Vector3(-1f, 10.6f, -1f), new Vector3(12f, 3.4f, 9f), glassVilla, group);
-                        Box(l.name + " terrace", pos + new Vector3(-2.5f, 4.9f, 5.5f), new Vector3(18f, 0.35f, 3.2f), teak, group, false);
-                        Box(l.name + " glass front", pos + new Vector3(-2.5f, 6.8f, 5.1f), new Vector3(15f, 3.4f, 0.25f), glassVilla, group, false);
+                        Box(l.name + " ground", pos + new Vector3(-1.8f, 2.4f, -0.8f), new Vector3(11.5f, 4.8f, 9.2f), whiteVilla, group);
+                        Box(l.name + " second", pos + new Vector3(-1.2f, 6.8f, -0.8f), new Vector3(10.0f, 4.2f, 8.0f), whiteVilla, group);
+                        Box(l.name + " penthouse", pos + new Vector3(-0.6f, 10.6f, -0.8f), new Vector3(7.8f, 3.4f, 6.4f), glassVilla, group);
+                        Box(l.name + " terrace", pos + new Vector3(-1.2f, 4.9f, 3.6f), new Vector3(10.4f, 0.35f, 2.2f), teak, group, false);
+                        Box(l.name + " glass front", pos + new Vector3(-1.2f, 6.8f, 3.3f), new Vector3(9.0f, 3.4f, 0.25f), glassVilla, group, false);
 
                         // Turquoise infinity swimming pool & deck
-                        Box("Infinity pool surround", pos + new Vector3(11f, 0.22f, 3f), new Vector3(9f, 0.44f, 13f), teak, group);
-                        Box("Infinity pool water", pos + new Vector3(11f, 0.46f, 3f), new Vector3(7.4f, 0.08f, 11.2f), poolMat, group, false);
+                        Box("Infinity pool surround", pos + new Vector3(5.8f, 0.22f, 1.2f), new Vector3(4.6f, 0.44f, 8.2f), teak, group);
+                        Box("Infinity pool water", pos + new Vector3(5.8f, 0.46f, 1.2f), new Vector3(3.6f, 0.08f, 7.0f), poolMat, group, false);
 
-                        // Private lagoon jetty & luxury yacht moored off the north shore
-                        var pierPos = pos + new Vector3(0f, 0.35f, 24f);
-                        Box("Private jetty", pierPos, new Vector3(3.6f, 0.3f, 14f), teak, group);
-                        BuildYacht(pierPos + new Vector3(6.5f, 0.2f, 3f), whiteVilla, glassVilla, teak, group);
-                        BuildYacht(pierPos + new Vector3(-6.5f, 0.2f, 4f), whiteVilla, glassVilla, teak, group);
-
-                        Sign("BANANA ISLAND · IKOYI", pos + new Vector3(0f, 6.7f, 15.4f), "#ffd700", 1.15f, group);
+                        Sign("BANANA ISLAND · IKOYI", pos + new Vector3(0f, 6.3f, 8.2f), "#ffd700", 1.0f, group);
                         continue;
                     }
                     case "rail":
@@ -985,12 +1009,14 @@ namespace Rise.World
             string[] tarps = { "#d9534f", "#f0ad4e", "#5bc0de", "#5cb85c", "#f5c518" };
             for (int i = 0; i < 6; i++)
             {
-                float x = pos.x + (float)(rng.NextDouble() - 0.5) * (fp.x + 14f), z = pos.z - (fp.y * 0.5f + 4f + (float)rng.NextDouble() * 6f);
+                float x = pos.x + (float)(rng.NextDouble() - 0.5) * (fp.x + 10f), z = pos.z - (fp.y * 0.5f + 3f + (float)rng.NextDouble() * 4f);
+                if (NearRoadData(x, -z, 5.5f) || Data.InWaterData(x, -z)) continue;
                 var basePos = new Vector3(x, 0.15f, z);
                 Box("Stall", basePos + Vector3.up * 0.5f, new Vector3(2.4f, 1f, 1.4f), Mat("stall", "#7a5a3a"), group);
                 Box("Tarp", basePos + Vector3.up * 2.3f, new Vector3(3f, 0.1f, 2.2f), Mat("tarp" + i % tarps.Length, tarps[i % tarps.Length]), group, false);
             }
-            BuildLawmaBin(pos + new Vector3(fp.x * 0.5f + 2.2f, 0.15f, -fp.y * 0.5f), group, true);
+            var binPos = pos + new Vector3(fp.x * 0.5f + 2.2f, 0.15f, -fp.y * 0.5f);
+            if (!NearRoadData(binPos.x, -binPos.z, 4.5f)) BuildLawmaBin(binPos, group, true);
         }
 
         static bool IsBrtStop(string id) =>
@@ -1075,6 +1101,8 @@ namespace Rise.World
             var group = new GameObject("Compound cells").transform; group.SetParent(Root, false);
             foreach (var c in Data.cells)
             {
+                if (Data.InWaterData(c.x, c.z) || NearRoadData(c.x, c.z, 14f) || OverlapsPlot(c.x, c.z, 16f)) continue;
+                placedPlots.Add(new Vector2(c.x, c.z));
                 var rng = new System.Random((int)(c.x * 31 + c.z * 17));
                 var pos = c.World();
                 switch (c.style)
@@ -1229,14 +1257,14 @@ namespace Rise.World
             foreach (var r in Data.roads)
             {
                 bool h = r.Horizontal;
-                for (float along = r.from + 14f; along < r.to - 14f && built < MaxHouses; along += roadStep)
+                for (float along = r.from + 16f; along < r.to - 16f && built < MaxHouses; along += roadStep)
                 {
                     if (Data.OnBridge(r.axis, r.k, along)) continue;
                     for (int s = -1; s <= 1; s += 2)
                     {
-                        float across = r.k + s * (r.width * 0.5f + 12.2f);
+                        float across = r.k + s * (r.width * 0.5f + 14.5f);
                         float dx = h ? along : across, dz = h ? across : along;
-                        if (Data.InWaterData(dx, dz) || NearRoadData(dx, dz, 6.2f) || ReservedData(dx, dz) || OverlapsPlot(dx, dz, 15f)) continue;
+                        if (Data.InWaterData(dx, dz) || NearRoadData(dx, dz, 13.5f) || ReservedData(dx, dz) || OverlapsPlot(dx, dz, 15.5f)) continue;
                         PlaceRegionalBuilding(dx, dz, group, true);
                         built++;
                     }
@@ -1263,7 +1291,7 @@ namespace Rise.World
             {
                 if (built >= MaxHouses) break;
                 float x = pt.x, z = pt.y;
-                if (Data.InWaterData(x, z) || NearRoadData(x, z, 7.2f) || ReservedData(x, z) || OverlapsPlot(x, z, 15.5f)) continue;
+                if (Data.InWaterData(x, z) || NearRoadData(x, z, 14.5f) || ReservedData(x, z) || OverlapsPlot(x, z, 16f)) continue;
                 var rng = new System.Random(Mathf.RoundToInt(x * 73f + z * 151f));
                 if (rng.NextDouble() < 0.08) continue;
                 PlaceRegionalBuilding(x, z, group, false);

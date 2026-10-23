@@ -14,11 +14,13 @@ export const STATE_AREA = createArea({
   ],
   roads: {
     h: [
-      { k: -3020, from: -460, to: 460, name: 'Kaduna–Zaria–Sabon Gari Trunk Road', width: 28, class: 'highway' },
-      { k: -3220, from: -460, to: 460, name: 'Kano–Maiduguri Frontier Expressway (A2/A3)', width: 30, class: 'expressway' },
+      { k: -3020, from: -460, to: 460, name: 'Kaduna–Zaria–Sabon Gari Trunk Road', width: 26, class: 'highway' },
+      { k: -3220, from: -460, to: 460, name: 'Kano–Maiduguri Frontier Expressway (A2/A3)', width: 28, class: 'expressway' },
     ],
     v: [
-      { k: 0, from: -3350, to: -2900, name: 'Abuja–Kaduna–Kano Expressway (A2)', width: 36, class: 'expressway' },
+      { k: 0, from: -3220, to: -2900, name: 'Abuja–Kaduna–Kano Expressway (A2)', width: 22, class: 'expressway' },
+      { k: -460, from: -3220, to: -2540, name: 'Abuja–Kaduna–Kano Western Ring', width: 20, class: 'main' },
+      { k: 460, from: -3220, to: -2540, name: 'Abuja–Maiduguri Eastern Ring', width: 20, class: 'main' },
     ],
   },
   landmarks: [

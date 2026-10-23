@@ -26,81 +26,109 @@ const mergeAxisMap = (base, additions) => ({
   h: Object.assign({}, base.h, ...additions.map(map => map.h)),
   v: Object.assign({}, base.v, ...additions.map(map => map.v)),
 });
+const mergeAxisExtent = (base, additions) => {
+  const out = { h: {}, v: {} };
+  for (const axis of ['h', 'v']) {
+    for (const src of [base, ...additions]) {
+      for (const [k, ext] of Object.entries(src?.[axis] || {})) {
+        if (!Array.isArray(ext) || ext.length < 2) continue;
+        const cur = out[axis][k];
+        out[axis][k] = cur ? [Math.min(cur[0], ext[0]), Math.max(cur[1], ext[1])] : [ext[0], ext[1]];
+      }
+    }
+  }
+  return out;
+};
 const areaRoads = axis => areas.flatMap(area => area.ROADS[axis]);
 const ROADS = {
   h: [...new Set([...surulere.ROADS.h, ...areaRoads('h')])].sort((a, b) => a - b),
   v: [...new Set([...surulere.ROADS.v, ...areaRoads('v')])].sort((a, b) => a - b),
 };
-const ROAD_EXTENT = mergeAxisMap(surulere.ROAD_EXTENT, areas.map(area => area.ROAD_EXTENT));
+const ROAD_EXTENT = mergeAxisExtent(surulere.ROAD_EXTENT, areas.map(area => area.ROAD_EXTENT));
 const ROAD_NAMES = mergeAxisMap(surulere.ROAD_NAMES, areas.map(area => area.ROAD_NAMES));
 const ROAD_WIDTHS = mergeAxisMap(surulere.ROAD_WIDTHS, areas.map(area => area.ROAD_WIDTHS));
 const ROAD_CLASS = mergeAxisMap(surulere.ROAD_CLASS, areas.map(area => area.ROAD_CLASS));
 const ROAD_SEGMENTS = mergeAxisMap(surulere.ROAD_SEGMENTS, areas.map(area => area.ROAD_SEGMENTS));
 const extraExtent = {
-  h: { 0: [-196, 470], 142: [-520, 150], '-330': [-520, 480], 240: [340, 2280], 300: [340, 2280] },
-  v: { 0: [-3350, 150], '-300': [-1950, -780], 360: [-400, 96], 440: [-80, 330], 560: [180, 330], 1980: [-1680, 320] },
+  h: {
+    0: [-196, 440],
+    '-66': [-196, 72],
+    '-74': [72, 360],
+    70: [-450, -72],
+    110: [-450, -72],
+    142: [-450, 105],
+    '-280': [-740, 360],
+    '-300': [360, 480],
+    '-330': [-480, 480],
+    '-360': [360, 480],
+    '-380': [0, 360],
+    '-390': [-480, -270],
+    '-420': [-740, 0],
+    '-430': [0, 360],
+    '-470': [0, 360],
+    240: [440, 2280],
+    300: [440, 2280],
+  },
+  v: {
+    0: [-3220, 142],
+    72: [-330, 142],
+    '-72': [-66, 142],
+    '-196': [-66, 0],
+    '-300': [-1880, -660],
+    '-350': [-420, 220],
+    360: [-1480, 78],
+    440: [0, 300],
+    480: [-360, -300],
+    488: [78, 240],
+    560: [180, 300],
+    720: [180, 300],
+    800: [180, 300],
+    920: [180, 300],
+    1040: [180, 300],
+    1260: [180, 300],
+    1480: [180, 300],
+    1680: [180, 300],
+    1760: [-1460, 300],
+    1980: [-1680, 300],
+    2280: [-1460, 300],
+  },
 };
 for (const axis of ['h', 'v']) {
   for (const [k, extent] of Object.entries(extraExtent[axis])) {
     ROAD_EXTENT[axis][k] = extent;
   }
 }
-ROAD_EXTENT.h[300] = [-520, 2280];
 ROAD_NAMES.h[0] = 'Bode Thomas Street';
 ROAD_NAMES.h[-330] = 'Ikorodu Road';
+ROAD_NAMES.h[-280] = 'Ladipo · Mushin · Shomolu Road';
 ROAD_NAMES.h[300] = 'Ahmadu Bello Way · Lagos–Calabar Coastal Road';
-ROAD_NAMES.v[360] = 'Broad Street · Third Mainland Bridge';
-ROAD_NAMES.v[440] = 'Marina · Falomo Bridge';
+ROAD_NAMES.v[360] = 'Broad Street · Third Mainland Bridge · Murtala Muhammed Way';
+ROAD_NAMES.v[440] = 'Marina · Falomo Bridge · Akin Adesola Street';
+ROAD_NAMES.v[480] = 'University Road · Yaba';
 ROAD_SEGMENTS.h[0] = surulere.ROAD_SEGMENTS.h[0];
-ROAD_SEGMENTS.h[300] = [[340, 480, 'Ahmadu Bello Way'], [480, 1120, 'Coastal Road'], [1120, 1720, 'Lagos–Calabar Coastal Highway'], [1720, 2280, 'Lagos–Calabar Coastal Highway · Niger Delta & Bonny']];
-ROAD_SEGMENTS.h[240] = [[340, 480, 'Adeola Odeku Street'], [480, 505, 'Lekki Toll Gate'], [505, 620, 'Lekki–Epe Expressway · Lekki Phase 1'], [620, 840, 'Lekki–Epe Expressway · Ajah'], [840, 1120, 'Lekki–Epe Expressway · Eleko'], [1120, 1440, 'Lekki–Epe Expressway · Ibeju-Lekki'], [1440, 1720, 'Lekki–Epe Expressway · Epe'], [1720, 2280, 'East–West Road · Warri & Port Harcourt']];
-ROAD_SEGMENTS.h[-330] = [[-520, -150, 'Ikorodu Road · Ikorodu'], [-150, -100, 'Ikorodu Road · Ikorodu Garage'], [-100, 300, 'Ikorodu Road · Ebute Metta'], [300, 480, 'Ikorodu Road · Jibowu']];
-ROAD_SEGMENTS.h[142] = [[-520, -150, 'Apapa–Oworonshoki Expressway · Apapa Port Road'], [-150, 150, 'Apapa–Oworonshoki Expressway']];
-ROAD_SEGMENTS.v[0] = [[-3350, -2900, 'Abuja–Kaduna–Kano Expressway (A2)'], [-2900, -2420, 'Abuja Airport & Three Arms Expressway (A2)'], [-2420, -1980, 'Lagos–Ibadan Expressway · Ibadan Sector'], [-1980, -1520, 'Lagos–Ibadan Expressway · Mowe & Sagamu'], [-1520, -1000, 'Lagos–Ibadan Expressway · Ojodu Berger'], [-1000, -480, 'Adeniran Ogunsanya Street · Ikeja Link'], [-480, -330, 'Adeniran Ogunsanya Street · Maryland Link'], [-330, 150, 'Adeniran Ogunsanya Street']];
-ROAD_SEGMENTS.v[360] = [[-400, -250, 'Murtala Muhammed Way · Yaba'], [-250, -85, 'Third Mainland Bridge'], [-85, 80, 'Broad Street'], [80, 96, 'Kingsway Road']];
-ROAD_SEGMENTS.v[440] = [[-400, -250, 'University Road'], [-80, 80, 'Marina'], [80, 180, 'Falomo Bridge'], [180, 330, 'Akin Adesola Street']];
-ROAD_SEGMENTS.v[-350] = [[-410, -180, 'Apapa–Oshodi Expressway · Mile 2 Link'], [-180, 40, 'Mile 2 · Creek Link'], [40, 230, 'Liverpool Road']];
+ROAD_SEGMENTS.h[300] = [[440, 480, 'Ahmadu Bello Way'], [480, 1120, 'Coastal Road'], [1120, 1720, 'Lagos–Calabar Coastal Highway'], [1720, 2280, 'Lagos–Calabar Coastal Highway · Niger Delta & Bonny']];
+ROAD_SEGMENTS.h[240] = [[440, 480, 'Adeola Odeku Street'], [480, 505, 'Lekki Toll Gate'], [505, 620, 'Lekki–Epe Expressway · Lekki Phase 1'], [620, 840, 'Lekki–Epe Expressway · Ajah'], [840, 1120, 'Lekki–Epe Expressway · Eleko'], [1120, 1440, 'Lekki–Epe Expressway · Ibeju-Lekki'], [1440, 1720, 'Lekki–Epe Expressway · Epe'], [1720, 2280, 'East–West Road · Warri & Port Harcourt']];
+ROAD_SEGMENTS.h[-330] = [[-480, -150, 'Ikorodu Road · Ikorodu'], [-150, -100, 'Ikorodu Road · Ikorodu Garage'], [-100, 300, 'Ikorodu Road · Ebute Metta'], [300, 480, 'Ikorodu Road · Jibowu & Yaba']];
+ROAD_SEGMENTS.h[-280] = [[-740, -120, 'Ladipo–Palm Avenue–Daleko–Mushin Road'], [-120, 100, 'Mushin–Surulere Link Road'], [100, 360, 'Shomolu · Pedro Road']];
+ROAD_SEGMENTS.h[142] = [[-450, -140, 'Apapa–Oworonshoki Expressway · Apapa Port Road'], [-140, 105, 'Apapa–Oworonshoki Expressway']];
+ROAD_SEGMENTS.v[0] = [[-3220, -2900, 'Abuja–Kaduna–Kano Expressway (A2)'], [-2900, -2420, 'Abuja Airport & Three Arms Expressway (A2)'], [-2420, -1980, 'Lagos–Ibadan Expressway · Ibadan Sector'], [-1980, -1520, 'Lagos–Ibadan Expressway · Mowe & Sagamu'], [-1520, -1000, 'Lagos–Ibadan Expressway · Ojodu Berger'], [-1000, -480, 'Adeniran Ogunsanya Street · Ikeja Link'], [-480, -330, 'Adeniran Ogunsanya Street · Maryland Link'], [-330, 142, 'Adeniran Ogunsanya Street']];
+ROAD_SEGMENTS.v[360] = [[-1480, -480, 'Ikeja · Ojota · Magodo Eastern Trunk'], [-480, -250, 'Murtala Muhammed Way · Oyingbo & Yaba'], [-250, -85, 'Third Mainland Bridge'], [-85, 78, 'Broad Street · Kingsway Road']];
+ROAD_SEGMENTS.v[440] = [[0, 80, 'Marina'], [80, 180, 'Falomo Bridge'], [180, 300, 'Akin Adesola Street']];
+ROAD_SEGMENTS.v[-350] = [[-420, -180, 'Ikorodu Garage · Mile 2 Link'], [-180, 70, 'Mile 2 · Creek Link'], [70, 220, 'Liverpool Road']];
 ROAD_NAMES.v[0] = 'Adeniran Ogunsanya Street · Lagos–Ibadan Expressway';
 ROAD_CLASS.h[142] = 'expressway';
 ROAD_CLASS.h[-330] = 'highway';
 ROAD_CLASS.h[240] = 'highway';
 ROAD_CLASS.v[360] = 'highway';
 ROAD_CLASS.h[300] = 'main';
-ROAD_WIDTHS.h[142] = 36;
-ROAD_WIDTHS.h[-330] = 40;
-ROAD_WIDTHS.h[240] = 38;
-ROAD_WIDTHS.h[300] = 22;
-ROAD_WIDTHS.v[360] = 36;
-ROAD_EXTENT.h[-720] = [-520, -160];
-ROAD_EXTENT.h[-660] = [-520, -160];
-ROAD_EXTENT.v[-450] = [-780, -640];
-ROAD_EXTENT.v[-270] = [-780, -640];
-ROAD_EXTENT.h[280] = [-1020, -140];
-ROAD_EXTENT.h[340] = [-1020, -140];
-ROAD_EXTENT.h[300] = [-520, 2280];
-ROAD_EXTENT.v[-490] = [-780, -640];
-ROAD_EXTENT.v[-310] = [-780, -640];
-ROAD_EXTENT.v[-490] = [-780, -640];
-ROAD_EXTENT.v[-310] = [-780, -640];
-ROAD_EXTENT.v[-400] = [250, 380];
-ROAD_EXTENT.v[-220] = [250, 380];
-ROAD_WIDTHS.h[280] = 30;
-ROAD_WIDTHS.h[340] = 18;
-ROAD_WIDTHS.v[-490] = 18;
-ROAD_WIDTHS.v[-310] = 16;
-ROAD_WIDTHS.v[-400] = 18;
-ROAD_WIDTHS.v[-220] = 18;
-ROAD_EXTENT.v[-450] = [50, 230];
-ROAD_EXTENT.v[-350] = [-410, 230];
-ROAD_EXTENT.v[-360] = [-410, -250];
-ROAD_EXTENT.v[-270] = [-410, -250];
-ROAD_EXTENT.v[-250] = [50, 230];
-ROAD_EXTENT.v[488] = [78, 230];
-ROAD_EXTENT.v[720] = [180, 330];
-ROAD_EXTENT.v[800] = [180, 330];
-ROAD_EXTENT.v[920] = [180, 330];
-ROAD_EXTENT.v[1040] = [180, 330];
+ROAD_WIDTHS.v[0] = 22;
+ROAD_WIDTHS.h[142] = 28;
+ROAD_WIDTHS.h[-330] = 28;
+ROAD_WIDTHS.h[240] = 28;
+ROAD_WIDTHS.h[300] = 20;
+ROAD_WIDTHS.v[360] = 28;
 ROAD_WIDTHS.v[440] = 20;
+ROAD_WIDTHS.v[480] = 18;
 ROAD_WIDTHS.v[488] = 16;
 ROAD_WIDTHS.v[720] = 16;
 ROAD_WIDTHS.v[800] = 18;
@@ -180,24 +208,40 @@ const WATERS = [
   ),
 ];
 const PROPERTIES = [...surulere.PROPERTIES, ...areas.flatMap(area => area.PROPERTIES || [])];
-const AREA_CELLS = areas.flatMap(area => area.CELLS || []);
+export const VI_CELLS = surulere.VI_CELLS.map(([x, z]) => [x, z]);
+export const LEKKI_CELLS = surulere.LEKKI_CELLS.map(([x, z]) => [x, z]);
+export const YABA_CELLS = [...surulere.YABA_CELLS, [360, -384], [456, -384], [360, -336], [456, -336], [384, -312], [456, -312]].map(([x, z]) => [x, z]);
+export const EBUTE_CELLS = surulere.EBUTE_CELLS.map(([x, z]) => [x, z]);
+export const ISLAND_CELLS = surulere.ISLAND_CELLS.map(([x, z]) => [x, z]);
+const AREA_CELLS = areas.flatMap(area => (area.CELLS || []).map(c => ({ ...c })));
+export const KIOSKS = surulere.KIOSKS.map(([x, z]) => [x, z]);
+export const VENDORS = surulere.VENDORS.map(([x, z]) => [x, z]);
 const WORLD_BOUNDS = { x: [-1050, 2340], z: [-3400, 410] };
-const roadFootprintOverlap = (x, z, width, depth) =>
+const roadFootprintOverlap = (x, z, width, depth, pad = 3.8) =>
   ROADS.h.some(y => {
     const [start, end] = ROAD_EXTENT.h[y] || [-150, 150];
-    return x + width / 2 + 1 > start && x - width / 2 - 1 < end &&
-      Math.abs(z - y) < (ROAD_WIDTHS.h[y] || 12) / 2 + depth / 2 + 1;
+    return x + width / 2 + pad > start && x - width / 2 - pad < end &&
+      Math.abs(z - y) < (ROAD_WIDTHS.h[y] || 12) / 2 + depth / 2 + pad;
   }) ||
   ROADS.v.some(x0 => {
     const [start, end] = ROAD_EXTENT.v[x0] || [-150, 150];
-    return z + depth / 2 + 1 > start && z - depth / 2 - 1 < end &&
-      Math.abs(x - x0) < (ROAD_WIDTHS.v[x0] || 12) / 2 + width / 2 + 1;
+    return z + depth / 2 + pad > start && z - depth / 2 - pad < end &&
+      Math.abs(x - x0) < (ROAD_WIDTHS.v[x0] || 12) / 2 + width / 2 + pad;
   });
 const buildingFootprint = landmark => {
-  if (
-    landmark.stadium || landmark.waterfront ||
-    ['airport', 'beach', 'checkpoint', 'pitch', 'post', 'rail', 'settlement', 'street', 'toll', 'waypoint'].includes(landmark.kind)
-  ) return null;
+  if (landmark.kind === 'toll') return null;
+  if (landmark.stadium) return { width: 68, depth: 68 };
+  if (landmark.kind === 'airport') return { width: 64, depth: 28 };
+  if (landmark.kind === 'banana') return { width: 18, depth: 16 };
+  if (landmark.kind === 'rail') return { width: 28, depth: 14 };
+  if (landmark.kind === 'army' || landmark.kind === 'navy') return { width: 26, depth: 22 };
+  if (landmark.kind === 'cbn' || landmark.kind === 'efcc') return { width: 26, depth: 20 };
+  if (landmark.kind === 'pitch') return { width: 44, depth: 30 };
+  if (landmark.kind === 'beach') return { width: 44, depth: 28 };
+  if (landmark.kind === 'settlement') return { width: 44, depth: 34 };
+  if (landmark.kind === 'waypoint') return { width: 22, depth: 24 };
+  if (landmark.kind === 'checkpoint' || landmark.kind === 'post') return { width: 8, depth: 8 };
+  if (landmark.kind === 'street') return { width: 3, depth: 3 };
   if (landmark.kind === 'artisan') return { width: 16, depth: 13 };
   if (landmark.big) return { width: 26, depth: 20 };
   if (landmark.kind === 'hotel' || landmark.kind === 'bank') return { width: 20, depth: 16 };
@@ -207,42 +251,51 @@ const moveBuildingsClearOfRoads = () => {
   const buildings = [
     ...LANDMARKS.flatMap(landmark => {
       const footprint = buildingFootprint(landmark);
-      return footprint ? [{ location: landmark, ...footprint }] : [];
+      const allowWater = /makoko/.test(landmark.id);
+      const pad = ['street', 'checkpoint', 'post'].includes(landmark.kind) ? 1.5 : 3.8;
+      return footprint ? [{ location: landmark, allowWater, pad, ...footprint }] : [];
     }),
-    ...PROPERTIES.map(property => ({ location: property, width: 20, depth: 18 })),
+    ...PROPERTIES.map(property => ({ location: property, allowWater: false, pad: 3.8, width: 20, depth: 18 })),
   ];
   const moving = buildings
-    .filter(({ location, width, depth }) => roadFootprintOverlap(location.x, location.z, width, depth))
+    .filter(({ location, width, depth, pad, allowWater }) =>
+      roadFootprintOverlap(location.x, location.z, width, depth, pad) ||
+      (!allowWater && WATERS.some(water =>
+        location.x + width / 2 > water.x[0] && location.x - width / 2 < water.x[1] &&
+        location.z + depth / 2 > water.z[0] && location.z - depth / 2 < water.z[1]
+      ))
+    )
     .sort((a, b) => b.width * b.depth - a.width * a.depth);
   const occupied = buildings
     .filter(building => !moving.includes(building))
     .map(building => ({ ...building, x: building.location.x, z: building.location.z }));
-  for (const stop of BUSSTOPS) occupied.push({ x: stop.x, z: stop.z, width: 16, depth: 16 });
 
   const offsets = [];
-  for (let dx = -80; dx <= 80; dx += 2) {
-    for (let dz = -80; dz <= 80; dz += 2) {
-      if (dx || dz) offsets.push({ dx, dz, distance: dx * dx + dz * dz });
+  for (let dx = -120; dx <= 120; dx += 2) {
+    for (let dz = -120; dz <= 120; dz += 2) {
+      if (!dx && !dz) continue;
+      if ((Math.abs(dx) > 36 || Math.abs(dz) > 36) && (dx % 4 !== 0 || dz % 4 !== 0)) continue;
+      offsets.push({ dx, dz, distance: dx * dx + dz * dz });
     }
   }
   offsets.sort((a, b) => a.distance - b.distance || a.dx - b.dx || a.dz - b.dz);
 
   for (const building of moving) {
-    const { location, width, depth } = building;
+    const { location, width, depth, pad, allowWater } = building;
     const site = offsets.find(({ dx, dz }) => {
       const x = location.x + dx, z = location.z + dz;
       if (
         x - width / 2 < WORLD_BOUNDS.x[0] || x + width / 2 > WORLD_BOUNDS.x[1] ||
         z - depth / 2 < WORLD_BOUNDS.z[0] || z + depth / 2 > WORLD_BOUNDS.z[1] ||
-        roadFootprintOverlap(x, z, width, depth) ||
-        WATERS.some(water =>
+        roadFootprintOverlap(x, z, width, depth, pad) ||
+        (!allowWater && WATERS.some(water =>
           x + width / 2 > water.x[0] && x - width / 2 < water.x[1] &&
           z + depth / 2 > water.z[0] && z - depth / 2 < water.z[1]
-        )
+        ))
       ) return false;
       return !occupied.some(other =>
-        Math.abs(x - other.x) < (width + other.width) / 2 + 3 &&
-        Math.abs(z - other.z) < (depth + other.depth) / 2 + 3
+        Math.abs(x - other.x) < (width + other.width) / 2 + 2.5 &&
+        Math.abs(z - other.z) < (depth + other.depth) / 2 + 2.5
       );
     });
     if (!site) {
@@ -255,6 +308,84 @@ const moveBuildingsClearOfRoads = () => {
       location.door.z = location.z - 10.5;
     }
     occupied.push({ ...building, x: location.x, z: location.z });
+  }
+
+  // Relocate or prune decorative compound cells so none ever sit on a road, in water, or inside a landmark
+  const cellWidth = 22, cellDepth = 20, cellPad = 3.8;
+  const cellInvalid = (x, z) =>
+    x - cellWidth / 2 < WORLD_BOUNDS.x[0] || x + cellWidth / 2 > WORLD_BOUNDS.x[1] ||
+    z - cellDepth / 2 < WORLD_BOUNDS.z[0] || z + cellDepth / 2 > WORLD_BOUNDS.z[1] ||
+    roadFootprintOverlap(x, z, cellWidth, cellDepth, cellPad) ||
+    WATERS.some(water =>
+      x + cellWidth / 2 > water.x[0] && x - cellWidth / 2 < water.x[1] &&
+      z + cellDepth / 2 > water.z[0] && z - cellDepth / 2 < water.z[1]
+    ) ||
+    occupied.some(other =>
+      Math.abs(x - other.x) < (cellWidth + other.width) / 2 + 2 &&
+      Math.abs(z - other.z) < (cellDepth + other.depth) / 2 + 2
+    );
+
+  for (const arr of [VI_CELLS, LEKKI_CELLS, YABA_CELLS, EBUTE_CELLS, ISLAND_CELLS]) {
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const [cx, cz] = arr[i];
+      if (!cellInvalid(cx, cz)) {
+        occupied.push({ x: cx, z: cz, width: cellWidth, depth: cellDepth });
+        continue;
+      }
+      const site = offsets.find(({ dx, dz }) => !cellInvalid(cx + dx, cz + dz));
+      if (site) {
+        arr[i][0] = cx + site.dx;
+        arr[i][1] = cz + site.dz;
+        occupied.push({ x: arr[i][0], z: arr[i][1], width: cellWidth, depth: cellDepth });
+      } else {
+        arr.splice(i, 1);
+      }
+    }
+  }
+  for (let i = AREA_CELLS.length - 1; i >= 0; i--) {
+    const c = AREA_CELLS[i];
+    if (!cellInvalid(c.x, c.z)) {
+      occupied.push({ x: c.x, z: c.z, width: cellWidth, depth: cellDepth });
+      continue;
+    }
+    const site = offsets.find(({ dx, dz }) => !cellInvalid(c.x + dx, c.z + dz));
+    if (site) {
+      c.x += site.dx;
+      c.z += site.dz;
+      occupied.push({ x: c.x, z: c.z, width: cellWidth, depth: cellDepth });
+    } else {
+      AREA_CELLS.splice(i, 1);
+    }
+  }
+
+  // Nudge bus stops, kiosks, and vendors out of road carriageways onto the sidewalk verge
+  const furniture = [
+    ...BUSSTOPS.map(stop => ({ loc: stop, width: 6.4, depth: 3.2, pad: 1.2 })),
+    ...KIOSKS.map(pair => ({
+      loc: { get x() { return pair[0]; }, set x(v) { pair[0] = v; }, get z() { return pair[1]; }, set z(v) { pair[1] = v; } },
+      width: 3.2, depth: 2.8, pad: 1.2,
+    })),
+    ...VENDORS.map(pair => ({
+      loc: { get x() { return pair[0]; }, set x(v) { pair[0] = v; }, get z() { return pair[1]; }, set z(v) { pair[1] = v; } },
+      width: 2.6, depth: 2.0, pad: 1.0,
+    })),
+  ];
+  for (const item of furniture) {
+    const { loc, width, depth, pad } = item;
+    if (!roadFootprintOverlap(loc.x, loc.z, width, depth, pad)) continue;
+    const site = offsets.find(({ dx, dz }) => {
+      const x = loc.x + dx, z = loc.z + dz;
+      return (
+        x - width / 2 >= WORLD_BOUNDS.x[0] && x + width / 2 <= WORLD_BOUNDS.x[1] &&
+        z - depth / 2 >= WORLD_BOUNDS.z[0] && z + depth / 2 <= WORLD_BOUNDS.z[1] &&
+        !roadFootprintOverlap(x, z, width, depth, pad) &&
+        !WATERS.some(water => x >= water.x[0] && x <= water.x[1] && z >= water.z[0] && z <= water.z[1])
+      );
+    });
+    if (site) {
+      loc.x += site.dx;
+      loc.z += site.dz;
+    }
   }
 };
 moveBuildingsClearOfRoads();
@@ -307,20 +438,13 @@ export const placesOfKind = kind => LANDMARKS.filter(l => l.kind === kind);
 export const inWater = (x, z) => WATERS.some(w => x >= w.x[0] && x <= w.x[1] && z >= w.z[0] && z <= w.z[1]);
 export const onBridge = (axis, k, along) => surulere.onBridge(axis, k, along);
 export const WATER = surulere.WATER;
-export const KIOSKS = surulere.KIOSKS;
 export const ANIMALS = surulere.ANIMALS;
 export const UNIFORMS = surulere.UNIFORMS;
 export const SERVICE_NPCS = surulere.SERVICE_NPCS;
 export const NIGHTLIFE_NPCS = surulere.NIGHTLIFE_NPCS;
 export const TOLLS = surulere.TOLLS;
 export const FOOTBRIDGES = surulere.FOOTBRIDGES;
-export const VI_CELLS = surulere.VI_CELLS;
-export const LEKKI_CELLS = surulere.LEKKI_CELLS;
-export const YABA_CELLS = [...surulere.YABA_CELLS, [360, -384], [456, -384], [360, -336], [456, -336], [384, -312], [456, -312]];
-export const EBUTE_CELLS = surulere.EBUTE_CELLS;
-export const ISLAND_CELLS = surulere.ISLAND_CELLS;
 export { AREA_CELLS };
-export const VENDORS = surulere.VENDORS;
 export const BRIDGES = surulere.BRIDGES;
 export const BRIDGE_RUSH = surulere.BRIDGE_RUSH;
 export const CLASS_RULES = surulere.CLASS_RULES;

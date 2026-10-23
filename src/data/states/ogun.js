@@ -14,12 +14,14 @@ export const STATE_AREA = createArea({
   ],
   roads: {
     h: [
-      { k: -1680, from: -400, to: 2020, name: 'Ota–Sagamu–Benin Link Expressway (A121)', width: 28, class: 'highway' },
-      { k: -1880, from: -400, to: 400, name: 'Abeokuta–Sagamu Expressway', width: 30, class: 'expressway' },
+      { k: -1680, from: -380, to: 1980, name: 'Ota–Sagamu–Benin Link Expressway (A121)', width: 26, class: 'highway' },
+      { k: -1880, from: -380, to: 380, name: 'Abeokuta–Sagamu Expressway', width: 26, class: 'expressway' },
     ],
     v: [
-      { k: 0, from: -1980, to: -1520, name: 'Lagos–Ibadan Expressway (E1 · Ogun Sector)', width: 36, class: 'expressway' },
-      { k: -300, from: -1950, to: -1380, name: 'Lagos–Abeokuta Expressway', width: 28, class: 'highway' },
+      { k: 0, from: -1980, to: -1520, name: 'Lagos–Ibadan Expressway (E1 · Ogun Sector)', width: 22, class: 'expressway' },
+      { k: -300, from: -1880, to: -660, name: 'Lagos–Abeokuta Expressway', width: 22, class: 'highway' },
+      { k: -380, from: -2360, to: -1680, name: 'Abeokuta–Ibadan Western Bypass', width: 20, class: 'main' },
+      { k: 380, from: -2360, to: -1680, name: 'Sagamu–Ijebu–Iwo Road Link', width: 20, class: 'main' },
     ],
   },
   landmarks: [

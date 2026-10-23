@@ -5,7 +5,7 @@ export const STATE_AREA = createArea({
   name: 'Anambra, Enugu & Abia · Eastern Commercial & Industrial Belt',
   state: 'Anambra',
   bounds: { x: [1750, 2320], z: [-1680, -750] },
-  spawn: { x: 1980, z: -1120 },
+  spawn: { x: 1980, z: -1140 },
   regions: [
     { id: 'onitsha-bridgehead', name: 'Onitsha Main Market & Niger Bridgehead', x: [1750, 2040], z: [-1250, -750] },
     { id: 'nnewi-industrial', name: 'Nnewi Automotive & Awka Industrial Cluster', x: [2040, 2320], z: [-1250, -950] },
@@ -15,7 +15,7 @@ export const STATE_AREA = createArea({
   roads: {
     h: [
       { k: -1460, from: 1760, to: 2280, name: 'Onitsha–Awka–Enugu Expressway (A232)', width: 32, class: 'expressway' },
-      { k: -1120, from: 1760, to: 2280, name: 'Second Niger Bridge–Onitsha–Nnewi Highway', width: 28, class: 'commercial' },
+      { k: -1140, from: 1760, to: 2280, name: 'Second Niger Bridge–Onitsha–Nnewi Highway', width: 28, class: 'commercial' },
       { k: -860, from: 1760, to: 2280, name: 'Nnewi–Aba–Ariaria Industrial Road', width: 26, class: 'main' },
     ],
     v: [
