@@ -12,6 +12,16 @@ namespace Rise.EditorTools
     public static class SceneSetup
     {
         public const string ScenePath = "Assets/Rise/Scenes/Lagos.unity";
+        public const string CloudProjectId = "53a65ca2-484c-4daa-bcbf-081e66718a89";
+        public const string CloudOrgId = "demolablaze";
+        public const string CloudGenesisOrgId = "11270721833480";
+        public const string CloudDashboardUrl = "https://cloud.unity.com/home/organizations/11270721833480/projects/53a65ca2-484c-4daa-bcbf-081e66718a89";
+
+        [MenuItem("RISE/Open Unity Cloud Dashboard")]
+        public static void OpenCloudDashboard()
+        {
+            Application.OpenURL(CloudDashboardUrl);
+        }
 
         [MenuItem("RISE/Create Lagos Scene")]
         public static void Build()

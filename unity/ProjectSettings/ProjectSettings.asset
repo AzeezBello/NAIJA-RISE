@@ -670,7 +670,8 @@ PlayerSettings:
   XboxOneXTitleMemory: 8
   XboxOneOverrideIdentityName: 
   XboxOneOverrideIdentityPublisher: 
-  cloudServicesEnabled: {}
+  cloudServicesEnabled:
+    CloudDiagnostics: 1
   luminIcon:
     m_Name: 
     m_ModelFolderPath: 
@@ -697,8 +698,8 @@ PlayerSettings:
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
   projectName: Rise
-  organizationId: 
-  cloudEnabled: 0
+  organizationId: demolablaze
+  cloudEnabled: 1
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
   platformRequiresReadableAssets: 0
