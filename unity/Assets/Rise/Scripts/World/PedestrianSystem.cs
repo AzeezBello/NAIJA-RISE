@@ -12,7 +12,7 @@ namespace Rise.World
         public int Count = 84;
         public float SpawnRadius = 190f, RecycleRadius = 260f;
 
-        class Ped { public Transform t; public RigInstance rig; public RoadData road; public int side, dir; public float along, speed, phase; public string role; public bool female; }
+        class Ped { public Transform t; public RigInstance rig; public RoadData road; public int side, dir; public float along, speed, phase, hitT; public string role; public bool female; }
         static readonly string[] Roles = { "trader", "office", "youth", "wander" };
         public int RiggedCount { get; private set; }
         public int CesiumCount { get; private set; }
@@ -79,7 +79,8 @@ namespace Rise.World
             };
             // Ready Player Me weight ~0.75, CesiumMan ~0.25.
             float height = isFemale ? (1.58f + (float)rng.NextDouble() * 0.22f) : (1.65f + (float)rng.NextDouble() * 0.28f);
-            if (CharacterRig.Available) rig = CharacterRig.Build(go.transform, look, 0, height, rng.NextDouble() < 0.25);
+            bool useRig = CharacterRig.Available && (!GameBootstrap.LightWebGL || RiggedCount < 10);
+            if (useRig) rig = CharacterRig.Build(go.transform, look, 0, height, rng.NextDouble() < 0.25);
             else Mannequin.Build(go.transform, top, pants, skin, cap, 0, 0.9f + (float)rng.NextDouble() * 0.2f);
             return go;
         }
@@ -114,10 +115,10 @@ namespace Rise.World
             return best;
         }
 
-        // Knocked by a vehicle: the pedestrian is thrown clear and hurries off.
+        // Knocked by a vehicle or street attack: the pedestrian stumbles back, flails, and hurries off.
         public void Knock(Transform t)
         {
-            foreach (var p in peds) if (p.t == t) { p.along += p.dir * 4f; p.speed = 2.6f; return; }
+            foreach (var p in peds) if (p.t == t) { p.along += p.dir * 2.2f; p.speed = 2.8f; p.hitT = 0.58f; return; }
         }
 
         float SchedulePace(string role, float h)
@@ -137,6 +138,7 @@ namespace Rise.World
             float h = clock != null ? clock.Clock : 12f;
             foreach (var p in peds)
             {
+                if (p.hitT > 0f) p.hitT = Mathf.Max(0f, p.hitT - dt);
                 float spd = p.speed * SchedulePace(p.role, h);
                 p.along += p.dir * spd * dt;
                 bool turn = p.along < p.road.from + 3f || p.along > p.road.to - 3f || data.OnBridge(p.road.axis, p.road.k, p.along);
@@ -148,6 +150,17 @@ namespace Rise.World
                 p.t.position = pos;
                 p.t.rotation = Quaternion.LookRotation(p.road.Forward(p.dir), Vector3.up);
                 if ((pos - player.position).sqrMagnitude > RecycleRadius * RecycleRadius) Respawn(p);
+            }
+        }
+
+        void LateUpdate()
+        {
+            foreach (var p in peds)
+            {
+                if (p.hitT <= 0.001f || p.t == null) continue;
+                float u = 1f - (p.hitT / 0.58f);
+                if (p.rig != null) p.rig.ApplyCombatPose(u, 0.8f, 1, "", false);
+                else Mannequin.ApplyCombatPose(p.t, u, 0.8f, 1, "", false);
             }
         }
     }

@@ -22,8 +22,8 @@ namespace Rise.Vehicles
         [System.NonSerialized] public string LastHit;   // what the last crash was against (diagnostics)
 
         Rigidbody rb;
-        float yaw;
-        Transform occRoot, driverOcc, passengersOcc;
+        float yaw, doorAnimT;
+        Transform occRoot, driverOcc, passengersOcc, doorPivot;
 
         public bool HasDriver => driverOcc != null && driverOcc.gameObject.activeSelf && driverOcc.childCount > 0;
         public int PassengerCount => passengersOcc != null && passengersOcc.gameObject.activeSelf ? passengersOcc.childCount : 0;
@@ -41,6 +41,7 @@ namespace Rise.Vehicles
             rb.linearDamping = 0.2f;
             rb.isKinematic = true;          // parked until someone drives it
             occRoot = transform.Find("Occupants");
+            doorPivot = transform.Find("DoorPivot");
             if (occRoot != null)
             {
                 driverOcc = occRoot.Find("Driver");
@@ -48,6 +49,8 @@ namespace Rise.Vehicles
             }
             SetOccupants(false, false);     // parked vehicles have no driver inside until entered
         }
+
+        public void TriggerDoorSwing() => doorAnimT = 0.85f;
 
         public void SetOccupants(bool showDriver, bool showPassengers)
         {
@@ -81,6 +84,23 @@ namespace Rise.Vehicles
             if (!driven) Speed = 0f;
             yaw = transform.eulerAngles.y;
             SetOccupants(driven, false);
+            TriggerDoorSwing();
+        }
+
+        void Update()
+        {
+            if (doorPivot == null) return;
+            if (doorAnimT > 0f)
+            {
+                doorAnimT = Mathf.Max(0f, doorAnimT - Time.deltaTime);
+                float phase = 1f - (doorAnimT / 0.85f);
+                float open = Mathf.Sin(phase * Mathf.PI);
+                doorPivot.localRotation = Quaternion.Euler(0f, -open * 54f, 0f);
+            }
+            else if (doorPivot.localRotation != Quaternion.identity)
+            {
+                doorPivot.localRotation = Quaternion.identity;
+            }
         }
 
         // gas / brake 0–1, steer -1 (left) … 1 (right)

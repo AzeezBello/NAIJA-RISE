@@ -28,18 +28,83 @@ namespace Rise.Player
         Look currentLook = Look.Default;
         public void ApplyLook(Look look) { currentLook = look; if (rig != null) CharacterRig.Dress(rig, look); }
         public string EquippedWeapon { get; private set; } = "";
-        float swingT;
+        public const float SwingDuration = 0.44f;
+        float swingT, guardT, lastSwingTime = -10f;
+        public int ComboStep { get; private set; }
+        public bool IsSwinging => swingT > 0f;
+        Transform combatArcRoot, combatImpactRing;
+        readonly System.Collections.Generic.List<Material> combatArcMats = new System.Collections.Generic.List<Material>();
+
+        public bool IsEquippedGun =>
+            EquippedWeapon == "pistol" || EquippedWeapon == "shotgun" || EquippedWeapon == "smg" ||
+            EquippedWeapon == "rifle" || EquippedWeapon == "sniper" || EquippedWeapon == "lmg";
+
         public void SetWeapon(string weaponId)
         {
             EquippedWeapon = weaponId ?? "";
             CharacterRig.SetWeapon(rig, transform, EquippedWeapon, Layer);
         }
-        public void SwingWeapon() { swingT = 0.38f; }
+
+        public void SwingWeapon()
+        {
+            if (Time.time - lastSwingTime < 1.15f)
+                ComboStep = (ComboStep + 1) % 3;
+            else
+                ComboStep = 0;
+            lastSwingTime = Time.time;
+            swingT = SwingDuration;
+            guardT = 1.45f;
+            AnimState = "attack";
+            rig?.SetState("attack", 1.1f);
+            EnsureCombatArc();
+        }
+
+        void EnsureCombatArc()
+        {
+            if (combatArcRoot != null) return;
+            combatArcRoot = new GameObject("CombatArc").transform;
+            combatArcRoot.SetParent(transform, false);
+            combatArcRoot.localPosition = new Vector3(0f, 1.16f, 0.72f);
+
+            var unlit = ShaderLib.Unlit;
+            for (int i = 0; i < 3; i++)
+            {
+                var seg = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                seg.name = "ArcSeg_" + i;
+                seg.layer = Layer;
+                Destroy(seg.GetComponent<Collider>());
+                seg.transform.SetParent(combatArcRoot, false);
+                float ang = (i - 1) * 28f;
+                seg.transform.localPosition = new Vector3(Mathf.Sin(ang * Mathf.Deg2Rad) * 0.42f, (1 - i) * 0.08f, Mathf.Cos(ang * Mathf.Deg2Rad) * 0.18f);
+                seg.transform.localRotation = Quaternion.Euler(14f, ang, -22f);
+                seg.transform.localScale = new Vector3(0.36f, 0.045f, 0.09f);
+                var m = new Material(unlit) { color = new Color(1f, 0.86f, 0.22f, 0.92f) };
+                seg.GetComponent<MeshRenderer>().sharedMaterial = m;
+                seg.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                combatArcMats.Add(m);
+            }
+
+            var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            ring.name = "ImpactBurst";
+            ring.layer = Layer;
+            Destroy(ring.GetComponent<Collider>());
+            ring.transform.SetParent(combatArcRoot, false);
+            ring.transform.localPosition = new Vector3(0f, -0.05f, 0.28f);
+            ring.transform.localScale = new Vector3(0.55f, 0.015f, 0.55f);
+            var rm = new Material(unlit) { color = new Color(1f, 0.92f, 0.45f, 0.9f) };
+            ring.GetComponent<MeshRenderer>().sharedMaterial = rm;
+            ring.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            combatArcMats.Add(rm);
+            combatImpactRing = ring.transform;
+
+            combatArcRoot.gameObject.SetActive(false);
+        }
+
         public string AnimState { get; private set; } = "idle";
         float jumpAnimT, vehicleAnimT, lastYaw;
         string vehicleAnimState = "";
 
-        public bool HasExtendedClips => rig != null && rig.HasClip("jump") && rig.HasClip("turn") && rig.HasClip("enter_vehicle") && rig.HasClip("exit_vehicle");
+        public bool HasExtendedClips => rig != null && rig.HasClip("jump") && rig.HasClip("turn") && rig.HasClip("enter_vehicle") && rig.HasClip("exit_vehicle") && rig.HasClip("attack");
 
         public void TriggerJumpAnim()
         {
@@ -128,13 +193,29 @@ namespace Rise.Player
                 if (InputEnabled && !Swimming && GameInput.JumpPressed) { velocity.y = JumpSpeed; jumpAnimT = 0.48f; }
             }
             velocity.y += Gravity * Time.deltaTime;
-            cc.Move((horizontal + Vector3.up * velocity.y) * Time.deltaTime);
 
-            // Locomotion & action state → clip (idle, walk, run, jump, turn, enter_vehicle, exit_vehicle cross-fades).
+            if (swingT > 0f)
+                swingT = Mathf.Max(0f, swingT - Time.deltaTime);
+            if (guardT > 0f)
+                guardT = Mathf.Max(0f, guardT - Time.deltaTime);
+
+            float swing01 = swingT > 0f ? 1f - (swingT / SwingDuration) : 0f;
+            Vector3 combatLunge = Vector3.zero;
+            if (!Swimming && swingT > 0f && !IsEquippedGun && speed < 2.5f && swing01 >= 0.14f && swing01 <= 0.62f)
+            {
+                combatLunge = transform.forward * (1.75f * Mathf.Sin(swing01 * Mathf.PI));
+            }
+            cc.Move((horizontal + combatLunge + Vector3.up * velocity.y) * Time.deltaTime);
+
+            // Locomotion & action state → clip (idle, walk, run, jump, turn, enter_vehicle, exit_vehicle, attack cross-fades).
             if (vehicleAnimT > 0f)
             {
                 vehicleAnimT = Mathf.Max(0f, vehicleAnimT - Time.deltaTime);
                 AnimState = vehicleAnimState;
+            }
+            else if (swingT > 0f && !Swimming)
+            {
+                AnimState = "attack";
             }
             else if (!Swimming && (!cc.isGrounded || jumpAnimT > 0f))
             {
@@ -150,21 +231,71 @@ namespace Rise.Player
                 AnimState = speed < 0.3f ? "idle" : IsRunning && speed > 5.5f ? "run" : "walk";
             }
             // Swimming: the body sits in the water and the walk plays slowly as a stroke.
-            if (rig != null) { var rt = rig.Root.transform; var lp = rt.localPosition; lp.y = Mathf.Lerp(lp.y, Swimming ? -0.95f : 0f, 1f - Mathf.Exp(-6f * Time.deltaTime)); rt.localPosition = lp; }
-            if (Swimming) AnimState = speed < 0.3f ? "idle" : "walk";
-            rig?.SetState(AnimState, Swimming ? 0.6f : AnimState == "walk" ? speed / CharacterRig.WalkClipSpeed : AnimState == "run" ? speed / CharacterRig.RunClipSpeed : 1f);
-            if (swingT > 0f)
+            if (rig != null)
             {
-                swingT = Mathf.Max(0f, swingT - Time.deltaTime);
-                var wRoot = rig != null ? rig.WeaponRoot : CharacterRig.Find(transform, "WeaponProp");
-                if (wRoot != null)
-                {
-                    float phase = Mathf.Sin((1f - swingT / 0.38f) * Mathf.PI);
-                    wRoot.localRotation = Quaternion.Euler(75f + phase * 65f, -phase * 25f, 0f);
-                }
+                var rt = rig.Root.transform;
+                var lp = rt.localPosition;
+                float targetY = Swimming ? -0.95f : 0f;
+                float targetZ = (!Swimming && swingT > 0f && !IsEquippedGun) ? Mathf.Sin(swing01 * Mathf.PI) * 0.16f : 0f;
+                lp.y = Mathf.Lerp(lp.y, targetY, 1f - Mathf.Exp(-6f * Time.deltaTime));
+                lp.z = Mathf.Lerp(lp.z, targetZ, 1f - Mathf.Exp(-14f * Time.deltaTime));
+                rt.localPosition = lp;
             }
+            if (Swimming) AnimState = speed < 0.3f ? "idle" : "walk";
+            float clipSpd = Swimming ? 0.6f
+                          : AnimState == "walk" ? speed / CharacterRig.WalkClipSpeed
+                          : AnimState == "run" ? speed / CharacterRig.RunClipSpeed
+                          : AnimState == "attack" ? (speed > 0.4f ? 1.25f : 1.0f)
+                          : 1f;
+            rig?.SetState(AnimState, clipSpd);
+
+            UpdateCombatArcVfx(swing01);
 
             if (transform.position.y < -40f) Teleport(spawn, transform.eulerAngles.y);
+        }
+
+        void UpdateCombatArcVfx(float swing01)
+        {
+            if (combatArcRoot == null) return;
+            bool showArc = !Swimming && swingT > 0f && !IsEquippedGun && swing01 >= 0.12f && swing01 <= 0.78f;
+            combatArcRoot.gameObject.SetActive(showArc);
+            if (!showArc) return;
+
+            float u = Mathf.InverseLerp(0.12f, 0.78f, swing01);
+            float env = Mathf.Sin(u * Mathf.PI);
+            int step = Mathf.Abs(ComboStep) % 3;
+            bool hasWeapon = !string.IsNullOrEmpty(EquippedWeapon);
+
+            Color arcCol = EquippedWeapon == "cutlass" || EquippedWeapon == "baton" || EquippedWeapon == "weapon"
+                ? new Color(0.82f, 0.94f, 1.0f, 0.88f * env)
+                : EquippedWeapon == "pepper"
+                ? new Color(1.0f, 0.32f, 0.16f, 0.90f * env)
+                : new Color(1.0f, 0.84f, 0.18f, 0.88f * env);
+            foreach (var m in combatArcMats)
+                if (m != null) m.color = arcCol;
+
+            float sweepYaw = step == 1 ? Mathf.Lerp(-52f, 52f, u) : Mathf.Lerp(48f, -48f, u);
+            float roll = step == 0 ? (hasWeapon ? -32f : -12f) : step == 1 ? 8f : -45f;
+            float height = step == 2 && !hasWeapon ? 0.92f : 1.18f;
+            float reach = hasWeapon ? 0.92f : 0.74f;
+            combatArcRoot.localPosition = new Vector3(0f, height, reach);
+            combatArcRoot.localRotation = Quaternion.Euler(0f, sweepYaw, roll);
+            combatArcRoot.localScale = Vector3.one * ((hasWeapon ? 1.18f : 0.92f) * (0.75f + 0.35f * env));
+            if (combatImpactRing != null)
+            {
+                float ringScale = Mathf.Lerp(0.28f, hasWeapon ? 0.95f : 0.72f, u);
+                combatImpactRing.localScale = new Vector3(ringScale, 0.015f, ringScale);
+            }
+        }
+
+        void LateUpdate()
+        {
+            float swing01 = swingT > 0f ? 1f - (swingT / SwingDuration) : 0f;
+            float guard01 = guardT > 0f ? Mathf.Clamp01(guardT / 0.55f) : 0f;
+            if (rig != null)
+                rig.ApplyCombatPose(swing01, guard01, ComboStep, EquippedWeapon, IsEquippedGun);
+            else
+                Mannequin.ApplyCombatPose(transform, swing01, guard01, ComboStep, EquippedWeapon, IsEquippedGun);
         }
     }
 }
