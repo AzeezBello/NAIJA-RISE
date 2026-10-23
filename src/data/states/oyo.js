@@ -14,12 +14,14 @@ export const STATE_AREA = createArea({
   ],
   roads: {
     h: [
-      { k: -2080, from: -400, to: 400, name: 'MKO Abiola Way · Ring Road Ibadan', width: 28, class: 'highway' },
-      { k: -2240, from: -400, to: 400, name: 'Dugbe–Mokola–Iwo Road Corridor', width: 24, class: 'commercial' },
-      { k: -2360, from: -400, to: 400, name: 'UI–Bodija–Ojoo Road', width: 24, class: 'main' },
+      { k: -2080, from: -380, to: 380, name: 'MKO Abiola Way · Ring Road Ibadan', width: 26, class: 'highway' },
+      { k: -2240, from: -380, to: 380, name: 'Dugbe–Mokola–Iwo Road Corridor', width: 24, class: 'commercial' },
+      { k: -2360, from: -380, to: 380, name: 'UI–Bodija–Ojoo Road', width: 24, class: 'main' },
     ],
     v: [
-      { k: 0, from: -2420, to: -1980, name: 'Lagos–Ibadan–Oyo Expressway (A1)', width: 36, class: 'expressway' },
+      { k: 0, from: -2420, to: -1980, name: 'Lagos–Ibadan–Oyo Expressway (A1)', width: 22, class: 'expressway' },
+      { k: -380, from: -2360, to: -1680, name: 'Abeokuta–Ibadan Western Bypass', width: 20, class: 'main' },
+      { k: 380, from: -2360, to: -1680, name: 'Sagamu–Ijebu–Iwo Road Link', width: 20, class: 'main' },
     ],
   },
   landmarks: [

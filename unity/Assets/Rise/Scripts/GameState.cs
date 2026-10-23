@@ -41,12 +41,12 @@ namespace Rise
         // Education and activities
         public List<string> courses = new List<string>();
         public int gymUntil, gymSessions, outfits;
-        public int lookFabric, lookSkin = 2, lookPants, lookHair, lookCap = 1;   // indices into the exported wardrobe lists; cap 1 = fila
-        public int lookFace, lookBody = 1, lookHairStyle, lookFacialHair;         // stored for the Character app; not yet shown on the rig
+        public int lookFabric, lookSkin = 2, lookPants, lookHair, lookCap = 0;   // indices into the exported wardrobe lists
+        public int lookFace, lookBody = 1, lookHairStyle = 1, lookFacialHair = 1; // default: Fade haircut + Beard
         public int footballWins, footballTier;
         public int collegeSemester = -1; public bool collegeGraduated;            // -1 = not enrolled
         public int quality = 2; public bool cinematic = true, qualityAuto = true;   // 0 low, 1 medium, 2 high; auto picks and steps down
-        public int lookOutfit, lookAccessory = 1;                                   // outfit silhouette; accessory 1 = fila (cap index kept in lookCap)
+        public int lookOutfit, lookAccessory = 4;                                   // outfit silhouette; accessory 4 = gold chain
         // Family and contact relationships
         public List<FamilyRel> familyRel = new List<FamilyRel>();
         public List<string> familyDone = new List<string>();

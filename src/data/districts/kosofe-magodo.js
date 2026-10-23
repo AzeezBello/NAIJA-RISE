@@ -12,12 +12,12 @@ export const DISTRICT = createArea({
   ],
   roads: {
     h: [
-      { k: -1120, from: -120, to: 380, name: 'Ojota–Ogudu–Oworonshoki Expressway', width: 26, class: 'highway' },
-      { k: -1280, from: -120, to: 380, name: 'Ketu–Mile 12–Ikorodu Road Corridor', width: 28, class: 'highway' },
+      { k: -1120, from: -120, to: 360, name: 'Ojota–Ogudu–Oworonshoki Expressway', width: 26, class: 'highway' },
+      { k: -1280, from: -120, to: 360, name: 'Ketu–Mile 12–Ikorodu Road Corridor', width: 26, class: 'highway' },
       { k: -1420, from: -120, to: 120, name: 'CMD Road · Magodo GRA Boulevard', width: 18, class: 'residential' },
     ],
     v: [
-      { k: 180, from: -1520, to: -980, name: 'Ikorodu Road (Ketu–Mile 12 Axis)', width: 32, class: 'highway' },
+      { k: 180, from: -1480, to: -500, name: 'Ikorodu Road (Ketu–Mile 12 Axis)', width: 24, class: 'highway' },
     ],
   },
   landmarks: [

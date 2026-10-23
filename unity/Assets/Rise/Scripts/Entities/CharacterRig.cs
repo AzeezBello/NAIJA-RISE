@@ -10,7 +10,19 @@ namespace Rise.Entities
         public int Fabric; public Color Pants, Skin, Hair; public Color? Cap;
         // Wardrobe indices: outfit, bodyType (Slim/Average/Big), hair style, facial hair, accessory
         public int Outfit, BodyType, HairStyle, FacialHair, Accessory;
-        public static Look Default => new Look { Fabric = 0, Pants = Mannequin.Hex("#26312d"), Skin = Mannequin.Hex("#714835"), Hair = Mannequin.Hex("#120b08"), Cap = Mannequin.Hex("#1f3a5f"), BodyType = 1, Accessory = 1 };
+        public static Look Default => new Look
+        {
+            Fabric = 0,
+            Pants = Mannequin.Hex("#26312d"),
+            Skin = Mannequin.Hex("#714835"),
+            Hair = Mannequin.Hex("#120b08"),
+            Cap = Mannequin.Hex("#1f3a5f"),
+            Outfit = 5,     // T-shirt & jeans streetwear default
+            BodyType = 1,
+            HairStyle = 1,  // Fade
+            FacialHair = 1, // Full Beard
+            Accessory = 4   // Cuban Chain
+        };
     }
 
     // One instanced rig: the Animation driving it and the clothing materials to re-dress it.
@@ -19,7 +31,14 @@ namespace Rise.Entities
         public Animation Anim; public GameObject Root; public bool Cesium;
         public readonly List<Material> Top = new List<Material>(), Bottom = new List<Material>(), Skin = new List<Material>(), Hair = new List<Material>(), Cap = new List<Material>();
         public readonly List<Renderer> HairRenderers = new List<Renderer>(), BeardRenderers = new List<Renderer>(), CapRenderers = new List<Renderer>();
-        public Transform Overlay, Glasses, Chain, Watch, TattooL, TattooR, WeaponRoot; public Material OverlayMaterial, TattooMaterial;
+        // Multi-zone garment materials created from split submeshes on Wolf3D_Outfit_Top, Wolf3D_Outfit_Bottom, Wolf3D_Outfit_Footwear
+        public Material SleeveUpperMat, SleeveForeMat, LegCalfMat, SockMat, ShoeSoleMat, ShoeUpperMat;
+        public Transform Overlay, AgbadaWings, JacketRoot, CollarPlacket, BeltRoot;
+        public Transform HairShort, HairFade, HairAfro, HairBraids;
+        public Transform BeardFull, BeardGoatee, BeardMoustache;
+        public Transform FilaCap, FaceCap;
+        public Transform Glasses, Chain, Watch, TattooL, TattooR, WeaponRoot;
+        public Material OverlayMaterial, JacketMaterial, PlacketMaterial, TattooMaterial;
         public Transform Hips, Spine, Spine1, Spine2, Neck, Head;
         public Transform RightShoulder, RightArm, RightForeArm, RightHand;
         public Transform LeftShoulder, LeftArm, LeftForeArm, LeftHand;
@@ -202,13 +221,13 @@ namespace Rise.Entities
 
     // Real humans: the Ready Player Me avatar imported with glTFast and driven
     // by a legacy Animation with the Ready Player Me Idle / Walk / Run clips plus dedicated Jump, Turn, Vehicle Enter/Exit, and Attack clips.
-    // One rig loaded once, instanced per character, dressed per look with the
-    // procedural fabric prints. Falls back to the mannequin when the assets are missing so the game always runs.
+    // One rig loaded once, instanced per character, dressed per look with procedural Nigerian & streetwear garments.
     public static class CharacterRig
     {
         static GameObject prefab, cesiumPrefab;
         static AnimationClip idle, walk, run, jump, turn, enterVehicle, exitVehicle, attack, cesiumWalk;
         static bool loaded;
+        static Mesh splitTopMesh, splitBottomMesh, splitFootwearMesh;
         public const float WalkClipSpeed = 1.5f, RunClipSpeed = 5.5f;   // m/s the clips were authored for
         public static WorldData Data;                                  // for the fabric prints
 
@@ -283,16 +302,153 @@ namespace Rise.Entities
         public static bool Available { get { Load(); return prefab != null && idle != null && walk != null && run != null; } }
         public static bool CesiumAvailable { get { Load(); return (cesiumPrefab != null && cesiumWalk != null) || Available; } }
 
+        // Splits Wolf3D_Outfit_Top into 3 submeshes (0: Torso, 1: Upper Arms / Short Sleeves, 2: Forearms)
+        // and remaps UVs cleanly so wedding-tuxedo lapels/bow-tie islands never distort Nigerian prints or streetwear tees.
+        static Mesh GetSplitTopMesh(Mesh src)
+        {
+            if (splitTopMesh != null) return splitTopMesh;
+            if (src == null || !src.isReadable) return src;
+            var m = Object.Instantiate(src);
+            m.name = src.name + "_StreetSplit";
+            var verts = m.vertices;
+            var uvs = new Vector2[verts.Length];
+            for (int i = 0; i < verts.Length; i++)
+            {
+                var v = verts[i];
+                float ax = Mathf.Abs(v.x);
+                if (ax <= 0.205f)
+                    uvs[i] = new Vector2((v.x + 0.21f) / 0.42f, Mathf.Clamp01((v.y - 0.75f) / 0.82f));
+                else
+                {
+                    float along = Mathf.Clamp01((ax - 0.20f) / 0.29f);
+                    float ang = Mathf.Atan2(v.z + 0.04f, v.y - 1.25f) / (2f * Mathf.PI) + 0.5f;
+                    uvs[i] = new Vector2(ang, along);
+                }
+            }
+            m.uv = uvs;
+
+            var tris = src.triangles;
+            var torso = new List<int>(tris.Length);
+            var upperArm = new List<int>(tris.Length / 3);
+            var foreArm = new List<int>(tris.Length / 3);
+            for (int i = 0; i < tris.Length; i += 3)
+            {
+                int i0 = tris[i], i1 = tris[i + 1], i2 = tris[i + 2];
+                float ax = (Mathf.Abs(verts[i0].x) + Mathf.Abs(verts[i1].x) + Mathf.Abs(verts[i2].x)) / 3f;
+                if (ax <= 0.205f) { torso.Add(i0); torso.Add(i1); torso.Add(i2); }
+                else if (ax <= 0.288f) { upperArm.Add(i0); upperArm.Add(i1); upperArm.Add(i2); }
+                else { foreArm.Add(i0); foreArm.Add(i1); foreArm.Add(i2); }
+            }
+            m.subMeshCount = 3;
+            m.SetTriangles(torso, 0);
+            m.SetTriangles(upperArm, 1);
+            m.SetTriangles(foreArm, 2);
+            splitTopMesh = m;
+            return m;
+        }
+
+        // Splits Wolf3D_Outfit_Bottom into 3 submeshes (0: Thighs/Shorts, 1: Calves, 2: Crew Socks/Ankles)
+        // so outfits can show tailored denim/chinos OR knee-length shorts with bare calves and high white crew socks.
+        static Mesh GetSplitBottomMesh(Mesh src)
+        {
+            if (splitBottomMesh != null) return splitBottomMesh;
+            if (src == null || !src.isReadable) return src;
+            var m = Object.Instantiate(src);
+            m.name = src.name + "_StreetSplit";
+            var verts = m.vertices;
+            var uvs = new Vector2[verts.Length];
+            for (int i = 0; i < verts.Length; i++)
+            {
+                var v = verts[i];
+                uvs[i] = new Vector2((v.x + 0.21f) / 0.42f, Mathf.Clamp01((v.y - 0.08f) / 1.01f));
+            }
+            m.uv = uvs;
+
+            var tris = src.triangles;
+            var thighs = new List<int>(tris.Length);
+            var calves = new List<int>(tris.Length / 2);
+            var socks = new List<int>(tris.Length / 4);
+            for (int i = 0; i < tris.Length; i += 3)
+            {
+                int i0 = tris[i], i1 = tris[i + 1], i2 = tris[i + 2];
+                float ay = (verts[i0].y + verts[i1].y + verts[i2].y) / 3f;
+                if (ay >= 0.49f) { thighs.Add(i0); thighs.Add(i1); thighs.Add(i2); }
+                else if (ay >= 0.235f) { calves.Add(i0); calves.Add(i1); calves.Add(i2); }
+                else { socks.Add(i0); socks.Add(i1); socks.Add(i2); }
+            }
+            m.subMeshCount = 3;
+            m.SetTriangles(thighs, 0);
+            m.SetTriangles(calves, 1);
+            m.SetTriangles(socks, 2);
+            splitBottomMesh = m;
+            return m;
+        }
+
+        // Splits Wolf3D_Outfit_Footwear into 2 submeshes (0: Crisp White Vulcanized Midsole, 1: Two-Tone Sneaker Upper).
+        static Mesh GetSplitFootwearMesh(Mesh src)
+        {
+            if (splitFootwearMesh != null) return splitFootwearMesh;
+            if (src == null || !src.isReadable) return src;
+            var m = Object.Instantiate(src);
+            m.name = src.name + "_StreetSplit";
+            var verts = m.vertices;
+            var uvs = new Vector2[verts.Length];
+            for (int i = 0; i < verts.Length; i++)
+            {
+                var v = verts[i];
+                uvs[i] = new Vector2((v.x + 0.23f) / 0.46f, Mathf.Clamp01((v.z + 0.12f) / 0.35f));
+            }
+            m.uv = uvs;
+
+            var tris = src.triangles;
+            var sole = new List<int>(tris.Length / 2);
+            var upper = new List<int>(tris.Length);
+            for (int i = 0; i < tris.Length; i += 3)
+            {
+                int i0 = tris[i], i1 = tris[i + 1], i2 = tris[i + 2];
+                float minY = Mathf.Min(verts[i0].y, Mathf.Min(verts[i1].y, verts[i2].y));
+                float avgY = (verts[i0].y + verts[i1].y + verts[i2].y) / 3f;
+                if (minY <= 0.024f || avgY <= 0.033f) { sole.Add(i0); sole.Add(i1); sole.Add(i2); }
+                else { upper.Add(i0); upper.Add(i1); upper.Add(i2); }
+            }
+            m.subMeshCount = 2;
+            m.SetTriangles(sole, 0);
+            m.SetTriangles(upper, 1);
+            splitFootwearMesh = m;
+            return m;
+        }
+
+        static void StripBakedSuitMaps(Material m, float roughness = 0.72f, float metallic = 0.04f)
+        {
+            if (m == null) return;
+            if (m.HasProperty("normalTexture")) m.SetTexture("normalTexture", null);
+            if (m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", null);
+            m.DisableKeyword("_NORMALMAP");
+            if (m.HasProperty("metallicRoughnessTexture")) m.SetTexture("metallicRoughnessTexture", null);
+            if (m.HasProperty("occlusionTexture")) m.SetTexture("occlusionTexture", null);
+            if (m.HasProperty("roughnessFactor")) m.SetFloat("roughnessFactor", roughness);
+            if (m.HasProperty("metallicFactor")) m.SetFloat("metallicFactor", metallic);
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 1f - roughness);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", metallic);
+        }
+
         public static RigInstance Build(Transform parent, Look look, int layer = 0, float height = 1.8f, bool cesium = false)
         {
             Load();
             var rig = new RigInstance { Cesium = cesium && CesiumAvailable };
-            var srcPrefab = prefab != null ? prefab : cesiumPrefab;
+            var srcPrefab = rig.Cesium ? cesiumPrefab : (prefab != null ? prefab : cesiumPrefab);
             var go = Object.Instantiate(srcPrefab, parent, false);
             go.name = rig.Cesium ? "Rig (CesiumMan)" : "Rig";
             rig.Root = go;
             go.transform.localPosition = Vector3.zero; go.transform.localRotation = srcPrefab.transform.localRotation; go.transform.localScale = Vector3.one;
             foreach (var t in go.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
+
+            // Always hide the built-in Ready Player Me Western cowboy hat ("Wolf3D_Headwear") before measuring bounds.
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r.name.Contains("Headwear") || (r.sharedMaterial != null && r.sharedMaterial.name.Contains("Headwear")))
+                    r.enabled = false;
+            }
 
             // Scale to the character height and put the feet on the ground.
             var bounds = Bounds(go);
@@ -301,8 +457,7 @@ namespace Rise.Entities
             go.transform.localPosition = new Vector3(0f, -(bounds.min.y - go.transform.position.y) * k, 0f);
             rig.BaseScale = k;
 
-            // Face +z. glTFast keeps glTF +Z as Unity +z, so imported models already face forward; the avatar still
-            // checks where its eyes sit relative to the head bone in case a rig was authored the other way.
+            // Face +z.
             var head = Find(go.transform, "Head"); var le = Find(go.transform, "LeftEye"); var re = Find(go.transform, "RightEye");
             if (head != null && le != null && re != null)
             {
@@ -310,25 +465,83 @@ namespace Rise.Entities
                 if (forward.z < 0f) go.transform.localRotation = Quaternion.Euler(0f, 180f, 0f) * go.transform.localRotation;
             }
 
-            // Collect clothing materials (instances, so characters differ) and dress.
+            // Collect clothing materials and upgrade Wolf3D_Outfit_Top, Wolf3D_Outfit_Bottom, Wolf3D_Outfit_Footwear into multi-zone submeshes.
             foreach (var r in go.GetComponentsInChildren<Renderer>())
             {
+                if (!r.enabled && (r.name.Contains("Headwear") || (r.sharedMaterial != null && r.sharedMaterial.name.Contains("Headwear"))))
+                    continue;
+
+                var smr = r as SkinnedMeshRenderer;
+                string matName = r.sharedMaterial != null ? r.sharedMaterial.name : "";
+
+                if (smr != null && matName.Contains("Outfit_Top") && smr.sharedMesh != null && smr.sharedMesh.isReadable)
+                {
+                    var baseMat = r.material;
+                    StripBakedSuitMaps(baseMat, 0.70f, 0.04f);
+                    rig.SleeveUpperMat = new Material(baseMat) { name = "Outfit_Top_UpperSleeve" };
+                    rig.SleeveForeMat = new Material(baseMat) { name = "Outfit_Top_ForeArm" };
+                    smr.sharedMesh = GetSplitTopMesh(smr.sharedMesh);
+                    smr.sharedMaterials = new[] { baseMat, rig.SleeveUpperMat, rig.SleeveForeMat };
+                    rig.Top.Add(baseMat);
+                    continue;
+                }
+                if (smr != null && matName.Contains("Outfit_Bottom") && smr.sharedMesh != null && smr.sharedMesh.isReadable)
+                {
+                    var baseMat = r.material;
+                    StripBakedSuitMaps(baseMat, 0.74f, 0.04f);
+                    rig.LegCalfMat = new Material(baseMat) { name = "Outfit_Bottom_Calf" };
+                    rig.SockMat = new Material(baseMat) { name = "Outfit_Bottom_Sock" };
+                    smr.sharedMesh = GetSplitBottomMesh(smr.sharedMesh);
+                    smr.sharedMaterials = new[] { baseMat, rig.LegCalfMat, rig.SockMat };
+                    rig.Bottom.Add(baseMat);
+                    continue;
+                }
+                if (smr != null && matName.Contains("Outfit_Footwear") && smr.sharedMesh != null && smr.sharedMesh.isReadable)
+                {
+                    var baseMat = r.material;
+                    StripBakedSuitMaps(baseMat, 0.55f, 0.06f);
+                    rig.ShoeSoleMat = baseMat;
+                    rig.ShoeUpperMat = new Material(baseMat) { name = "Outfit_Footwear_Upper" };
+                    smr.sharedMesh = GetSplitFootwearMesh(smr.sharedMesh);
+                    smr.sharedMaterials = new[] { rig.ShoeSoleMat, rig.ShoeUpperMat };
+                    continue;
+                }
+
                 var mats = r.materials;
                 foreach (var m in mats)
                 {
                     string n = m.name;
-                    if (n.Contains("Outfit_Top")) rig.Top.Add(m);
-                    else if (n.Contains("Outfit_Bottom")) rig.Bottom.Add(m);
-                    else if (n.Contains("Headwear")) { rig.Cap.Add(m); rig.CapRenderers.Add(r); }
-                    else if (n.Contains("Beard")) rig.BeardRenderers.Add(r);
+                    if (n.Contains("Outfit_Top")) { StripBakedSuitMaps(m); rig.Top.Add(m); }
+                    else if (n.Contains("Outfit_Bottom")) { StripBakedSuitMaps(m); rig.Bottom.Add(m); }
+                    else if (n.Contains("Beard"))
+                    {
+                        StripBakedSuitMaps(m, 0.78f, 0.02f);
+                        SetTex(m, null);
+                        rig.BeardRenderers.Add(r);
+                        rig.Hair.Add(m);
+                    }
                     else if (n.Contains("Hair")) { rig.Hair.Add(m); rig.HairRenderers.Add(r); }
-                    else if ((n.Contains("Body") || n.Contains("Skin")) && !n.Contains("Eye") && !n.Contains("Teeth")) rig.Skin.Add(m);
+                    else if ((n.Contains("Body") || n.Contains("Skin")) && !n.Contains("Eye") && !n.Contains("Teeth"))
+                    {
+                        if (m.HasProperty("roughnessFactor")) m.SetFloat("roughnessFactor", 0.58f);
+                        rig.Skin.Add(m);
+                    }
                     else if (srcPrefab == cesiumPrefab) rig.Top.Add(m);
                 }
             }
             BindBones(rig, go.transform);
             if (srcPrefab == prefab) BuildAttachments(rig, go.transform, k);
             Dress(rig, look);
+            var dressedBounds = Bounds(go);
+            if (dressedBounds.size.y > 0.01f && Mathf.Abs(dressedBounds.size.y - height) > 0.02f)
+            {
+                float fix = height / dressedBounds.size.y;
+                k *= fix;
+                go.transform.localScale = Vector3.one * k;
+                var b2 = Bounds(go);
+                go.transform.localPosition += new Vector3(0f, go.transform.position.y - b2.min.y, 0f);
+                rig.BaseScale = k;
+            }
 
             var anim = go.GetComponent<Animation>();
             if (anim == null) anim = go.AddComponent<Animation>();
@@ -372,20 +585,19 @@ namespace Rise.Entities
             rig.LeftLeg = Find(root, "LeftLeg");
         }
 
-        // Primitive attachments on the bones: an outfit overlay on the hips
-        // (senator kaftan, agbada, gown, skirt), glasses on the head, a chain at the neck. Sized in rig-local metres.
         static void DestroyObj(Object o) { if (o == null) return; if (Application.isPlaying) Object.Destroy(o); else Object.DestroyImmediate(o); }
 
-        static Material sharedLensMat, sharedFrameMat, sharedSilverMat, sharedWatchMetalMat, sharedWatchDialMat, sharedTattooMat;
+        static Material sharedLensMat, sharedFrameMat, sharedSilverMat, sharedWatchMetalMat, sharedWatchDialMat, sharedTattooMat, sharedBeltLeatherMat;
         static readonly Dictionary<string, Material> weaponMatCache = new Dictionary<string, Material>();
 
         static void EnsureAccessoryMaterials()
         {
-            if (sharedLensMat == null) { sharedLensMat = new Material(ShaderLib.Lit) { color = new Color(0.05f, 0.07f, 0.10f) }; sharedLensMat.SetFloat("_Smoothness", 0.95f); sharedLensMat.SetFloat("_Metallic", 0.45f); }
-            if (sharedFrameMat == null) { sharedFrameMat = new Material(ShaderLib.Lit) { color = new Color(0.90f, 0.92f, 0.95f) }; sharedFrameMat.SetFloat("_Smoothness", 0.85f); sharedFrameMat.SetFloat("_Metallic", 0.70f); }
-            if (sharedSilverMat == null) { sharedSilverMat = new Material(ShaderLib.Lit) { color = new Color(0.92f, 0.86f, 0.68f) }; sharedSilverMat.SetFloat("_Metallic", 0.92f); sharedSilverMat.SetFloat("_Smoothness", 0.88f); }
+            if (sharedLensMat == null) { sharedLensMat = new Material(ShaderLib.Lit) { color = new Color(0.04f, 0.06f, 0.09f) }; sharedLensMat.SetFloat("_Smoothness", 0.96f); sharedLensMat.SetFloat("_Metallic", 0.55f); }
+            if (sharedFrameMat == null) { sharedFrameMat = new Material(ShaderLib.Lit) { color = new Color(0.14f, 0.14f, 0.16f) }; sharedFrameMat.SetFloat("_Smoothness", 0.82f); sharedFrameMat.SetFloat("_Metallic", 0.65f); }
+            if (sharedSilverMat == null) { sharedSilverMat = new Material(ShaderLib.Lit) { color = new Color(0.92f, 0.87f, 0.72f) }; sharedSilverMat.SetFloat("_Metallic", 0.94f); sharedSilverMat.SetFloat("_Smoothness", 0.90f); }
             if (sharedWatchMetalMat == null) { sharedWatchMetalMat = new Material(ShaderLib.Lit) { color = new Color(0.88f, 0.86f, 0.78f) }; sharedWatchMetalMat.SetFloat("_Metallic", 0.92f); sharedWatchMetalMat.SetFloat("_Smoothness", 0.88f); }
-            if (sharedWatchDialMat == null) { sharedWatchDialMat = new Material(ShaderLib.Lit) { color = new Color(0.08f, 0.12f, 0.18f) }; sharedWatchDialMat.SetFloat("_Smoothness", 0.92f); }
+            if (sharedWatchDialMat == null) { sharedWatchDialMat = new Material(ShaderLib.Lit) { color = new Color(0.06f, 0.10f, 0.16f) }; sharedWatchDialMat.SetFloat("_Smoothness", 0.92f); }
+            if (sharedBeltLeatherMat == null) { sharedBeltLeatherMat = new Material(ShaderLib.Lit) { color = new Color(0.11f, 0.09f, 0.08f) }; sharedBeltLeatherMat.SetFloat("_Smoothness", 0.58f); sharedBeltLeatherMat.SetFloat("_Metallic", 0.12f); }
             if (sharedTattooMat == null)
             {
                 sharedTattooMat = new Material(ShaderLib.Lit) { color = Color.white };
@@ -399,6 +611,7 @@ namespace Rise.Entities
         {
             EnsureAccessoryMaterials();
             var hips = Find(root, "Hips") ?? Find(root, "Spine");
+            var spine2 = Find(root, "Spine2") ?? Find(root, "Spine1") ?? hips;
             var head = Find(root, "Head");
             var neck = Find(root, "Neck") ?? head;
             var leftForeArm = Find(root, "LeftForeArm");
@@ -414,22 +627,158 @@ namespace Rise.Entities
                 return p.transform;
             }
 
+            // Shared per-rig hair/beard and cap materials
+            var hairMat = new Material(ShaderLib.Lit) { name = "HairMat", color = new Color(0.08f, 0.06f, 0.05f) };
+            hairMat.SetFloat("_Smoothness", 0.22f);
+            rig.Hair.Add(hairMat);
+
+            var capMat = new Material(ShaderLib.Lit) { name = "HeadwearCapMat", color = new Color(0.12f, 0.23f, 0.37f) };
+            capMat.SetFloat("_Smoothness", 0.32f);
+            rig.Cap.Add(capMat);
+
             if (hips != null)
             {
+                // Traditional tunic / gown lower drape ("Outfit overlay" name preserved for tests)
                 var ov = GameObject.CreatePrimitive(PrimitiveType.Cylinder); ov.name = "Outfit overlay"; ov.layer = layer; DestroyObj(ov.GetComponent<Collider>());
                 ov.transform.SetParent(hips, false);
-                rig.OverlayMaterial = new Material(ShaderLib.Lit) { color = Color.white }; rig.OverlayMaterial.SetFloat("_Smoothness", 0.22f);
+                rig.OverlayMaterial = new Material(ShaderLib.Lit) { color = Color.white }; rig.OverlayMaterial.SetFloat("_Smoothness", 0.26f);
                 ov.GetComponent<MeshRenderer>().sharedMaterial = rig.OverlayMaterial;
                 rig.Overlay = ov.transform; ov.SetActive(false);
+
+                // Tailored leather belt + metallic buckle on Hips
+                var bRoot = new GameObject("BeltRoot") { layer = layer }.transform;
+                bRoot.SetParent(hips, false);
+                SubPart(bRoot, "BeltStrap", PrimitiveType.Cylinder, new Vector3(0f, -0.02f, 0.008f), new Vector3(0.305f, 0.020f, 0.225f), sharedBeltLeatherMat);
+                SubPart(bRoot, "BeltBuckle", PrimitiveType.Cube, new Vector3(0f, -0.02f, 0.118f), new Vector3(0.052f, 0.038f, 0.014f), sharedSilverMat);
+                rig.BeltRoot = bRoot;
             }
+
+            if (spine2 != null)
+            {
+                // Open streetwear jacket / trench coat panels + lapels over inner shirt ("Jacket & jeans")
+                rig.JacketMaterial = new Material(ShaderLib.Lit) { color = new Color(0.14f, 0.16f, 0.20f) };
+                rig.JacketMaterial.SetFloat("_Smoothness", 0.36f);
+                var jRoot = new GameObject("JacketRoot") { layer = layer }.transform;
+                jRoot.SetParent(spine2, false);
+                SubPart(jRoot, "JacketPanelL", PrimitiveType.Cube, new Vector3(0.088f, -0.11f, 0.068f), new Vector3(0.115f, 0.42f, 0.095f), rig.JacketMaterial, Quaternion.Euler(0f, -8f, 0f));
+                SubPart(jRoot, "JacketPanelR", PrimitiveType.Cube, new Vector3(-0.088f, -0.11f, 0.068f), new Vector3(0.115f, 0.42f, 0.095f), rig.JacketMaterial, Quaternion.Euler(0f, 8f, 0f));
+                SubPart(jRoot, "JacketBack", PrimitiveType.Cube, new Vector3(0f, -0.10f, -0.062f), new Vector3(0.31f, 0.43f, 0.085f), rig.JacketMaterial);
+                SubPart(jRoot, "LapelL", PrimitiveType.Cube, new Vector3(0.056f, 0.01f, 0.112f), new Vector3(0.042f, 0.22f, 0.022f), rig.JacketMaterial, Quaternion.Euler(0f, 0f, -14f));
+                SubPart(jRoot, "LapelR", PrimitiveType.Cube, new Vector3(-0.056f, 0.01f, 0.112f), new Vector3(0.042f, 0.22f, 0.022f), rig.JacketMaterial, Quaternion.Euler(0f, 0f, 14f));
+                SubPart(jRoot, "CollarStand", PrimitiveType.Cylinder, new Vector3(0f, 0.115f, -0.008f), new Vector3(0.155f, 0.028f, 0.155f), rig.JacketMaterial);
+                rig.JacketRoot = jRoot;
+                jRoot.gameObject.SetActive(false);
+
+                // Flowing Agbada shoulder drape wings
+                var aRoot = new GameObject("AgbadaWings") { layer = layer }.transform;
+                aRoot.SetParent(spine2, false);
+                SubPart(aRoot, "WingL", PrimitiveType.Cube, new Vector3(0.17f, -0.06f, 0.01f), new Vector3(0.16f, 0.38f, 0.24f), rig.OverlayMaterial, Quaternion.Euler(0f, 0f, -12f));
+                SubPart(aRoot, "WingR", PrimitiveType.Cube, new Vector3(-0.17f, -0.06f, 0.01f), new Vector3(0.16f, 0.38f, 0.24f), rig.OverlayMaterial, Quaternion.Euler(0f, 0f, 12f));
+                rig.AgbadaWings = aRoot;
+                aRoot.gameObject.SetActive(false);
+
+                // Gold-embroidered Senator / Agbada chest placket
+                rig.PlacketMaterial = new Material(ShaderLib.Lit) { color = new Color(0.90f, 0.72f, 0.22f) };
+                rig.PlacketMaterial.SetFloat("_Metallic", 0.55f); rig.PlacketMaterial.SetFloat("_Smoothness", 0.62f);
+                var pRoot = new GameObject("CollarPlacket") { layer = layer }.transform;
+                pRoot.SetParent(spine2, false);
+                SubPart(pRoot, "ChestPlacket", PrimitiveType.Cube, new Vector3(0f, 0.01f, 0.108f), new Vector3(0.055f, 0.21f, 0.018f), rig.PlacketMaterial);
+                SubPart(pRoot, "MandarinCollar", PrimitiveType.Cylinder, new Vector3(0f, 0.125f, 0.005f), new Vector3(0.138f, 0.022f, 0.138f), rig.PlacketMaterial);
+                rig.CollarPlacket = pRoot;
+                pRoot.gameObject.SetActive(false);
+            }
+
             if (head != null)
             {
+                // ---- 4 Sculpted 3D Hairstyles on Head (all within Head local y <= 0.195f so height remains ~1.80m) ----
+                void AddHairPart(Transform group, string n, PrimitiveType pt, Vector3 pos, Vector3 sc, Quaternion? rot = null)
+                {
+                    var t = SubPart(group, n, pt, pos, sc, hairMat, rot);
+                    rig.HairRenderers.Add(t.GetComponent<Renderer>());
+                }
+
+                // 0: Short (360 waves cropped cap + crisp front line-up)
+                rig.HairShort = new GameObject("HairShort") { layer = layer }.transform;
+                rig.HairShort.SetParent(head, false);
+                AddHairPart(rig.HairShort, "WaveCap", PrimitiveType.Sphere, new Vector3(0f, 0.116f, -0.004f), new Vector3(0.194f, 0.145f, 0.200f));
+                AddHairPart(rig.HairShort, "LineUp", PrimitiveType.Cube, new Vector3(0f, 0.138f, 0.072f), new Vector3(0.128f, 0.028f, 0.052f), Quaternion.Euler(12f, 0f, 0f));
+
+                // 1: Fade (High-top sponge-twist Lagos fade + sharp hairline)
+                rig.HairFade = new GameObject("HairFade") { layer = layer }.transform;
+                rig.HairFade.SetParent(head, false);
+                AddHairPart(rig.HairFade, "FadeCrown", PrimitiveType.Cylinder, new Vector3(0f, 0.148f, 0.002f), new Vector3(0.168f, 0.040f, 0.176f), Quaternion.Euler(-4f, 0f, 0f));
+                AddHairPart(rig.HairFade, "FadeFrontLine", PrimitiveType.Cube, new Vector3(0f, 0.146f, 0.068f), new Vector3(0.136f, 0.044f, 0.058f));
+                AddHairPart(rig.HairFade, "TwistC", PrimitiveType.Sphere, new Vector3(0f, 0.172f, 0.010f), new Vector3(0.148f, 0.046f, 0.156f));
+                AddHairPart(rig.HairFade, "TwistL", PrimitiveType.Sphere, new Vector3(-0.042f, 0.168f, 0.004f), new Vector3(0.085f, 0.042f, 0.135f));
+                AddHairPart(rig.HairFade, "TwistR", PrimitiveType.Sphere, new Vector3(0.042f, 0.168f, 0.004f), new Vector3(0.085f, 0.042f, 0.135f));
+
+                // 2: Afro (Full volumetric rounded Afro crown)
+                rig.HairAfro = new GameObject("HairAfro") { layer = layer }.transform;
+                rig.HairAfro.SetParent(head, false);
+                AddHairPart(rig.HairAfro, "AfroMain", PrimitiveType.Sphere, new Vector3(0f, 0.124f, -0.008f), new Vector3(0.226f, 0.146f, 0.226f));
+                AddHairPart(rig.HairAfro, "AfroL", PrimitiveType.Sphere, new Vector3(-0.062f, 0.118f, -0.006f), new Vector3(0.115f, 0.118f, 0.165f));
+                AddHairPart(rig.HairAfro, "AfroR", PrimitiveType.Sphere, new Vector3(0.062f, 0.118f, -0.006f), new Vector3(0.115f, 0.118f, 0.165f));
+
+                // 3: Braids (Sculpted cornrow rows + hanging back locks)
+                rig.HairBraids = new GameObject("HairBraids") { layer = layer }.transform;
+                rig.HairBraids.SetParent(head, false);
+                AddHairPart(rig.HairBraids, "BraidBase", PrimitiveType.Sphere, new Vector3(0f, 0.114f, -0.006f), new Vector3(0.192f, 0.140f, 0.196f));
+                for (int b = -2; b <= 2; b++)
+                {
+                    float bx = b * 0.032f;
+                    AddHairPart(rig.HairBraids, "Cornrow_" + b, PrimitiveType.Capsule, new Vector3(bx, 0.148f, -0.004f), new Vector3(0.024f, 0.092f, 0.024f), Quaternion.Euler(86f, 0f, 0f));
+                    AddHairPart(rig.HairBraids, "LockBack_" + b, PrimitiveType.Capsule, new Vector3(bx * 1.1f, 0.042f, -0.086f), new Vector3(0.022f, 0.065f, 0.022f), Quaternion.Euler(12f, 0f, 0f));
+                }
+
+                // ---- Sculpted 3D Facial Hair on Head (Beard, Goatee, Moustache) ----
+                void AddBeardPart(Transform group, string n, PrimitiveType pt, Vector3 pos, Vector3 sc, Quaternion? rot = null)
+                {
+                    var t = SubPart(group, n, pt, pos, sc, hairMat, rot);
+                    rig.BeardRenderers.Add(t.GetComponent<Renderer>());
+                }
+
+                rig.BeardFull = new GameObject("BeardFull") { layer = layer }.transform;
+                rig.BeardFull.SetParent(head, false);
+                AddBeardPart(rig.BeardFull, "ChinBeard", PrimitiveType.Cube, new Vector3(0f, -0.036f, 0.082f), new Vector3(0.094f, 0.056f, 0.068f), Quaternion.Euler(10f, 0f, 0f));
+                AddBeardPart(rig.BeardFull, "JawLineL", PrimitiveType.Cube, new Vector3(-0.060f, -0.012f, 0.038f), new Vector3(0.034f, 0.050f, 0.102f), Quaternion.Euler(18f, -14f, 0f));
+                AddBeardPart(rig.BeardFull, "JawLineR", PrimitiveType.Cube, new Vector3(0.060f, -0.012f, 0.038f), new Vector3(0.034f, 0.050f, 0.102f), Quaternion.Euler(18f, 14f, 0f));
+                AddBeardPart(rig.BeardFull, "SideburnL", PrimitiveType.Cube, new Vector3(-0.082f, 0.036f, 0.010f), new Vector3(0.022f, 0.065f, 0.032f));
+                AddBeardPart(rig.BeardFull, "SideburnR", PrimitiveType.Cube, new Vector3(0.082f, 0.036f, 0.010f), new Vector3(0.022f, 0.065f, 0.032f));
+                AddBeardPart(rig.BeardFull, "SoulPatch", PrimitiveType.Cube, new Vector3(0f, -0.008f, 0.108f), new Vector3(0.028f, 0.024f, 0.024f));
+
+                rig.BeardGoatee = new GameObject("BeardGoatee") { layer = layer }.transform;
+                rig.BeardGoatee.SetParent(head, false);
+                AddBeardPart(rig.BeardGoatee, "GoateeChin", PrimitiveType.Cube, new Vector3(0f, -0.036f, 0.088f), new Vector3(0.064f, 0.048f, 0.052f), Quaternion.Euler(8f, 0f, 0f));
+                AddBeardPart(rig.BeardGoatee, "GoateePatch", PrimitiveType.Cube, new Vector3(0f, -0.008f, 0.108f), new Vector3(0.024f, 0.024f, 0.022f));
+
+                rig.BeardMoustache = new GameObject("BeardMoustache") { layer = layer }.transform;
+                rig.BeardMoustache.SetParent(head, false);
+                AddBeardPart(rig.BeardMoustache, "StacheBar", PrimitiveType.Cube, new Vector3(0f, 0.018f, 0.114f), new Vector3(0.078f, 0.018f, 0.024f));
+
+                // ---- Authentic 3D Headwear (Yoruba Fila Cap & Streetwear Baseball Face Cap) ----
+                rig.FilaCap = new GameObject("FilaCap") { layer = layer }.transform;
+                rig.FilaCap.SetParent(head, false);
+                var fCrown = SubPart(rig.FilaCap, "FilaCrown", PrimitiveType.Cylinder, new Vector3(0f, 0.145f, 0.002f), new Vector3(0.194f, 0.044f, 0.200f), capMat, Quaternion.Euler(-4f, 0f, 6f));
+                var fFold = SubPart(rig.FilaCap, "FilaFold", PrimitiveType.Cube, new Vector3(0.035f, 0.176f, 0.002f), new Vector3(0.115f, 0.024f, 0.155f), capMat, Quaternion.Euler(0f, 0f, -16f));
+                rig.CapRenderers.Add(fCrown.GetComponent<Renderer>());
+                rig.CapRenderers.Add(fFold.GetComponent<Renderer>());
+                rig.FilaCap.gameObject.SetActive(false);
+
+                rig.FaceCap = new GameObject("FaceCap") { layer = layer }.transform;
+                rig.FaceCap.SetParent(head, false);
+                var cDome = SubPart(rig.FaceCap, "CapDome", PrimitiveType.Sphere, new Vector3(0f, 0.128f, -0.002f), new Vector3(0.196f, 0.132f, 0.204f), capMat);
+                var cBrim = SubPart(rig.FaceCap, "CapBrim", PrimitiveType.Cube, new Vector3(0f, 0.120f, 0.118f), new Vector3(0.155f, 0.012f, 0.110f), capMat, Quaternion.Euler(10f, 0f, 0f));
+                rig.CapRenderers.Add(cDome.GetComponent<Renderer>());
+                rig.CapRenderers.Add(cBrim.GetComponent<Renderer>());
+                rig.FaceCap.gameObject.SetActive(false);
+
+                // ---- Designer Sunglasses at exact eye level (Head local y = 0.088, z = 0.096) ----
                 var gRoot = new GameObject("Glasses") { layer = layer }.transform;
                 gRoot.SetParent(head, false);
                 SubPart(gRoot, "LeftLens", PrimitiveType.Cube, new Vector3(-0.30f, 0f, 0f), new Vector3(0.42f, 0.86f, 0.24f), sharedLensMat);
                 SubPart(gRoot, "RightLens", PrimitiveType.Cube, new Vector3(0.30f, 0f, 0f), new Vector3(0.42f, 0.86f, 0.24f), sharedLensMat);
-                SubPart(gRoot, "TopBar", PrimitiveType.Cube, new Vector3(0f, 0.42f, 0.04f), new Vector3(1.04f, 0.20f, 0.28f), sharedFrameMat);
-                SubPart(gRoot, "Bridge", PrimitiveType.Cube, new Vector3(0f, 0.08f, 0.06f), new Vector3(0.22f, 0.18f, 0.26f), sharedFrameMat);
+                SubPart(gRoot, "TopBar", PrimitiveType.Cube, new Vector3(0f, 0.42f, 0.04f), new Vector3(1.04f, 0.20f, 0.28f), sharedSilverMat);
+                SubPart(gRoot, "Bridge", PrimitiveType.Cube, new Vector3(0f, 0.08f, 0.06f), new Vector3(0.22f, 0.18f, 0.26f), sharedSilverMat);
                 SubPart(gRoot, "LeftTemple", PrimitiveType.Cube, new Vector3(-0.51f, 0.12f, -1.6f), new Vector3(0.08f, 0.22f, 3.2f), sharedFrameMat);
                 SubPart(gRoot, "RightTemple", PrimitiveType.Cube, new Vector3(0.51f, 0.12f, -1.6f), new Vector3(0.08f, 0.22f, 3.2f), sharedFrameMat);
                 rig.Glasses = gRoot; gRoot.gameObject.SetActive(false);
@@ -598,7 +947,7 @@ namespace Rise.Entities
             wRoot.gameObject.SetActive(any);
         }
 
-        // Attachments are children of scaled bones; use the magnitude of the bone scale so rotated bones (negative lossyScale components) never invert or explode the attachment.
+        // Attachments are children of scaled bones; use the magnitude of the bone scale so rotated bones never invert or explode the attachment.
         static void Fit(Transform t, Transform bone, Vector3 worldSize, Vector3 worldOffset, float fallbackScale = 1f)
         {
             var ls = bone.lossyScale;
@@ -612,65 +961,258 @@ namespace Rise.Entities
 
         static readonly string[] OutfitNames = { "Ankara shirt", "Senator", "Buba & Sokoto", "Agbada", "Super Eagles", "T-shirt & jeans", "Singlet & jeans", "Tank top & shorts", "Jacket & jeans", "Gown", "Skirt & blouse" };
 
-        // Re-dress a rig: the fabric print on the top, trousers, skin, hair and cap colours,
-        // then the look slots: body type, hair style, facial hair, accessory and the outfit silhouette.
+        static void SetTex(Material m, Texture tex, float tileX = 1f, float tileY = 1f)
+        {
+            if (m == null) return;
+            if (m.HasProperty("baseColorTexture"))
+            {
+                m.SetTexture("baseColorTexture", tex);
+                if (m.HasProperty("baseColorTexture_ST")) m.SetVector("baseColorTexture_ST", new Vector4(tileX, tileY, 0f, 0f));
+            }
+            if (m.HasProperty("_BaseMap"))
+            {
+                m.SetTexture("_BaseMap", tex);
+                m.SetTextureScale("_BaseMap", new Vector2(tileX, tileY));
+            }
+            m.mainTexture = tex;
+        }
+
+        // Re-dress a rig: the fabric print on the top, multi-zone sleeves, trousers/shorts/socks, two-tone sneakers,
+        // skin, sculpted 3D hair, 3D beard, and Fila/Face cap/Glasses/Chain accessories.
         public static void Dress(RigInstance rig, Look look)
         {
-            DressSlots(rig, look);
+            string outfit = look.Outfit >= 0 && look.Outfit < OutfitNames.Length ? OutfitNames[look.Outfit] : "Ankara shirt";
+            Color richSkin = Color.Lerp(look.Skin, new Color(0.84f, 0.58f, 0.40f), 0.10f);
             var print = Data != null ? Fabrics.Get(Data, look.Fabric) : null;
-            Color fabricColour = Data != null && Data.fabrics.Length > 0 ? Mannequin.Hex(Data.fabrics[Mathf.Clamp(look.Fabric, 0, Data.fabrics.Length - 1)].baseColor) : new Color(0.88f, 0.48f, 0.1f);
+            Color fabricColour = Data != null && Data.fabrics.Length > 0
+                ? Mannequin.Hex(Data.fabrics[Mathf.Clamp(look.Fabric, 0, Data.fabrics.Length - 1)].baseColor)
+                : new Color(0.88f, 0.48f, 0.1f);
+            bool isJersey = outfit == "Super Eagles" || (Data != null && look.Fabric >= 0 && look.Fabric < Data.fabrics.Length && Data.fabrics[look.Fabric].pattern == "jersey");
+            float topTile = isJersey ? 1f : 2f;
+
+            DressSlots(rig, look, outfit, richSkin, print);
+
+            // 1. Torso Top (always keeps baseColorTexture == print on rig.Top[0] so SmokeTest & fabric prints work everywhere)
             foreach (var m in rig.Top)
             {
                 if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.28f);
                 if (print == null) { Tint(m, fabricColour); continue; }
                 Tint(m, Color.white);
-                if (m.HasProperty("baseColorTexture")) { m.SetTexture("baseColorTexture", print); if (m.HasProperty("baseColorTexture_ST")) m.SetVector("baseColorTexture_ST", new Vector4(2f, 2f, 0f, 0f)); }
-                else if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", print); m.SetTextureScale("_BaseMap", new Vector2(2f, 2f)); }
-                else m.mainTexture = print;
+                SetTex(m, print, topTile, topTile);
             }
+
+            // 2. Multi-zone Sleeves (Sleeveless vs Short-Sleeve with bare tattooed forearms vs Long-Sleeve / Open Jacket)
+            bool sleeveless = outfit == "Singlet & jeans" || outfit == "Tank top & shorts";
+            bool shortSleeve = outfit == "T-shirt & jeans" || outfit == "Ankara shirt" || outfit == "Super Eagles" || outfit == "Gown" || outfit == "Skirt & blouse";
+            bool isJacket = outfit == "Jacket & jeans";
+            Color jacketCol = Color.Lerp(look.Pants, new Color(0.12f, 0.14f, 0.18f), 0.55f);
+
+            if (rig.SleeveUpperMat != null)
+            {
+                if (sleeveless)
+                {
+                    SetTex(rig.SleeveUpperMat, null);
+                    Tint(rig.SleeveUpperMat, richSkin);
+                }
+                else if (isJacket)
+                {
+                    SetTex(rig.SleeveUpperMat, null);
+                    Tint(rig.SleeveUpperMat, jacketCol);
+                }
+                else
+                {
+                    SetTex(rig.SleeveUpperMat, print, topTile, topTile);
+                    Tint(rig.SleeveUpperMat, print != null ? Color.white : fabricColour);
+                }
+            }
+            if (rig.SleeveForeMat != null)
+            {
+                if (sleeveless || shortSleeve)
+                {
+                    // Bare forearms with subtle forearm tattoo weave
+                    SetTex(rig.SleeveForeMat, ShaderLib.TattooTex, 1f, 1f);
+                    Tint(rig.SleeveForeMat, richSkin);
+                }
+                else if (isJacket)
+                {
+                    SetTex(rig.SleeveForeMat, null);
+                    Tint(rig.SleeveForeMat, jacketCol);
+                }
+                else
+                {
+                    SetTex(rig.SleeveForeMat, print, topTile, topTile);
+                    Tint(rig.SleeveForeMat, print != null ? Color.white : fabricColour);
+                }
+            }
+
+            // 3. Trousers / Shorts / Bare Calves / High White Crew Socks
+            bool isShorts = outfit == "Tank top & shorts" || outfit == "Super Eagles";
+            bool isDress = outfit == "Gown" || outfit == "Skirt & blouse";
+            bool isDenim = outfit == "T-shirt & jeans" || outfit == "Singlet & jeans" || outfit == "Jacket & jeans" || outfit == "Ankara shirt";
+            var pantsTex = isDress && print != null ? print : Fabrics.GetPantsTexture(look.Pants, isDenim, isShorts);
+
             foreach (var m in rig.Bottom)
             {
                 if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.26f);
-                Tint(m, look.Pants);
+                if (pantsTex != null)
+                {
+                    SetTex(m, pantsTex, isDress ? 2f : 1f, isDress ? 2f : 1f);
+                    Tint(m, Color.white);
+                }
+                else Tint(m, look.Pants);
             }
-            Color richSkin = Color.Lerp(look.Skin, new Color(0.84f, 0.58f, 0.40f), 0.10f);
+            if (rig.LegCalfMat != null)
+            {
+                if (isShorts || isDress)
+                {
+                    // Bare calves
+                    SetTex(rig.LegCalfMat, null);
+                    Tint(rig.LegCalfMat, richSkin);
+                }
+                else
+                {
+                    SetTex(rig.LegCalfMat, pantsTex, 1f, 1f);
+                    Tint(rig.LegCalfMat, pantsTex != null ? Color.white : look.Pants);
+                }
+            }
+            if (rig.SockMat != null)
+            {
+                if (isShorts)
+                {
+                    // Crisp white athletic crew socks
+                    SetTex(rig.SockMat, null);
+                    Tint(rig.SockMat, new Color(0.95f, 0.96f, 0.98f));
+                }
+                else if (isDress)
+                {
+                    SetTex(rig.SockMat, null);
+                    Tint(rig.SockMat, richSkin);
+                }
+                else
+                {
+                    SetTex(rig.SockMat, pantsTex, 1f, 1f);
+                    Tint(rig.SockMat, pantsTex != null ? Color.white : look.Pants);
+                }
+            }
+
+            // 4. Two-tone Footwear (Vulcanized White Sneaker Midsole + Contrasting Suede/Leather Upper)
+            bool formalShoes = outfit == "Senator" || outfit == "Agbada";
+            if (rig.ShoeSoleMat != null)
+            {
+                SetTex(rig.ShoeSoleMat, null);
+                Tint(rig.ShoeSoleMat, formalShoes ? new Color(0.14f, 0.11f, 0.09f) : new Color(0.95f, 0.96f, 0.98f));
+            }
+            if (rig.ShoeUpperMat != null)
+            {
+                Color shoeCol = formalShoes
+                    ? new Color(0.18f, 0.12f, 0.09f)
+                    : Color.Lerp(look.Pants, new Color(0.16f, 0.18f, 0.22f), 0.55f);
+                SetTex(rig.ShoeUpperMat, Fabrics.GetSneakerTexture(shoeCol), 1f, 1f);
+                Tint(rig.ShoeUpperMat, Color.white);
+            }
+
+            // 5. Skin, Hair, Beard & Cap colours
             foreach (var m in rig.Skin)
             {
-                if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.36f);
+                if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.38f);
                 Tint(m, richSkin);
             }
             if (rig.TattooMaterial != null) Tint(rig.TattooMaterial, richSkin);
             foreach (var m in rig.Hair)
             {
-                if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.30f);
+                if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.24f);
                 Tint(m, look.Hair);
             }
-            foreach (var m in rig.Cap) Tint(m, look.Cap ?? Color.white);
-            if (!look.Cap.HasValue) foreach (var r in rig.Root.GetComponentsInChildren<Renderer>()) if (r.sharedMaterial != null && r.sharedMaterial.name.Contains("Headwear")) r.enabled = false;
+            Color capCol = look.Cap ?? new Color(0.12f, 0.23f, 0.37f);
+            var filaTex = Fabrics.GetFilaTexture(capCol);
+            foreach (var m in rig.Cap)
+            {
+                SetTex(m, filaTex, 1f, 1f);
+                Tint(m, Color.white);
+            }
         }
 
-        static void DressSlots(RigInstance rig, Look look)
+        static void DressSlots(RigInstance rig, Look look, string outfit, Color richSkin, Texture2D print)
         {
             // Body type: Slim / Average / Big widen or narrow the whole rig.
             float wide = look.BodyType == 2 ? 1.12f : look.BodyType == 0 ? 0.92f : 1f;
             rig.Root.transform.localScale = new Vector3(rig.BaseScale * wide, rig.BaseScale, rig.BaseScale * wide);
-            // Hair style: Bald hides the hair; Afro puffs it out; the others keep the mesh and differ by colour.
-            string hair = Data != null && look.HairStyle < Data.hairStyles.Length ? Data.hairStyles[look.HairStyle] : "Short";
-            foreach (var r in rig.HairRenderers) { r.enabled = hair != "Bald"; r.transform.localScale = hair == "Afro" ? Vector3.one * 1.22f : Vector3.one; }
-            string beard = Data != null && look.FacialHair < Data.facialHair.Length ? Data.facialHair[look.FacialHair] : "None";
-            foreach (var r in rig.BeardRenderers) r.enabled = beard != "None";
-            // Accessory: fila / face cap use the headwear; glasses and chain are attachments.
-            string acc = Data != null && look.Accessory < Data.accessories.Length ? Data.accessories[look.Accessory] : "None";
-            foreach (var r in rig.CapRenderers) r.enabled = acc == "Fila" || acc == "Face cap";
-            string outfit = look.Outfit < OutfitNames.Length ? OutfitNames[look.Outfit] : "Ankara shirt";
+
+            string acc = Data != null && look.Accessory >= 0 && look.Accessory < Data.accessories.Length ? Data.accessories[look.Accessory] : "None";
+            bool showFila = acc == "Fila";
+            bool showFaceCap = acc == "Face cap";
+            bool hasHat = showFila || showFaceCap;
+
+            if (rig.FilaCap != null) rig.FilaCap.gameObject.SetActive(showFila);
+            if (rig.FaceCap != null) rig.FaceCap.gameObject.SetActive(showFaceCap);
+            foreach (var r in rig.CapRenderers)
+                if (r != null) r.enabled = hasHat;
+
+            // Hair style: Short, Fade, Afro, Braids, Bald
+            string hair = Data != null && look.HairStyle >= 0 && look.HairStyle < Data.hairStyles.Length ? Data.hairStyles[look.HairStyle] : "Short";
+            bool isBald = hair == "Bald";
+            if (rig.HairShort != null) rig.HairShort.gameObject.SetActive(!isBald && (hair == "Short" || hasHat));
+            if (rig.HairFade != null) rig.HairFade.gameObject.SetActive(!isBald && !hasHat && hair == "Fade");
+            if (rig.HairAfro != null) rig.HairAfro.gameObject.SetActive(!isBald && !hasHat && hair == "Afro");
+            if (rig.HairBraids != null) rig.HairBraids.gameObject.SetActive(!isBald && !hasHat && hair == "Braids");
+            foreach (var r in rig.HairRenderers)
+                if (r != null) r.enabled = !isBald;
+
+            // Facial hair: None, Beard, Goatee, Moustache
+            string beard = Data != null && look.FacialHair >= 0 && look.FacialHair < Data.facialHair.Length ? Data.facialHair[look.FacialHair] : "None";
+            bool hasBeard = beard != "None";
+            if (rig.BeardFull != null) rig.BeardFull.gameObject.SetActive(beard == "Beard");
+            if (rig.BeardGoatee != null) rig.BeardGoatee.gameObject.SetActive(beard == "Goatee");
+            if (rig.BeardMoustache != null) rig.BeardMoustache.gameObject.SetActive(beard == "Moustache" || beard == "Beard" || beard == "Goatee");
+            foreach (var r in rig.BeardRenderers)
+                if (r != null) r.enabled = hasBeard;
+
+            // Accessories & layered garments
             bool showGlasses = acc == "Glasses";
             bool showChain = acc == "Chain" || outfit == "T-shirt & jeans" || outfit == "Singlet & jeans" || outfit == "Tank top & shorts" || outfit == "Super Eagles";
             bool bareArms = outfit == "T-shirt & jeans" || outfit == "Singlet & jeans" || outfit == "Tank top & shorts" || outfit == "Super Eagles" || outfit == "Ankara shirt";
-            if (rig.Glasses != null) { rig.Glasses.gameObject.SetActive(showGlasses); if (showGlasses) Fit(rig.Glasses, rig.Glasses.parent, new Vector3(0.145f, 0.032f, 0.028f), new Vector3(0f, 0.042f, 0.098f), rig.BaseScale); }
-            if (rig.Chain != null) { rig.Chain.gameObject.SetActive(showChain); if (showChain) Fit(rig.Chain, rig.Chain.parent, new Vector3(0.14f, 0.09f, 0.14f), new Vector3(0f, -0.02f, 0.02f), rig.BaseScale); }
-            if (rig.Watch != null) { rig.Watch.gameObject.SetActive(true); Fit(rig.Watch, rig.Watch.parent, new Vector3(0.068f, 0.028f, 0.068f), new Vector3(0f, 0.14f, 0f), rig.BaseScale); }
-            if (rig.TattooL != null) { rig.TattooL.gameObject.SetActive(bareArms); if (bareArms) Fit(rig.TattooL, rig.TattooL.parent, new Vector3(0.072f, 0.085f, 0.072f), new Vector3(0f, 0.06f, 0f), rig.BaseScale); }
-            if (rig.TattooR != null) { rig.TattooR.gameObject.SetActive(bareArms); if (bareArms) Fit(rig.TattooR, rig.TattooR.parent, new Vector3(0.072f, 0.085f, 0.072f), new Vector3(0f, 0.06f, 0f), rig.BaseScale); }
+            bool showBelt = outfit == "T-shirt & jeans" || outfit == "Singlet & jeans" || outfit == "Jacket & jeans" || outfit == "Ankara shirt";
+            bool showJacket = outfit == "Jacket & jeans";
+            bool showPlacket = outfit == "Senator" || outfit == "Agbada" || outfit == "Buba & Sokoto";
+
+            if (rig.Glasses != null)
+            {
+                rig.Glasses.gameObject.SetActive(showGlasses);
+                if (showGlasses) Fit(rig.Glasses, rig.Glasses.parent, new Vector3(0.148f, 0.034f, 0.030f), new Vector3(0f, 0.088f, 0.098f), rig.BaseScale);
+            }
+            if (rig.Chain != null)
+            {
+                rig.Chain.gameObject.SetActive(showChain);
+                if (showChain) Fit(rig.Chain, rig.Chain.parent, new Vector3(0.14f, 0.09f, 0.14f), new Vector3(0f, -0.02f, 0.035f), rig.BaseScale);
+            }
+            if (rig.Watch != null)
+            {
+                rig.Watch.gameObject.SetActive(true);
+                Fit(rig.Watch, rig.Watch.parent, new Vector3(0.068f, 0.028f, 0.068f), new Vector3(0f, 0.14f, 0f), rig.BaseScale);
+            }
+            if (rig.TattooL != null)
+            {
+                rig.TattooL.gameObject.SetActive(bareArms);
+                if (bareArms) Fit(rig.TattooL, rig.TattooL.parent, new Vector3(0.068f, 0.082f, 0.068f), new Vector3(0f, 0.06f, 0f), rig.BaseScale);
+            }
+            if (rig.TattooR != null)
+            {
+                rig.TattooR.gameObject.SetActive(bareArms);
+                if (bareArms) Fit(rig.TattooR, rig.TattooR.parent, new Vector3(0.068f, 0.082f, 0.068f), new Vector3(0f, 0.06f, 0f), rig.BaseScale);
+            }
+            if (rig.BeltRoot != null)
+                rig.BeltRoot.gameObject.SetActive(showBelt);
+            if (rig.JacketRoot != null)
+            {
+                rig.JacketRoot.gameObject.SetActive(showJacket);
+                if (showJacket && rig.JacketMaterial != null)
+                    rig.JacketMaterial.color = Color.Lerp(look.Pants, new Color(0.14f, 0.16f, 0.20f), 0.55f);
+            }
+            if (rig.CollarPlacket != null)
+                rig.CollarPlacket.gameObject.SetActive(showPlacket);
+            if (rig.AgbadaWings != null)
+                rig.AgbadaWings.gameObject.SetActive(outfit == "Agbada");
+
             // Outfit silhouette overlays in the fabric print, scaled snugly to the waist so they never protrude like a barrel.
             if (rig.Overlay != null)
             {
@@ -680,27 +1222,38 @@ namespace Rise.Entities
                 if (show)
                 {
                     Vector3 size = outfit == "Agbada" ? new Vector3(0.33f, 0.22f, 0.22f) : outfit == "Gown" ? new Vector3(0.31f, 0.30f, 0.21f) : new Vector3(0.30f, 0.20f, 0.20f);
-                    Vector3 offset = new Vector3(0f, 0.04f, 0f);
+                    Vector3 offset = new Vector3(0f, -0.02f, 0.005f);
                     Fit(rig.Overlay, hips, size, offset, rig.BaseScale);
                     rig.Overlay.localScale = new Vector3(rig.Overlay.localScale.x, rig.Overlay.localScale.y * 0.5f, rig.Overlay.localScale.z);   // unit cylinder is 2 high
-                    var print = Data != null ? Fabrics.Get(Data, look.Fabric) : null;
-                    if (print != null && rig.OverlayMaterial != null) { rig.OverlayMaterial.SetTexture("_BaseMap", print); rig.OverlayMaterial.SetTextureScale("_BaseMap", new Vector2(2f, 2f)); rig.OverlayMaterial.color = Color.white; }
+                    if (print != null && rig.OverlayMaterial != null)
+                    {
+                        SetTex(rig.OverlayMaterial, print, 2f, 2f);
+                        rig.OverlayMaterial.color = Color.white;
+                    }
                 }
             }
         }
 
         static void Tint(Material m, Color c)
         {
+            if (m == null) return;
             if (m.HasProperty("baseColorFactor")) m.SetColor("baseColorFactor", c);
-            else if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
-            else m.color = c;
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+            m.color = c;
         }
 
         public static Bounds Bounds(GameObject go)
         {
             var rends = go.GetComponentsInChildren<Renderer>();
-            if (rends.Length == 0) return new Bounds(go.transform.position, Vector3.one);
-            var b = rends[0].bounds; foreach (var r in rends) b.Encapsulate(r.bounds); return b;
+            var b = new Bounds(go.transform.position, Vector3.zero);
+            bool any = false;
+            foreach (var r in rends)
+            {
+                if (!r.enabled || !r.gameObject.activeInHierarchy) continue;
+                if (!any) { b = r.bounds; any = true; }
+                else b.Encapsulate(r.bounds);
+            }
+            return any ? b : new Bounds(go.transform.position, Vector3.one);
         }
 
         public static Transform Find(Transform root, string name)

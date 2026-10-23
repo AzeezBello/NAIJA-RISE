@@ -11,13 +11,13 @@ export const DISTRICT = createArea({
   ],
   roads: {
     h: [
-      { k: -430, from: 100, to: 340, name: 'Oyingbo Road', width: 18, class: 'commercial' },
-      { k: -470, from: 100, to: 340, name: 'Empire Road', width: 18, class: 'main' },
+      { k: -430, from: 0, to: 360, name: 'Oyingbo Road', width: 18, class: 'commercial' },
+      { k: -470, from: 0, to: 360, name: 'Empire Road', width: 18, class: 'main' },
     ],
     v: [
-      { k: 260, from: -490, to: -400, name: 'Oyingbo Market Link', width: 12, class: 'residential' },
-      { k: 200, from: -490, to: -400, name: 'Lagos Street', width: 16, class: 'commercial' },
-      { k: 320, from: -490, to: -400, name: 'Oyingbo Market Road', width: 18, class: 'market' },
+      { k: 260, from: -470, to: -380, name: 'Oyingbo Market Link', width: 12, class: 'residential' },
+      { k: 200, from: -470, to: -380, name: 'Lagos Street', width: 16, class: 'commercial' },
+      { k: 320, from: -470, to: -380, name: 'Oyingbo Market Road', width: 18, class: 'market' },
     ],
   },
   landmarks: [

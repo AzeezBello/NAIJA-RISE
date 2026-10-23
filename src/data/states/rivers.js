@@ -14,12 +14,14 @@ export const STATE_AREA = createArea({
   ],
   roads: {
     h: [
-      { k: -120, from: 1750, to: 2280, name: 'Benin Ring Road · Port Harcourt GRA Boulevard', width: 26, class: 'commercial' },
-      { k: 240, from: 1720, to: 2280, name: 'East–West Road · Warri–Port Harcourt Expressway', width: 32, class: 'highway' },
-      { k: 300, from: 1720, to: 2280, name: 'Lagos–Calabar Coastal Highway · Bonny–Onne Sector', width: 26, class: 'main' },
+      { k: -120, from: 1760, to: 2280, name: 'Benin Ring Road · Port Harcourt GRA Boulevard', width: 24, class: 'commercial' },
+      { k: 240, from: 440, to: 2280, name: 'East–West Road · Warri–Port Harcourt Expressway', width: 28, class: 'highway' },
+      { k: 300, from: 440, to: 2280, name: 'Lagos–Calabar Coastal Highway · Bonny–Onne Sector', width: 20, class: 'main' },
     ],
     v: [
-      { k: 1980, from: -1680, to: 320, name: 'Benin–Asaba–Onitsha–Port Harcourt Trunk Highway', width: 30, class: 'highway' },
+      { k: 1760, from: -1460, to: 300, name: 'Niger Bridgehead–Warri Western Link', width: 22, class: 'main' },
+      { k: 1980, from: -1680, to: 300, name: 'Benin–Asaba–Onitsha–Port Harcourt Trunk Highway', width: 28, class: 'highway' },
+      { k: 2280, from: -1460, to: 300, name: 'Enugu–Aba–Bonny Eastern Trunk Road', width: 22, class: 'main' },
     ],
   },
   landmarks: [

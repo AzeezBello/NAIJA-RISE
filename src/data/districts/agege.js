@@ -10,13 +10,13 @@ export const DISTRICT = createArea({
   ],
   roads: {
     h: [
-      { k: -720, from: -520, to: -160, name: 'Agege Motor Road', width: 20, class: 'main' },
-      { k: -690, from: -520, to: -160, name: 'Agege Market Link', width: 12, class: 'residential' },
-      { k: -660, from: -520, to: -160, name: 'Oba Ogunji Road', width: 16, class: 'commercial' },
+      { k: -720, from: -490, to: -120, name: 'Agege Motor Road', width: 20, class: 'main' },
+      { k: -690, from: -490, to: -120, name: 'Agege Market Link', width: 12, class: 'residential' },
+      { k: -660, from: -490, to: -120, name: 'Oba Ogunji Road', width: 16, class: 'commercial' },
     ],
     v: [
-      { k: -490, from: -780, to: -640, name: 'Old Abeokuta Road', width: 18, class: 'main' },
-      { k: -310, from: -780, to: -640, name: 'Iju Road', width: 16, class: 'commercial' },
+      { k: -490, from: -820, to: -660, name: 'Old Abeokuta Road', width: 18, class: 'main' },
+      { k: -300, from: -1880, to: -660, name: 'Iju Road · Lagos–Abeokuta Expressway', width: 18, class: 'commercial' },
     ],
   },
   landmarks: [

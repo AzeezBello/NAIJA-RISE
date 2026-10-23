@@ -12,24 +12,23 @@ export const DISTRICT = createArea({
   ],
   roads: {
     h: [
-      { k: -380, from: 100, to: 340, name: 'Gbagada Link Road', width: 16, class: 'main' },
-      { k: -350, from: 100, to: 340, name: 'Bariga Road', width: 14, class: 'commercial' },
-      { k: -280, from: 100, to: 340, name: 'Shomolu Road', width: 14, class: 'commercial' },
+      { k: -380, from: 0, to: 360, name: 'Gbagada Link Road', width: 16, class: 'main' },
+      { k: -280, from: -740, to: 360, name: 'Shomolu · Mushin · Ladipo Road', width: 18, class: 'commercial' },
     ],
     v: [
-      { k: 150, from: -390, to: -250, name: 'Gbagada Express Road', width: 18, class: 'main' },
-      { k: 210, from: -390, to: -250, name: 'Bariga Link Road', width: 14, class: 'residential' },
-      { k: 290, from: -390, to: -250, name: 'Shomolu Road', width: 16, class: 'commercial' },
+      { k: 150, from: -380, to: -280, name: 'Gbagada Express Road', width: 18, class: 'main' },
+      { k: 210, from: -380, to: -280, name: 'Bariga Link Road', width: 14, class: 'residential' },
+      { k: 290, from: -380, to: -280, name: 'Shomolu Road', width: 16, class: 'commercial' },
     ],
   },
   landmarks: [
-    { id: 'gbagada', name: 'Gbagada', short: 'GBAGADA', x: 140, z: -320, c: '#8a7d6a', sign: '#ffffff', h: 7, kind: 'landmark', region: 'gbagada' },
-    { id: 'bariga', name: 'Bariga', short: 'BARIGA', x: 220, z: -320, c: '#7a6a55', sign: '#ffc52f', h: 6, kind: 'landmark', region: 'bariga' },
-    { id: 'shomolu', name: 'Shomolu', short: 'SHOMOLU', x: 300, z: -320, c: '#6b5344', sign: '#ffffff', h: 6, kind: 'landmark', region: 'shomolu' },
+    { id: 'gbagada', name: 'Gbagada', short: 'GBAGADA', x: 132, z: -304, c: '#8a7d6a', sign: '#ffffff', h: 7, kind: 'landmark', region: 'gbagada' },
+    { id: 'bariga', name: 'Bariga', short: 'BARIGA', x: 234, z: -304, c: '#7a6a55', sign: '#ffc52f', h: 6, kind: 'landmark', region: 'bariga' },
+    { id: 'shomolu', name: 'Shomolu', short: 'SHOMOLU', x: 316, z: -304, c: '#6b5344', sign: '#ffffff', h: 6, kind: 'landmark', region: 'shomolu' },
   ],
   busStops: [
-    { id: 'gbagada-bus', name: 'Gbagada Bus Stop', short: 'GBAGADA', x: 140, z: -350, agberos: 1 },
-    { id: 'bariga-bus', name: 'Bariga Bus Stop', short: 'BARIGA', x: 220, z: -350, agberos: 2 },
-    { id: 'shomolu-bus', name: 'Shomolu Bus Stop', short: 'SHOMOLU', x: 300, z: -350, agberos: 2 },
+    { id: 'gbagada-bus', name: 'Gbagada Bus Stop', short: 'GBAGADA', x: 132, z: -348, agberos: 1 },
+    { id: 'bariga-bus', name: 'Bariga Bus Stop', short: 'BARIGA', x: 228, z: -348, agberos: 2 },
+    { id: 'shomolu-bus', name: 'Shomolu Bus Stop', short: 'SHOMOLU', x: 312, z: -348, agberos: 2 },
   ],
 });
