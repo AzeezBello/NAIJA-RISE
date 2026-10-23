@@ -315,10 +315,48 @@ function optimizeStaticGlb(buf, outPath, opts = {}) {
     return { mat: outMat, uvTransform };
   });
 
-  // 2. Walk scene graph and collect transformed geometry per material index
+  // 2. Walk scene graph and collect transformed geometry per material index (supporting skinned meshes & frame-0 animation pose)
+  if (json.animations && json.animations[0] && json.skins && json.skins.length > 0) {
+    const anim = json.animations[0];
+    for (const ch of (anim.channels || [])) {
+      const s = anim.samplers && anim.samplers[ch.sampler];
+      if (!s || s.output === undefined || !ch.target || ch.target.node === undefined) continue;
+      const vals = readAccessorFloats(json, bin, s.output);
+      const n = json.nodes[ch.target.node];
+      if (!n || vals.length < 3) continue;
+      if (ch.target.path === 'rotation' && vals.length >= 4) n.rotation = [vals[0], vals[1], vals[2], vals[3]];
+      else if (ch.target.path === 'translation') n.translation = [vals[0], vals[1], vals[2]];
+      else if (ch.target.path === 'scale') n.scale = [vals[0], vals[1], vals[2]];
+    }
+  }
+
+  const I = Float64Array.from([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  const nodeWorldMats = new Array((json.nodes || []).length);
+  function computeWorldMats(nodeIdx, parentMat) {
+    const n = json.nodes[nodeIdx];
+    if (!n) return;
+    const m = mul4(parentMat, trsToMat(n));
+    nodeWorldMats[nodeIdx] = m;
+    for (const c of (n.children || [])) computeWorldMats(c, m);
+  }
+  const rootNodes = (json.scenes && json.scenes[0] && json.scenes[0].nodes)
+    ? json.scenes[0].nodes
+    : (json.nodes || []).map((_, i) => i);
+  for (const r of rootNodes) computeWorldMats(r, I);
+
+  const skinJointMats = (json.skins || []).map(skin => {
+    const ibms = skin.inverseBindMatrices !== undefined ? readAccessorFloats(json, bin, skin.inverseBindMatrices) : null;
+    return (skin.joints || []).map((jIdx, i) => {
+      const wMat = nodeWorldMats[jIdx] || I;
+      if (!ibms) return wMat;
+      const ibm = ibms.subarray(i * 16, i * 16 + 16);
+      return mul4(wMat, ibm);
+    });
+  });
+
   const matBuckets = new Map(); // matIdx -> { positions:[], normals:[], uvs:[], indices:[], vertCount:0 }
 
-  function addPrimitive(p, worldMat) {
+  function addPrimitive(p, worldMat, jointMats) {
     if (p.mode !== undefined && p.mode !== 4) return; // triangles only
     if (!p.attributes || p.attributes.POSITION === undefined) return;
     const matIdx = (p.material !== undefined && p.material < cleanMats.length) ? p.material : 0;
@@ -327,6 +365,9 @@ function optimizeStaticGlb(buf, outPath, opts = {}) {
     if (vCount === 0) return;
     const norm = p.attributes.NORMAL !== undefined ? readAccessorFloats(json, bin, p.attributes.NORMAL) : null;
     const uv = p.attributes.TEXCOORD_0 !== undefined ? readAccessorFloats(json, bin, p.attributes.TEXCOORD_0) : null;
+    const hasSkin = !!(jointMats && p.attributes.JOINTS_0 !== undefined && p.attributes.WEIGHTS_0 !== undefined);
+    const joints = hasSkin ? readAccessorFloats(json, bin, p.attributes.JOINTS_0) : null;
+    const weights = hasSkin ? readAccessorFloats(json, bin, p.attributes.WEIGHTS_0) : null;
     const idx = readIndices(json, bin, p.indices, vCount);
     const uvXform = cleanMats[matIdx]?.uvTransform;
 
@@ -338,9 +379,28 @@ function optimizeStaticGlb(buf, outPath, opts = {}) {
     const baseV = bucket.vertCount;
     for (let i = 0; i < vCount; i++) {
       const px = pos[i * 3], py = pos[i * 3 + 1], pz = pos[i * 3 + 2];
-      let wx = worldMat[0] * px + worldMat[4] * py + worldMat[8] * pz + worldMat[12];
-      let wy = worldMat[1] * px + worldMat[5] * py + worldMat[9] * pz + worldMat[13];
-      let wz = worldMat[2] * px + worldMat[6] * py + worldMat[10] * pz + worldMat[14];
+      let wx = 0, wy = 0, wz = 0;
+      if (hasSkin) {
+        let wSum = 0;
+        for (let k = 0; k < 4; k++) {
+          const w = weights[i * 4 + k];
+          if (w <= 0) continue;
+          wSum += w;
+          const jm = jointMats[joints[i * 4 + k]] || I;
+          wx += w * (jm[0] * px + jm[4] * py + jm[8] * pz + jm[12]);
+          wy += w * (jm[1] * px + jm[5] * py + jm[9] * pz + jm[13]);
+          wz += w * (jm[2] * px + jm[6] * py + jm[10] * pz + jm[14]);
+        }
+        if (wSum === 0) {
+          wx = worldMat[0] * px + worldMat[4] * py + worldMat[8] * pz + worldMat[12];
+          wy = worldMat[1] * px + worldMat[5] * py + worldMat[9] * pz + worldMat[13];
+          wz = worldMat[2] * px + worldMat[6] * py + worldMat[10] * pz + worldMat[14];
+        }
+      } else {
+        wx = worldMat[0] * px + worldMat[4] * py + worldMat[8] * pz + worldMat[12];
+        wy = worldMat[1] * px + worldMat[5] * py + worldMat[9] * pz + worldMat[13];
+        wz = worldMat[2] * px + worldMat[6] * py + worldMat[10] * pz + worldMat[14];
+      }
       if (rotZUpToYUp) {
         const tmpY = wy;
         wy = wz;
@@ -350,9 +410,21 @@ function optimizeStaticGlb(buf, outPath, opts = {}) {
 
       if (norm) {
         const nx = norm[i * 3], ny = norm[i * 3 + 1], nz = norm[i * 3 + 2];
-        let wnx = worldMat[0] * nx + worldMat[4] * ny + worldMat[8] * nz;
-        let wny = worldMat[1] * nx + worldMat[5] * ny + worldMat[9] * nz;
-        let wnz = worldMat[2] * nx + worldMat[6] * ny + worldMat[10] * nz;
+        let wnx = 0, wny = 0, wnz = 0;
+        if (hasSkin) {
+          for (let k = 0; k < 4; k++) {
+            const w = weights[i * 4 + k];
+            if (w <= 0) continue;
+            const jm = jointMats[joints[i * 4 + k]] || I;
+            wnx += w * (jm[0] * nx + jm[4] * ny + jm[8] * nz);
+            wny += w * (jm[1] * nx + jm[5] * ny + jm[9] * nz);
+            wnz += w * (jm[2] * nx + jm[6] * ny + jm[10] * nz);
+          }
+        } else {
+          wnx = worldMat[0] * nx + worldMat[4] * ny + worldMat[8] * nz;
+          wny = worldMat[1] * nx + worldMat[5] * ny + worldMat[9] * nz;
+          wnz = worldMat[2] * nx + worldMat[6] * ny + worldMat[10] * nz;
+        }
         if (rotZUpToYUp) {
           const tmpNY = wny;
           wny = wnz;
@@ -385,27 +457,23 @@ function optimizeStaticGlb(buf, outPath, opts = {}) {
     bucket.vertCount += vCount;
   }
 
-  function walkNode(nodeIdx, parentMat) {
+  function walkNode(nodeIdx) {
     const n = json.nodes[nodeIdx];
     if (!n) return;
-    // Skip motion-blur or glow helper meshes
     if (n.name && ((n.name.startsWith('Wheel_') && n.name.includes('_Motion')) || (n.name.startsWith('lights_') && n.name.includes('_glows_')))) {
       return;
     }
-    const m = mul4(parentMat, trsToMat(n));
+    const m = nodeWorldMats[nodeIdx] || I;
+    const jMats = n.skin !== undefined ? skinJointMats[n.skin] : null;
     if (n.mesh !== undefined && json.meshes[n.mesh]) {
       for (const p of (json.meshes[n.mesh].primitives || [])) {
-        addPrimitive(p, m);
+        addPrimitive(p, m, jMats);
       }
     }
-    for (const c of (n.children || [])) walkNode(c, m);
+    for (const c of (n.children || [])) walkNode(c);
   }
 
-  const I = Float64Array.from([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-  const rootNodes = (json.scenes && json.scenes[0] && json.scenes[0].nodes)
-    ? json.scenes[0].nodes
-    : json.nodes.map((_, i) => i);
-  for (const r of rootNodes) walkNode(r, I);
+  for (const r of rootNodes) walkNode(r);
 
   // If too many material buckets, keep top (maxMaterials - 1) by triangle count and merge the rest into the last bucket
   let bucketEntries = [...matBuckets.entries()].filter(([, b]) => b.indices.length >= 3);
@@ -719,27 +787,33 @@ function optimizeStaticGlb(buf, outPath, opts = {}) {
   console.log(`${path.basename(outPath).padEnd(36)} | ${(finalGlb.length / 1024).toFixed(0).padStart(6)} KB | verts:${String(totalOutVerts).padStart(5)} | submeshes:${String(outPrimitives.length).padStart(2)} | imgs:${String(outImages.length).padStart(2)} | size:${finalW.toFixed(2)}x${finalH.toFixed(2)}x${finalL.toFixed(2)}m`);
 }
 
-// Prepare zip models
-const ferrariDir = unpackZip('2026_ferrari_296_speciale_a.zip', 'ferrari296');
-const ferrari296Glb = gltfFolderToGlbBuffer(ferrariDir);
-const runnerDir = unpackZip('runner.zip', 'runner');
-const runnerGlb = fs.readFileSync(path.join(runnerDir, 'source/model.glb'));
-const tifaDir = unpackZip('tifa-lockhart-final-fantasy-realistic-3d-model.zip', 'tifa');
-const tifaGlb = fs.readFileSync(path.join(tifaDir, 'source/ip-final-fantasy__tifa-lockhart__real__sexy.glb'));
+// Prepare zip models if present
+const ferrari296Glb = fs.existsSync('2026_ferrari_296_speciale_a.zip')
+  ? gltfFolderToGlbBuffer(unpackZip('2026_ferrari_296_speciale_a.zip', 'ferrari296'))
+  : null;
+const runnerGlb = fs.existsSync('runner.zip')
+  ? fs.readFileSync(path.join(unpackZip('runner.zip', 'runner'), 'source/model.glb'))
+  : null;
+const tifaGlb = fs.existsSync('tifa-lockhart-final-fantasy-realistic-3d-model.zip')
+  ? fs.readFileSync(path.join(unpackZip('tifa-lockhart-final-fantasy-realistic-3d-model.zip', 'tifa'), 'source/ip-final-fantasy__tifa-lockhart__real__sexy.glb'))
+  : null;
 
 // 1. Rigged Character: obama.glb
-optimizeRiggedGlb(fs.readFileSync('obama.glb'), 'unity/Assets/Rise/Resources/Models/Characters/obama.glb', 256);
-const obamaSize = fs.statSync('unity/Assets/Rise/Resources/Models/Characters/obama.glb').size;
-console.log(`obama.glb (rigged)                   | ${(obamaSize / 1024).padStart ? (obamaSize / 1024).toFixed(0).padStart(6) : ''} KB`);
+if (fs.existsSync('obama.glb')) {
+  optimizeRiggedGlb(fs.readFileSync('obama.glb'), 'unity/Assets/Rise/Resources/Models/Characters/obama.glb', 256);
+  const obamaSize = fs.statSync('unity/Assets/Rise/Resources/Models/Characters/obama.glb').size;
+  console.log(`obama.glb (rigged)                   | ${(obamaSize / 1024).toFixed(0).padStart(6)} KB`);
+  fs.unlinkSync('obama.glb');
+}
 
-// 2. All 50 Static / Baked Models
+// 2. All Static / Baked Models
 const JOBS = [
   // Vehicles
   { src: '1997_nissan_200sx_s14.glb', dst: 'Vehicles/1997_nissan_200sx_s14.glb', category: 'vehicle', targetSize: 4.52, maxVerts: 5500, maxImgDim: 256 },
   { src: '2015_dodge_charger_srt_hellcat.glb', dst: 'Vehicles/2015_dodge_charger_srt_hellcat.glb', category: 'vehicle', targetSize: 5.05, maxVerts: 5500, maxImgDim: 256 },
   { src: '2015_mercedes-benz_s65_amg_coupe.glb', dst: 'Vehicles/2015_mercedes-benz_s65_amg_coupe.glb', category: 'vehicle', targetSize: 5.02, maxVerts: 5500, maxImgDim: 256 },
   { src: '2018_audi_e-tron_gt_concept.glb', dst: 'Vehicles/2018_audi_e-tron_gt_concept.glb', category: 'vehicle', targetSize: 4.98, maxVerts: 5500, maxImgDim: 256 },
-  { buf: ferrari296Glb, dst: 'Vehicles/2026_ferrari_296_speciale_a.glb', category: 'vehicle', targetSize: 4.65, maxVerts: 5500, maxImgDim: 256, rotZUpToYUp: true },
+  { buf: ferrari296Glb, zipSrc: '2026_ferrari_296_speciale_a.zip', dst: 'Vehicles/2026_ferrari_296_speciale_a.glb', category: 'vehicle', targetSize: 4.65, maxVerts: 5500, maxImgDim: 256, rotZUpToYUp: true },
   { src: 'ferrari_f40_modified.glb', dst: 'Vehicles/ferrari_f40_modified.glb', category: 'vehicle', targetSize: 4.46, maxVerts: 5500, maxImgDim: 256 },
   { src: 'dodge_ram_1500_rebel.glb', dst: 'Vehicles/dodge_ram_1500_rebel.glb', category: 'vehicle', targetSize: 5.80, maxVerts: 5000, maxImgDim: 256 },
   { src: 'fuel_truck.glb', dst: 'Vehicles/fuel_truck.glb', category: 'vehicle', targetSize: 10.50, maxVerts: 5000, maxImgDim: 256 },
@@ -767,9 +841,14 @@ const JOBS = [
   { src: 'criss-cross_pink_marble_mini_dress.glb', dst: 'Characters/pink_mini_dress.glb', category: 'character', targetSize: 1.76, maxVerts: 3200, maxImgDim: 256 },
   { src: 'bluevinyl.glb', dst: 'Characters/bluevinyl.glb', category: 'character', targetSize: 1.78, maxVerts: 3200, maxImgDim: 256 },
   { src: 'ho3fat.glb', dst: 'Characters/chambray_street.glb', category: 'character', targetSize: 1.78, maxVerts: 3500, maxImgDim: 256 },
-  { buf: runnerGlb, dst: 'Characters/runner.glb', category: 'character', targetSize: 1.80, maxVerts: 3200, maxImgDim: 256 },
-  { buf: tifaGlb, dst: 'Characters/tifa_vip.glb', category: 'character', targetSize: 1.76, maxVerts: 3200, maxImgDim: 256 },
+  { buf: runnerGlb, zipSrc: 'runner.zip', dst: 'Characters/runner.glb', category: 'character', targetSize: 1.80, maxVerts: 3200, maxImgDim: 256 },
+  { buf: tifaGlb, zipSrc: 'tifa-lockhart-final-fantasy-realistic-3d-model.zip', dst: 'Characters/tifa_vip.glb', category: 'character', targetSize: 1.76, maxVerts: 3200, maxImgDim: 256 },
   { src: 'low_poly_primitive_caveman_3d_model_free.glb', dst: 'Characters/caveman_statue.glb', category: 'character', targetSize: 1.85, maxVerts: 2800, maxImgDim: 256 },
+  { src: 'neymar_3d_free_football_model_free__animation.glb', dst: 'Characters/neymar_footballer.glb', category: 'character', targetSize: 1.82, maxVerts: 4200, maxImgDim: 256 },
+  { src: 'zlatan_3d_model_free_football_3d.glb', dst: 'Characters/zlatan_footballer.glb', category: 'character', targetSize: 1.92, maxVerts: 4200, maxImgDim: 256 },
+  { src: 'football__player_in__re_0603193432_texture_fbx.glb', dst: 'Characters/red_footballer.glb', category: 'character', targetSize: 1.84, maxVerts: 3800, maxImgDim: 256 },
+  { src: 'lowpoly_footballer.glb', dst: 'Characters/lowpoly_footballer.glb', category: 'character', targetSize: 1.82, maxVerts: 3800, maxImgDim: 256 },
+  { src: 'rastaman_jamaican_singer.glb', dst: 'Characters/rastaman_singer.glb', category: 'character', targetSize: 1.84, maxVerts: 4200, maxImgDim: 256 },
 
   // Landmarks & Buildings
   { src: 'old_factory_free.glb', dst: 'Landmarks/old_factory.glb', category: 'landmark', targetSize: 22.0, maxVerts: 4500, maxImgDim: 128 },
@@ -782,6 +861,9 @@ const JOBS = [
   { src: 'medieval_house_pack_pixel_art.glb', dst: 'Landmarks/heritage_house.glb', category: 'landmark', targetSize: 14.0, maxVerts: 3500, maxImgDim: 128 },
   { src: 'street_city_7_for_games_free.glb', dst: 'Landmarks/street_city_block.glb', category: 'landmark', targetSize: 26.0, maxVerts: 4500, maxImgDim: 128 },
   { src: 'street.glb', dst: 'Landmarks/urban_street_scene.glb', category: 'landmark', targetSize: 26.0, maxVerts: 4500, maxImgDim: 128 },
+  { src: 'football_court.glb', dst: 'Landmarks/football_court.glb', category: 'landmark', targetSize: 44.0, maxVerts: 5200, maxImgDim: 256 },
+  { src: 'automapping.glb', dst: 'Landmarks/automapping_market.glb', category: 'landmark', targetSize: 18.0, maxVerts: 5200, maxImgDim: 128 },
+  { src: 'ww2_cityscene_-_carentan_inspired.glb', dst: 'Landmarks/carentan_street_scene.glb', category: 'landmark', targetSize: 22.0, maxVerts: 5200, maxImgDim: 128 },
 
   // Interiors
   { src: 'modular_vintage_living_room_-_game_ready_pbr.glb', dst: 'Interiors/living_room.glb', category: 'interior', targetSize: 14.0, maxVerts: 5000, maxImgDim: 128 },
@@ -795,6 +877,7 @@ const JOBS = [
   { src: 'animated_doors_and_a_window_demo.glb', dst: 'Props/doors_window.glb', category: 'prop', targetSize: 2.2, maxVerts: 2800, maxImgDim: 128 },
   { src: 'air_conditioner.glb', dst: 'Props/air_conditioner.glb', category: 'prop', targetSize: 0.65, maxVerts: 1500, maxImgDim: 128 },
   { src: 'cc0_newspaper_stack_-_ready_to_unity_hdrp.glb', dst: 'Props/newspaper_stack.glb', category: 'prop', targetSize: 0.42, maxVerts: 1200, maxImgDim: 128 },
+  { src: 'football_shirt_fc_barcelona.glb', dst: 'Props/football_shirt.glb', category: 'prop', targetSize: 0.90, maxVerts: 2800, maxImgDim: 256 },
 
   // Vegetation
   { src: 'game_ready_grass.glb', dst: 'Vegetation/game_ready_grass.glb', category: 'vegetation', targetSize: 0.85, maxVerts: 800, maxImgDim: 128 },
@@ -802,7 +885,10 @@ const JOBS = [
 ];
 
 for (const job of JOBS) {
+  if (!job.buf && (!job.src || !fs.existsSync(job.src))) continue;
   const inputBuf = job.buf || fs.readFileSync(job.src);
   const outPath = path.join('unity/Assets/Rise/Resources/Models', job.dst);
   optimizeStaticGlb(inputBuf, outPath, job);
+  if (job.src && fs.existsSync(job.src)) fs.unlinkSync(job.src);
+  if (job.zipSrc && fs.existsSync(job.zipSrc)) fs.unlinkSync(job.zipSrc);
 }

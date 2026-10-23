@@ -313,6 +313,10 @@ namespace Rise
                 Entities.CharacterRig.InstantiateGlb("Models/Props/newspaper_stack", "IndoorNewspapersGlb", RoomCenter + new Vector3(1.4f, home ? 0.96f : 1.12f, -2.2f), new Vector3(0.42f, 0.32f, 0.35f), interiorRoot.transform, 18f, false);
                 if (kind == "museum" || kind == "hotel" || kind == "cbn")
                     Entities.CharacterRig.InstantiateGlb("Models/Characters/caveman_statue", "MuseumSculptureGlb", RoomCenter + new Vector3(2.8f, 0.02f, -1.6f), new Vector3(1.1f, 2.2f, 1.1f), interiorRoot.transform, -25f, false);
+                if (home || kind == "gym" || kind == "mall")
+                    Entities.CharacterRig.InstantiateGlb("Models/Props/football_shirt", "FramedJerseyGlb", RoomCenter + new Vector3(hw - 0.35f, 1.85f, -0.6f), new Vector3(0.45f, 0.90f, 0.80f), interiorRoot.transform, -90f, false);
+                if (club)
+                    Entities.CharacterRig.InstantiateGlb("Models/Characters/rastaman_singer", "LiveAfrobeatSingerGlb", RoomCenter + leftPos + new Vector3(0f, 0.16f, -2.1f), new Vector3(1.4f, 1.84f, 0.7f), interiorRoot.transform, 0f, false);
             }
 
             var lightGo = new GameObject("RoomLight"); lightGo.transform.SetParent(interiorRoot.transform, false);

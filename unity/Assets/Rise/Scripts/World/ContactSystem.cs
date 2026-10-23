@@ -112,7 +112,12 @@ namespace Rise.World
             if (isFraud || id == "efcc_lead") return "commando_bill";
             if (id == "bisi_fashion" || id == "ifunanya_vi") return "pink_mini_dress";
             if (id == "halima_mall" || id == "sisi") return "bluevinyl";
-            if (id == "kemi_fitness" || id == "coach") return "runner";
+            if (id == "kemi_fitness") return "runner";
+            if (id == "coach") return "neymar_footballer";
+            if (id == "teslim_scout" || id == "stadium_captain") return "zlatan_footballer";
+            if (id == "surulere_striker") return "red_footballer";
+            if (id == "campus_winger") return "lowpoly_footballer";
+            if (id == "shrine_sax" || id == "afrobeat_king" || id == "dj_eko" || id.Contains("shrine") || id.Contains("music")) return "rastaman_singer";
             if (id == "seyi" || id == "sopi") return "tifa_vip";
             if (id == "adaeze_tech" || id == "cafeguy") return "casual_confidence";
             if (id == "bathopoly" || id == "yaba-painter") return "chambray_street";
