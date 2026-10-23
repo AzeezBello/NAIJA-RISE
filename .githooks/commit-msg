@@ -1,0 +1,6 @@
+#!/bin/sh
+# Strip any Co-Authored-By: Claude / Anthropic attribution lines from commit messages.
+MSG_FILE="$1"
+if [ -f "$MSG_FILE" ]; then
+  awk '!/^[Cc]o-[Aa]uthored-[Bb]y:.*[Cc]laude/ && !/^[Cc]o-[Aa]uthored-[Bb]y:.*anthropic\.com/ && !/Generated with \[Claude Code\]/' "$MSG_FILE" > "${MSG_FILE}.tmp" && mv "${MSG_FILE}.tmp" "$MSG_FILE"
+fi

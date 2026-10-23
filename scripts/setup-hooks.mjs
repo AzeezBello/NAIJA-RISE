@@ -13,7 +13,7 @@ if (!existsSync(gitDir) || !existsSync(hooksDir)) {
   process.exit(0);
 }
 
-for (const hook of ['pre-commit', 'pre-push']) {
+for (const hook of ['pre-commit', 'pre-push', 'commit-msg']) {
   const p = join(hooksDir, hook);
   if (existsSync(p)) {
     try {
@@ -24,7 +24,7 @@ for (const hook of ['pre-commit', 'pre-push']) {
 
 try {
   execFileSync('git', ['config', 'core.hooksPath', '.githooks'], { cwd: rootDir, stdio: 'ignore' });
-  console.log('[hooks] Configured git core.hooksPath -> .githooks (pre-commit, pre-push)');
+  console.log('[hooks] Configured git core.hooksPath -> .githooks (pre-commit, pre-push, commit-msg)');
 } catch {
-  console.log('[hooks] Verified .githooks/pre-commit & .githooks/pre-push (run `git config core.hooksPath .githooks` if not yet set)');
+  console.log('[hooks] Verified .githooks/pre-commit, .githooks/pre-push & .githooks/commit-msg (run `git config core.hooksPath .githooks` if not yet set)');
 }
