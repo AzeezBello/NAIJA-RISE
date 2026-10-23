@@ -269,12 +269,19 @@ namespace Rise.UI
             DrawLoadingSplash(s, W, H);
         }
 
+        bool AnySkipInput()
+        {
+            var ev = Event.current;
+            if (ev != null && (ev.type == EventType.MouseDown || ev.type == EventType.KeyDown)) return true;
+            return GameInput.AnyPressed;
+        }
+
         // Loading screen sequence: Stage 1 shows the R Logo & "RISE: HUSTLE OR DIE TRYING" Title, then Stage 2 transitions to the full Cover Art.
         // On WebGL (where the HTML overlay already displayed the R Logo, Title, and Cover Art during download) or when the player taps/clicks, skip straight to gameplay.
         void DrawLoadingSplash(float s, float W, float H)
         {
             if (Application.platform == RuntimePlatform.WebGLPlayer) return;
-            if (Input.anyKeyDown || Input.GetMouseButtonDown(0) || Input.touchCount > 0) { splashStart = -999f; return; }
+            if (AnySkipInput()) { splashStart = -999f; return; }
             float elapsed = Time.unscaledTime - splashStart;
             string stg = LoadingStageFor(elapsed);
             if (stg == "done" || session.ActiveMenu != null) return;

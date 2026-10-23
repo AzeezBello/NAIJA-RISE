@@ -202,5 +202,18 @@ namespace Rise
                 return 0;
             }
         }
+
+        // True if any key, mouse button, gamepad button, or touchscreen press was triggered this frame.
+        public static bool AnyPressed
+        {
+            get
+            {
+                if (K != null && K.anyKey.wasPressedThisFrame) return true;
+                if (M != null && (M.leftButton.wasPressedThisFrame || M.rightButton.wasPressedThisFrame || M.middleButton.wasPressedThisFrame)) return true;
+                if (G != null && (G.buttonSouth.wasPressedThisFrame || G.buttonEast.wasPressedThisFrame || G.buttonNorth.wasPressedThisFrame || G.buttonWest.wasPressedThisFrame || G.startButton.wasPressedThisFrame || G.selectButton.wasPressedThisFrame)) return true;
+                if (Touchscreen.current != null && (Touchscreen.current.primaryTouch.press.wasPressedThisFrame || Touchscreen.current.primaryTouch.press.isPressed)) return true;
+                return false;
+            }
+        }
     }
 }
