@@ -42,12 +42,12 @@ namespace Rise.EditorTools
 
         public static void ConfigurePlatformSettings(BuildTarget target)
         {
-            PlayerSettings.companyName = "Rise Studios Lagos";
+            PlayerSettings.companyName = "Rise Studios";
             PlayerSettings.productName = "Rise: Hustle or Die Trying";
             PlayerSettings.bundleVersion = "1.2.0";
             var group = BuildPipeline.GetBuildTargetGroup(target);
             if (group != BuildTargetGroup.Unknown)
-                PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.FromBuildTargetGroup(group), "com.riselagos.game");
+                PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.FromBuildTargetGroup(group), "com.risestudios.rise");
 
             switch (target)
             {

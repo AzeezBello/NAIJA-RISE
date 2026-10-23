@@ -12,7 +12,7 @@ PlayerSettings:
   targetDevice: 2
   useOnDemandResources: 0
   accelerometerFrequency: 60
-  companyName: Rise Studios Lagos
+  companyName: Rise Studios
   productName: 'Rise: Hustle or Die Trying'
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
@@ -170,10 +170,10 @@ PlayerSettings:
   androidMaxAspectRatio: 2.4
   androidMinAspectRatio: 1
   applicationIdentifier:
-    Android: com.riselagos.game
-    Standalone: com.riselagos.game
-    WebGL: com.riselagos.game
-    iPhone: com.riselagos.game
+    Android: com.risestudios.rise
+    Standalone: com.risestudios.rise
+    WebGL: com.risestudios.rise
+    iPhone: com.risestudios.rise
   buildNumber:
     Standalone: 0
     VisionOS: 0
@@ -615,14 +615,14 @@ PlayerSettings:
   editorAssembliesCompatibilityLevel: 1
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: unity
+  metroPackageName: Rise
   metroPackageVersion: 
   metroCertificatePath: 
   metroCertificatePassword: 
   metroCertificateSubject: 
   metroCertificateIssuer: 
   metroCertificateNotAfter: 0000000000000000
-  metroApplicationDescription: unity
+  metroApplicationDescription: 'Rise: Hustle or Die Trying'
   wsaImages: {}
   metroTileShortName: 
   metroTileShowName: 0
@@ -696,7 +696,7 @@ PlayerSettings:
   cloudProjectId: 53a65ca2-484c-4daa-bcbf-081e66718a89
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: unity
+  projectName: Rise
   organizationId: 
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
