@@ -838,12 +838,20 @@ namespace Rise.Entities
                 g.SetParent(wRoot, false); g.gameObject.SetActive(false);
                 return g;
             }
+            bool GlbWeapon(Transform grp, string glbSubpath, float targetLength)
+            {
+                var inst = InstantiateGlb("Weapons/" + glbSubpath, grp, targetLength, sizeByHeight: true, layer: layer, centerBaseAtZero: false);
+                return inst != null;
+            }
 
-            // 1. 2x4 Nail Plank
+            // 1. 2x4 Nail Plank / Claw Hammer
             var plank = Group("plank");
-            Prim(plank, "Board", PrimitiveType.Cube, new Vector3(0f, 0.24f, 0f), new Vector3(0.045f, 0.58f, 0.09f), new Color(0.58f, 0.38f, 0.20f), 0f, 0.2f);
-            Prim(plank, "Nail1", PrimitiveType.Cylinder, new Vector3(0f, 0.46f, 0.06f), new Vector3(0.012f, 0.05f, 0.012f), new Color(0.78f, 0.80f, 0.84f), 0.8f, 0.7f, Quaternion.Euler(90f, 0f, 0f));
-            Prim(plank, "Nail2", PrimitiveType.Cylinder, new Vector3(0f, 0.40f, -0.06f), new Vector3(0.012f, 0.05f, 0.012f), new Color(0.78f, 0.80f, 0.84f), 0.8f, 0.7f, Quaternion.Euler(90f, 0f, 0f));
+            if (!GlbWeapon(plank, "claw_hammer", 0.42f))
+            {
+                Prim(plank, "Board", PrimitiveType.Cube, new Vector3(0f, 0.24f, 0f), new Vector3(0.045f, 0.58f, 0.09f), new Color(0.58f, 0.38f, 0.20f), 0f, 0.2f);
+                Prim(plank, "Nail1", PrimitiveType.Cylinder, new Vector3(0f, 0.46f, 0.06f), new Vector3(0.012f, 0.05f, 0.012f), new Color(0.78f, 0.80f, 0.84f), 0.8f, 0.7f, Quaternion.Euler(90f, 0f, 0f));
+                Prim(plank, "Nail2", PrimitiveType.Cylinder, new Vector3(0f, 0.40f, -0.06f), new Vector3(0.012f, 0.05f, 0.012f), new Color(0.78f, 0.80f, 0.84f), 0.8f, 0.7f, Quaternion.Euler(90f, 0f, 0f));
+            }
 
             // 2. Pepper Spray
             var pepper = Group("pepper");
@@ -856,62 +864,87 @@ namespace Rise.Entities
             Prim(koboko, "Lash1", PrimitiveType.Capsule, new Vector3(0f, 0.28f, 0.03f), new Vector3(0.024f, 0.18f, 0.024f), new Color(0.18f, 0.10f, 0.05f), 0f, 0.3f, Quaternion.Euler(14f, 0f, 0f));
             Prim(koboko, "Lash2", PrimitiveType.Capsule, new Vector3(0f, 0.54f, 0.12f), new Vector3(0.016f, 0.16f, 0.016f), new Color(0.16f, 0.09f, 0.04f), 0f, 0.3f, Quaternion.Euler(28f, 0f, 0f));
 
-            // 4. Brass Knuckles
+            // 4. Brass Knuckles / Claw Hammer
             var knuckles = Group("knuckles");
-            Prim(knuckles, "Band", PrimitiveType.Cube, new Vector3(0f, 0.02f, 0.04f), new Vector3(0.035f, 0.11f, 0.045f), new Color(0.85f, 0.68f, 0.20f), 0.85f, 0.75f);
+            if (!GlbWeapon(knuckles, "claw_hammer", 0.34f))
+                Prim(knuckles, "Band", PrimitiveType.Cube, new Vector3(0f, 0.02f, 0.04f), new Vector3(0.035f, 0.11f, 0.045f), new Color(0.85f, 0.68f, 0.20f), 0.85f, 0.75f);
 
-            // 5. Iron Rod / Baton (also used for generic "weapon")
+            // 5. Iron Rod / Baton (Rusty Lead Pipe GLB)
             var baton = Group("baton");
-            Prim(baton, "Grip", PrimitiveType.Cylinder, new Vector3(0f, 0.05f, 0f), new Vector3(0.038f, 0.09f, 0.038f), new Color(0.12f, 0.12f, 0.14f), 0.1f, 0.3f);
-            Prim(baton, "Rod", PrimitiveType.Cylinder, new Vector3(0f, 0.30f, 0f), new Vector3(0.030f, 0.24f, 0.030f), new Color(0.32f, 0.35f, 0.39f), 0.75f, 0.65f);
+            if (!GlbWeapon(baton, "lead_pipe", 0.64f))
+            {
+                Prim(baton, "Grip", PrimitiveType.Cylinder, new Vector3(0f, 0.05f, 0f), new Vector3(0.038f, 0.09f, 0.038f), new Color(0.12f, 0.12f, 0.14f), 0.1f, 0.3f);
+                Prim(baton, "Rod", PrimitiveType.Cylinder, new Vector3(0f, 0.30f, 0f), new Vector3(0.030f, 0.24f, 0.030f), new Color(0.32f, 0.35f, 0.39f), 0.75f, 0.65f);
+            }
 
-            // 6. Cutlass / Machete
+            // 6. Cutlass / Crowbar
             var cutlass = Group("cutlass");
-            Prim(cutlass, "Handle", PrimitiveType.Cube, new Vector3(0f, 0.04f, 0f), new Vector3(0.032f, 0.12f, 0.042f), new Color(0.32f, 0.18f, 0.09f), 0f, 0.3f);
-            Prim(cutlass, "Guard", PrimitiveType.Cube, new Vector3(0f, 0.11f, 0f), new Vector3(0.042f, 0.018f, 0.085f), new Color(0.78f, 0.62f, 0.18f), 0.7f, 0.6f);
-            Prim(cutlass, "Blade", PrimitiveType.Cube, new Vector3(0f, 0.36f, 0.01f), new Vector3(0.012f, 0.48f, 0.068f), new Color(0.82f, 0.85f, 0.89f), 0.85f, 0.8f);
+            if (!GlbWeapon(cutlass, "crowbar", 0.66f))
+            {
+                Prim(cutlass, "Handle", PrimitiveType.Cube, new Vector3(0f, 0.04f, 0f), new Vector3(0.032f, 0.12f, 0.042f), new Color(0.32f, 0.18f, 0.09f), 0f, 0.3f);
+                Prim(cutlass, "Guard", PrimitiveType.Cube, new Vector3(0f, 0.11f, 0f), new Vector3(0.042f, 0.018f, 0.085f), new Color(0.78f, 0.62f, 0.18f), 0.7f, 0.6f);
+                Prim(cutlass, "Blade", PrimitiveType.Cube, new Vector3(0f, 0.36f, 0.01f), new Vector3(0.012f, 0.48f, 0.068f), new Color(0.82f, 0.85f, 0.89f), 0.85f, 0.8f);
+            }
 
-            // 7. 9mm Beretta Pistol
+            // 7. 9mm Beretta Pistol (Beretta Silver GLB)
             var pistol = Group("pistol");
-            Prim(pistol, "Grip", PrimitiveType.Cube, new Vector3(0f, 0.03f, -0.01f), new Vector3(0.032f, 0.11f, 0.046f), new Color(0.14f, 0.15f, 0.17f), 0.4f, 0.5f, Quaternion.Euler(-14f, 0f, 0f));
-            Prim(pistol, "Slide", PrimitiveType.Cube, new Vector3(0f, 0.13f, 0.03f), new Vector3(0.034f, 0.20f, 0.042f), new Color(0.22f, 0.24f, 0.28f), 0.85f, 0.75f);
-            Prim(pistol, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0.24f, 0.03f), new Vector3(0.018f, 0.04f, 0.018f), new Color(0.10f, 0.10f, 0.12f), 0.9f, 0.8f);
+            if (!GlbWeapon(pistol, "bereta_silver", 0.24f))
+            {
+                Prim(pistol, "Grip", PrimitiveType.Cube, new Vector3(0f, 0.03f, -0.01f), new Vector3(0.032f, 0.11f, 0.046f), new Color(0.14f, 0.15f, 0.17f), 0.4f, 0.5f, Quaternion.Euler(-14f, 0f, 0f));
+                Prim(pistol, "Slide", PrimitiveType.Cube, new Vector3(0f, 0.13f, 0.03f), new Vector3(0.034f, 0.20f, 0.042f), new Color(0.22f, 0.24f, 0.28f), 0.85f, 0.75f);
+                Prim(pistol, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0.24f, 0.03f), new Vector3(0.018f, 0.04f, 0.018f), new Color(0.10f, 0.10f, 0.12f), 0.9f, 0.8f);
+            }
 
-            // 8. Pump-Action Shotgun
+            // 8. Pump-Action Shotgun (Gewehr 41 GLB)
             var shotgun = Group("shotgun");
-            Prim(shotgun, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.04f, -0.02f), new Vector3(0.038f, 0.18f, 0.065f), new Color(0.42f, 0.24f, 0.11f), 0.05f, 0.35f, Quaternion.Euler(-10f, 0f, 0f));
-            Prim(shotgun, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0.12f, 0f), new Vector3(0.040f, 0.18f, 0.055f), new Color(0.18f, 0.20f, 0.22f), 0.8f, 0.7f);
-            Prim(shotgun, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0.40f, 0.012f), new Vector3(0.022f, 0.24f, 0.022f), new Color(0.15f, 0.16f, 0.18f), 0.85f, 0.75f);
-            Prim(shotgun, "Pump", PrimitiveType.Cylinder, new Vector3(0f, 0.32f, -0.014f), new Vector3(0.034f, 0.10f, 0.034f), new Color(0.45f, 0.26f, 0.12f), 0.05f, 0.35f);
+            if (!GlbWeapon(shotgun, "gewehr_41", 0.86f))
+            {
+                Prim(shotgun, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.04f, -0.02f), new Vector3(0.038f, 0.18f, 0.065f), new Color(0.42f, 0.24f, 0.11f), 0.05f, 0.35f, Quaternion.Euler(-10f, 0f, 0f));
+                Prim(shotgun, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0.12f, 0f), new Vector3(0.040f, 0.18f, 0.055f), new Color(0.18f, 0.20f, 0.22f), 0.8f, 0.7f);
+                Prim(shotgun, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0.40f, 0.012f), new Vector3(0.022f, 0.24f, 0.022f), new Color(0.15f, 0.16f, 0.18f), 0.85f, 0.75f);
+                Prim(shotgun, "Pump", PrimitiveType.Cylinder, new Vector3(0f, 0.32f, -0.014f), new Vector3(0.034f, 0.10f, 0.034f), new Color(0.45f, 0.26f, 0.12f), 0.05f, 0.35f);
+            }
 
-            // 9. Tactical AK-47 Rifle
+            // 9. Tactical Assault Rifle (HK416 GLB)
             var rifle = Group("rifle");
-            Prim(rifle, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.06f, -0.02f), new Vector3(0.036f, 0.18f, 0.062f), new Color(0.46f, 0.25f, 0.11f), 0.05f, 0.35f, Quaternion.Euler(-8f, 0f, 0f));
-            Prim(rifle, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0.12f, 0f), new Vector3(0.040f, 0.22f, 0.058f), new Color(0.16f, 0.18f, 0.20f), 0.82f, 0.7f);
-            Prim(rifle, "Handguard", PrimitiveType.Cube, new Vector3(0f, 0.30f, 0f), new Vector3(0.038f, 0.14f, 0.050f), new Color(0.48f, 0.26f, 0.12f), 0.05f, 0.35f);
-            Prim(rifle, "Magazine", PrimitiveType.Cube, new Vector3(0f, 0.16f, 0.075f), new Vector3(0.028f, 0.065f, 0.13f), new Color(0.22f, 0.22f, 0.25f), 0.75f, 0.65f, Quaternion.Euler(22f, 0f, 0f));
-            Prim(rifle, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0.48f, 0.008f), new Vector3(0.018f, 0.18f, 0.018f), new Color(0.12f, 0.13f, 0.15f), 0.9f, 0.8f);
+            if (!GlbWeapon(rifle, "hk416", 0.78f))
+            {
+                Prim(rifle, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.06f, -0.02f), new Vector3(0.036f, 0.18f, 0.062f), new Color(0.46f, 0.25f, 0.11f), 0.05f, 0.35f, Quaternion.Euler(-8f, 0f, 0f));
+                Prim(rifle, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0.12f, 0f), new Vector3(0.040f, 0.22f, 0.058f), new Color(0.16f, 0.18f, 0.20f), 0.82f, 0.7f);
+                Prim(rifle, "Handguard", PrimitiveType.Cube, new Vector3(0f, 0.30f, 0f), new Vector3(0.038f, 0.14f, 0.050f), new Color(0.48f, 0.26f, 0.12f), 0.05f, 0.35f);
+                Prim(rifle, "Magazine", PrimitiveType.Cube, new Vector3(0f, 0.16f, 0.075f), new Vector3(0.028f, 0.065f, 0.13f), new Color(0.22f, 0.22f, 0.25f), 0.75f, 0.65f, Quaternion.Euler(22f, 0f, 0f));
+                Prim(rifle, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0.48f, 0.008f), new Vector3(0.018f, 0.18f, 0.018f), new Color(0.12f, 0.13f, 0.15f), 0.9f, 0.8f);
+            }
 
-            // 10. Navy MP5 Tactical SMG
+            // 10. Navy Tactical SMG / Automatic Pistol (Glock GLB)
             var smg = Group("smg");
-            Prim(smg, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.04f, -0.01f), new Vector3(0.030f, 0.14f, 0.050f), new Color(0.12f, 0.14f, 0.18f), 0.7f, 0.6f);
-            Prim(smg, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0.12f, 0f), new Vector3(0.038f, 0.20f, 0.054f), new Color(0.15f, 0.18f, 0.24f), 0.85f, 0.75f);
-            Prim(smg, "Magazine", PrimitiveType.Cube, new Vector3(0f, 0.16f, 0.07f), new Vector3(0.024f, 0.05f, 0.12f), new Color(0.10f, 0.12f, 0.15f), 0.8f, 0.7f, Quaternion.Euler(16f, 0f, 0f));
-            Prim(smg, "Suppressor", PrimitiveType.Cylinder, new Vector3(0f, 0.34f, 0.005f), new Vector3(0.028f, 0.12f, 0.028f), new Color(0.08f, 0.10f, 0.12f), 0.8f, 0.65f);
+            if (!GlbWeapon(smg, "glock_pistol", 0.32f))
+            {
+                Prim(smg, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.04f, -0.01f), new Vector3(0.030f, 0.14f, 0.050f), new Color(0.12f, 0.14f, 0.18f), 0.7f, 0.6f);
+                Prim(smg, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0.12f, 0f), new Vector3(0.038f, 0.20f, 0.054f), new Color(0.15f, 0.18f, 0.24f), 0.85f, 0.75f);
+                Prim(smg, "Magazine", PrimitiveType.Cube, new Vector3(0f, 0.16f, 0.07f), new Vector3(0.024f, 0.05f, 0.12f), new Color(0.10f, 0.12f, 0.15f), 0.8f, 0.7f, Quaternion.Euler(16f, 0f, 0f));
+                Prim(smg, "Suppressor", PrimitiveType.Cylinder, new Vector3(0f, 0.34f, 0.005f), new Vector3(0.028f, 0.12f, 0.028f), new Color(0.08f, 0.10f, 0.12f), 0.8f, 0.65f);
+            }
 
-            // 11. M24 Marksman Sniper Rifle
+            // 11. M24 Marksman Sniper Rifle (Gewehr 41 GLB)
             var sniper = Group("sniper");
-            Prim(sniper, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.08f, -0.02f), new Vector3(0.036f, 0.22f, 0.064f), new Color(0.22f, 0.28f, 0.18f), 0.2f, 0.4f);
-            Prim(sniper, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0.16f, 0f), new Vector3(0.038f, 0.26f, 0.052f), new Color(0.16f, 0.18f, 0.18f), 0.85f, 0.75f);
-            Prim(sniper, "Scope", PrimitiveType.Cylinder, new Vector3(0f, 0.16f, -0.045f), new Vector3(0.028f, 0.11f, 0.028f), new Color(0.08f, 0.09f, 0.10f), 0.9f, 0.85f);
-            Prim(sniper, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0.52f, 0.006f), new Vector3(0.018f, 0.26f, 0.018f), new Color(0.12f, 0.13f, 0.15f), 0.9f, 0.85f);
+            if (!GlbWeapon(sniper, "gewehr_41", 0.96f))
+            {
+                Prim(sniper, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.08f, -0.02f), new Vector3(0.036f, 0.22f, 0.064f), new Color(0.22f, 0.28f, 0.18f), 0.2f, 0.4f);
+                Prim(sniper, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0.16f, 0f), new Vector3(0.038f, 0.26f, 0.052f), new Color(0.16f, 0.18f, 0.18f), 0.85f, 0.75f);
+                Prim(sniper, "Scope", PrimitiveType.Cylinder, new Vector3(0f, 0.16f, -0.045f), new Vector3(0.028f, 0.11f, 0.028f), new Color(0.08f, 0.09f, 0.10f), 0.9f, 0.85f);
+                Prim(sniper, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0.52f, 0.006f), new Vector3(0.018f, 0.26f, 0.018f), new Color(0.12f, 0.13f, 0.15f), 0.9f, 0.85f);
+            }
 
-            // 12. PKM Heavy Machine Gun
+            // 12. PKM Heavy Machine Gun (HK416 Heavy GLB)
             var lmg = Group("lmg");
-            Prim(lmg, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.07f, -0.02f), new Vector3(0.042f, 0.20f, 0.068f), new Color(0.42f, 0.24f, 0.10f), 0.1f, 0.35f);
-            Prim(lmg, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0.15f, 0f), new Vector3(0.048f, 0.26f, 0.064f), new Color(0.18f, 0.20f, 0.22f), 0.82f, 0.7f);
-            Prim(lmg, "AmmoBox", PrimitiveType.Cube, new Vector3(0.032f, 0.16f, 0.065f), new Vector3(0.055f, 0.10f, 0.095f), new Color(0.24f, 0.32f, 0.20f), 0.6f, 0.5f);
-            Prim(lmg, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0.48f, 0.008f), new Vector3(0.024f, 0.22f, 0.024f), new Color(0.12f, 0.14f, 0.16f), 0.9f, 0.8f);
+            if (!GlbWeapon(lmg, "hk416", 0.88f))
+            {
+                Prim(lmg, "Stock", PrimitiveType.Cube, new Vector3(0f, -0.07f, -0.02f), new Vector3(0.042f, 0.20f, 0.068f), new Color(0.42f, 0.24f, 0.10f), 0.1f, 0.35f);
+                Prim(lmg, "Receiver", PrimitiveType.Cube, new Vector3(0f, 0.15f, 0f), new Vector3(0.048f, 0.26f, 0.064f), new Color(0.18f, 0.20f, 0.22f), 0.82f, 0.7f);
+                Prim(lmg, "AmmoBox", PrimitiveType.Cube, new Vector3(0.032f, 0.16f, 0.065f), new Vector3(0.055f, 0.10f, 0.095f), new Color(0.24f, 0.32f, 0.20f), 0.6f, 0.5f);
+                Prim(lmg, "Barrel", PrimitiveType.Cylinder, new Vector3(0f, 0.48f, 0.008f), new Vector3(0.024f, 0.22f, 0.024f), new Color(0.12f, 0.14f, 0.16f), 0.9f, 0.8f);
+            }
 
             wRoot.gameObject.SetActive(false);
             return wRoot;
@@ -1254,6 +1287,126 @@ namespace Rise.Entities
                 else b.Encapsulate(r.bounds);
             }
             return any ? b : new Bounds(go.transform.position, Vector3.one);
+        }
+
+        static readonly Dictionary<string, GameObject> glbPrefabCache = new Dictionary<string, GameObject>();
+        static readonly Dictionary<Material, Material> glbLitMatCache = new Dictionary<Material, Material>();
+
+        public static void RemapGlbMaterialsToLit(GameObject go, float smoothness = 0.35f)
+        {
+            if (go == null) return;
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = r.sharedMaterials;
+                bool changed = false;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var src = mats[i];
+                    if (src == null) continue;
+                    if (src.renderQueue >= 2800 || src.name.Contains("Transp") || (src.HasProperty("baseColorFactor") && src.GetColor("baseColorFactor").a < 0.96f))
+                        continue;
+                    if (!glbLitMatCache.TryGetValue(src, out var lit) || lit == null)
+                    {
+                        lit = new Material(ShaderLib.Lit) { name = src.name + " (URP_Lit)" };
+                        if (src.HasProperty("baseColorTexture"))
+                        {
+                            var tex = src.GetTexture("baseColorTexture");
+                            lit.SetTexture("_BaseMap", tex);
+                            lit.mainTexture = tex;
+                        }
+                        else if (src.mainTexture != null)
+                        {
+                            lit.SetTexture("_BaseMap", src.mainTexture);
+                            lit.mainTexture = src.mainTexture;
+                        }
+                        Color col = src.HasProperty("baseColorFactor") ? src.GetColor("baseColorFactor") : src.color;
+                        lit.color = col;
+                        if (lit.HasProperty("_BaseColor")) lit.SetColor("_BaseColor", col);
+                        lit.SetFloat("_Smoothness", smoothness);
+                        glbLitMatCache[src] = lit;
+                    }
+                    mats[i] = lit;
+                    changed = true;
+                }
+                if (changed) r.sharedMaterials = mats;
+            }
+        }
+
+        // Instantiates an optimized GLB prefab from Resources/Models/<subpath>, remaps its materials to URP Lit,
+        // strips child colliders, and fits it to targetSize (by height or horizontal footprint).
+        public static GameObject InstantiateGlb(string subpath, Transform parent, float targetSize, bool sizeByHeight = true, int layer = 0, bool centerBaseAtZero = true)
+        {
+            if (!glbPrefabCache.TryGetValue(subpath, out var p))
+            {
+                p = Resources.Load<GameObject>("Models/" + subpath);
+                glbPrefabCache[subpath] = p;
+            }
+            if (p == null) return null;
+            var go = Object.Instantiate(p, parent, false);
+            go.name = p.name;
+            foreach (var t in go.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
+            foreach (var c in go.GetComponentsInChildren<Collider>(true))
+            {
+                if (Application.isPlaying) Object.Destroy(c);
+                else Object.DestroyImmediate(c);
+            }
+            RemapGlbMaterialsToLit(go);
+            if (targetSize > 0.001f)
+            {
+                var b = Bounds(go);
+                float refSpan = sizeByHeight ? b.size.y : Mathf.Max(b.size.x, b.size.z);
+                if (refSpan > 0.001f)
+                {
+                    float s = targetSize / refSpan;
+                    go.transform.localScale = go.transform.localScale * s;
+                }
+                if (centerBaseAtZero && parent != null)
+                {
+                    b = Bounds(go);
+                    Vector3 worldDelta = new Vector3(parent.position.x - b.center.x, parent.position.y - b.min.y, parent.position.z - b.center.z);
+                    go.transform.position += worldDelta;
+                }
+            }
+            return go;
+        }
+
+        public static GameObject InstantiateGlb(string resourcePath, string name, Vector3 pos, Vector3 targetSize, Transform parent, float yaw = 0f, bool addCollider = true)
+        {
+            string fullPath = resourcePath.StartsWith("Models/") ? resourcePath : "Models/" + resourcePath;
+            if (!glbPrefabCache.TryGetValue(fullPath, out var p))
+            {
+                p = Resources.Load<GameObject>(fullPath);
+                glbPrefabCache[fullPath] = p;
+            }
+            if (p == null) return null;
+            var go = Object.Instantiate(p, parent);
+            go.name = name;
+            go.transform.position = pos;
+            go.transform.rotation = Quaternion.Euler(0f, yaw, 0f) * p.transform.localRotation;
+            go.transform.localScale = Vector3.one;
+            foreach (var c in go.GetComponentsInChildren<Collider>(true))
+            {
+                if (Application.isPlaying) Object.Destroy(c);
+                else Object.DestroyImmediate(c);
+            }
+            RemapGlbMaterialsToLit(go);
+            var b = Bounds(go);
+            float fit = 1f;
+            if (b.size.x > 0.001f && b.size.y > 0.001f && b.size.z > 0.001f)
+            {
+                fit = Mathf.Min(targetSize.x / b.size.x, targetSize.y / b.size.y, targetSize.z / b.size.z);
+                go.transform.localScale = Vector3.one * fit;
+                b = Bounds(go);
+                go.transform.position += new Vector3(pos.x - b.center.x, pos.y - b.min.y, pos.z - b.center.z);
+                b = Bounds(go);
+            }
+            if (addCollider && fit > 0.0001f)
+            {
+                var col = go.AddComponent<BoxCollider>();
+                col.center = go.transform.InverseTransformPoint(b.center);
+                col.size = new Vector3(b.size.x / fit, b.size.y / fit, b.size.z / fit);
+            }
+            return go;
         }
 
         public static Transform Find(Transform root, string name)

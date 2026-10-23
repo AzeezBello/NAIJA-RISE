@@ -73,7 +73,14 @@ namespace Rise.World
                     Outfit = n.u == "politician" ? 3 : n.u == "fraudster" ? 8 : 5
                 };
                 RigInstance sRig = null;
-                if (CharacterRig.Available && !GameBootstrap.LightWebGL)
+                string serviceModel = n.u == "army" ? (sIdx % 2 == 0 ? "Models/Characters/hecu_soldier" : "Models/Characters/commando_bill")
+                    : n.u == "politician" ? (sIdx % 2 == 0 ? "Models/Characters/obama" : "Models/Characters/executive_suit")
+                    : null;
+                if (!GameBootstrap.LightWebGL && serviceModel != null && CharacterRig.InstantiateGlb(serviceModel, "BodyModel", pos, new Vector3(0.85f, 1.88f, 0.7f), go.transform, 180f, false) != null)
+                {
+                    var col = go.AddComponent<CapsuleCollider>(); col.center = new Vector3(0f, 0.92f, 0f); col.radius = 0.28f; col.height = 1.84f;
+                }
+                else if (CharacterRig.Available && !GameBootstrap.LightWebGL)
                 {
                     sRig = CharacterRig.Build(go.transform, look);
                     foreach (var m in sRig.Top)
@@ -93,15 +100,23 @@ namespace Rise.World
                 servicePatrols.Add(new ServicePatrol { t = go.transform, home = pos, axis = patrolDir, phase = sIdx * 1.37f, radius = n.u == "lawma" ? 4.5f : 2.8f });
                 sIdx++;
             }
+            string[] nightModels = { "Models/Characters/pink_mini_dress", "Models/Characters/bluevinyl", "Models/Characters/tifa_vip", "Models/Characters/rastaman_singer" };
+            int nIdx = 0;
             foreach (var n in data.nightlife)
             {
                 var pos = n.World(); pos.y = data.DeckHeightAt(pos) + 0.3f;
                 var go = new GameObject("Night " + n.name); go.transform.SetParent(root, false); go.transform.position = pos; go.transform.rotation = Quaternion.Euler(0, 180, 0);
                 var look = new Look { Fabric = 2, Pants = Mannequin.Hex("#6e1a2c"), Skin = Mannequin.Hex("#8a5a3c"), Hair = Mannequin.Hex("#d62828"), Cap = null, BodyType = 0, Outfit = 9, HairStyle = 3 };
-                if (CharacterRig.Available && !GameBootstrap.LightWebGL) CharacterRig.Build(go.transform, look); else Mannequin.Build(go.transform, Mannequin.Hex("#ff5d9e"), look.Pants, look.Skin, null);
+                if (!GameBootstrap.LightWebGL && CharacterRig.InstantiateGlb(nightModels[nIdx % nightModels.Length], "BodyModel", pos, new Vector3(0.8f, 1.82f, 0.65f), go.transform, 180f, false) != null)
+                {
+                    var col = go.AddComponent<CapsuleCollider>(); col.center = new Vector3(0f, 0.9f, 0f); col.radius = 0.26f; col.height = 1.8f;
+                }
+                else if (CharacterRig.Available && !GameBootstrap.LightWebGL) CharacterRig.Build(go.transform, look);
+                else Mannequin.Build(go.transform, Mannequin.Hex("#ff5d9e"), look.Pants, look.Skin, null);
                 Mannequin.Label(go.transform, n.name, new Color(1f, 0.36f, 0.62f), 2.3f, 0.5f);
                 go.SetActive(false);
                 Nightlife.Add((go.transform, n.name));
+                nIdx++;
             }
             SpawnFishingBoats();
             SpawnGroundItems();
