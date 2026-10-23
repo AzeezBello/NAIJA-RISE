@@ -685,13 +685,16 @@ namespace Rise.EditorTools
                         UI.SoundSystem.I?.SyncAmbientNow();
                         Check(streetAmbOn && mutedWhenOff, "Lagos street ambience & Owambe music loops gated behind Sound toggle");
 
-                        // Dedicated Jump, Turn, and Vehicle Enter/Exit character animation clips
+                        // Dedicated Jump, Turn, Vehicle Enter/Exit, and 3-hit Attack character animation clips
                         boot.Player.TriggerJumpAnim(); bool jumpOk = boot.Player.AnimState == "jump";
                         boot.Player.TriggerTurnAnim(); bool turnOk = boot.Player.AnimState == "turn";
                         boot.Player.TriggerVehicleEnterAnim(); bool enterOk = boot.Player.AnimState == "enter_vehicle";
                         boot.Player.TriggerVehicleExitAnim(); bool exitOk = boot.Player.AnimState == "exit_vehicle";
-                        Check(boot.Player.HasExtendedClips && jumpOk && turnOk && enterOk && exitOk,
-                              "Character rig expanded with dedicated jump, turn, enter_vehicle, and exit_vehicle animation clips");
+                        boot.Player.SwingWeapon(); bool atk1 = boot.Player.AnimState == "attack" && boot.Player.IsSwinging;
+                        int step1 = boot.Player.ComboStep;
+                        boot.Player.SwingWeapon(); int step2 = boot.Player.ComboStep;
+                        Check(boot.Player.HasExtendedClips && jumpOk && turnOk && enterOk && exitOk && atk1 && step2 != step1,
+                              "Character rig expanded with dedicated jump, turn, enter_vehicle, exit_vehicle, and 3-hit attack animation clips");
 
                         // Full Game UI, UX, Graphics & Responsiveness Audit
                         var hudComp = boot.GetComponent<UI.Hud>();

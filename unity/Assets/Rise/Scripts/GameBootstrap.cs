@@ -26,6 +26,7 @@ namespace Rise
 
         // Phones and tablets (or ?diag=mobile on a desktop): lighter crowds, no stadium models, 30 fps cap, Low graphics.
         public static bool Mobile => Application.isMobilePlatform || SystemInfo.deviceType == DeviceType.Handheld || DiagFlags.Has("mobile");
+        public static bool LightWebGL => Application.platform == RuntimePlatform.WebGLPlayer || (Mobile && !Application.isEditor);
 
         // Guarantees that even if a WebGL or standalone player boots an empty/default scene, GameBootstrap is created
         // and builds the Lagos world instead of showing a blank skybox.
@@ -43,7 +44,18 @@ namespace Rise
         {
             Data = WorldData.LoadFromResources(WorldResource);
             QualitySettings.vSyncCount = 1;
-            if (Mobile) { TrafficCount = Mathf.Min(TrafficCount, 54); PedestrianCount = Mathf.Min(PedestrianCount, 32); Application.targetFrameRate = 30; QualitySettings.vSyncCount = 0; }
+            if (Mobile)
+            {
+                TrafficCount = Mathf.Min(TrafficCount, Application.isEditor ? 54 : 26);
+                PedestrianCount = Mathf.Min(PedestrianCount, Application.isEditor ? 32 : 16);
+                Application.targetFrameRate = 30;
+                QualitySettings.vSyncCount = 0;
+            }
+            else if (Application.platform == RuntimePlatform.WebGLPlayer)
+            {
+                TrafficCount = Mathf.Min(TrafficCount, 64);
+                PedestrianCount = Mathf.Min(PedestrianCount, 28);
+            }
             gameObject.AddComponent<UI.TouchControls>();
 
             Builder = gameObject.AddComponent<WorldBuilder>();
