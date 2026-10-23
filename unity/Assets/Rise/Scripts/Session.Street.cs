@@ -231,13 +231,28 @@ namespace Rise
                 State.Toast("They have firearms! You need a gun (Pistol, Shotgun, or AK-47) to shoot back!");
                 return false;
             }
+            var pos = Player.transform.position;
+            var agbero = Street != null ? Street.NearestAgbero(pos, 3.2f) : null;
+            var ped = agbero == null && Pedestrians != null ? Pedestrians.Nearest(pos, 2.8f) : null;
+            if (agbero != null && agbero.t != null)
+            {
+                Vector3 toTarget = agbero.t.position - pos; toTarget.y = 0f;
+                if (toTarget.sqrMagnitude > 0.01f)
+                    Player.transform.rotation = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
+            }
+            else if (ped != null)
+            {
+                Vector3 toTarget = ped.position - pos; toTarget.y = 0f;
+                if (toTarget.sqrMagnitude > 0.01f)
+                    Player.transform.rotation = Quaternion.LookRotation(toTarget.normalized, Vector3.up);
+            }
+
             Player.SwingWeapon();
+            UI.SoundSystem.I?.PlayKick(0.55f);
             State.S.stamina = Mathf.Max(0f, State.S.stamina - 3f);
             State.GainSkill("strength", 0.08f);
-            var pos = Player.transform.position;
 
             // 1. Nearby agbero
-            var agbero = Street != null ? Street.NearestAgbero(pos, 2.8f) : null;
             if (agbero != null)
             {
                 bool won = FightAgbero(agbero);
@@ -254,7 +269,6 @@ namespace Rise
             }
 
             // 3. Nearby pedestrian
-            var ped = Pedestrians != null ? Pedestrians.Nearest(pos, 2.4f) : null;
             if (ped != null)
             {
                 Pedestrians.Knock(ped);
@@ -270,7 +284,8 @@ namespace Rise
             if (Time.time - lastSwingToast > 1.8f)
             {
                 lastSwingToast = Time.time;
-                State.Toast(!string.IsNullOrEmpty(BestWeaponId()) ? $"Swung {EquippedWeaponName}" : "Threw a punch (press Q to equip a weapon, G to pick up items)");
+                string moveName = Player.ComboStep == 0 ? "Right Cross" : Player.ComboStep == 1 ? "Left Hook" : "Street Kick";
+                State.Toast(!string.IsNullOrEmpty(BestWeaponId()) ? $"Swung {EquippedWeaponName}" : $"Threw {moveName} (press Q to equip a weapon, G to pick up items)");
             }
             return true;
         }
@@ -297,6 +312,8 @@ namespace Rise
         public bool FightAgbero(StreetLife.Agbero a)
         {
             Player?.SwingWeapon();
+            UI.SoundSystem.I?.PlayKick(0.6f);
+            if (a != null && Player != null) a.TriggerFight(Player.transform.position);
             int power = WeaponPower();
             float score = power + State.S.skills.strength * 0.6f;
             if (a != null) a.cool = 120f;

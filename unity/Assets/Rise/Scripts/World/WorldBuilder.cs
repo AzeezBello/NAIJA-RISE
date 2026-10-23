@@ -35,7 +35,12 @@ namespace Rise.World
             placedPlots.Clear();
             if (GameBootstrap.Mobile)
             {
-                MaxHouses = Mathf.Min(MaxHouses, 2200);
+                MaxHouses = Mathf.Min(MaxHouses, Application.isEditor ? 2200 : 580);
+                HouseGrid = Mathf.Max(HouseGrid, Application.isEditor ? 28f : 42f);
+            }
+            else if (Application.platform == RuntimePlatform.WebGLPlayer)
+            {
+                MaxHouses = Mathf.Min(MaxHouses, 1600);
                 HouseGrid = Mathf.Max(HouseGrid, 28f);
             }
             standard = ShaderLib.Lit;
@@ -1118,6 +1123,7 @@ namespace Rise.World
             Box("House", pos + Vector3.up * h * 0.5f, new Vector3(w, h, d), Mat("house-" + colour, colour), group);
             if (zincRoof && h < 5f) Box("Roof", pos + Vector3.up * (h + 0.15f), new Vector3(w + 1f, 0.3f, d + 1f), Mat("zinc", Zinc, 0.5f), group, false);
             else Box("Parapet", pos + Vector3.up * (h + 0.25f), new Vector3(w + 0.4f, 0.5f, d + 0.4f), Mat("parapet", "#6b655a"), group, false);
+            if (GameBootstrap.Mobile && !Application.isEditor) return;
             // Water tank, AC unit, balcony, and generator: Lagos compound details.
             Cylinder("Tank", pos + new Vector3(w * 0.3f, h + (zincRoof && h < 5f ? 0.3f : 0.5f), d * 0.25f), 0.7f, 1.2f, Mat("tank", Black), group, false);
             Box("AC unit", pos + new Vector3(-w * 0.28f, Mathf.Min(h - 0.8f, 2.6f), d * 0.5f + 0.18f), new Vector3(0.85f, 0.55f, 0.35f), Mat("ac-unit", "#d8dce0"), group, false);

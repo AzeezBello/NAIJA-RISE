@@ -157,7 +157,7 @@ const SHADOW_GUARD_SCRIPT = `  <script id="rise-webgl-shadow-guard">
         const origFetch = window.fetch.bind(window);
         window.fetch = async function(input, init) {
           const url = typeof input === 'string' ? input : (input && input.url) || '';
-          const isBuildAsset = /\.(unityweb|wasm|data|js)(\?|$)/i.test(url);
+          const isBuildAsset = /\\.(unityweb|wasm|data|js)(\\?|$)/i.test(url);
           const maxAttempts = isBuildAsset ? 4 : 1;
           let lastErr;
           for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -176,6 +176,14 @@ const SHADOW_GUARD_SCRIPT = `  <script id="rise-webgl-shadow-guard">
     })();
   </script>`;
 
+// Optimize WebGL.loader.js gzip decompression chunk size (1 MB instead of 16 KB) to avoid 3,700+ tiny Uint8Array allocations on mobile browsers.
+const loaderPath = join(buildDir, 'WebGL.loader.js');
+if (existsSync(loaderPath)) {
+  let loaderJs = readFileSync(loaderPath, 'utf8');
+  const nextLoaderJs = loaderJs.replace('chunkSize:16384', 'chunkSize:1048576');
+  if (nextLoaderJs !== loaderJs) writeFileSync(loaderPath, nextLoaderJs);
+}
+
 // Ensure index.html is patched for full-viewport iframe embedding, automatic IndexedDB save syncing, no watermarks, and WebGL2 shadow-sampler safety.
 let html = readFileSync(indexPath, 'utf8');
 html = html.replace(/<title>.*?<\/title>/, '<title>Rise: Hustle or Die Trying</title>');
@@ -192,16 +200,19 @@ html = html.replace(
   '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">',
   '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">\n    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes, viewport-fit=cover">'
 );
-html = html.replace(
-  /if \(\/iPhone\|iPad\|iPod\|Android[^]*?\} else \{\s*\/\/ Desktop style:[^\n]*\n\s*document\.querySelector\("#unity-container"\)\.className = "unity-mobile";\s*canvas\.className = "unity-mobile";\s*\}/,
-  `var isMobileDevice = /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) ||
-        (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent)) ||
-        (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+const mobileConfigSnippet = `var isMobileDevice = /iPhone|iPad|iPod|Android|Mobile/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 0) ||
+        (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+        Math.min(window.innerWidth || 9999, window.innerHeight || 9999) < 820;
       document.querySelector("#unity-container").className = "unity-mobile";
       canvas.className = "unity-mobile";
       if (isMobileDevice) {
         config.devicePixelRatio = 1;
-        config.cacheControl = function() { return "no-store"; };
+        config.webglContextAttributes = Object.assign({}, config.webglContextAttributes || {}, {
+          powerPreference: "default",
+          antialias: false,
+          preserveDrawingBuffer: false
+        });
         try {
           var u = new URL(window.location.href);
           var diag = u.searchParams.get("diag") || "";
@@ -210,7 +221,84 @@ html = html.replace(
             window.history.replaceState(null, "", u.toString());
           }
         } catch (e) {}
-      }`
+      }`;
+html = html.replace(
+  /if \(\/iPhone\|iPad\|iPod\|Android[^]*?\} else \{\s*\/\/ Desktop style:[^\n]*\n\s*document\.querySelector\("#unity-container"\)\.className = "unity-mobile";\s*canvas\.className = "unity-mobile";\s*\}/,
+  mobileConfigSnippet
+);
+html = html.replace(
+  /var isMobileDevice = \/iPhone\|iPad\|iPod\|Android\|Mobile\/i\.test\(navigator\.userAgent\)[\s\S]*?catch \(e\) \{\}\s*\}/,
+  mobileConfigSnippet
+);
+
+const loaderOnloadSnippet = `      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        const loadingContainer = document.querySelector("#unity-loading-container");
+        const progressBarFull = document.querySelector("#unity-progress-bar-full");
+        const stageLogo = document.querySelector("#rise-stage-logo");
+        const stageCover = document.querySelector("#rise-stage-cover");
+        const loadingCaption = document.querySelector("#rise-loading-caption");
+        const loadStart = Date.now();
+        let visualProgress = 0;
+        let finished = false;
+        const hideLoading = () => {
+          if (finished) return;
+          finished = true;
+          clearInterval(spinTimer);
+          if (loadingContainer) loadingContainer.style.display = "none";
+        };
+        const updateUi = (p) => {
+          if (finished) return;
+          visualProgress = Math.max(visualProgress, Math.min(0.99, p));
+          if (progressBarFull) progressBarFull.style.width = (visualProgress * 100).toFixed(1) + "%";
+          if ((visualProgress > 0.22 || Date.now() - loadStart > 1200) && stageLogo && stageCover) {
+            stageLogo.style.display = "none";
+            stageCover.style.display = "flex";
+          }
+          if (loadingCaption) {
+            const pct = Math.round(visualProgress * 100);
+            loadingCaption.textContent = (pct >= 89 ? "STARTING LAGOS · " : "LOADING LAGOS · ") + pct + "%";
+          }
+        };
+        const spinTimer = setInterval(() => {
+          if (finished) return;
+          if (visualProgress >= 0.88 && visualProgress < 0.99) {
+            updateUi(visualProgress + 0.008);
+          }
+        }, 180);
+        setTimeout(() => {
+          if (!finished && stageLogo && stageCover) {
+            stageLogo.style.display = "none";
+            stageCover.style.display = "flex";
+          }
+        }, 1200);
+
+        createUnityInstance(canvas, config, (progress) => {
+          if (progress < 1) {
+            if (loadingContainer) loadingContainer.style.display = "flex";
+            updateUi(progress);
+          } else {
+            hideLoading();
+          }
+        }).then((unityInstance) => {
+          hideLoading();
+          const fsBtn = document.querySelector("#unity-fullscreen-button");
+          if (fsBtn) {
+            fsBtn.onclick = () => {
+              unityInstance.SetFullscreen(1);
+            };
+          }
+        }).catch((message) => {
+          clearInterval(spinTimer);
+          console.error("RISE WebGL load error:", message);
+          if (loadingCaption) loadingCaption.textContent = "TAP TO RETRY LOADING LAGOS";
+          if (loadingContainer) loadingContainer.onclick = () => window.location.reload();
+        });
+      };`;
+html = html.replace(
+  /      var script = document\.createElement\("script"\);\s*script\.src = loaderUrl;\s*script\.onload = \(\) => \{[\s\S]*?      \};\s*(?=\s*document\.body\.appendChild\(script\);)/,
+  loaderOnloadSnippet + '\n\n'
 );
 html = html.replace(/<style>html,body\{width:100%;height:100%;[^<]*<\/style>\s*/g, '');
 html = html.replace('</head>', '  <style>html,body{width:100%;height:100%;height:100dvh;margin:0;overflow:hidden;background:#07100e;touch-action:none;-webkit-user-select:none;user-select:none;}#unity-container,#unity-fullscreen-container,#unity-canvas{width:100%!important;height:100%!important;}#unity-logo,#unity-footer,#unity-logo-title-footer{display:none!important;}</style>\n  </head>');

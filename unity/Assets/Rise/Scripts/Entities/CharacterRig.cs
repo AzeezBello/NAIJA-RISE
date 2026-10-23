@@ -20,31 +20,194 @@ namespace Rise.Entities
         public readonly List<Material> Top = new List<Material>(), Bottom = new List<Material>(), Skin = new List<Material>(), Hair = new List<Material>(), Cap = new List<Material>();
         public readonly List<Renderer> HairRenderers = new List<Renderer>(), BeardRenderers = new List<Renderer>(), CapRenderers = new List<Renderer>();
         public Transform Overlay, Glasses, Chain, Watch, TattooL, TattooR, WeaponRoot; public Material OverlayMaterial, TattooMaterial;
+        public Transform Hips, Spine, Spine1, Spine2, Neck, Head;
+        public Transform RightShoulder, RightArm, RightForeArm, RightHand;
+        public Transform LeftShoulder, LeftArm, LeftForeArm, LeftHand;
+        public Transform RightUpLeg, RightLeg, LeftUpLeg, LeftLeg;
         public float BaseScale = 1f;
         public string State = "idle";
 
-        // Cross-fade to a locomotion or action state (idle, walk, run, jump, turn, enter_vehicle, exit_vehicle); clipSpeed scales the clip to the movement speed.
+        // Cross-fade to a locomotion or action state (idle, walk, run, jump, turn, enter_vehicle, exit_vehicle, attack); clipSpeed scales the clip to the movement speed.
         public void SetState(string state, float clipSpeed = 1f)
         {
             if (Anim == null) return;
             State = state;
-            var st = Anim[state] ?? Anim["walk"];
+            // During an upper-body/full-body combat strike ("attack"), keep the base idle/walk clip refreshing bone bind poses each frame so LateUpdate procedural combat overrides never accumulate.
+            string clipName = state == "attack" ? (clipSpeed > 1.05f ? "walk" : "idle") : state;
+            var st = Anim[clipName] ?? Anim["walk"];
             if (st == null) return;
-            st.speed = state == "idle" && Anim["idle"] == null ? 0f : Mathf.Clamp(clipSpeed, 0.4f, 2.2f);
-            if (!Anim.IsPlaying(st.name)) Anim.CrossFade(st.name, 0.18f);
+            st.speed = clipName == "idle" && Anim["idle"] == null ? 0f : Mathf.Clamp(clipSpeed, 0.4f, 2.2f);
+            if (!Anim.IsPlaying(st.name)) Anim.CrossFade(st.name, 0.14f);
         }
 
         public bool HasClip(string name) => Anim != null && Anim.GetClip(name) != null;
+
+        static void WorldRot(Transform bone, Vector3 right, Vector3 up, Vector3 fwd, float pitch, float yaw, float roll)
+        {
+            if (bone == null) return;
+            if (Mathf.Abs(pitch) > 0.01f) bone.Rotate(right, pitch, Space.World);
+            if (Mathf.Abs(yaw) > 0.01f) bone.Rotate(up, yaw, Space.World);
+            if (Mathf.Abs(roll) > 0.01f) bone.Rotate(fwd, roll, Space.World);
+        }
+
+        // Full-body 3D combat pose evaluated in LateUpdate after Animation updates the base locomotion pose.
+        // swing01: 0 (no active swing) or 0..1 progress through the active attack.
+        // guard01: 0..1 blend weight for boxing/weapon ready stance between swings.
+        public void ApplyCombatPose(float swing01, float guard01, int comboStep, string weaponId, bool isGun)
+        {
+            if (Root == null) return;
+            bool hasWeapon = !string.IsNullOrEmpty(weaponId);
+            if (swing01 <= 0.001f && guard01 <= 0.001f && !hasWeapon) return;
+
+            var tr = Root.transform;
+            Vector3 right = tr.right, up = tr.up, fwd = tr.forward;
+
+            // 1. Firearm aiming & recoil stance
+            if (isGun)
+            {
+                bool twoHand = weaponId == "shotgun" || weaponId == "smg" || weaponId == "rifle" || weaponId == "sniper" || weaponId == "lmg";
+                float aim = Mathf.Max(guard01, swing01 > 0f ? 1f : 0.42f);
+                float kick = swing01 > 0f ? Mathf.Sin(swing01 * Mathf.PI) : 0f;
+
+                WorldRot(Spine ?? Hips, right, up, fwd, 6f * aim - 7f * kick, twoHand ? 14f * aim : 8f * aim, 0f);
+                WorldRot(RightArm, right, up, fwd, -82f * aim - 16f * kick, -8f * aim, 10f * aim);
+                WorldRot(RightForeArm, right, up, fwd, -16f * aim - 8f * kick, -6f * aim, 0f);
+                if (twoHand)
+                {
+                    WorldRot(LeftArm, right, up, fwd, -74f * aim - 10f * kick, 32f * aim, -12f * aim);
+                    WorldRot(LeftForeArm, right, up, fwd, -28f * aim, 18f * aim, 0f);
+                }
+                if (WeaponRoot != null)
+                    WeaponRoot.localRotation = Quaternion.Euler(75f - kick * 18f, 0f, 0f);
+                return;
+            }
+
+            // 2. Active melee weapon slash or bare-knuckle 3-hit street brawl combo
+            if (swing01 > 0.001f)
+            {
+                float s = Mathf.Sin(swing01 * Mathf.PI); // 0 -> 1 -> 0 envelope
+                if (hasWeapon)
+                {
+                    int step = Mathf.Abs(comboStep) % 3;
+                    if (step == 0)
+                    {
+                        // Overhead diagonal cleave (windup 0..0.28 -> slash 0.28..0.72 -> recover)
+                        float slash = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.18f, 0.65f, swing01));
+                        float torsoYaw = Mathf.Lerp(26f, -38f, slash) * s;
+                        float torsoPitch = Mathf.Lerp(-8f, 20f, slash) * s;
+                        WorldRot(Spine ?? Hips, right, up, fwd, torsoPitch, torsoYaw, 0f);
+                        WorldRot(Spine2, right, up, fwd, torsoPitch * 0.6f, torsoYaw * 0.7f, 0f);
+                        WorldRot(RightArm, right, up, fwd, Mathf.Lerp(-138f, -36f, slash) * s, Mathf.Lerp(28f, -34f, slash) * s, 22f * s);
+                        WorldRot(RightForeArm, right, up, fwd, Mathf.Lerp(-48f, -8f, slash) * s, 0f, 0f);
+                        WorldRot(LeftArm, right, up, fwd, -42f * s, -22f * s, -18f * s);
+                        WorldRot(LeftForeArm, right, up, fwd, -55f * s, 0f, 0f);
+                        if (WeaponRoot != null)
+                            WeaponRoot.localRotation = Quaternion.Euler(75f + Mathf.Lerp(-45f, 82f, slash) * s, -slash * 28f * s, 0f);
+                    }
+                    else if (step == 1)
+                    {
+                        // Wide horizontal backhand sweep across chest
+                        float sweep = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.15f, 0.68f, swing01));
+                        float yaw = Mathf.Lerp(-46f, 48f, sweep) * s;
+                        WorldRot(Spine ?? Hips, right, up, fwd, 14f * s, yaw * 0.75f, 0f);
+                        WorldRot(RightArm, right, up, fwd, -88f * s, yaw, 28f * s);
+                        WorldRot(RightForeArm, right, up, fwd, -20f * s, yaw * 0.35f, 0f);
+                        WorldRot(LeftArm, right, up, fwd, -48f * s, -25f * s, -20f * s);
+                        if (WeaponRoot != null)
+                            WeaponRoot.localRotation = Quaternion.Euler(75f + 55f * s, yaw * 0.6f, 45f * s);
+                    }
+                    else
+                    {
+                        // Heavy lunging overhead smash + front kick
+                        float smash = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.20f, 0.65f, swing01));
+                        WorldRot(Spine ?? Hips, right, up, fwd, Mathf.Lerp(-14f, 24f, smash) * s, -18f * s, 0f);
+                        WorldRot(RightArm, right, up, fwd, Mathf.Lerp(-145f, -30f, smash) * s, -14f * s, 16f * s);
+                        WorldRot(RightForeArm, right, up, fwd, -18f * s, 0f, 0f);
+                        WorldRot(LeftArm, right, up, fwd, Mathf.Lerp(-115f, -40f, smash) * s, 22f * s, -14f * s);
+                        WorldRot(RightUpLeg, right, up, fwd, -62f * s, 0f, 0f);
+                        WorldRot(RightLeg, right, up, fwd, 24f * s, 0f, 0f);
+                        if (WeaponRoot != null)
+                            WeaponRoot.localRotation = Quaternion.Euler(75f + Mathf.Lerp(-35f, 90f, smash) * s, 0f, 0f);
+                    }
+                }
+                else
+                {
+                    // Bare-fists 3-hit street fight combo (Right Cross -> Left Hook -> Street Front Kick & Uppercut)
+                    int step = Mathf.Abs(comboStep) % 3;
+                    if (step == 0)
+                    {
+                        // Right Cross / Haymaker
+                        float punch = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.15f, 0.55f, swing01));
+                        WorldRot(Spine ?? Hips, right, up, fwd, 16f * s, Mathf.Lerp(24f, -38f, punch) * s, 0f);
+                        WorldRot(Spine2, right, up, fwd, 8f * s, Mathf.Lerp(16f, -28f, punch) * s, 0f);
+                        WorldRot(RightArm, right, up, fwd, Mathf.Lerp(-42f, -96f, punch) * s, -18f * punch * s, 16f * s);
+                        WorldRot(RightForeArm, right, up, fwd, Mathf.Lerp(-78f, -8f, punch) * s, -10f * s, 0f);
+                        // Left hand tucked high in boxing guard
+                        WorldRot(LeftArm, right, up, fwd, -52f * s, 18f * s, -14f * s);
+                        WorldRot(LeftForeArm, right, up, fwd, -82f * s, 22f * s, 0f);
+                    }
+                    else if (step == 1)
+                    {
+                        // Left Hook / Jab
+                        float hook = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.15f, 0.55f, swing01));
+                        WorldRot(Spine ?? Hips, right, up, fwd, 16f * s, Mathf.Lerp(-24f, 38f, hook) * s, 0f);
+                        WorldRot(Spine2, right, up, fwd, 8f * s, Mathf.Lerp(-16f, 28f, hook) * s, 0f);
+                        WorldRot(LeftArm, right, up, fwd, Mathf.Lerp(-45f, -94f, hook) * s, 28f * hook * s, -20f * s);
+                        WorldRot(LeftForeArm, right, up, fwd, Mathf.Lerp(-78f, -24f, hook) * s, 24f * hook * s, 0f);
+                        // Right hand tucked high in boxing guard
+                        WorldRot(RightArm, right, up, fwd, -52f * s, -18f * s, 14f * s);
+                        WorldRot(RightForeArm, right, up, fwd, -82f * s, -22f * s, 0f);
+                    }
+                    else
+                    {
+                        // Street Front Kick + Double-Handed Uppercut
+                        float kick = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.12f, 0.52f, swing01));
+                        WorldRot(Spine ?? Hips, right, up, fwd, -10f * s, -14f * s, 0f);
+                        WorldRot(RightUpLeg, right, up, fwd, -88f * kick * s, 0f, 6f * s);
+                        WorldRot(RightLeg, right, up, fwd, 28f * kick * s, 0f, 0f);
+                        WorldRot(RightArm, right, up, fwd, -84f * s, -16f * s, 18f * s);
+                        WorldRot(RightForeArm, right, up, fwd, -48f * s, 0f, 0f);
+                        WorldRot(LeftArm, right, up, fwd, -65f * s, 16f * s, -18f * s);
+                        WorldRot(LeftForeArm, right, up, fwd, -68f * s, 0f, 0f);
+                    }
+                }
+                return;
+            }
+
+            // 3. Between swings: Fighter guard stance or melee weapon ready carry
+            float g = Mathf.Clamp01(guard01);
+            if (hasWeapon)
+            {
+                float w = Mathf.Max(0.45f, g);
+                WorldRot(RightArm, right, up, fwd, -28f * w, -6f * w, 14f * w);
+                WorldRot(RightForeArm, right, up, fwd, -36f * w, 0f, 0f);
+                if (g > 0.05f)
+                {
+                    WorldRot(LeftArm, right, up, fwd, -42f * g, 16f * g, -12f * g);
+                    WorldRot(LeftForeArm, right, up, fwd, -68f * g, 14f * g, 0f);
+                }
+                if (WeaponRoot != null)
+                    WeaponRoot.localRotation = Quaternion.Euler(75f, 0f, 0f);
+            }
+            else if (g > 0.01f)
+            {
+                WorldRot(Spine ?? Hips, right, up, fwd, 8f * g, 12f * g, 0f);
+                WorldRot(RightArm, right, up, fwd, -46f * g, -14f * g, 12f * g);
+                WorldRot(RightForeArm, right, up, fwd, -78f * g, -18f * g, 0f);
+                WorldRot(LeftArm, right, up, fwd, -54f * g, 16f * g, -12f * g);
+                WorldRot(LeftForeArm, right, up, fwd, -82f * g, 20f * g, 0f);
+            }
+        }
     }
 
     // Real humans: the Ready Player Me avatar imported with glTFast and driven
-    // by a legacy Animation with the Ready Player Me Idle / Walk / Run clips plus dedicated Jump, Turn, and Vehicle Enter/Exit clips.
+    // by a legacy Animation with the Ready Player Me Idle / Walk / Run clips plus dedicated Jump, Turn, Vehicle Enter/Exit, and Attack clips.
     // One rig loaded once, instanced per character, dressed per look with the
     // procedural fabric prints. Falls back to the mannequin when the assets are missing so the game always runs.
     public static class CharacterRig
     {
         static GameObject prefab, cesiumPrefab;
-        static AnimationClip idle, walk, run, jump, turn, enterVehicle, exitVehicle, cesiumWalk;
+        static AnimationClip idle, walk, run, jump, turn, enterVehicle, exitVehicle, attack, cesiumWalk;
         static bool loaded;
         public const float WalkClipSpeed = 1.5f, RunClipSpeed = 5.5f;   // m/s the clips were authored for
         public static WorldData Data;                                  // for the fabric prints
@@ -60,8 +223,17 @@ namespace Rise.Entities
             turn = Resources.Load<AnimationClip>("Characters/rpm_turn") ?? MakeTurnClip();
             enterVehicle = Resources.Load<AnimationClip>("Characters/rpm_enter_vehicle") ?? MakeEnterVehicleClip();
             exitVehicle = Resources.Load<AnimationClip>("Characters/rpm_exit_vehicle") ?? MakeExitVehicleClip();
+            attack = Resources.Load<AnimationClip>("Characters/rpm_attack") ?? MakeAttackClip();
             cesiumPrefab = Resources.Load<GameObject>("Models/Characters/CesiumMan");
             cesiumWalk = Resources.Load<AnimationClip>("Characters/cesium_walk");
+        }
+
+        static AnimationClip MakeAttackClip()
+        {
+            var c = new AnimationClip { name = "rpm_attack", legacy = true, wrapMode = WrapMode.Once };
+            c.SetCurve("", typeof(Transform), "localPosition.z", new AnimationCurve(
+                new Keyframe(0f, 0f), new Keyframe(0.16f, 0.14f), new Keyframe(0.42f, 0f)));
+            return c;
         }
 
         static AnimationClip MakeJumpClip()
@@ -154,6 +326,7 @@ namespace Rise.Entities
                     else if (srcPrefab == cesiumPrefab) rig.Top.Add(m);
                 }
             }
+            BindBones(rig, go.transform);
             if (srcPrefab == prefab) BuildAttachments(rig, go.transform, k);
             Dress(rig, look);
 
@@ -171,17 +344,60 @@ namespace Rise.Entities
             if (turn != null && anim.GetClip("turn") == null) anim.AddClip(turn, "turn");
             if (enterVehicle != null && anim.GetClip("enter_vehicle") == null) anim.AddClip(enterVehicle, "enter_vehicle");
             if (exitVehicle != null && anim.GetClip("exit_vehicle") == null) anim.AddClip(exitVehicle, "exit_vehicle");
+            if (attack != null && anim.GetClip("attack") == null) anim.AddClip(attack, "attack");
             rig.Anim = anim;
             if (Application.isPlaying) rig.SetState("idle");
             return rig;
+        }
+
+        static void BindBones(RigInstance rig, Transform root)
+        {
+            rig.Hips = Find(root, "Hips");
+            rig.Spine = Find(root, "Spine");
+            rig.Spine1 = Find(root, "Spine1");
+            rig.Spine2 = Find(root, "Spine2");
+            rig.Neck = Find(root, "Neck");
+            rig.Head = Find(root, "Head");
+            rig.RightShoulder = Find(root, "RightShoulder");
+            rig.RightArm = Find(root, "RightArm");
+            rig.RightForeArm = Find(root, "RightForeArm");
+            rig.RightHand = Find(root, "RightHand");
+            rig.LeftShoulder = Find(root, "LeftShoulder");
+            rig.LeftArm = Find(root, "LeftArm");
+            rig.LeftForeArm = Find(root, "LeftForeArm");
+            rig.LeftHand = Find(root, "LeftHand");
+            rig.RightUpLeg = Find(root, "RightUpLeg");
+            rig.RightLeg = Find(root, "RightLeg");
+            rig.LeftUpLeg = Find(root, "LeftUpLeg");
+            rig.LeftLeg = Find(root, "LeftLeg");
         }
 
         // Primitive attachments on the bones: an outfit overlay on the hips
         // (senator kaftan, agbada, gown, skirt), glasses on the head, a chain at the neck. Sized in rig-local metres.
         static void DestroyObj(Object o) { if (o == null) return; if (Application.isPlaying) Object.Destroy(o); else Object.DestroyImmediate(o); }
 
+        static Material sharedLensMat, sharedFrameMat, sharedSilverMat, sharedWatchMetalMat, sharedWatchDialMat, sharedTattooMat;
+        static readonly Dictionary<string, Material> weaponMatCache = new Dictionary<string, Material>();
+
+        static void EnsureAccessoryMaterials()
+        {
+            if (sharedLensMat == null) { sharedLensMat = new Material(ShaderLib.Lit) { color = new Color(0.05f, 0.07f, 0.10f) }; sharedLensMat.SetFloat("_Smoothness", 0.95f); sharedLensMat.SetFloat("_Metallic", 0.45f); }
+            if (sharedFrameMat == null) { sharedFrameMat = new Material(ShaderLib.Lit) { color = new Color(0.90f, 0.92f, 0.95f) }; sharedFrameMat.SetFloat("_Smoothness", 0.85f); sharedFrameMat.SetFloat("_Metallic", 0.70f); }
+            if (sharedSilverMat == null) { sharedSilverMat = new Material(ShaderLib.Lit) { color = new Color(0.92f, 0.86f, 0.68f) }; sharedSilverMat.SetFloat("_Metallic", 0.92f); sharedSilverMat.SetFloat("_Smoothness", 0.88f); }
+            if (sharedWatchMetalMat == null) { sharedWatchMetalMat = new Material(ShaderLib.Lit) { color = new Color(0.88f, 0.86f, 0.78f) }; sharedWatchMetalMat.SetFloat("_Metallic", 0.92f); sharedWatchMetalMat.SetFloat("_Smoothness", 0.88f); }
+            if (sharedWatchDialMat == null) { sharedWatchDialMat = new Material(ShaderLib.Lit) { color = new Color(0.08f, 0.12f, 0.18f) }; sharedWatchDialMat.SetFloat("_Smoothness", 0.92f); }
+            if (sharedTattooMat == null)
+            {
+                sharedTattooMat = new Material(ShaderLib.Lit) { color = Color.white };
+                sharedTattooMat.SetFloat("_Smoothness", 0.34f);
+                if (sharedTattooMat.HasProperty("_BaseMap")) sharedTattooMat.SetTexture("_BaseMap", ShaderLib.TattooTex);
+                sharedTattooMat.mainTexture = ShaderLib.TattooTex;
+            }
+        }
+
         static void BuildAttachments(RigInstance rig, Transform root, float k)
         {
+            EnsureAccessoryMaterials();
             var hips = Find(root, "Hips") ?? Find(root, "Spine");
             var head = Find(root, "Head");
             var neck = Find(root, "Neck") ?? head;
@@ -210,48 +426,37 @@ namespace Rise.Entities
             {
                 var gRoot = new GameObject("Glasses") { layer = layer }.transform;
                 gRoot.SetParent(head, false);
-                var lensMat = new Material(ShaderLib.Lit) { color = new Color(0.05f, 0.07f, 0.10f) }; lensMat.SetFloat("_Smoothness", 0.95f); lensMat.SetFloat("_Metallic", 0.45f);
-                var frameMat = new Material(ShaderLib.Lit) { color = new Color(0.90f, 0.92f, 0.95f) }; frameMat.SetFloat("_Smoothness", 0.85f); frameMat.SetFloat("_Metallic", 0.70f);
-                SubPart(gRoot, "LeftLens", PrimitiveType.Cube, new Vector3(-0.30f, 0f, 0f), new Vector3(0.42f, 0.86f, 0.24f), lensMat);
-                SubPart(gRoot, "RightLens", PrimitiveType.Cube, new Vector3(0.30f, 0f, 0f), new Vector3(0.42f, 0.86f, 0.24f), lensMat);
-                SubPart(gRoot, "TopBar", PrimitiveType.Cube, new Vector3(0f, 0.42f, 0.04f), new Vector3(1.04f, 0.20f, 0.28f), frameMat);
-                SubPart(gRoot, "Bridge", PrimitiveType.Cube, new Vector3(0f, 0.08f, 0.06f), new Vector3(0.22f, 0.18f, 0.26f), frameMat);
-                SubPart(gRoot, "LeftTemple", PrimitiveType.Cube, new Vector3(-0.51f, 0.12f, -1.6f), new Vector3(0.08f, 0.22f, 3.2f), frameMat);
-                SubPart(gRoot, "RightTemple", PrimitiveType.Cube, new Vector3(0.51f, 0.12f, -1.6f), new Vector3(0.08f, 0.22f, 3.2f), frameMat);
+                SubPart(gRoot, "LeftLens", PrimitiveType.Cube, new Vector3(-0.30f, 0f, 0f), new Vector3(0.42f, 0.86f, 0.24f), sharedLensMat);
+                SubPart(gRoot, "RightLens", PrimitiveType.Cube, new Vector3(0.30f, 0f, 0f), new Vector3(0.42f, 0.86f, 0.24f), sharedLensMat);
+                SubPart(gRoot, "TopBar", PrimitiveType.Cube, new Vector3(0f, 0.42f, 0.04f), new Vector3(1.04f, 0.20f, 0.28f), sharedFrameMat);
+                SubPart(gRoot, "Bridge", PrimitiveType.Cube, new Vector3(0f, 0.08f, 0.06f), new Vector3(0.22f, 0.18f, 0.26f), sharedFrameMat);
+                SubPart(gRoot, "LeftTemple", PrimitiveType.Cube, new Vector3(-0.51f, 0.12f, -1.6f), new Vector3(0.08f, 0.22f, 3.2f), sharedFrameMat);
+                SubPart(gRoot, "RightTemple", PrimitiveType.Cube, new Vector3(0.51f, 0.12f, -1.6f), new Vector3(0.08f, 0.22f, 3.2f), sharedFrameMat);
                 rig.Glasses = gRoot; gRoot.gameObject.SetActive(false);
             }
             if (neck != null)
             {
                 var cRoot = new GameObject("Chain") { layer = layer }.transform;
                 cRoot.SetParent(neck, false);
-                var silver = new Material(ShaderLib.Lit) { color = new Color(0.92f, 0.86f, 0.68f) }; silver.SetFloat("_Metallic", 0.92f); silver.SetFloat("_Smoothness", 0.88f);
-                SubPart(cRoot, "LeftLink", PrimitiveType.Cylinder, new Vector3(-0.28f, -0.35f, 0.32f), new Vector3(0.10f, 0.48f, 0.10f), silver, Quaternion.Euler(28f, 0f, 26f));
-                SubPart(cRoot, "RightLink", PrimitiveType.Cylinder, new Vector3(0.28f, -0.35f, 0.32f), new Vector3(0.10f, 0.48f, 0.10f), silver, Quaternion.Euler(28f, 0f, -26f));
-                SubPart(cRoot, "BottomCurve", PrimitiveType.Cylinder, new Vector3(0f, -0.78f, 0.50f), new Vector3(0.11f, 0.24f, 0.11f), silver, Quaternion.Euler(0f, 0f, 90f));
-                SubPart(cRoot, "Medallion", PrimitiveType.Cylinder, new Vector3(0f, -0.94f, 0.54f), new Vector3(0.24f, 0.04f, 0.24f), silver, Quaternion.Euler(90f, 0f, 0f));
+                SubPart(cRoot, "LeftLink", PrimitiveType.Cylinder, new Vector3(-0.28f, -0.35f, 0.32f), new Vector3(0.10f, 0.48f, 0.10f), sharedSilverMat, Quaternion.Euler(28f, 0f, 26f));
+                SubPart(cRoot, "RightLink", PrimitiveType.Cylinder, new Vector3(0.28f, -0.35f, 0.32f), new Vector3(0.10f, 0.48f, 0.10f), sharedSilverMat, Quaternion.Euler(28f, 0f, -26f));
+                SubPart(cRoot, "BottomCurve", PrimitiveType.Cylinder, new Vector3(0f, -0.78f, 0.50f), new Vector3(0.11f, 0.24f, 0.11f), sharedSilverMat, Quaternion.Euler(0f, 0f, 90f));
+                SubPart(cRoot, "Medallion", PrimitiveType.Cylinder, new Vector3(0f, -0.94f, 0.54f), new Vector3(0.24f, 0.04f, 0.24f), sharedSilverMat, Quaternion.Euler(90f, 0f, 0f));
                 rig.Chain = cRoot; cRoot.gameObject.SetActive(false);
             }
             if (leftForeArm != null)
             {
                 var wRoot = new GameObject("Wristwatch") { layer = layer }.transform;
                 wRoot.SetParent(leftForeArm, false);
-                var metal = new Material(ShaderLib.Lit) { color = new Color(0.88f, 0.86f, 0.78f) }; metal.SetFloat("_Metallic", 0.92f); metal.SetFloat("_Smoothness", 0.88f);
-                var dial = new Material(ShaderLib.Lit) { color = new Color(0.08f, 0.12f, 0.18f) }; dial.SetFloat("_Smoothness", 0.92f);
-                SubPart(wRoot, "Band", PrimitiveType.Cylinder, Vector3.zero, new Vector3(1.0f, 0.35f, 1.0f), metal);
-                SubPart(wRoot, "Face", PrimitiveType.Cylinder, new Vector3(0f, 0f, 0.48f), new Vector3(0.65f, 0.12f, 0.65f), dial, Quaternion.Euler(90f, 0f, 0f));
+                SubPart(wRoot, "Band", PrimitiveType.Cylinder, Vector3.zero, new Vector3(1.0f, 0.35f, 1.0f), sharedWatchMetalMat);
+                SubPart(wRoot, "Face", PrimitiveType.Cylinder, new Vector3(0f, 0f, 0.48f), new Vector3(0.65f, 0.12f, 0.65f), sharedWatchDialMat, Quaternion.Euler(90f, 0f, 0f));
                 rig.Watch = wRoot;
 
-                rig.TattooMaterial = new Material(ShaderLib.Lit) { color = Color.white };
-                rig.TattooMaterial.SetFloat("_Smoothness", 0.34f);
-                if (rig.TattooMaterial.HasProperty("_BaseMap")) rig.TattooMaterial.SetTexture("_BaseMap", ShaderLib.TattooTex);
-                rig.TattooMaterial.mainTexture = ShaderLib.TattooTex;
+                rig.TattooMaterial = sharedTattooMat;
                 rig.TattooL = SubPart(leftForeArm, "TattooSleeveL", PrimitiveType.Cylinder, Vector3.zero, Vector3.one, rig.TattooMaterial);
                 if (rightForeArm != null)
                     rig.TattooR = SubPart(rightForeArm, "TattooSleeveR", PrimitiveType.Cylinder, Vector3.zero, Vector3.one, rig.TattooMaterial);
             }
-            var hand = Find(root, "RightHand") ?? rightForeArm ?? hips;
-            if (hand != null)
-                rig.WeaponRoot = BuildWeaponProp(hand, layer);
         }
 
         public static Transform BuildWeaponProp(Transform hand, int layer = 0)
@@ -269,7 +474,12 @@ namespace Rise.Entities
                 var g = GameObject.CreatePrimitive(pt); g.name = n; g.layer = layer; DestroyObj(g.GetComponent<Collider>());
                 g.transform.SetParent(p, false); g.transform.localPosition = pos; g.transform.localScale = sc;
                 if (rot.HasValue) g.transform.localRotation = rot.Value;
-                var m = new Material(ShaderLib.Lit) { color = col }; m.SetFloat("_Metallic", metal); m.SetFloat("_Smoothness", smooth);
+                string mKey = $"{ColorUtility.ToHtmlStringRGB(col)}:{metal:0.00}:{smooth:0.00}";
+                if (!weaponMatCache.TryGetValue(mKey, out var m) || m == null)
+                {
+                    m = new Material(ShaderLib.Lit) { color = col }; m.SetFloat("_Metallic", metal); m.SetFloat("_Smoothness", smooth);
+                    weaponMatCache[mKey] = m;
+                }
                 g.GetComponent<MeshRenderer>().sharedMaterial = m;
                 return g.transform;
             }
@@ -360,24 +570,23 @@ namespace Rise.Entities
 
         public static void SetWeapon(RigInstance rig, Transform host, string weaponId, int layer = 0)
         {
+            string key = string.IsNullOrEmpty(weaponId) || weaponId == "fists" ? "" : (weaponId == "weapon" ? "baton" : weaponId);
             Transform wRoot = rig != null ? rig.WeaponRoot : null;
             if (wRoot == null && host != null)
-            {
                 wRoot = Find(host, "WeaponProp");
-                if (wRoot == null)
+            if (wRoot == null)
+            {
+                if (string.IsNullOrEmpty(key)) return;
+                Transform attach = (rig != null ? rig.RightHand ?? rig.RightForeArm ?? rig.Hips : null) ?? (host != null ? Find(host, "RightHand") ?? host : null);
+                if (attach == null) return;
+                wRoot = BuildWeaponProp(attach, layer);
+                if (host != null && attach == host)
                 {
-                    var attach = Find(host, "RightHand") ?? host;
-                    wRoot = BuildWeaponProp(attach, layer);
-                    if (attach == host)
-                    {
-                        wRoot.localPosition = new Vector3(0.34f, 0.95f, 0.26f);
-                        wRoot.localRotation = Quaternion.Euler(45f, 0f, 0f);
-                    }
-                    if (rig != null) rig.WeaponRoot = wRoot;
+                    wRoot.localPosition = new Vector3(0.34f, 0.95f, 0.26f);
+                    wRoot.localRotation = Quaternion.Euler(45f, 0f, 0f);
                 }
+                if (rig != null) rig.WeaponRoot = wRoot;
             }
-            if (wRoot == null) return;
-            string key = string.IsNullOrEmpty(weaponId) ? "" : (weaponId == "weapon" ? "baton" : weaponId);
             bool any = false;
             for (int i = 0; i < wRoot.childCount; i++)
             {

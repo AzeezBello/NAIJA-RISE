@@ -10,7 +10,25 @@ namespace Rise.World
     // crowd at the event centre from 19:00, and the pet dog that follows you and keeps agberos away.
     public class StreetLife : MonoBehaviour
     {
-        public class Agbero { public Transform t; public Vector3 pos; public BusStopData stop; public float cool; }
+        public class Agbero
+        {
+            public Transform t;
+            public RigInstance rig;
+            public Vector3 pos;
+            public BusStopData stop;
+            public float cool;
+            public float fightT;
+
+            public void TriggerFight(Vector3 attackerPos)
+            {
+                fightT = 0.68f;
+                if (t == null) return;
+                Vector3 toAttacker = attackerPos - t.position;
+                toAttacker.y = 0f;
+                if (toAttacker.sqrMagnitude > 0.01f)
+                    t.rotation = Quaternion.LookRotation(toAttacker.normalized, Vector3.up);
+            }
+        }
         public class GroundItem { public Transform t; public Transform prop; public Vector3 pos; public string id, label; public int cash; public float respawn; public bool Active => respawn <= 0f && t != null && t.gameObject.activeSelf; }
         public class ServicePatrol { public Transform t; public Vector3 home; public Vector3 axis; public float phase, radius; }
         public class FishingBoat { public Transform t; public Vector3 a, b; public float speed, phase; }
@@ -35,9 +53,11 @@ namespace Rise.World
                     var pos = WorldData.W(b.x - 6f + i * 12f, 0f, b.z - 2.5f); pos.y = data.DeckHeightAt(pos) + 0.3f;
                     var go = new GameObject("Agbero"); go.transform.SetParent(root, false); go.transform.position = pos; go.transform.rotation = Quaternion.Euler(0, 180, 0);
                     var look = new Look { Fabric = 8, Pants = Mannequin.Hex(rng.NextDouble() < 0.5 ? "#c8d400" : "#2bb34a"), Skin = Mannequin.Hex("#5a3a28"), Hair = Color.black, Cap = Mannequin.Hex("#d62828"), BodyType = 2, Accessory = 2, Outfit = 6 };
-                    if (CharacterRig.Available) CharacterRig.Build(go.transform, look, 0, 1.9f); else Mannequin.Build(go.transform, look.Pants, Color.black, look.Skin, look.Cap);
+                    RigInstance aRig = null;
+                    bool rigAgbero = CharacterRig.Available && (!GameBootstrap.LightWebGL || Agberos.Count < 6);
+                    if (rigAgbero) aRig = CharacterRig.Build(go.transform, look, 0, 1.9f); else Mannequin.Build(go.transform, look.Pants, Color.black, look.Skin, look.Cap);
                     Mannequin.Label(go.transform, "Agbero", new Color(0.78f, 0.83f, 0f), 2.3f, 0.5f);
-                    Agberos.Add(new Agbero { t = go.transform, pos = pos, stop = b });
+                    Agberos.Add(new Agbero { t = go.transform, rig = aRig, pos = pos, stop = b });
                 }
             int sIdx = 0;
             foreach (var n in data.serviceNpcs)
@@ -53,7 +73,7 @@ namespace Rise.World
                     Outfit = n.u == "politician" ? 3 : n.u == "fraudster" ? 8 : 5
                 };
                 RigInstance sRig = null;
-                if (CharacterRig.Available)
+                if (CharacterRig.Available && !GameBootstrap.LightWebGL)
                 {
                     sRig = CharacterRig.Build(go.transform, look);
                     foreach (var m in sRig.Top)
@@ -78,7 +98,7 @@ namespace Rise.World
                 var pos = n.World(); pos.y = data.DeckHeightAt(pos) + 0.3f;
                 var go = new GameObject("Night " + n.name); go.transform.SetParent(root, false); go.transform.position = pos; go.transform.rotation = Quaternion.Euler(0, 180, 0);
                 var look = new Look { Fabric = 2, Pants = Mannequin.Hex("#6e1a2c"), Skin = Mannequin.Hex("#8a5a3c"), Hair = Mannequin.Hex("#d62828"), Cap = null, BodyType = 0, Outfit = 9, HairStyle = 3 };
-                if (CharacterRig.Available) CharacterRig.Build(go.transform, look); else Mannequin.Build(go.transform, Mannequin.Hex("#ff5d9e"), look.Pants, look.Skin, null);
+                if (CharacterRig.Available && !GameBootstrap.LightWebGL) CharacterRig.Build(go.transform, look); else Mannequin.Build(go.transform, Mannequin.Hex("#ff5d9e"), look.Pants, look.Skin, null);
                 Mannequin.Label(go.transform, n.name, new Color(1f, 0.36f, 0.62f), 2.3f, 0.5f);
                 go.SetActive(false);
                 Nightlife.Add((go.transform, n.name));
@@ -357,7 +377,23 @@ namespace Rise.World
         void Update()
         {
             float dt = Time.deltaTime; bool night = NightOpen;
-            foreach (var a in Agberos) { a.cool -= dt; a.t.rotation = Quaternion.Euler(0f, 180f + Mathf.Sin(Time.time * 1.1f + a.pos.x) * 23f, 0f); }
+            foreach (var a in Agberos)
+            {
+                a.cool -= dt;
+                if (a.fightT > 0f)
+                {
+                    a.fightT = Mathf.Max(0f, a.fightT - dt);
+                    float u = 1f - a.fightT / 0.68f;
+                    float recoil = Mathf.Sin(u * Mathf.PI) * 0.35f;
+                    if (a.t != null)
+                        a.t.position = a.pos - a.t.forward * recoil;
+                }
+                else if (a.t != null)
+                {
+                    a.t.position = Vector3.Lerp(a.t.position, a.pos, 1f - Mathf.Exp(-8f * dt));
+                    a.t.rotation = Quaternion.Euler(0f, 180f + Mathf.Sin(Time.time * 1.1f + a.pos.x) * 23f, 0f);
+                }
+            }
             for (int i = 0; i < servicePatrols.Count; i++)
             {
                 var sp = servicePatrols[i];
@@ -426,6 +462,21 @@ namespace Rise.World
             }
             if (!owambe && crowd.Count > 0) { foreach (var c in crowd) Destroy(c.gameObject); crowd.Clear(); }
             for (int i = 0; i < crowd.Count; i++) crowd[i].rotation = Quaternion.Euler(0f, Mathf.Sin(Time.time * 0.5f + i) * 30f, 0f);
+        }
+
+        void LateUpdate()
+        {
+            foreach (var a in Agberos)
+            {
+                if (a.t == null) continue;
+                float swing01 = a.fightT > 0f ? 1f - (a.fightT / 0.68f) : 0f;
+                float guard01 = a.cool > 105f ? 0.85f : 0f;
+                if (swing01 > 0.001f || guard01 > 0.001f)
+                {
+                    if (a.rig != null) a.rig.ApplyCombatPose(swing01, guard01, 0, "", false);
+                    else Mannequin.ApplyCombatPose(a.t, swing01, guard01, 0, "", false);
+                }
+            }
         }
 
         [System.NonSerialized] public bool mature;
