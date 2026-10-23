@@ -14,11 +14,13 @@ export const STATE_AREA = createArea({
   ],
   roads: {
     h: [
-      { k: -2540, from: -460, to: 460, name: 'Shehu Shagari Way · Three Arms Boulevard', width: 34, class: 'expressway' },
-      { k: -2740, from: -460, to: 460, name: 'Aminu Kano Crescent · Wuse II & Maitama', width: 28, class: 'commercial' },
+      { k: -2540, from: -460, to: 460, name: 'Shehu Shagari Way · Three Arms Boulevard', width: 28, class: 'expressway' },
+      { k: -2740, from: -460, to: 460, name: 'Aminu Kano Crescent · Wuse II & Maitama', width: 26, class: 'commercial' },
     ],
     v: [
-      { k: 0, from: -2900, to: -2420, name: 'Abuja Airport–Three Arms–Kaduna Expressway (A2)', width: 36, class: 'expressway' },
+      { k: 0, from: -3220, to: -2420, name: 'Abuja Airport–Three Arms–Kaduna Expressway (A2)', width: 22, class: 'expressway' },
+      { k: -460, from: -3220, to: -2540, name: 'Abuja–Kaduna–Kano Western Ring', width: 20, class: 'main' },
+      { k: 460, from: -3220, to: -2540, name: 'Abuja–Maiduguri Eastern Ring', width: 20, class: 'main' },
     ],
   },
   landmarks: [

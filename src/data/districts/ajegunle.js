@@ -10,8 +10,8 @@ export const DISTRICT = createArea({
   ],
   roads: {
     h: [
-      { k: 64, from: -165, to: -72, name: 'Ajegunle Main Street', width: 16, class: 'commercial' },
-      { k: 112, from: -165, to: -72, name: 'Boundary Road · AJ City', width: 18, class: 'main' },
+      { k: 70, from: -450, to: -72, name: 'Creek Road · Ajegunle Main Street', width: 16, class: 'commercial' },
+      { k: 110, from: -450, to: -72, name: 'Boundary Road · AJ City', width: 14, class: 'main' },
     ],
     v: [
       { k: -132, from: 0, to: 142, name: 'Wilmer Crescent', width: 14, class: 'residential' },

@@ -11,13 +11,12 @@ export const DISTRICT = createArea({
   ],
   roads: {
     h: [
-      { k: -360, from: 340, to: 480, name: 'Alagomeji Road', width: 16, class: 'commercial' },
-      { k: -330, from: 340, to: 480, name: 'Yaba Campus Link', width: 12, class: 'residential' },
-      { k: -300, from: 340, to: 480, name: 'Herbert Macaulay Way', width: 18, class: 'commercial' },
+      { k: -360, from: 360, to: 480, name: 'Alagomeji Road', width: 14, class: 'commercial' },
+      { k: -300, from: 360, to: 480, name: 'Herbert Macaulay Way', width: 16, class: 'commercial' },
     ],
     v: [
-      { k: 360, from: -400, to: -250, name: 'Murtala Muhammed Way', width: 18, class: 'commercial' },
-      { k: 440, from: -400, to: -250, name: 'University Road', width: 18, class: 'main' },
+      { k: 360, from: -1480, to: 78, name: 'Murtala Muhammed Way', width: 18, class: 'commercial' },
+      { k: 480, from: -360, to: -300, name: 'University Road', width: 18, class: 'main' },
     ],
   },
   landmarks: [

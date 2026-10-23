@@ -16,16 +16,16 @@ export const DISTRICT = createArea({
   ],
   roads: {
     h: [
-      { k: 170, from: -145, to: 135, name: 'Orile–Iganmu Link', width: 14, class: 'commercial' },
-      { k: 210, from: -145, to: 135, name: 'Ijora Badiya Road', width: 14, class: 'main' },
-      { k: 260, from: -145, to: 135, name: 'Coker–Ijesha Road', width: 14, class: 'commercial' },
+      { k: 170, from: -140, to: 105, name: 'Orile–Iganmu Link', width: 14, class: 'commercial' },
+      { k: 210, from: -140, to: 105, name: 'Ijora Badiya Road', width: 14, class: 'main' },
+      { k: 260, from: -140, to: 105, name: 'Coker–Ijesha Road', width: 14, class: 'commercial' },
     ],
     v: [
-      { k: -140, from: 142, to: 325, name: 'Orile Road', width: 14, class: 'main' },
-      { k: -105, from: 142, to: 325, name: 'Abebe Village Road', width: 12, class: 'residential' },
-      { k: -35, from: 142, to: 325, name: 'Ijora 7up Road', width: 14, class: 'commercial' },
-      { k: 35, from: 142, to: 325, name: 'Coker Aguda Road', width: 12, class: 'residential' },
-      { k: 105, from: 142, to: 325, name: 'Ijesha–Pako Road', width: 14, class: 'main' },
+      { k: -140, from: 142, to: 370, name: 'Orile Road', width: 14, class: 'main' },
+      { k: -105, from: 142, to: 260, name: 'Abebe Village Road', width: 12, class: 'residential' },
+      { k: -35, from: 142, to: 260, name: 'Ijora 7up Road', width: 14, class: 'commercial' },
+      { k: 35, from: 142, to: 260, name: 'Coker Aguda Road', width: 12, class: 'residential' },
+      { k: 105, from: 142, to: 260, name: 'Ijesha–Pako Road', width: 14, class: 'main' },
     ],
   },
   landmarks: [
