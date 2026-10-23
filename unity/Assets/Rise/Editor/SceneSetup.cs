@@ -28,16 +28,16 @@ namespace Rise.EditorTools
 
         public static readonly (string Name, BuildTarget Target, string Output)[] PlatformTargets = new[]
         {
-            ("macOS", BuildTarget.StandaloneOSX, "Builds/Rise-Lagos.app"),
-            ("Windows", BuildTarget.StandaloneWindows64, "Builds/Windows/Rise-Lagos.exe"),
+            ("macOS", BuildTarget.StandaloneOSX, "Builds/Rise.app"),
+            ("Windows", BuildTarget.StandaloneWindows64, "Builds/Windows/Rise.exe"),
             ("WebGL", BuildTarget.WebGL, "Builds/WebGL"),
             ("iOS", BuildTarget.iOS, "Builds/iOS"),
-            ("Android", BuildTarget.Android, "Builds/Android/Rise-Lagos.apk"),
+            ("Android", BuildTarget.Android, "Builds/Android/Rise.apk"),
             ("PS5", BuildTarget.PS5, "Builds/PS5"),
             ("PS4", BuildTarget.PS4, "Builds/PS4"),
             ("XboxSeries", BuildTarget.GameCoreXboxSeries, "Builds/XboxSeries"),
             ("XboxOne", BuildTarget.GameCoreXboxOne, "Builds/XboxOne"),
-            ("Switch", BuildTarget.Switch, "Builds/Switch/Rise-Lagos.nsp"),
+            ("Switch", BuildTarget.Switch, "Builds/Switch/Rise.nsp"),
         };
 
         public static void ConfigurePlatformSettings(BuildTarget target)
@@ -99,14 +99,14 @@ namespace Rise.EditorTools
         {
             // Universal (Intel + Apple Silicon): the default is Apple Silicon only, which cannot launch on Intel Macs.
             ConfigurePlatformSettings(BuildTarget.StandaloneOSX);
-            BuildPlayer(BuildTarget.StandaloneOSX, "Builds/Rise-Lagos.app");
+            BuildPlayer(BuildTarget.StandaloneOSX, "Builds/Rise.app");
         }
 
         [MenuItem("RISE/Build Windows Player")]
         public static void BuildWindows()
         {
             ConfigurePlatformSettings(BuildTarget.StandaloneWindows64);
-            BuildPlayer(BuildTarget.StandaloneWindows64, "Builds/Windows/Rise-Lagos.exe");
+            BuildPlayer(BuildTarget.StandaloneWindows64, "Builds/Windows/Rise.exe");
         }
 
         [MenuItem("RISE/Build WebGL Player")]
@@ -132,7 +132,7 @@ namespace Rise.EditorTools
         public static void BuildAndroid()
         {
             ConfigurePlatformSettings(BuildTarget.Android);
-            BuildPlayer(BuildTarget.Android, "Builds/Android/Rise-Lagos.apk");
+            BuildPlayer(BuildTarget.Android, "Builds/Android/Rise.apk");
         }
 
         [MenuItem("RISE/Build PlayStation 5 Player")]
@@ -167,7 +167,7 @@ namespace Rise.EditorTools
         public static void BuildSwitch()
         {
             ConfigurePlatformSettings(BuildTarget.Switch);
-            BuildPlayer(BuildTarget.Switch, "Builds/Switch/Rise-Lagos.nsp");
+            BuildPlayer(BuildTarget.Switch, "Builds/Switch/Rise.nsp");
         }
 
         static void PatchWebGLIndex(string indexPath)

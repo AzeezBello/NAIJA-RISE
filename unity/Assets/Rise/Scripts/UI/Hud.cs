@@ -648,9 +648,10 @@ namespace Rise.UI
         {
             var im = session.ActiveIndoorMission;
             string line = im != null
-                ? $"[INDOOR MISSION]  {im.Title.ToUpperInvariant()}   |   STEP {im.Step}/{im.TotalSteps}   |   HOSTILES: {session.RemainingEnemies}"
-                : $"[INDOOR]  {session.IndoorStations.Count} INTERACTIVE STATIONS   |   WALK TO KITCHEN, RING, SNOOKER OR OPS BOARD [E]";
-            float w = Mathf.Min(W - 32f * s, TW(bodyStrong, line) + 36f * s), h = 32f * s;
+                ? $"[INDOOR MISSION]  {im.Title.ToUpperInvariant()}  ·  STEP {im.Step}/{im.TotalSteps}  ·  HOSTILES: {session.RemainingEnemies}"
+                : $"[INDOOR]  {session.IndoorStations.Count} STATIONS  ·  KITCHEN, RING, SNOOKER & OPS BOARD [E]";
+            float maxW = Mathf.Max(280f * s, W - 640f * s);
+            float w = Mathf.Min(maxW, TW(bodyStrong, line) + 32f * s), h = 32f * s;
             var r = new Rect(W * 0.5f - w * 0.5f, y, w, h);
             Box(r, rPill, im != null ? new Color(0.12f, 0.34f, 0.22f, 0.94f) : new Color(0.10f, 0.18f, 0.24f, 0.90f));
             Label(r, line, stripText, im != null ? Green : Gold);
@@ -663,8 +664,9 @@ namespace Rise.UI
             var op = session.ActiveActionOp;
             if (op == null) return y;
             bool navy = op.Branch == "navy";
-            string text = $"{op.Overwatch.ToUpperInvariant()} · {op.Callsign}   |   WAVE {session.CurrentWave}/{op.Waves}   |   HOSTILES: {session.RemainingEnemies}   |   FIRETEAM: {session.ActiveSquad.Count} ACTIVE";
-            float w = TW(bodyStrong, text) + 36f * s, h = 34f * s;
+            string text = $"{op.Overwatch.ToUpperInvariant()} · {op.Callsign}  |  WAVE {session.CurrentWave}/{op.Waves}  |  HOSTILES: {session.RemainingEnemies}  |  SQUAD: {session.ActiveSquad.Count}";
+            float maxW = Mathf.Max(280f * s, W - 640f * s);
+            float w = Mathf.Min(maxW, TW(bodyStrong, text) + 32f * s), h = 34f * s;
             var r = new Rect(W * 0.5f - w * 0.5f, y, w, h);
             Box(r, rPill, navy ? new Color(0.08f, 0.22f, 0.42f, 0.92f) : new Color(0.14f, 0.30f, 0.14f, 0.92f));
             Label(r, text, stripText, navy ? Blue : Green);
@@ -679,9 +681,10 @@ namespace Rise.UI
             int min = Mathf.FloorToInt(fm.MatchClock);
             int sec = Mathf.FloorToInt((fm.MatchClock - min) * 60f);
             string half = fm.MatchClock < 45f ? "1ST HALF" : fm.MatchClock <= 90f ? "2ND HALF" : "ET GOLDEN GOAL";
-            string poss = fm.PlayerHasBall ? "POSSESSION: YOU (#10)" : fm.BallCarrier != null ? $"BALL: #{fm.BallCarrier.Number} {fm.BallCarrier.Name.ToUpperInvariant()}" : "LOOSE BALL";
-            string scoreLine = $"[{session.CurrentTournamentStageLabel}]   {fm.Event.HomeTag}  {fm.HomeScore}  -  {fm.AwayScore}  {fm.Event.AwayTag}   |   {min:00}:{sec:00} ({half})   |   {poss}";
-            float w = TW(bodyStrong, scoreLine) + 40f * s, h = 36f * s;
+            string poss = fm.PlayerHasBall ? "YOU (#10)" : fm.BallCarrier != null ? $"#{fm.BallCarrier.Number} {fm.BallCarrier.Name.ToUpperInvariant()}" : "LOOSE BALL";
+            string scoreLine = $"[{session.CurrentTournamentStageLabel}]  {fm.Event.HomeTag} {fm.HomeScore} - {fm.AwayScore} {fm.Event.AwayTag}  |  {min:00}:{sec:00} ({half})  |  {poss}";
+            float maxW = Mathf.Max(280f * s, W - 640f * s);
+            float w = Mathf.Min(maxW, TW(bodyStrong, scoreLine) + 34f * s), h = 36f * s;
             var r = new Rect(W * 0.5f - w * 0.5f, y, w, h);
             Box(r, rPill, new Color(0.05f, 0.24f, 0.14f, 0.94f));
             Label(r, scoreLine, stripText, Green);
@@ -690,7 +693,7 @@ namespace Rise.UI
             if (!string.IsNullOrEmpty(fm.Commentary))
             {
                 string comm = $"LIVE COMMENTARY: “{fm.Commentary}”";
-                float cw = TW(small, comm) + 28f * s, ch = 24f * s;
+                float cw = Mathf.Min(maxW, TW(small, comm) + 28f * s), ch = 24f * s;
                 var cr = new Rect(W * 0.5f - cw * 0.5f, bottom + 4f * s, cw, ch);
                 Box(cr, rPill, new Color(0.03f, 0.08f, 0.06f, 0.85f));
                 Label(cr, comm, pillText, Gold);
@@ -714,12 +717,13 @@ namespace Rise.UI
             if (r == null) return y;
             string posTag = r.PlayerPosition == 1 ? "1ST" : r.PlayerPosition == 2 ? "2ND" : r.PlayerPosition == 3 ? "3RD" : "4TH";
             string extra = r.Mode == "drift"
-                ? $"   |   DRIFT: {r.DriftScore:0} PTS ({r.DriftMultiplier}x)"
+                ? $"  |  DRIFT: {r.DriftScore:0} ({r.DriftMultiplier}x)"
                 : r.Mode == "speedtrap"
-                    ? $"   |   SPEEDTRAP: {r.TotalSpeedtrapKmh:0} KM/H"
-                    : $"   |   DRIFT PTS: {r.DriftScore:0}";
-            string line = $"[NFS {r.Mode.ToUpperInvariant()}]  {r.Title}   |   POS {posTag}/4   |   GATE {r.I + 1}/{r.Cps.Length}   |   TIME {r.T:0.0}s{extra}";
-            float w = TW(bodyStrong, line) + 38f * s, h = 34f * s;
+                    ? $"  |  TRAP: {r.TotalSpeedtrapKmh:0} KM/H"
+                    : $"  |  DRIFT: {r.DriftScore:0}";
+            string line = $"[NFS {r.Mode.ToUpperInvariant()}] {r.Title}  |  {posTag}/4  |  GATE {r.I + 1}/{r.Cps.Length}  |  {r.T:0.0}s{extra}";
+            float maxW = Mathf.Max(280f * s, W - 640f * s);
+            float w = Mathf.Min(maxW, TW(bodyStrong, line) + 32f * s), h = 34f * s;
             var rect = new Rect(W * 0.5f - w * 0.5f, y, w, h);
             Box(rect, rPill, new Color(0.08f, 0.12f, 0.28f, 0.94f));
             Label(rect, line, stripText, Blue);
@@ -775,7 +779,7 @@ namespace Rise.UI
         void DrawMenu(Menu menu, float s, float W, float H)
         {
             bool touchUi = TouchControls.Active;
-            float pad = 18f * s, cw = Mathf.Min(560f * s, W - 32f * s), iw = cw - pad * 2f;
+            float pad = 18f * s, cw = Mathf.Min(640f * s, W - 32f * s), iw = cw - pad * 2f;
             int totalOpts = menu.Options.Count;
             float baseRowH = (touchUi ? 42f : totalOpts > 10 ? 30f : 35f) * s;
             float rowGap = (totalOpts > 10 ? 3f : 4f) * s;

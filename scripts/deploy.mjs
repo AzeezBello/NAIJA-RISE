@@ -96,12 +96,12 @@ function generateManifest() {
     });
   }
 
-  // If Rise-Lagos.app exists and Rise-Lagos-macOS.zip is missing, package it
-  const macApp = join(buildsDir, 'Rise-Lagos.app');
-  const macZip = join(buildsDir, 'Rise-Lagos-macOS.zip');
+  // If Rise.app exists and Rise-macOS.zip is missing, package it
+  const macApp = join(buildsDir, 'Rise.app');
+  const macZip = join(buildsDir, 'Rise-macOS.zip');
   if (existsSync(macApp) && !existsSync(macZip) && !dryRun) {
-    console.log('[deploy] Packaging Rise-Lagos-macOS.zip from Rise-Lagos.app...');
-    execFileSync('zip', ['-r', '-q', '-y', macZip, 'Rise-Lagos.app', '-x', '*.DS_Store'], {
+    console.log('[deploy] Packaging Rise-macOS.zip from Rise.app...');
+    execFileSync('zip', ['-r', '-q', '-y', macZip, 'Rise.app', '-x', '*.DS_Store'], {
       cwd: buildsDir,
       stdio: 'inherit',
     });
@@ -110,11 +110,11 @@ function generateManifest() {
   const candidateArtifacts = [
     { id: 'webgl-zip', platform: 'WebGL', channel: 'html5', path: join(rootDir, 'WebGL.zip'), type: 'file' },
     { id: 'webgl-dir', platform: 'WebGL', channel: 'html5', path: join(buildsDir, 'WebGL'), type: 'dir' },
-    { id: 'macos-zip', platform: 'macOS', channel: 'osx', path: join(buildsDir, 'Rise-Lagos-macOS.zip'), type: 'file' },
-    { id: 'macos-app', platform: 'macOS', channel: 'osx', path: join(buildsDir, 'Rise-Lagos.app'), type: 'dir' },
-    { id: 'windows-zip', platform: 'Windows', channel: 'win64', path: join(buildsDir, 'Rise-Lagos-Windows.zip'), type: 'file' },
-    { id: 'windows-exe', platform: 'Windows', channel: 'win64', path: join(buildsDir, 'Windows', 'Rise-Lagos.exe'), type: 'file' },
-    { id: 'android-apk', platform: 'Android', channel: 'android', path: join(buildsDir, 'Android', 'Rise-Lagos.apk'), type: 'file' },
+    { id: 'macos-zip', platform: 'macOS', channel: 'osx', path: join(buildsDir, 'Rise-macOS.zip'), type: 'file' },
+    { id: 'macos-app', platform: 'macOS', channel: 'osx', path: join(buildsDir, 'Rise.app'), type: 'dir' },
+    { id: 'windows-zip', platform: 'Windows', channel: 'win64', path: join(buildsDir, 'Rise-Windows.zip'), type: 'file' },
+    { id: 'windows-exe', platform: 'Windows', channel: 'win64', path: join(buildsDir, 'Windows', 'Rise.exe'), type: 'file' },
+    { id: 'android-apk', platform: 'Android', channel: 'android', path: join(buildsDir, 'Android', 'Rise.apk'), type: 'file' },
     { id: 'ios-xcode', platform: 'iOS', channel: 'ios', path: join(buildsDir, 'iOS'), type: 'dir' },
     { id: 'world-lagos-json', platform: 'Data', channel: 'data', path: join(rootDir, 'unity', 'Assets', 'Rise', 'Resources', 'world', 'lagos.json'), type: 'file' },
     { id: 'world-manifest-json', platform: 'Data', channel: 'data', path: join(rootDir, 'unity', 'Assets', 'Rise', 'Resources', 'world', 'manifest.json'), type: 'file' },
@@ -178,15 +178,15 @@ function findButlerBinary() {
 }
 
 function deployItch() {
-  const itchTarget = env.ITCH_TARGET || 'risestudios/rise-lagos';
+  const itchTarget = env.ITCH_TARGET || 'risestudios/rise';
   const version = getVersion();
   const butlerBin = findButlerBinary();
 
   const pushes = [
     { channel: 'html5', path: join(rootDir, 'WebGL.zip') },
-    { channel: 'osx', path: existsSync(join(buildsDir, 'Rise-Lagos-macOS.zip')) ? join(buildsDir, 'Rise-Lagos-macOS.zip') : join(buildsDir, 'Rise-Lagos.app') },
-    { channel: 'win64', path: existsSync(join(buildsDir, 'Rise-Lagos-Windows.zip')) ? join(buildsDir, 'Rise-Lagos-Windows.zip') : join(buildsDir, 'Windows') },
-    { channel: 'android', path: join(buildsDir, 'Android', 'Rise-Lagos.apk') },
+    { channel: 'osx', path: existsSync(join(buildsDir, 'Rise-macOS.zip')) ? join(buildsDir, 'Rise-macOS.zip') : join(buildsDir, 'Rise.app') },
+    { channel: 'win64', path: existsSync(join(buildsDir, 'Rise-Windows.zip')) ? join(buildsDir, 'Rise-Windows.zip') : join(buildsDir, 'Windows') },
+    { channel: 'android', path: join(buildsDir, 'Android', 'Rise.apk') },
   ].filter(p => existsSync(p.path));
 
   if (pushes.length === 0) {
@@ -287,9 +287,9 @@ async function runRelease() {
   if (releaseTag) {
     const uploadFiles = [
       join(rootDir, 'WebGL.zip'),
-      join(buildsDir, 'Rise-Lagos-macOS.zip'),
-      join(buildsDir, 'Rise-Lagos-Windows.zip'),
-      join(buildsDir, 'Android', 'Rise-Lagos.apk'),
+      join(buildsDir, 'Rise-macOS.zip'),
+      join(buildsDir, 'Rise-Windows.zip'),
+      join(buildsDir, 'Android', 'Rise.apk'),
       join(buildsDir, 'build-manifest.json'),
     ].filter(f => existsSync(f));
 

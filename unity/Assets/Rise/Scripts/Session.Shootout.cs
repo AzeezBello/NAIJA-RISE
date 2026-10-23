@@ -794,7 +794,7 @@ namespace Rise
                     e.StrafePhase += dt * 2.1f;
                     Vector3 right = Vector3.Cross(Vector3.up, toPlayer.normalized);
                     Vector3 desired = e.Anchor + right * (Mathf.Sin(e.StrafePhase) * 2.2f);
-                    desired.y = Data.DeckHeightAt(desired);
+                    desired.y = e.Anchor.y > 50f ? e.Anchor.y : Data.DeckHeightAt(desired);
                     e.Root.transform.position = Vector3.MoveTowards(e.Root.transform.position, desired, 2.4f * dt);
                     e.Rig?.SetState("walk", 0.85f);
 

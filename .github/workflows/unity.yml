@@ -121,11 +121,11 @@ jobs:
       - name: Upload Build Artifact (${{ matrix.targetPlatform }})
         uses: actions/upload-artifact@v4
         with:
-          name: Rise-Lagos-${{ matrix.targetPlatform }}
+          name: Rise-${{ matrix.targetPlatform }}
           path: |
             WebGL.zip
             unity/Builds/${{ matrix.targetPlatform }}
-            unity/Builds/Rise-Lagos.app
+            unity/Builds/Rise.app
             unity/Builds/Windows
             unity/Builds/Android
             unity/Builds/iOS

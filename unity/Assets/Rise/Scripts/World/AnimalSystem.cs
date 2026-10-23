@@ -27,7 +27,7 @@ namespace Rise.World
             foreach (var a in data.animals)
             {
                 var go = new GameObject(a.kind); go.transform.SetParent(root, false);
-                var pos = a.World(); pos.y = data.DeckHeightAt(pos) + 0.3f;
+                var pos = a.World(); pos.y = data.DeckHeightAt(pos);
                 go.transform.position = pos;
                 var an = new Animal { t = go.transform, home = pos, target = pos, kind = a.kind, speed = a.kind == "chicken" ? 0.6f : a.kind == "goat" ? 0.9f : 1.6f, pause = (float)rng.NextDouble() * 3f };
                 if (a.kind == "dog" && dog != null) { Model(go.transform, dog, 0.62f); Dogs++; if (dogWalk != null) { var anim = go.GetComponentInChildren<Animation>(); if (anim == null) anim = go.AddComponent<Animation>(); anim.AddClip(dogWalk, "walk"); if (dogIdle != null) anim.AddClip(dogIdle, "idle"); anim.wrapMode = WrapMode.Loop; anim.playAutomatically = false; an.anim = anim; } }
@@ -42,14 +42,14 @@ namespace Rise.World
                 if (cat != null)
                 {
                     var go = new GameObject("cat"); go.transform.SetParent(root, false);
-                    var pos = l.World() + new Vector3(6f, 0f, 9f); pos.y = data.DeckHeightAt(pos) + 0.3f; go.transform.position = pos;
+                    var pos = l.World() + new Vector3(6f, 0f, 9f); pos.y = data.DeckHeightAt(pos); go.transform.position = pos;
                     Model(go.transform, cat, 0.35f);
                     animals.Add(new Animal { t = go.transform, home = pos, target = pos, kind = "cat", speed = 1.1f });
                 }
                 if (cow != null)
                 {
                     var cgo = new GameObject("cow"); cgo.transform.SetParent(root, false);
-                    var cpos = l.World() + new Vector3(-7f, 0f, 10f); cpos.y = data.DeckHeightAt(cpos) + 0.3f; cgo.transform.position = cpos;
+                    var cpos = l.World() + new Vector3(-7f, 0f, 10f); cpos.y = data.DeckHeightAt(cpos); cgo.transform.position = cpos;
                     Model(cgo.transform, cow, 1.22f);
                     animals.Add(new Animal { t = cgo.transform, home = cpos, target = cpos, kind = "cow", speed = 0.8f });
                 }
@@ -96,7 +96,9 @@ namespace Rise.World
                     continue;
                 }
                 if (a.anim != null && !a.anim.IsPlaying("walk")) a.anim.CrossFade("walk", 0.2f);
-                a.t.position += to.normalized * a.speed * dt;
+                var nextPos = a.t.position + to.normalized * a.speed * dt;
+                nextPos.y = data.DeckHeightAt(nextPos);
+                a.t.position = nextPos;
                 a.t.rotation = Quaternion.Slerp(a.t.rotation, Quaternion.LookRotation(to.normalized, Vector3.up), 1f - Mathf.Exp(-6f * dt));
             }
         }

@@ -91,12 +91,7 @@ namespace Rise.World
                 };
                 foreach (var f in world.family) if (f.id == c.id) { look.Outfit = f.outfit; look.Fabric = f.fabric; look.BodyType = f.bodyType; look.HairStyle = f.hair; if (world.skins.Length > 0) look.Skin = Mannequin.Hex(world.skins[Mathf.Clamp(f.skin, 0, world.skins.Length - 1)]); if (world.pants.Length > 0) look.Pants = Mannequin.Hex(world.pants[Mathf.Clamp(f.pants, 0, world.pants.Length - 1)]); }
                 bool useFullRig = CharacterRig.Available && (!GameBootstrap.LightWebGL || c.id == "babak" || c.id == "amaka" || c.id == "dayo" || c.id == "mum" || c.id == "sibling" || c.id == "peter" || c.id == "nkechi");
-                string customModel = CustomCharacterModelFor(c.id, isFemale, isPol, isFraud);
-                if (!string.IsNullOrEmpty(customModel) && CharacterRig.InstantiateGlb("Characters/" + customModel, go.transform, isFemale ? 1.74f : 1.80f, true) != null)
-                {
-                    // Custom 3D character GLB placed
-                }
-                else if (useFullRig) CharacterRig.Build(go.transform, look, 0, isFemale ? 1.72f : 1.80f);
+                if (useFullRig) CharacterRig.Build(go.transform, look, 0, isFemale ? 1.72f : 1.80f);
                 else Mannequin.Build(go.transform, top, pants, skin, cap);
                 Mannequin.Label(go.transform, c.name, accent);
                 contacts.Add(new Contact { data = c, t = go.transform, pos = pos, rest = go.transform.rotation });

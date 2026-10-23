@@ -158,6 +158,7 @@ namespace Rise.Player
             bool wasEnabled = cc.enabled; cc.enabled = false;
             transform.position = position; transform.rotation = Quaternion.Euler(0, yaw, 0);
             velocity = Vector3.zero; speed = 0f;
+            Physics.SyncTransforms();
             cc.enabled = wasEnabled;
         }
 

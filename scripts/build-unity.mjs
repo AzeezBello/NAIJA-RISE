@@ -9,10 +9,10 @@
 //   test | playtest     Headless Play-Mode PlayTest suite (Rise.EditorTools.PlayTest.Run)
 //   validate            Validate all 10 platform build targets (Rise.EditorTools.SceneSetup.ValidatePlatformTargets)
 //   webgl               Build WebGL player (Builds/WebGL) and package WebGL.zip
-//   mac | macos         Build macOS Universal player (Builds/Rise-Lagos.app) and package Rise-Lagos-macOS.zip
-//   windows | win64     Build Windows 64-bit player (Builds/Windows/Rise-Lagos.exe)
+//   mac | macos         Build macOS Universal player (Builds/Rise.app) and package Rise-macOS.zip
+//   windows | win64     Build Windows 64-bit player (Builds/Windows/Rise.exe)
 //   ios                 Build iOS Xcode project (Builds/iOS)
-//   android             Build Android APK (Builds/Android/Rise-Lagos.apk)
+//   android             Build Android APK (Builds/Android/Rise.apk)
 //   all                 Run export -> compile -> smoke -> test -> validate -> webgl -> mac -> windows -> ios -> android
 
 import { execFileSync, spawn } from 'node:child_process';
@@ -82,16 +82,16 @@ function findUnityContentsDir(unityBin) {
 }
 
 const PLATFORM_MATRIX = [
-  { name: 'macOS Universal', target: 'StandaloneOSX', module: 'MacStandaloneSupport', output: 'Builds/Rise-Lagos.app', method: 'Rise.EditorTools.SceneSetup.BuildMac' },
-  { name: 'Windows 64-bit', target: 'StandaloneWindows64', module: 'WindowsStandaloneSupport', output: 'Builds/Windows/Rise-Lagos.exe', method: 'Rise.EditorTools.SceneSetup.BuildWindows' },
+  { name: 'macOS Universal', target: 'StandaloneOSX', module: 'MacStandaloneSupport', output: 'Builds/Rise.app', method: 'Rise.EditorTools.SceneSetup.BuildMac' },
+  { name: 'Windows 64-bit', target: 'StandaloneWindows64', module: 'WindowsStandaloneSupport', output: 'Builds/Windows/Rise.exe', method: 'Rise.EditorTools.SceneSetup.BuildWindows' },
   { name: 'WebGL (Gzip)', target: 'WebGL', module: 'WebGLSupport', output: 'Builds/WebGL', method: 'Rise.EditorTools.SceneSetup.BuildWebGL' },
   { name: 'iOS (Xcode)', target: 'iOS', module: 'iOSSupport', output: 'Builds/iOS', method: 'Rise.EditorTools.SceneSetup.BuildiOS' },
-  { name: 'Android (ARM64)', target: 'Android', module: 'AndroidPlayer', output: 'Builds/Android/Rise-Lagos.apk', method: 'Rise.EditorTools.SceneSetup.BuildAndroid' },
+  { name: 'Android (ARM64)', target: 'Android', module: 'AndroidPlayer', output: 'Builds/Android/Rise.apk', method: 'Rise.EditorTools.SceneSetup.BuildAndroid' },
   { name: 'PlayStation 5', target: 'PS5', module: 'PS5Player', output: 'Builds/PS5', method: 'Rise.EditorTools.SceneSetup.BuildPS5' },
   { name: 'PlayStation 4', target: 'PS4', module: 'PS4Player', output: 'Builds/PS4', method: 'Rise.EditorTools.SceneSetup.BuildPS4' },
   { name: 'Xbox Series X|S', target: 'GameCoreXboxSeries', module: 'GameCoreScarlettSupport', output: 'Builds/XboxSeries', method: 'Rise.EditorTools.SceneSetup.BuildXboxSeries' },
   { name: 'Xbox One', target: 'GameCoreXboxOne', module: 'GameCoreXboxOneSupport', output: 'Builds/XboxOne', method: 'Rise.EditorTools.SceneSetup.BuildXboxOne' },
-  { name: 'Nintendo Switch', target: 'Switch', module: 'Switch', output: 'Builds/Switch/Rise-Lagos.nsp', method: 'Rise.EditorTools.SceneSetup.BuildSwitch' },
+  { name: 'Nintendo Switch', target: 'Switch', module: 'Switch', output: 'Builds/Switch/Rise.nsp', method: 'Rise.EditorTools.SceneSetup.BuildSwitch' },
 ];
 
 function validatePlatformMatrix(unityBin) {
@@ -267,7 +267,7 @@ function isUnityProjectLocked() {
   const lockfile = join(unityDir, 'Temp', 'UnityLockfile');
   if (!existsSync(lockfile)) return false;
   try {
-    const out = execFileSync('pgrep', ['-f', `-projectPath.*${unityDir}`], { encoding: 'utf8' }).trim();
+    const out = execFileSync('pgrep', ['-f', '--', `-projectPath.*${unityDir}`], { encoding: 'utf8' }).trim();
     return out.length > 0;
   } catch {
     return false;
@@ -299,9 +299,14 @@ function runUnityBatch({ label, executeMethod, quit = true, nographics = true, e
     );
   }
 
+  const childEnv = { ...process.env };
+  if (process.platform !== 'win32') {
+    delete childEnv.USERPROFILE;
+  }
+
   const t0 = Date.now();
   return new Promise((resolvePromise, rejectPromise) => {
-    const child = spawn(unityBin, cliArgs, { cwd: rootDir, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(unityBin, cliArgs, { cwd: rootDir, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
     child.stdout.on('data', d => process.stdout.write(d));
     child.stderr.on('data', d => process.stderr.write(d));
     child.on('error', err => rejectPromise(err));
@@ -423,8 +428,8 @@ async function runTarget(t) {
         expectPattern: /RISE: StandaloneOSX build Succeeded/,
       });
       zipArtifact(
-        join(buildsDir, 'Rise-Lagos.app'),
-        join(buildsDir, 'Rise-Lagos-macOS.zip'),
+        join(buildsDir, 'Rise.app'),
+        join(buildsDir, 'Rise-macOS.zip'),
         buildsDir
       );
       break;
@@ -443,10 +448,10 @@ async function runTarget(t) {
         quit: true,
         nographics: true,
       });
-      if (existsSync(join(buildsDir, 'Windows', 'Rise-Lagos.exe'))) {
+      if (existsSync(join(buildsDir, 'Windows', 'Rise.exe'))) {
         zipArtifact(
           join(buildsDir, 'Windows'),
-          join(buildsDir, 'Rise-Lagos-Windows.zip'),
+          join(buildsDir, 'Rise-Windows.zip'),
           buildsDir
         );
       }

@@ -420,36 +420,24 @@ namespace Rise.World
                         continue;
                     case "pitch":
                     {
-                        if (GameBootstrap.Mobile || PlaceGlb("Models/Landmarks/football_court", l.name + " court glb", pos, new Vector3(44f, 16f, 30f), group, 0f, false) == null)
+                        Box(l.name, pos + Vector3.up * 0.12f, new Vector3(44f, 0.24f, 30f), Mat("pitch", Pitch), group);
+                        var white = Mat("pitchline", "#f5f5f0");
+                        var postMat = Mat("goalpost", "#eeeeee", 0.5f);
+                        Box("Center line", pos + Vector3.up * 0.25f, new Vector3(0.25f, 0.02f, 28f), white, group, false);
+                        for (int side = -1; side <= 1; side += 2)
                         {
-                            Box(l.name, pos + Vector3.up * 0.12f, new Vector3(44f, 0.24f, 30f), Mat("pitch", Pitch), group);
-                            var white = Mat("pitchline", "#f5f5f0");
-                            var postMat = Mat("goalpost", "#eeeeee", 0.5f);
-                            Box("Center line", pos + Vector3.up * 0.25f, new Vector3(0.25f, 0.02f, 28f), white, group, false);
-                            for (int side = -1; side <= 1; side += 2)
+                            float gx = pos.x + side * 20.5f;
+                            Cylinder("Goal post L", new Vector3(gx, pos.y + 0.2f, pos.z - 2.8f), 0.08f, 2.4f, postMat, group, false);
+                            Cylinder("Goal post R", new Vector3(gx, pos.y + 0.2f, pos.z + 2.8f), 0.08f, 2.4f, postMat, group, false);
+                            Box("Crossbar", new Vector3(gx, pos.y + 2.6f, pos.z), new Vector3(0.14f, 0.14f, 5.76f), postMat, group, false);
+                        }
+                        for (int sx = -1; sx <= 1; sx += 2)
+                            for (int sz = -1; sz <= 1; sz += 2)
                             {
-                                float gx = pos.x + side * 20.5f;
-                                Cylinder("Goal post L", new Vector3(gx, pos.y + 0.2f, pos.z - 2.8f), 0.08f, 2.4f, postMat, group, false);
-                                Cylinder("Goal post R", new Vector3(gx, pos.y + 0.2f, pos.z + 2.8f), 0.08f, 2.4f, postMat, group, false);
-                                Box("Crossbar", new Vector3(gx, pos.y + 2.6f, pos.z), new Vector3(0.14f, 0.14f, 5.76f), postMat, group, false);
+                                var fPos = pos + new Vector3(sx * 23f, 0.2f, sz * 16f);
+                                Cylinder("Floodlight pole", fPos, 0.15f, 10f, Mat("pole", Steel, 0.4f), group);
+                                Box("Floodlight head", fPos + Vector3.up * 10.2f, new Vector3(1.2f, 0.4f, 0.6f), LampHead, group, false);
                             }
-                            for (int sx = -1; sx <= 1; sx += 2)
-                                for (int sz = -1; sz <= 1; sz += 2)
-                                {
-                                    var fPos = pos + new Vector3(sx * 23f, 0.2f, sz * 16f);
-                                    Cylinder("Floodlight pole", fPos, 0.15f, 10f, Mat("pole", Steel, 0.4f), group);
-                                    Box("Floodlight head", fPos + Vector3.up * 10.2f, new Vector3(1.2f, 0.4f, 0.6f), LampHead, group, false);
-                                }
-                        }
-                        else
-                        {
-                            // Ground collider for the 3D football court
-                            Box(l.name, pos + Vector3.up * 0.06f, new Vector3(44f, 0.12f, 30f), Mat("pitch", Pitch), group);
-                            PlaceGlb("Models/Characters/neymar_footballer", "Footballer Neymar", pos + new Vector3(-6.5f, 0.12f, -2.5f), new Vector3(0.85f, 1.82f, 0.7f), group, 90f, false);
-                            PlaceGlb("Models/Characters/zlatan_footballer", "Footballer Zlatan", pos + new Vector3(6.5f, 0.12f, 2.2f), new Vector3(0.88f, 1.92f, 0.7f), group, -90f, false);
-                            PlaceGlb("Models/Characters/red_footballer", "Footballer Red", pos + new Vector3(-12.5f, 0.12f, 3.4f), new Vector3(0.85f, 1.84f, 0.7f), group, 75f, false);
-                            PlaceGlb("Models/Characters/lowpoly_footballer", "Footballer Striker", pos + new Vector3(11.8f, 0.12f, -3.2f), new Vector3(1.9f, 1.82f, 0.7f), group, -105f, false);
-                        }
                         Sign(l.shortName, pos + new Vector3(0, 3.5f, 16f), l.sign, 1.2f, group);
                         continue;
                     }
@@ -597,14 +585,7 @@ namespace Rise.World
                 {
                     "warehouse" => "Models/Landmarks/old_factory",
                     "police" => "Models/Landmarks/court_hall",
-                    "school" => "Models/Landmarks/court_hall",
                     "museum" => "Models/Landmarks/heritage_house",
-                    "mall" => "Models/Landmarks/street_city_block",
-                    "venue" => "Models/Landmarks/urban_street_scene",
-                    "market" => "Models/Landmarks/automapping_market",
-                    "artisan" => "Models/Landmarks/automapping_market",
-                    "hotel" => "Models/Landmarks/carentan_street_scene",
-                    "worship" => "Models/Landmarks/carentan_street_scene",
                     _ => null
                 };
                 if (GameBootstrap.Mobile || lmGlb == null || PlaceGlb(lmGlb, l.name + " glb", pos, new Vector3(fp.x, h, fp.y), group) == null)
@@ -1134,33 +1115,20 @@ namespace Rise.World
         void BuildProperties()
         {
             var group = new GameObject("Properties").transform; group.SetParent(Root, false);
-            string[] houseGlbs =
-            {
-                "Models/Landmarks/simple_house",
-                "Models/Landmarks/modular_house",
-                "Models/Landmarks/jasons_house",
-                "Models/Landmarks/heritage_house",
-                "Models/Landmarks/hills_estate"
-            };
-            int idx = 0;
             foreach (var p in Data.properties)
             {
                 var pos = p.World();
                 float h = Mathf.Max(3.2f, p.h);
                 Compound(pos, 20f, 18f, group);
-                string propModel = p.style == "bungalow" ? houseGlbs[0] : houseGlbs[(idx + 1) % houseGlbs.Length];
-                if (GameBootstrap.Mobile || PlaceGlb(propModel, p.name, pos, new Vector3(13f, h, 10f), group) == null)
-                {
-                    Box(p.name, pos + Vector3.up * h * 0.5f, new Vector3(13f, h, 10f), Mat("pr-" + p.color, p.color), group);
-                    if (p.style == "bungalow") Box("Roof", pos + Vector3.up * (h + 0.2f), new Vector3(14f, 0.4f, 11f), Mat("zinc", Zinc, 0.5f), group, false);
-                }
+                Box(p.name, pos + Vector3.up * h * 0.5f, new Vector3(13f, h, 10f), Mat("pr-" + p.color, p.color), group);
+                if (p.style == "bungalow") Box("Roof", pos + Vector3.up * (h + 0.2f), new Vector3(14f, 0.4f, 11f), Mat("zinc", Zinc, 0.5f), group, false);
+                else Box("Parapet", pos + Vector3.up * (h + 0.25f), new Vector3(13.6f, 0.5f, 10.6f), Mat("parapet", "#6b655a"), group, false);
                 if (!GameBootstrap.Mobile)
                 {
                     PlaceGlb("Models/Props/air_conditioner", "AC unit glb", pos + new Vector3(-4.2f, 2.2f, 5.2f), new Vector3(0.9f, 0.65f, 0.45f), group, 0f, false);
                     PlaceGlb("Models/Props/doors_window", "Front door glb", pos + new Vector3(0f, 0f, 5.15f), new Vector3(2.4f, 2.3f, 0.35f), group, 0f, false);
                 }
                 if (!string.IsNullOrEmpty(p.sign)) Sign(p.sign, pos + new Vector3(0, 2.6f, 10.6f), "#ffffff", 0.6f, group);
-                idx++;
             }
         }
 

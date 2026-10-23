@@ -6,7 +6,7 @@ namespace Rise
 {
     // ?diag=shots (desktop: NR_DIAG=shots): captures the HUD on foot, with a menu open, driving and wanted, then quits.
     // Pair it with nosave (and offline) so the run never touches a real save or backend:
-    //   NR_DIAG=shots,nosave,offline,norain NR_SHOTS=/tmp Rise-Lagos.app/Contents/MacOS/Rise-Lagos -screen-width 1280 -screen-height 720
+    //   NR_DIAG=shots,nosave,offline,norain NR_SHOTS=/tmp Rise.app/Contents/MacOS/Rise -screen-width 1280 -screen-height 720
     // Images go to NR_SHOTS, or Application.persistentDataPath.
     public class DiagShots : MonoBehaviour
     {

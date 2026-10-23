@@ -62,7 +62,7 @@ namespace Rise.Vehicles
         static readonly Dictionary<string, string[]> Models = new Dictionary<string, string[]>
         {
             ["car"] = new[] { "sedan", "suv", "taxi", "hatchback-sports", "1997_nissan_200sx_s14", "2015_dodge_charger_srt_hellcat" },
-            ["luxury"] = new[] { "2015_mercedes-benz_s65_amg_coupe", "2018_audi_e-tron_gt_concept", "2026_ferrari_296_speciale_a", "ferrari_f40_modified", "2015_dodge_charger_srt_hellcat", "suv-luxury", "sedan-sports" },
+            ["luxury"] = new[] { "2015_mercedes-benz_s65_amg_coupe", "2018_audi_e-tron_gt_concept", "2026_ferrari_296_speciale_a", "2015_dodge_charger_srt_hellcat", "suv-luxury", "sedan-sports" },
             ["police"] = new[] { "police", "uaz_469_un" }, ["lawma"] = new[] { "garbage-truck" }, ["fire"] = new[] { "firetruck" }, ["ambulance"] = new[] { "ambulance" },
             ["delivery"] = new[] { "isuzu_cargo_base_truck", "delivery", "delivery-flat" }, ["truck"] = new[] { "tata_signa_cargo_truck", "truck", "truck-flat" },
             ["danfo"] = new[] { "danfo_vanagon" }, ["keke"] = new[] { "keke_bajaj_re" }, ["korope"] = new[] { "suzuki_carry_minivan" }, ["okada"] = new[] { "suzuki_gsx-r750" },
@@ -255,44 +255,37 @@ namespace Rise.Vehicles
         static void ApplyVehicleFinish(Transform root, GameObject model, VehicleClassData cls, string modelName, Vector3 size, System.Random rng)
         {
             float wid = size.x, h = size.y, len = size.z;
+            bool kenneyCar = modelName == "sedan" || modelName == "suv" || modelName == "taxi" || modelName == "hatchback-sports" || modelName == "suv-luxury" || modelName == "sedan-sports";
             switch (cls.id)
             {
                 case "lawma":
                 {
-                    // Vivid LAWMA Orange (#ff6a00) compactor truck + LAWMA side & cab signage
+                    // Vivid LAWMA Orange (#ff6a00) compactor truck + amber beacon
                     ReplaceColormapMaterial(model, "#ff6a00", 0.62f, 0.18f);
-                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.56f, -len * 0.12f), new Vector3(wid + 0.04f, h * 0.22f, len * 0.48f), Mat("#ff6a00", 0.65f));
                     Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.96f, len * 0.26f), new Vector3(wid * 0.42f, 0.12f, 0.22f), Mat("#ff9900", 0.9f));
                     break;
                 }
                 case "brt":
                 {
-                    // LAMATA BRT Blue (#1559b8) with red/white waist stripe, roof A/C unit & front LED destination board
+                    // LAMATA BRT Blue (#1559b8)
                     SetRendererBodyColor(model, "Car_Paint", "#1559b8", 0.78f, 0.25f);
-                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.42f, 0f), new Vector3(wid + 0.03f, 0.16f, len * 0.88f), Mat("#f4f6fa", 0.6f));
-                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.36f, 0f), new Vector3(wid + 0.035f, 0.08f, len * 0.88f), Mat("#d62828", 0.6f));
-                    Part(root, PrimitiveType.Cube, new Vector3(0f, h + 0.06f, -len * 0.05f), new Vector3(wid * 0.58f, 0.16f, len * 0.42f), Mat("#e8ecf2", 0.5f));
-                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.84f, len * 0.46f), new Vector3(wid * 0.56f, 0.18f, 0.08f), Mat("#ff9f1c", 0.9f));
                     break;
                 }
                 case "korope":
                 {
-                    // Lagos Yellow (#f5c518) Suzuki Carry Korope minibus + black waist stripe
+                    // Lagos Yellow (#f5c518) Suzuki Carry Korope minibus
                     SetRendererBodyColor(model, "S_Boya", "#f5c518", 0.72f, 0.18f);
-                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.43f, 0f), new Vector3(wid + 0.02f, 0.13f, len * 0.86f), Mat("#141414", 0.35f));
                     break;
                 }
                 case "danfo":
                 {
-                    // Iconic Lagos Danfo yellow with jet-black waist stripe
-                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.44f, 0f), new Vector3(wid + 0.02f, 0.16f, len * 0.88f), Mat("#141414", 0.35f));
+                    // Iconic Lagos Danfo yellow
                     break;
                 }
                 case "police":
                 {
-                    // Nigeria Police Force (NPF) deep navy blue (#142442) + yellow NPF belt stripe + red/blue roof Lightbar
+                    // Nigeria Police Force (NPF) deep navy blue (#142442) + roof Lightbar
                     ReplaceColormapMaterial(model, "#142442", 0.78f, 0.30f);
-                    Part(root, PrimitiveType.Cube, new Vector3(0f, h * 0.42f, 0f), new Vector3(wid + 0.02f, 0.10f, len * 0.76f), Mat("#f5c518", 0.65f));
                     var lb = Part(root, PrimitiveType.Cube, new Vector3(0f, h + 0.05f, -0.1f), new Vector3(wid * 0.48f, 0.12f, 0.24f), Mat("#2563eb", 0.92f));
                     lb.name = "Lightbar";
                     break;
@@ -321,7 +314,7 @@ namespace Rise.Vehicles
                 {
                     string luxCol = LuxuryColours[rng.Next(LuxuryColours.Length)];
                     ReplaceColormapMaterial(model, luxCol, 0.92f, 0.52f);
-                    AttachAutomotiveTrim(root, wid, h, len, luxCol, isTaxi: false);
+                    if (kenneyCar) AttachAutomotiveTrim(root, wid, h, len, luxCol, isTaxi: false);
                     break;
                 }
                 case "car":
@@ -329,10 +322,10 @@ namespace Rise.Vehicles
                 case "truck":
                 case "delivery":
                 {
-                    bool isTaxi = modelName == "taxi" || (cls.id == "car" && rng.NextDouble() < 0.28);
+                    bool isTaxi = modelName == "taxi" || (cls.id == "car" && kenneyCar && rng.NextDouble() < 0.28);
                     string carCol = isTaxi ? "#f29b0a" : CarColours[rng.Next(CarColours.Length)];
                     ReplaceColormapMaterial(model, carCol, 0.88f, 0.36f);
-                    if (cls.id == "car") AttachAutomotiveTrim(root, wid, h, len, carCol, isTaxi);
+                    if (cls.id == "car" && kenneyCar) AttachAutomotiveTrim(root, wid, h, len, carCol, isTaxi);
                     break;
                 }
             }
@@ -428,6 +421,7 @@ namespace Rise.Vehicles
                         lit = new Material(ShaderLib.Lit) { name = src.name + " (Lit)" };
                         if (src.HasProperty("baseColorTexture")) lit.SetTexture("_BaseMap", src.GetTexture("baseColorTexture"));
                         if (src.HasProperty("baseColorFactor")) lit.SetColor("_BaseColor", src.GetColor("baseColorFactor"));
+                        if (lit.HasProperty("_Cull")) lit.SetFloat("_Cull", 0f);
                         lit.SetFloat("_Smoothness", 0.35f);
                         litCache[src] = lit;
                     }
