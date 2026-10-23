@@ -61,13 +61,13 @@ namespace Rise.Vehicles
         // motorcycles, vans). A class with no model, or whose model fails to load, falls back to the procedural body.
         static readonly Dictionary<string, string[]> Models = new Dictionary<string, string[]>
         {
-            ["car"] = new[] { "sedan", "suv", "taxi", "hatchback-sports" },
-            ["luxury"] = new[] { "suv-luxury", "sedan-sports", "hatchback-sports" },
-            ["police"] = new[] { "police" }, ["lawma"] = new[] { "garbage-truck" }, ["fire"] = new[] { "firetruck" }, ["ambulance"] = new[] { "ambulance" },
-            ["delivery"] = new[] { "delivery", "delivery-flat" }, ["truck"] = new[] { "truck", "truck-flat" },
+            ["car"] = new[] { "sedan", "suv", "taxi", "hatchback-sports", "1997_nissan_200sx_s14", "2015_dodge_charger_srt_hellcat" },
+            ["luxury"] = new[] { "2015_mercedes-benz_s65_amg_coupe", "2018_audi_e-tron_gt_concept", "2026_ferrari_296_speciale_a", "ferrari_f40_modified", "2015_dodge_charger_srt_hellcat", "suv-luxury", "sedan-sports" },
+            ["police"] = new[] { "police", "uaz_469_un" }, ["lawma"] = new[] { "garbage-truck" }, ["fire"] = new[] { "firetruck" }, ["ambulance"] = new[] { "ambulance" },
+            ["delivery"] = new[] { "isuzu_cargo_base_truck", "delivery", "delivery-flat" }, ["truck"] = new[] { "tata_signa_cargo_truck", "truck", "truck-flat" },
             ["danfo"] = new[] { "danfo_vanagon" }, ["keke"] = new[] { "keke_bajaj_re" }, ["korope"] = new[] { "suzuki_carry_minivan" }, ["okada"] = new[] { "suzuki_gsx-r750" },
-            ["brt"] = new[] { "volkswagen_crafter" }, ["army"] = new[] { "2003-gmc-topkick-c6500" }, ["tanker"] = new[] { "heavy_commercial_vehicle_hcv" },
-            ["pickup"] = new[] { "lightbody_90_md_pickup_-_low_poly_model" }, ["van"] = new[] { "van" },   // the ID. Buzz (552k triangles, 207 meshes) does not import and is far too heavy; the Kenney van stands in
+            ["brt"] = new[] { "volkswagen_crafter" }, ["army"] = new[] { "uaz_469_un", "2003-gmc-topkick-c6500" }, ["tanker"] = new[] { "fuel_truck", "heavy_commercial_vehicle_hcv" },
+            ["pickup"] = new[] { "dodge_ram_1500_rebel", "lightbody_90_md_pickup_-_low_poly_model" }, ["van"] = new[] { "van" },
             ["motorcycle"] = new[] { "2008_kawasaki_ninja_zx-10r-em", "suzuki_hayabusa_gsx-1300r-k8" },
         };
         // Extra yaw (degrees) to bring a model's native front onto +z. glTFast keeps glTF +Z as Unity +z, so most models need
@@ -135,7 +135,7 @@ namespace Rise.Vehicles
             model.transform.localPosition = new Vector3(-(b.center.x - go.transform.position.x), -(b.min.y - go.transform.position.y), -(b.center.z - go.transform.position.z));
             b = Measure(model, tight);
             var ws = new List<Transform>();
-            foreach (var t in model.GetComponentsInChildren<Transform>()) if (t.name.StartsWith("wheel")) ws.Add(t);   // Kenney names its wheels; the Lagos models bake them into the body
+            foreach (var t in model.GetComponentsInChildren<Transform>()) if (t.name.StartsWith("wheel-") && ws.Count < 4) ws.Add(t);   // Kenney names its wheels; the Lagos models bake them into the body
             wheels = ws.ToArray();
             foreach (var c in model.GetComponentsInChildren<Collider>()) { if (Application.isPlaying) Object.Destroy(c); else Object.DestroyImmediate(c); }
             var info = go.AddComponent<VehicleModelInfo>(); info.Model = name; info.Height = b.size.y; info.Length = b.size.z; info.Width = b.size.x;
@@ -405,7 +405,13 @@ namespace Rise.Vehicles
 
         // Models whose glTF materials render black in player builds (keke and pickup use KHR_materials_specular, which works in
         // the editor only): their opaque materials are rebuilt on URP Lit from the base colour texture and factor.
-        static readonly HashSet<string> LitRemap = new HashSet<string> { "keke_bajaj_re", "lightbody_90_md_pickup_-_low_poly_model" };
+        static readonly HashSet<string> LitRemap = new HashSet<string>
+        {
+            "keke_bajaj_re", "lightbody_90_md_pickup_-_low_poly_model",
+            "1997_nissan_200sx_s14", "2015_dodge_charger_srt_hellcat", "2015_mercedes-benz_s65_amg_coupe",
+            "2018_audi_e-tron_gt_concept", "2026_ferrari_296_speciale_a", "ferrari_f40_modified",
+            "dodge_ram_1500_rebel", "fuel_truck", "isuzu_cargo_base_truck", "tata_signa_cargo_truck", "uaz_469_un"
+        };
         static readonly Dictionary<Material, Material> litCache = new Dictionary<Material, Material>();
 
         static void RemapToLit(GameObject model)
