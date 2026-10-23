@@ -292,6 +292,29 @@ namespace Rise
             RoomLabel("INDOOR MISSIONS & ACTIVITIES", rightPos + new Vector3(0f, 1.8f, 1.4f), new Color(1f, 0.78f, 0.22f));
             IndoorStations.Add(new IndoorStation { Id = "indoor_ops_board", Label = "Indoor Operations Board", Prompt = "INDOOR ACTIVITIES & MISSIONS MENU", LocalPos = rightPos + new Vector3(0f, 0f, 1.4f), OnInteract = OpenIndoorMenu });
 
+            if (!GameBootstrap.Mobile)
+            {
+                string lowName = (name ?? "").ToLowerInvariant();
+                string intGlb = home
+                    ? (lowName.Contains("penthouse") || lowName.Contains("ikoyi") || lowName.Contains("banana")
+                        ? "Models/Interiors/panoramic_penthouse"
+                        : lowName.Contains("duplex") || lowName.Contains("lekki") || lowName.Contains("victoria")
+                            ? "Models/Interiors/city_loft"
+                            : "Models/Interiors/living_room")
+                    : (kind == "cafe" || kind == "bank" || kind == "police" || kind == "cbn" || kind == "efcc" || kind == "nepa")
+                        ? "Models/Interiors/mini_office"
+                        : (kind == "hotel" || kind == "mall")
+                            ? "Models/Interiors/panoramic_penthouse"
+                            : "Models/Interiors/spacious_hall";
+                Entities.CharacterRig.InstantiateGlb(intGlb, "InteriorSetGlb", RoomCenter + new Vector3(0f, 0.02f, -hd + 2.4f), new Vector3(hw * 1.15f, 3.2f, 3.6f), interiorRoot.transform, 0f, false);
+                Entities.CharacterRig.InstantiateGlb("Models/Props/doors_window", "ExitDoorGlb", RoomCenter + new Vector3(0f, 0f, hd - 0.22f), new Vector3(1.8f, 2.3f, 0.28f), interiorRoot.transform, 0f, false);
+                Entities.CharacterRig.InstantiateGlb("Models/Props/air_conditioner", "IndoorAcGlb", RoomCenter + new Vector3(-hw + 0.35f, 3.1f, -1.8f), new Vector3(0.45f, 0.55f, 0.95f), interiorRoot.transform, 90f, false);
+                Entities.CharacterRig.InstantiateGlb("Models/Props/wood_furniture", "IndoorFurnitureGlb", RoomCenter + new Vector3(hw - 2.3f, 0.02f, -2.6f), new Vector3(2.2f, 1.15f, 1.6f), interiorRoot.transform, -90f, false);
+                Entities.CharacterRig.InstantiateGlb("Models/Props/newspaper_stack", "IndoorNewspapersGlb", RoomCenter + new Vector3(1.4f, home ? 0.96f : 1.12f, -2.2f), new Vector3(0.42f, 0.32f, 0.35f), interiorRoot.transform, 18f, false);
+                if (kind == "museum" || kind == "hotel" || kind == "cbn")
+                    Entities.CharacterRig.InstantiateGlb("Models/Characters/caveman_statue", "MuseumSculptureGlb", RoomCenter + new Vector3(2.8f, 0.02f, -1.6f), new Vector3(1.1f, 2.2f, 1.1f), interiorRoot.transform, -25f, false);
+            }
+
             var lightGo = new GameObject("RoomLight"); lightGo.transform.SetParent(interiorRoot.transform, false);
             lightGo.transform.position = RoomCenter + new Vector3(0f, 3.6f, 0f);
             var l = lightGo.AddComponent<Light>(); l.type = LightType.Point; l.range = 24f; l.intensity = 1.7f; l.color = new Color(1f, 0.94f, 0.82f);
