@@ -100,7 +100,7 @@ namespace Rise.World
                 servicePatrols.Add(new ServicePatrol { t = go.transform, home = pos, axis = patrolDir, phase = sIdx * 1.37f, radius = n.u == "lawma" ? 4.5f : 2.8f });
                 sIdx++;
             }
-            string[] nightModels = { "Models/Characters/pink_mini_dress", "Models/Characters/bluevinyl", "Models/Characters/tifa_vip" };
+            string[] nightModels = { "Models/Characters/pink_mini_dress", "Models/Characters/bluevinyl", "Models/Characters/tifa_vip", "Models/Characters/rastaman_singer" };
             int nIdx = 0;
             foreach (var n in data.nightlife)
             {
